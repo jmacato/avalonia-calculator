@@ -2,6 +2,13 @@
 // Licensed under the MIT License.
 
 #pragma once
+
+#ifdef TESTING
+#define PRIVATE public
+#else
+#define PRIVATE private
+#endif
+
 /****************************Module*Header***********************************\
 * Module Name: CalcEngine.h
 *
@@ -110,7 +117,7 @@ public:
     static std::wstring_view OpCodeToUnaryString(int nOpCode, bool fInv, AngleType angletype);
     static std::wstring_view OpCodeToBinaryString(int nOpCode, bool isIntegerMode);
 
-private:
+PRIVATE:
     bool m_fPrecedence;
     bool m_fIntegerMode; /* This is true if engine is explicitly called to be in integer mode. All bases are restricted to be in integers only */
     ICalcDisplay* m_pCalcDisplay;
@@ -166,7 +173,7 @@ private:
     wchar_t m_decimalSeparator;
     wchar_t m_groupSeparator;
 
-private:
+PRIVATE:
     void ProcessCommandWorker(OpCode wParam);
     void ResolveHighestPrecedenceOperation();
     void HandleErrorCommand(OpCode idc);

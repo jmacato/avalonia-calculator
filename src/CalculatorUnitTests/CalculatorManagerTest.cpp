@@ -1,21 +1,20 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-#include "pch.h"
+#define TESTING
 
-#include <CppUnitTest.h>
+#include <gtest/gtest.h>
+#include <memory>
+#include <vector>
+#include <string>
+#include "CalculatorHistory.h"
+#include "ResourceProvider.h"
+#include "CalculatorManager.h"
+#include "NumberFormattingUtils.h"
 
-#include "CalcManager/CalculatorHistory.h"
-#include "CalcViewModel/Common/EngineResourceProvider.h"
-#include "CalcManager/NumberFormattingUtils.h"
-
-using namespace CalculatorApp;
-using namespace CalculatorApp::ViewModel::Common;
 using namespace CalculationManager;
 using namespace UnitConversionManager::NumberFormattingUtils;
-using namespace Platform;
 using namespace std;
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace CalculatorManagerTest
 {
@@ -159,59 +158,92 @@ namespace CalculatorManagerTest
                 m_calculatorManager->SendCommand(*currentCommand++);
             }
 
-            VERIFY_ARE_EQUAL(expectedPrimary, m_displayTester->GetPrimaryDisplay());
+            EXPECT_EQ(expectedPrimary, m_displayTester->GetPrimaryDisplay());
             if (expectedExpression != L"N/A")
             {
-                VERIFY_ARE_EQUAL(expectedExpression, m_displayTester->GetExpression());
+                EXPECT_EQ(expectedExpression, m_displayTester->GetExpression());
             }
         }
     };
 
     // Declare this class as a TestClass, and supply metadata if necessary.
-    TEST_CLASS(CalculatorManagerTest)
+    class CalculatorManagerTest : public ::testing::Test
     {
+    protected:
+        void SetUp() override
+        {
+            m_calculatorDisplayTester = std::make_shared<CalculatorManagerDisplayTester>();
+            m_resourceProvider = std::make_shared<ResourceProvider>();
+            m_calculatorManager = std::make_shared<CalculatorManager>(m_calculatorDisplayTester.get(), m_resourceProvider.get());
+            TestDriver::Initialize(m_calculatorDisplayTester, m_calculatorManager);
+        }
+
+        void TearDown() override
+        {
+            m_calculatorManager->Reset();
+            m_calculatorDisplayTester->Reset();
+        }
+
+        void ExecuteCommands(Command commands[])
+        {
+            Command* itr = commands;
+            while (*itr != Command::CommandNULL)
+            {
+                m_calculatorManager->SendCommand(*itr);
+                itr++;
+            }
+        }
+
+        void ExecuteCommands(const vector<Command>& commands)
+        {
+            for (const Command& command : commands)
+            {
+                if (command == Command::CommandNULL)
+                {
+                    break;
+                }
+
+                m_calculatorManager->SendCommand(command);
+            }
+        }
+
+        void TestMaxDigitsReachedScenario(const wstring& constInput)
+        {
+            CalculatorManagerDisplayTester* pCalculatorDisplay = (CalculatorManagerDisplayTester*)m_calculatorDisplayTester.get();
+
+            // Make sure we're in a clean state.
+            EXPECT_EQ(0, pCalculatorDisplay->GetMaxDigitsCalledCount());
+
+            vector<Command> commands = CommandListFromStringInput(constInput);
+            EXPECT_FALSE(commands.empty());
+
+            // The last element in the list should always cause MaxDigitsReached
+            // Remember the command but remove from the actual input that is sent
+            Command finalInput = commands[commands.size() - 1];
+            commands.pop_back();
+            wstring input = constInput.substr(0, constInput.length() - 1);
+
+            m_calculatorManager->SetStandardMode();
+            ExecuteCommands(commands);
+
+            wstring expectedDisplay = input;
+            wstring display = pCalculatorDisplay->GetPrimaryDisplay();
+            EXPECT_EQ(expectedDisplay, display);
+
+            m_calculatorManager->SendCommand(finalInput);
+
+            // Verify MaxDigitsReached
+            display = pCalculatorDisplay->GetPrimaryDisplay();
+            EXPECT_EQ(expectedDisplay, display);
+
+            // MaxDigitsReached should have been called once
+            EXPECT_LT(0, pCalculatorDisplay->GetMaxDigitsCalledCount());
+        }
+
     public:
-        TEST_CLASS_INITIALIZE(CommonSetup);
-
-        TEST_METHOD(CalculatorManagerTestStandard);
-
-        TEST_METHOD(CalculatorManagerTestScientific);
-        TEST_METHOD(CalculatorManagerTestScientific2);
-        TEST_METHOD(CalculatorManagerTestScientificParenthesis);
-        TEST_METHOD(CalculatorManagerTestScientificError);
-        TEST_METHOD(CalculatorManagerTestScientificModeChange);
-
-        TEST_METHOD(CalculatorManagerTestProgrammer);
-
-        TEST_METHOD(CalculatorManagerTestModeChange);
-
-        TEST_METHOD(CalculatorManagerTestMemory);
-
-        TEST_METHOD(CalculatorManagerTestMaxDigitsReached);
-        TEST_METHOD(CalculatorManagerTestMaxDigitsReached_LeadingDecimal);
-        TEST_METHOD(CalculatorManagerTestMaxDigitsReached_TrailingDecimal);
-
-        TEST_METHOD(UnitConversionManagerNumberFormattingUtils_TrimTrailingZeros);
-        TEST_METHOD(UnitConversionManagerNumberFormattingUtils_GetNumberDigits);
-        TEST_METHOD(UnitConversionManagerNumberFormattingUtils_GetNumberDigitsWholeNumberPart);
-        TEST_METHOD(UnitConversionManagerNumberFormattingUtils_RoundSignificantDigits);
-        TEST_METHOD(UnitConversionManagerNumberFormattingUtils_ToScientificNumber);
-
-        TEST_METHOD(CalculatorManagerTestBinaryOperatorReceived);
-        TEST_METHOD(CalculatorManagerTestBinaryOperatorReceived_Multiple);
-        TEST_METHOD(CalculatorManagerTestBinaryOperatorReceived_LongInput);
-
-        TEST_METHOD(CalculatorManagerTestStandardOrderOfOperations);
-
-        TEST_METHOD_CLEANUP(Cleanup);
-
-    private:
         static std::shared_ptr<CalculatorManager> m_calculatorManager;
         static std::shared_ptr<IResourceProvider> m_resourceProvider;
         static std::shared_ptr<CalculatorManagerDisplayTester> m_calculatorDisplayTester;
-        void ExecuteCommands(Command commands[]);
-        void ExecuteCommands(const vector<Command>& commands);
-
         vector<Command> CommandListFromStringInput(const wstring& input)
         {
             vector<Command> result{};
@@ -238,37 +270,11 @@ namespace CalculatorManagerTest
             return result;
         }
 
-        void TestMaxDigitsReachedScenario(const wstring& constInput)
+        // Resets calculator state to start state after each test
+        void Cleanup()
         {
-            CalculatorManagerDisplayTester* pCalculatorDisplay = (CalculatorManagerDisplayTester*)m_calculatorDisplayTester.get();
-
-            // Make sure we're in a clean state.
-            VERIFY_ARE_EQUAL(0, pCalculatorDisplay->GetMaxDigitsCalledCount());
-
-            vector<Command> commands = CommandListFromStringInput(constInput);
-            VERIFY_IS_FALSE(commands.empty());
-
-            // The last element in the list should always cause MaxDigitsReached
-            // Remember the command but remove from the actual input that is sent
-            Command finalInput = commands[commands.size() - 1];
-            commands.pop_back();
-            wstring input = constInput.substr(0, constInput.length() - 1);
-
-            m_calculatorManager->SetStandardMode();
-            ExecuteCommands(commands);
-
-            wstring expectedDisplay = input;
-            wstring display = pCalculatorDisplay->GetPrimaryDisplay();
-            VERIFY_ARE_EQUAL(expectedDisplay, display);
-
-            m_calculatorManager->SendCommand(finalInput);
-
-            // Verify MaxDigitsReached
-            display = pCalculatorDisplay->GetPrimaryDisplay();
-            VERIFY_ARE_EQUAL(expectedDisplay, display);
-
-            // MaxDigitsReached should have been called once
-            VERIFY_IS_LESS_THAN(0, pCalculatorDisplay->GetMaxDigitsCalledCount());
+            m_calculatorManager->Reset();
+            m_calculatorDisplayTester->Reset();
         }
     };
 
@@ -278,46 +284,8 @@ namespace CalculatorManagerTest
     std::shared_ptr<CalculatorManagerDisplayTester> TestDriver::m_displayTester;
     std::shared_ptr<CalculatorManager> TestDriver::m_calculatorManager;
 
-    // Creates instance of CalculationManager before running tests
-    void CalculatorManagerTest::CommonSetup()
-    {
-        m_calculatorDisplayTester = std::make_shared<CalculatorManagerDisplayTester>();
-        m_resourceProvider = std::make_shared<EngineResourceProvider>();
-        m_calculatorManager = std::make_shared<CalculatorManager>(m_calculatorDisplayTester.get(), m_resourceProvider.get());
-        TestDriver::Initialize(m_calculatorDisplayTester, m_calculatorManager);
-    }
 
-    // Resets calculator state to start state after each test
-    void CalculatorManagerTest::Cleanup()
-    {
-        m_calculatorManager->Reset();
-        m_calculatorDisplayTester->Reset();
-    }
-
-    void CalculatorManagerTest::ExecuteCommands(Command commands[])
-    {
-        Command* itr = commands;
-        while (*itr != Command::CommandNULL)
-        {
-            m_calculatorManager->SendCommand(*itr);
-            itr++;
-        }
-    }
-
-    void CalculatorManagerTest::ExecuteCommands(const vector<Command>& commands)
-    {
-        for (const Command& command : commands)
-        {
-            if (command == Command::CommandNULL)
-            {
-                break;
-            }
-
-            m_calculatorManager->SendCommand(command);
-        }
-    }
-
-    void CalculatorManagerTest::CalculatorManagerTestStandard()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestStandard)
     {
         Command commands1[] = { Command::Command1, Command::Command2, Command::Command3, Command::CommandPNT,
                                 Command::Command4, Command::Command5, Command::Command6, Command::CommandNULL };
@@ -397,7 +365,7 @@ namespace CalculatorManagerTest
         TestDriver::Test(L"0", L"0 + ", commands22);
     }
 
-    void CalculatorManagerTest::CalculatorManagerTestScientific()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestScientific)
     {
         Command commands1[] = { Command::Command1, Command::Command2, Command::Command3, Command::CommandPNT,
                                 Command::Command4, Command::Command5, Command::Command6, Command::CommandNULL };
@@ -485,7 +453,7 @@ namespace CalculatorManagerTest
     }
 
     // Scientific functions from the scientific calculator
-    void CalculatorManagerTest::CalculatorManagerTestScientific2()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestScientific2)
     {
         Command commands1[] = { Command::Command1, Command::Command2, Command::CommandSQR, Command::CommandNULL };
         TestDriver::Test(L"144", L"sqr(12)", commands1, true, true);
@@ -620,7 +588,7 @@ namespace CalculatorManagerTest
         TestDriver::Test(L"1.4649735207179271671970404076786", L"5 log base 3 + ", commands42, true, true);
     }
 
-    void CalculatorManagerTest::CalculatorManagerTestScientificParenthesis()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestScientificParenthesis)
     {
         Command commands1[] = { Command::Command1, Command::CommandADD,    Command::CommandOPENP, Command::CommandADD,
                                 Command::Command3, Command::CommandCLOSEP, Command::CommandNULL };
@@ -645,31 +613,31 @@ namespace CalculatorManagerTest
         TestDriver::Test(L"8", L"2 \x00D7 (2) + 4=", commands5, true, true);
     }
 
-    void CalculatorManagerTest::CalculatorManagerTestScientificError()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestScientificError)
     {
         Command commands1[] = { Command::Command1, Command::CommandDIV, Command::Command0, Command::CommandEQU, Command::CommandNULL };
         TestDriver::Test(L"Cannot divide by zero", L"1 \x00F7 ", commands1, true, true);
-        VERIFY_IS_TRUE(m_calculatorDisplayTester->GetIsError());
+        EXPECT_TRUE(m_calculatorDisplayTester->GetIsError());
 
         Command commands2[] = { Command::Command2, Command::CommandSIGN, Command::CommandLOG, Command::CommandNULL };
         TestDriver::Test(L"Invalid input", L"log(-2)", commands2, true, true);
-        VERIFY_IS_TRUE(m_calculatorDisplayTester->GetIsError());
+        EXPECT_TRUE(m_calculatorDisplayTester->GetIsError());
 
         Command commands3[] = { Command::Command0, Command::CommandDIV, Command::Command0, Command::CommandEQU, Command::CommandNULL };
         TestDriver::Test(L"Result is undefined", L"0 \x00F7 ", commands3, true, true);
-        VERIFY_IS_TRUE(m_calculatorDisplayTester->GetIsError());
+        EXPECT_TRUE(m_calculatorDisplayTester->GetIsError());
 
         // Do the same tests for the basic calculator
         TestDriver::Test(L"Cannot divide by zero", L"1 \x00F7 ", commands1);
-        VERIFY_IS_TRUE(m_calculatorDisplayTester->GetIsError());
+        EXPECT_TRUE(m_calculatorDisplayTester->GetIsError());
         TestDriver::Test(L"Invalid input", L"log(-2)", commands2);
-        VERIFY_IS_TRUE(m_calculatorDisplayTester->GetIsError());
+        EXPECT_TRUE(m_calculatorDisplayTester->GetIsError());
         TestDriver::Test(L"Result is undefined", L"0 \x00F7 ", commands3);
-        VERIFY_IS_TRUE(m_calculatorDisplayTester->GetIsError());
+        EXPECT_TRUE(m_calculatorDisplayTester->GetIsError());
     }
 
     // Radians and Grads Test
-    void CalculatorManagerTest::CalculatorManagerTestScientificModeChange()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestScientificModeChange)
     {
         Command commands1[] = { Command::CommandRAD, Command::CommandPI, Command::CommandSIN, Command::CommandNULL };
         TestDriver::Test(L"0", L"N/A", commands1, true, true);
@@ -690,7 +658,7 @@ namespace CalculatorManagerTest
         TestDriver::Test(L"0", L"N/A", commands6, true, true);
     }
 
-    void CalculatorManagerTest::CalculatorManagerTestModeChange()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestModeChange)
     {
         Command commands1[] = { Command::Command1, Command::Command2, Command::Command3, Command::CommandNULL };
         TestDriver::Test(L"123", L"", commands1, true, false);
@@ -717,7 +685,7 @@ namespace CalculatorManagerTest
         TestDriver::Test(L"0", L"", commands8, true, false);
     }
 
-    void CalculatorManagerTest::CalculatorManagerTestProgrammer()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestProgrammer)
     {
         Command commands1[] = { Command::ModeProgrammer, Command::Command5, Command::Command3,   Command::CommandNand,
                                 Command::Command8,       Command::Command3, Command::CommandAnd, Command::CommandNULL };
@@ -754,7 +722,7 @@ namespace CalculatorManagerTest
         TestDriver::Test(L"-9,223,372,036,854,775,808", L"RoR(RoR(1))", commands10, true, false);
     }
 
-    void CalculatorManagerTest::CalculatorManagerTestMemory()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestMemory)
     {
         Command scientificCalculatorTest52[] = { Command::Command1, Command::CommandSTORE, Command::CommandNULL };
         wstring expectedPrimaryDisplayTestScientific52(L"1");
@@ -772,7 +740,7 @@ namespace CalculatorManagerTest
         ExecuteCommands(scientificCalculatorTest52);
         resultPrimary = pCalculatorDisplay->GetPrimaryDisplay();
         resultExpression = pCalculatorDisplay->GetExpression();
-        VERIFY_ARE_EQUAL(expectedPrimaryDisplayTestScientific52, resultPrimary);
+        EXPECT_EQ(expectedPrimaryDisplayTestScientific52, resultPrimary);
 
         Cleanup();
         ExecuteCommands(scientificCalculatorTest53);
@@ -781,7 +749,7 @@ namespace CalculatorManagerTest
         m_calculatorManager->MemorizedNumberLoad(0);
         resultPrimary = pCalculatorDisplay->GetPrimaryDisplay();
         resultExpression = pCalculatorDisplay->GetExpression();
-        VERIFY_ARE_EQUAL(expectedPrimaryDisplayTestScientific52, resultPrimary);
+        EXPECT_EQ(expectedPrimaryDisplayTestScientific52, resultPrimary);
 
         Cleanup();
         m_calculatorManager->SendCommand(Command::Command1);
@@ -792,11 +760,11 @@ namespace CalculatorManagerTest
         m_calculatorManager->SendCommand(Command::CommandCLEAR);
         m_calculatorManager->MemorizedNumberLoad(1);
         resultPrimary = pCalculatorDisplay->GetPrimaryDisplay();
-        VERIFY_ARE_EQUAL(wstring(L"1"), resultPrimary);
+        EXPECT_EQ(wstring(L"1"), resultPrimary);
 
         m_calculatorManager->MemorizedNumberLoad(0);
         resultPrimary = pCalculatorDisplay->GetPrimaryDisplay();
-        VERIFY_ARE_EQUAL(wstring(L"2"), resultPrimary);
+        EXPECT_EQ(wstring(L"2"), resultPrimary);
 
         Cleanup();
         m_calculatorManager->SendCommand(Command::Command1);
@@ -826,7 +794,7 @@ namespace CalculatorManagerTest
         {
             isEqual = std::equal(expectedMemorizedNumbers.begin(), expectedMemorizedNumbers.end(), memorizedNumbers.begin());
         }
-        VERIFY_IS_TRUE(isEqual);
+        EXPECT_TRUE(isEqual);
 
         m_calculatorManager->SendCommand(Command::CommandCLEAR);
         m_calculatorManager->SendCommand(Command::Command2);
@@ -849,7 +817,7 @@ namespace CalculatorManagerTest
         {
             isEqual = std::equal(expectedMemorizedNumbers.begin(), expectedMemorizedNumbers.end(), memorizedNumbers.begin());
         }
-        VERIFY_IS_TRUE(isEqual);
+        EXPECT_TRUE(isEqual);
 
         m_calculatorManager->SendCommand(Command::CommandCLEAR);
         m_calculatorManager->SendCommand(Command::Command1);
@@ -875,7 +843,7 @@ namespace CalculatorManagerTest
         {
             isEqual = std::equal(expectedMemorizedNumbers.begin(), expectedMemorizedNumbers.end(), memorizedNumbers.begin());
         }
-        VERIFY_IS_TRUE(isEqual);
+        EXPECT_TRUE(isEqual);
 
         // Memorizing 101 numbers, which exceeds the limit.
         Cleanup();
@@ -886,13 +854,13 @@ namespace CalculatorManagerTest
         }
 
         memorizedNumbers = pCalculatorDisplay->GetMemorizedNumbers();
-        VERIFY_ARE_EQUAL((size_t)100, memorizedNumbers.size());
+        EXPECT_EQ((size_t)100, memorizedNumbers.size());
 
         // Memorizing new number, which should show up at the top of the memory
         m_calculatorManager->SendCommand(Command::Command2);
         m_calculatorManager->MemorizeNumber();
         memorizedNumbers = pCalculatorDisplay->GetMemorizedNumbers();
-        VERIFY_ARE_EQUAL(wstring(L"2"), memorizedNumbers.at(0));
+        EXPECT_EQ(wstring(L"2"), memorizedNumbers.at(0));
 
         // Test for trying to memorize invalid value
         m_calculatorManager->SendCommand(Command::Command2);
@@ -902,158 +870,159 @@ namespace CalculatorManagerTest
     }
 
     // Send 12345678910111213 and verify MaxDigitsReached
-    void CalculatorManagerTest::CalculatorManagerTestMaxDigitsReached()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestMaxDigitsReached)
     {
         TestMaxDigitsReachedScenario(L"1,234,567,891,011,1213");
     }
 
-    void CalculatorManagerTest::CalculatorManagerTestMaxDigitsReached_LeadingDecimal()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestMaxDigitsReached_LeadingDecimal)
     {
         TestMaxDigitsReachedScenario(L"0.12345678910111213");
     }
 
-    void CalculatorManagerTest::CalculatorManagerTestMaxDigitsReached_TrailingDecimal()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestMaxDigitsReached_TrailingDecimal)
     {
         TestMaxDigitsReachedScenario(L"123,456,789,101,112.13");
     }
 
-    void CalculatorManagerTest::UnitConversionManagerNumberFormattingUtils_TrimTrailingZeros()
+    TEST_F(CalculatorManagerTest, UnitConversionManagerNumberFormattingUtils_TrimTrailingZeros)
     {
         wstring number = L"2.1032100000000";
         TrimTrailingZeros(number);
-        VERIFY_ARE_EQUAL(number, L"2.10321");
+        EXPECT_EQ(number, L"2.10321");
         number = L"-122.123200";
         TrimTrailingZeros(number);
-        VERIFY_ARE_EQUAL(number, L"-122.1232");
+        EXPECT_EQ(number, L"-122.1232");
         number = L"0.0001200";
         TrimTrailingZeros(number);
-        VERIFY_ARE_EQUAL(number, L"0.00012");
+        EXPECT_EQ(number, L"0.00012");
         number = L"12.000";
         TrimTrailingZeros(number);
-        VERIFY_ARE_EQUAL(number, L"12");
+        EXPECT_EQ(number, L"12");
         number = L"-12.00000";
         TrimTrailingZeros(number);
-        VERIFY_ARE_EQUAL(number, L"-12");
+        EXPECT_EQ(number, L"-12");
         number = L"0.000";
         TrimTrailingZeros(number);
-        VERIFY_ARE_EQUAL(number, L"0");
+        EXPECT_EQ(number, L"0");
         number = L"322423";
         TrimTrailingZeros(number);
-        VERIFY_ARE_EQUAL(number, L"322423");
+        EXPECT_EQ(number, L"322423");
     }
 
-    void CalculatorManagerTest::UnitConversionManagerNumberFormattingUtils_GetNumberDigits()
+    TEST_F(CalculatorManagerTest, UnitConversionManagerNumberFormattingUtils_GetNumberDigits)
     {
         wstring number = L"2.10321";
         unsigned int digitsCount = GetNumberDigits(number);
-        VERIFY_ARE_EQUAL(digitsCount, 6);
+        EXPECT_EQ(digitsCount, 6);
         number = L"-122.1232";
         digitsCount = GetNumberDigits(number);
-        VERIFY_ARE_EQUAL(digitsCount, 7);
+        EXPECT_EQ(digitsCount, 7);
         number = L"-3432";
         digitsCount = GetNumberDigits(number);
-        VERIFY_ARE_EQUAL(digitsCount, 4);
+        EXPECT_EQ(digitsCount, 4);
         number = L"0";
         digitsCount = GetNumberDigits(number);
-        VERIFY_ARE_EQUAL(digitsCount, 1);
+        EXPECT_EQ(digitsCount, 1);
         number = L"0.0001223";
         digitsCount = GetNumberDigits(number);
-        VERIFY_ARE_EQUAL(digitsCount, 8);
+        EXPECT_EQ(digitsCount, 8);
     }
 
-    void CalculatorManagerTest::UnitConversionManagerNumberFormattingUtils_GetNumberDigitsWholeNumberPart()
+    TEST_F(CalculatorManagerTest, UnitConversionManagerNumberFormattingUtils_GetNumberDigitsWholeNumberPart)
     {
         unsigned int digitsCount = GetNumberDigitsWholeNumberPart(2.10321);
-        VERIFY_ARE_EQUAL(digitsCount, 1);
+        EXPECT_EQ(digitsCount, 1);
         digitsCount = GetNumberDigitsWholeNumberPart(-122.1232);
-        VERIFY_ARE_EQUAL(digitsCount, 3);
+        EXPECT_EQ(digitsCount, 3);
         digitsCount = GetNumberDigitsWholeNumberPart(-3432);
-        VERIFY_ARE_EQUAL(digitsCount, 4);
+        EXPECT_EQ(digitsCount, 4);
         digitsCount = GetNumberDigitsWholeNumberPart(0);
-        VERIFY_ARE_EQUAL(digitsCount, 1);
+        EXPECT_EQ(digitsCount, 1);
         digitsCount = GetNumberDigitsWholeNumberPart(324328412837382);
-        VERIFY_ARE_EQUAL(digitsCount, 15);
+        EXPECT_EQ(digitsCount, 15);
         digitsCount = GetNumberDigitsWholeNumberPart(324328412837382.232213214324234);
-        VERIFY_ARE_EQUAL(digitsCount, 15);
+        EXPECT_EQ(digitsCount, 15);
         digitsCount = GetNumberDigitsWholeNumberPart(0.032);
-        VERIFY_ARE_EQUAL(digitsCount, 1);
+        EXPECT_EQ(digitsCount, 1);
         digitsCount = GetNumberDigitsWholeNumberPart(0.00000000000000000001);
-        VERIFY_ARE_EQUAL(digitsCount, 1);
+        EXPECT_EQ(digitsCount, 1);
     }
 
-    void CalculatorManagerTest::UnitConversionManagerNumberFormattingUtils_RoundSignificantDigits()
+    TEST_F(CalculatorManagerTest, UnitConversionManagerNumberFormattingUtils_RoundSignificantDigits)
     {
         wstring result = RoundSignificantDigits(12.342343242, 3);
-        VERIFY_ARE_EQUAL(result, L"12.342");
+        EXPECT_EQ(result, L"12.342");
         result = RoundSignificantDigits(12.3429999, 3);
-        VERIFY_ARE_EQUAL(result, L"12.343");
+        EXPECT_EQ(result, L"12.343");
         result = RoundSignificantDigits(12.342500001, 3);
-        VERIFY_ARE_EQUAL(result, L"12.343");
+        EXPECT_EQ(result, L"12.343");
         result = RoundSignificantDigits(-2312.1244243346454345, 5);
-        VERIFY_ARE_EQUAL(result, L"-2312.12442");
+        EXPECT_EQ(result, L"-2312.12442");
         result = RoundSignificantDigits(0.3423432423, 5);
-        VERIFY_ARE_EQUAL(result, L"0.34234");
+        EXPECT_EQ(result, L"0.34234");
         result = RoundSignificantDigits(0.3423, 7);
-        VERIFY_ARE_EQUAL(result, L"0.3423000");
+        EXPECT_EQ(result, L"0.3423000");
     }
 
-    void CalculatorManagerTest::UnitConversionManagerNumberFormattingUtils_ToScientificNumber()
+    TEST_F(CalculatorManagerTest, UnitConversionManagerNumberFormattingUtils_ToScientificNumber)
     {
         wstring result = ToScientificNumber(3423);
-        VERIFY_ARE_EQUAL(result, L"3.423000e+03");
+        EXPECT_EQ(result, L"3.423000e+03");
         result = ToScientificNumber(-21);
-        VERIFY_ARE_EQUAL(result, L"-2.100000e+01");
+        EXPECT_EQ(result, L"-2.100000e+01");
         result = ToScientificNumber(0.0232);
-        VERIFY_ARE_EQUAL(result, L"2.320000e-02");
+        EXPECT_EQ(result, L"2.320000e-02");
         result = ToScientificNumber(-0.00921);
-        VERIFY_ARE_EQUAL(result, L"-9.210000e-03");
+        EXPECT_EQ(result, L"-9.210000e-03");
         result = ToScientificNumber(2343243345677);
-        VERIFY_ARE_EQUAL(result, L"2.343243e+12");
+        EXPECT_EQ(result, L"2.343243e+12");
         result = ToScientificNumber(-3432474247332942);
-        VERIFY_ARE_EQUAL(result, L"-3.432474e+15");
+        EXPECT_EQ(result, L"-3.432474e+15");
         result = ToScientificNumber(0.000000003432432);
-        VERIFY_ARE_EQUAL(result, L"3.432432e-09");
+        EXPECT_EQ(result, L"3.432432e-09");
         result = ToScientificNumber(-0.000000003432432);
-        VERIFY_ARE_EQUAL(result, L"-3.432432e-09");
+        EXPECT_EQ(result, L"-3.432432e-09");
     }
 
-    void CalculatorManagerTest::CalculatorManagerTestBinaryOperatorReceived()
+
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestBinaryOperatorReceived)
     {
         CalculatorManagerDisplayTester* pCalculatorDisplay = (CalculatorManagerDisplayTester*)m_calculatorDisplayTester.get();
 
-        VERIFY_ARE_EQUAL(0, pCalculatorDisplay->GetBinaryOperatorReceivedCallCount());
+        EXPECT_EQ(0, pCalculatorDisplay->GetBinaryOperatorReceivedCallCount());
 
         m_calculatorManager->SetStandardMode();
         ExecuteCommands({ Command::Command1, Command::CommandADD });
 
         wstring display = pCalculatorDisplay->GetPrimaryDisplay();
-        VERIFY_ARE_EQUAL(L"1", display);
+        EXPECT_EQ(L"1", display);
 
         // Verify BinaryOperatorReceived
-        VERIFY_ARE_EQUAL(1, pCalculatorDisplay->GetBinaryOperatorReceivedCallCount());
+        EXPECT_EQ(1, pCalculatorDisplay->GetBinaryOperatorReceivedCallCount());
     }
 
-    void CalculatorManagerTest::CalculatorManagerTestBinaryOperatorReceived_Multiple()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestBinaryOperatorReceived_Multiple)
     {
         CalculatorManagerDisplayTester* pCalculatorDisplay = (CalculatorManagerDisplayTester*)m_calculatorDisplayTester.get();
 
-        VERIFY_ARE_EQUAL(0, pCalculatorDisplay->GetBinaryOperatorReceivedCallCount());
+        EXPECT_EQ(0, pCalculatorDisplay->GetBinaryOperatorReceivedCallCount());
 
         m_calculatorManager->SetStandardMode();
         ExecuteCommands({ Command::Command1, Command::CommandADD, Command::CommandSUB, Command::CommandMUL });
 
         wstring display = pCalculatorDisplay->GetPrimaryDisplay();
-        VERIFY_ARE_EQUAL(L"1", display);
+        EXPECT_EQ(L"1", display);
 
         // Verify BinaryOperatorReceived
-        VERIFY_ARE_EQUAL(3, pCalculatorDisplay->GetBinaryOperatorReceivedCallCount());
+        EXPECT_EQ(3, pCalculatorDisplay->GetBinaryOperatorReceivedCallCount());
     }
 
-    void CalculatorManagerTest::CalculatorManagerTestBinaryOperatorReceived_LongInput()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestBinaryOperatorReceived_LongInput)
     {
         CalculatorManagerDisplayTester* pCalculatorDisplay = (CalculatorManagerDisplayTester*)m_calculatorDisplayTester.get();
 
-        VERIFY_ARE_EQUAL(0, pCalculatorDisplay->GetBinaryOperatorReceivedCallCount());
+        EXPECT_EQ(0, pCalculatorDisplay->GetBinaryOperatorReceivedCallCount());
 
         m_calculatorManager->SetStandardMode();
         ExecuteCommands({ Command::Command1,
@@ -1069,13 +1038,13 @@ namespace CalculatorManagerTest
                           Command::CommandEQU });
 
         wstring display = pCalculatorDisplay->GetPrimaryDisplay();
-        VERIFY_ARE_EQUAL(L"5", display);
+        EXPECT_EQ(L"5", display);
 
         // Verify BinaryOperatorReceived
-        VERIFY_ARE_EQUAL(4, pCalculatorDisplay->GetBinaryOperatorReceivedCallCount());
+        EXPECT_EQ(4, pCalculatorDisplay->GetBinaryOperatorReceivedCallCount());
     }
 
-    void CalculatorManagerTest::CalculatorManagerTestStandardOrderOfOperations()
+    TEST_F(CalculatorManagerTest, CalculatorManagerTestStandardOrderOfOperations)
     {
         Command commands1[] = { Command::Command1, Command::CommandREC, Command::CommandNULL };
         TestDriver::Test(L"1", L"1/(1)", commands1);

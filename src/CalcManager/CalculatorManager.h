@@ -43,6 +43,7 @@ namespace CalculationManager
 
     class CalculatorManager final : public ICalcDisplay
     {
+        friend class CalcEngineTests;
     private:
         static const unsigned int m_maximumMemorySize = 100;
         ICalcDisplay* const m_displayCallback;

@@ -2,7 +2,8 @@
 // Licensed under the MIT License.
 
 #pragma once
-
+#include <cwchar>
+#include <string>
 #include "../ExpressionCommandInterface.h"
 
 // Callback interface to be implemented by the clients of CCalcEngine if they require equation history

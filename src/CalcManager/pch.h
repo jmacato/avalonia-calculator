@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <intsafe.h>
 #include <list>
 #include <future>
 #include <regex>
@@ -19,7 +18,6 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <winerror.h>
 #include <iostream>
 #include <cmath>
 #include <random>
