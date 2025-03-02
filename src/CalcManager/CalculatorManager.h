@@ -47,14 +47,12 @@ namespace CalculationManager
     private:
         static const unsigned int m_maximumMemorySize = 100;
         ICalcDisplay* const m_displayCallback;
-        CCalcEngine* m_currentCalculatorEngine;
         std::unique_ptr<CCalcEngine> m_scientificCalculatorEngine;
         std::unique_ptr<CCalcEngine> m_standardCalculatorEngine;
         std::unique_ptr<CCalcEngine> m_programmerCalculatorEngine;
         IResourceProvider* const m_resourceProvider;
         bool m_inHistoryItemLoadMode;
 
-        std::vector<CalcEngine::Rational> m_memorizedNumbers;
         CalcEngine::Rational m_persistedPrimaryValue;
         bool m_isExponentialFormat;
         Command m_currentDegreeMode;
@@ -121,5 +119,8 @@ namespace CalculationManager
         CalculationManager::Command GetCurrentDegreeMode();
         void SetInHistoryItemLoadMode(_In_ bool isHistoryItemLoadMode);
         std::vector<std::shared_ptr<IExpressionCommand>> GetDisplayCommandsSnapshot() const;
+
+        CCalcEngine* m_currentCalculatorEngine;
+        std::vector<CalcEngine::Rational> m_memorizedNumbers;
     };
 }

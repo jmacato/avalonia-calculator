@@ -227,7 +227,7 @@ String ^ StandardCalculatorViewModel::CalculateNarratorDisplayValue(_In_ wstring
 String ^ StandardCalculatorViewModel::GetNarratorStringReadRawNumbers(_In_ String ^ localizedDisplayValue)
 {
     wstring ws;
-    LocalizationSettings^ locSettings = LocalizationSettings::GetInstance();
+    LocalizationSettings ^ locSettings = LocalizationSettings::GetInstance();
 
     // Insert a space after each digit in the string, to force Narrator to read them as separate numbers.
     for (const wchar_t& c : localizedDisplayValue)
@@ -386,7 +386,7 @@ void StandardCalculatorViewModel::SetTokens(_Inout_ shared_ptr<vector<pair<wstri
         return;
     }
 
-    LocalizationSettings^ localizer = LocalizationSettings::GetInstance();
+    LocalizationSettings ^ localizer = LocalizationSettings::GetInstance();
 
     const wstring separator = L" ";
     for (unsigned int i = 0; i < nTokens; ++i)
@@ -449,7 +449,7 @@ String ^ StandardCalculatorViewModel::GetCalculatorExpressionAutomationName()
 
 void StandardCalculatorViewModel::SetMemorizedNumbers(const vector<wstring>& newMemorizedNumbers)
 {
-    LocalizationSettings^ localizer = LocalizationSettings::GetInstance();
+    LocalizationSettings ^ localizer = LocalizationSettings::GetInstance();
     if (newMemorizedNumbers.size() == 0) // Memory has been cleared
     {
         MemorizedNumbers->Clear();
@@ -1060,8 +1060,8 @@ ButtonInfo StandardCalculatorViewModel::MapCharacterToButtonId(char16 ch)
     {
         if (LocalizationSettings::GetInstance()->IsLocalizedDigit(ch))
         {
-            result.buttonId =
-                NumbersAndOperatorsEnum::Zero + static_cast<NumbersAndOperatorsEnum>(ch - LocalizationSettings::GetInstance()->GetDigitSymbolFromEnUsDigit('0'));
+            result.buttonId = NumbersAndOperatorsEnum::Zero
+                              + static_cast<NumbersAndOperatorsEnum>(ch - LocalizationSettings::GetInstance()->GetDigitSymbolFromEnUsDigit('0'));
             result.canSendNegate = true;
         }
     }
@@ -1588,7 +1588,7 @@ void StandardCalculatorViewModel::UpdateProgrammerPanelDisplay()
             binaryDisplayString = m_standardCalculatorManager.GetResultForRadix(2, precision, true);
         }
     }
-    LocalizationSettings^ localizer = LocalizationSettings::GetInstance();
+    LocalizationSettings ^ localizer = LocalizationSettings::GetInstance();
     binaryDisplayString = AddPadding(binaryDisplayString);
 
     localizer->LocalizeDisplayValue(&hexDisplayString);
@@ -1787,49 +1787,79 @@ void StandardCalculatorViewModel::SetBitshiftRadioButtonCheckedAnnouncement(Plat
     Announcement = CalculatorAnnouncement::GetBitShiftRadioButtonCheckedAnnouncement(announcement);
 }
 
-StandardCalculatorSnapshot StandardCalculatorViewModel::GetStandardCalculatorSnapshot() const
+CalculatorApp::ViewModel::Snapshot::StandardCalculatorSnapshot ^ StandardCalculatorViewModel::Snapshot::get()
 {
-    StandardCalculatorSnapshot snapshot;
-    auto& historyItems = m_standardCalculatorManager.GetHistoryItems();
-    if (!historyItems.empty())
-    {
-        snapshot.CalcManager.HistoryItems = std::move(historyItems);
-    }
-    snapshot.PrimaryDisplay = PrimaryDisplaySnapshot{ m_DisplayValue, m_IsInError };
+    auto result = ref new CalculatorApp::ViewModel::Snapshot::StandardCalculatorSnapshot();
+    result->CalcManager = ref new CalculatorApp::ViewModel::Snapshot::CalcManagerSnapshot(m_standardCalculatorManager);
+    result->PrimaryDisplay = ref new CalculatorApp::ViewModel::Snapshot::PrimaryDisplaySnapshot(m_DisplayValue, m_IsInError);
     if (!m_tokens->empty() && !m_commands->empty())
     {
-        snapshot.ExpressionDisplay = { *m_tokens, *m_commands };
+        result->ExpressionDisplay = ref new CalculatorApp::ViewModel::Snapshot::ExpressionDisplaySnapshot(*m_tokens, *m_commands);
     }
-    snapshot.DisplayCommands = m_standardCalculatorManager.GetDisplayCommandsSnapshot();
-    return snapshot;
+    result->DisplayCommands = ref new Platform::Collections::Vector<CalculatorApp::ViewModel::Snapshot::ICalcManagerIExprCommand ^>();
+    for (auto cmd : m_standardCalculatorManager.GetDisplayCommandsSnapshot())
+    {
+        result->DisplayCommands->Append(CalculatorApp::ViewModel::Snapshot::CreateExprCommand(cmd.get()));
+    }
+    return result;
 }
 
-void StandardCalculatorViewModel::SetStandardCalculatorSnapshot(const StandardCalculatorSnapshot& snapshot)
+void CalculatorApp::ViewModel::StandardCalculatorViewModel::Snapshot::set(CalculatorApp::ViewModel::Snapshot::StandardCalculatorSnapshot ^ snapshot)
 {
-    if (snapshot.CalcManager.HistoryItems.has_value())
+    assert(snapshot != nullptr);
+    m_standardCalculatorManager.Reset();
+    if (snapshot->CalcManager->HistoryItems != nullptr)
     {
-        m_standardCalculatorManager.SetHistoryItems(snapshot.CalcManager.HistoryItems.value());
+        m_standardCalculatorManager.SetHistoryItems(ToUnderlying(snapshot->CalcManager->HistoryItems));
     }
 
-    std::vector<int> commands;
-    if (snapshot.ExpressionDisplay.has_value() && snapshot.ExpressionDisplay->Tokens.back().first == L"=")
+    if (snapshot->ExpressionDisplay != nullptr)
     {
-        commands = GetCommandsFromExpressionCommands(snapshot.ExpressionDisplay->Commands);
+        if (snapshot->DisplayCommands->Size == 0)
+        {
+            // use case: the current expression was evaluated before. load from history.
+            assert(!snapshot->PrimaryDisplay->IsError);
+            using RawTokenCollection = std::vector<std::pair<std::wstring, int>>;
+            RawTokenCollection rawTokens;
+            for (CalculatorApp::ViewModel::Snapshot::CalcManagerToken ^ token : snapshot->ExpressionDisplay->Tokens)
+            {
+                rawTokens.push_back(std::pair{ token->OpCodeName->Data(), token->CommandIndex });
+            }
+            auto tokens = std::make_shared<RawTokenCollection>(rawTokens);
+            auto commands = std::make_shared<std::vector<std::shared_ptr<IExpressionCommand>>>(ToUnderlying(snapshot->ExpressionDisplay->Commands));
+            SetHistoryExpressionDisplay(tokens, commands);
+            SetExpressionDisplay(tokens, commands);
+            SetPrimaryDisplay(snapshot->PrimaryDisplay->DisplayValue, false);
+        }
+        else
+        {
+            // use case: the current expression was not evaluated before, or it was an error.
+            auto displayCommands = GetCommandsFromExpressionCommands(ToUnderlying(snapshot->DisplayCommands));
+            for (auto cmd : displayCommands)
+            {
+                m_standardCalculatorManager.SendCommand(static_cast<Command>(cmd));
+            }
+            if (snapshot->PrimaryDisplay->IsError)
+            {
+                SetPrimaryDisplay(snapshot->PrimaryDisplay->DisplayValue, true);
+            }
+        }
     }
-    if (commands.empty() && !snapshot.DisplayCommands.empty())
+    else
     {
-        commands = GetCommandsFromExpressionCommands(snapshot.DisplayCommands);
+        if (snapshot->PrimaryDisplay->IsError)
+        {
+            // use case: user copy-pasted an invalid expression to Calculator and caused an error.
+            SetPrimaryDisplay(snapshot->PrimaryDisplay->DisplayValue, true);
+        }
+        else
+        {
+            // use case: there was no expression but user was inputing some numbers (including negative numbers).
+            auto commands = GetCommandsFromExpressionCommands(ToUnderlying(snapshot->DisplayCommands));
+            for (auto cmd : commands)
+            {
+                m_standardCalculatorManager.SendCommand(static_cast<Command>(cmd));
+            }
+        }
     }
-    for (const auto& command : commands)
-    {
-        m_standardCalculatorManager.SendCommand(static_cast<Command>(command));
-    }
-
-    if (snapshot.ExpressionDisplay.has_value())
-    {
-        SetExpressionDisplay(
-            std::make_shared<std::vector<std::pair<std::wstring, int>>>(snapshot.ExpressionDisplay->Tokens),
-            std::make_shared<std::vector<std::shared_ptr<IExpressionCommand>>>(snapshot.ExpressionDisplay->Commands));
-    }
-    SetPrimaryDisplay(snapshot.PrimaryDisplay.DisplayValue, snapshot.PrimaryDisplay.IsError);
 }

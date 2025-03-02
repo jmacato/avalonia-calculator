@@ -1,0 +1,49 @@
+# Snapshot API Improvement Suggestions
+
+## Current Implementation Issues
+
+The current `GetDisplayCommandsSnapshot()` API has the following limitations:
+
+1. Limited command tokenization - properly handles operands and basic operators but not scientific operations
+2. Scientific mode commands are converted to generic "CommandX" tokens instead of meaningful representations
+3. The UWP app limits state serialization to standard calculator mode only, likely due to these tokenization issues
+4. String-based tokenization introduces potential parsing issues during state restoration
+
+## Proposed Improvement
+
+Replace string-based token serialization with direct command enum serialization:
+
+```csharp
+// Instead of the current string-based approach:
+public List<ExpressionCommand> GetDisplayCommandsSnapshot()
+{
+    // Commands are returned with string tokens like "+", "2", "sin"
+    // But scientific functions become generic "Command1" tokens
+    return commands;
+}
+
+// Use an enum-based approach instead:
+public List<CalculatorCommand> GetDisplayCommandsSnapshot()
+{
+    // Each command would be an enum value directly:
+    // Command.Add, Command.Number2, Command.Sin, etc.
+    return commands.Select(cmd => MapToCommandEnum(cmd)).ToList();
+}
+```
+
+## Benefits
+
+1. **Type Safety**: Enums provide compile-time checking, eliminating string parsing errors
+2. **No Tokenization Issues**: No need to convert internal representations to strings and back again
+3. **Preservation of Intent**: Commands like "sin" are preserved exactly as the original operation
+4. **Easier Serialization**: When saving state, the enums could be serialized as integers rather than strings
+5. **Simplified Restoration**: During restoration, the exact command could be sent directly without interpretation
+6. **Support for All Calculator Modes**: Scientific and Programmer modes would work as well as Standard mode
+
+## Implementation Notes
+
+- The C++ implementation would need to map internal command representation directly to Command enum values
+- The serialization system would need updating to handle enum values instead of string tokens
+- This would enable extending the UWP snapshot functionality to all calculator modes
+
+This improvement would maintain backward compatibility by keeping the existing API while adding a new command-enum-based API. The UWP app could continue using the string-based approach for Standard mode while gradually transitioning to the enum-based approach for all modes.

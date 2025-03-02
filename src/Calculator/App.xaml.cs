@@ -73,24 +73,18 @@ namespace CalculatorApp
 
         protected override void OnActivated(IActivatedEventArgs args)
         {
-            if (args.Kind == ActivationKind.Protocol)
+            if (args.Kind != ActivationKind.Protocol)
             {
-                if (args.IsSnapshotProtocol())
-                {
-                    var protoArgs = (IProtocolActivatedEventArgs)args;
-                    OnAppLaunch(args,
-                        new SnapshotLaunchArguments
-                        {
-                            ActivityId = protoArgs.Uri.GetActivityId(),
-                            LaunchUri = protoArgs.Uri
-                        },
-                        false);
-                }
-                else
-                {
-                    // handle any unknown protocol launch as a normal app launch.
-                    OnAppLaunch(args, null, false);
-                }
+                return;
+            }
+            else if (args.TryGetSnapshotProtocol(out var protoArgs))
+            {
+                OnAppLaunch(args, protoArgs.GetSnapshotLaunchArgs(), false);
+            }
+            else
+            {
+                // handle any unknown protocol launch as a normal app launch.
+                OnAppLaunch(args, null, false);
             }
         }
 
