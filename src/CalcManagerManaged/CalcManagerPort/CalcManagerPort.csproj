@@ -1,0 +1,74 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Remove="**/*.cs"/>
+        <Compile Include="Class1.cs"/>
+    </ItemGroup>
+
+
+    <ItemGroup>
+        <Compile Remove="CalculatorHistory.cpp"/>
+        <Compile Remove="CalculatorManager.cpp"/>
+        <Compile Remove="CEngine\calc.cpp"/>
+        <Compile Remove="CEngine\CalcInput.cpp"/>
+        <Compile Remove="CEngine\CalcUtils.cpp"/>
+        <Compile Remove="CEngine\History.cpp"/>
+        <Compile Remove="CEngine\Number.cpp"/>
+        <Compile Remove="CEngine\Rational.cpp"/>
+        <Compile Remove="CEngine\RationalMath.cpp"/>
+        <Compile Remove="CEngine\scicomm.cpp"/>
+        <Compile Remove="CEngine\scidisp.cpp"/>
+        <Compile Remove="CEngine\scifunc.cpp"/>
+        <Compile Remove="CEngine\scioper.cpp"/>
+        <Compile Remove="CEngine\sciset.cpp"/>
+        <Compile Remove="ExpressionCommand.cpp"/>
+        <Compile Remove="Interop\CalcEngine_CWrapper.cpp"/>
+        <Compile Remove="NumberFormattingUtils.cpp"/>
+        <Compile Remove="pch.cpp"/>
+        <Compile Remove="Ratpack\basex.cpp"/>
+        <Compile Remove="Ratpack\conv.cpp"/>
+        <Compile Remove="Ratpack\exp.cpp"/>
+        <Compile Remove="Ratpack\fact.cpp"/>
+        <Compile Remove="Ratpack\itrans.cpp"/>
+        <Compile Remove="Ratpack\itransh.cpp"/>
+        <Compile Remove="Ratpack\logic.cpp"/>
+        <Compile Remove="Ratpack\num.cpp"/>
+        <Compile Remove="Ratpack\rat.cpp"/>
+        <Compile Remove="Ratpack\support.cpp"/>
+        <Compile Remove="Ratpack\trans.cpp"/>
+        <Compile Remove="Ratpack\transh.cpp"/>
+        <Compile Remove="UnitConverter.cpp"/>
+        <Compile Remove="CalcManager.vcxproj"/>
+        <Compile Remove="ratpak.natvis"/>
+    </ItemGroup>
+
+
+    <ItemGroup>
+        <Compile Include="Ratpack\CalcErrException.cs" />
+        <Compile Include="Ratpack\conv.cpp.cs"/>
+        <Compile Include="Ratpack\rat.cpp.cs"/>
+        <Compile Include="Ratpack\ratpak.h.cs"/>
+        <Compile Include="Ratpack\CalcErr.h.cs"/>
+        <Compile Include="winerror_cross_platform.h.cs"/>
+        <Compile Include="Ratpack\basex.cpp.cs"/>
+        <Compile Include="Ratpack\num.cpp.cs"/>
+        <Compile Include="Ratpack\support.cpp.cs"/>
+        <Compile Include="Ratpack\logic.cpp.cs"/>
+        <Compile Include="Ratpack\ratconst.h.cs"/>
+        <Compile Include="Ratpack\exp.cpp.cs"/>
+        <Compile Include="Ratpack\itrans.cpp.cs"/>
+        <Compile Include="Ratpack\fact.cpp.cs"/>
+        <Compile Include="Ratpack\itransh.cpp.cs"/>
+        <Compile Include="Ratpack\trans.cpp.cs"/>
+        <Compile Include="Ratpack\transh.cpp.cs"/>
+    </ItemGroup>
+
+</Project>

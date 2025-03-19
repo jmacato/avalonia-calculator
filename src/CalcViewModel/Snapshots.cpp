@@ -9,7 +9,7 @@
 #include "CalcManager/ExpressionCommand.h"
 #include "Snapshots.h"
 
-namespace CalculatorApp::ViewModel::Snapshot
+namespace CalculatorApp::ViewModelNative::Snapshot
 {
     UnaryCommand::UnaryCommand()
     {
@@ -278,4 +278,4 @@ namespace CalculatorApp::ViewModel::Snapshot
         }
         return result;
     }
-} // namespace CalculatorApp::ViewModel
+} // namespace CalculatorApp::ViewModelNative

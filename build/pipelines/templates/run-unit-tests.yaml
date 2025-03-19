@@ -15,7 +15,7 @@ jobs:
   steps:
   - checkout: self
     fetchDepth: 1
-  
+
   - download: current
     displayName: Download CalculatorUnitTests
     artifact: drop-${{ parameters.platform }}

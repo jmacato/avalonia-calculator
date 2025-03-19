@@ -10,9 +10,9 @@
 #include "Common/TraceLogger.h"
 
 using namespace CalculatorApp;
-using namespace CalculatorApp::ViewModel::Common;
-using namespace CalculatorApp::ViewModel::Common::Automation;
-using namespace CalculatorApp::ViewModel;
+using namespace CalculatorApp::ViewModelNative::Common;
+using namespace CalculatorApp::ViewModelNative::Common::Automation;
+using namespace CalculatorApp::ViewModelNative;
 using namespace CalculationManager;
 using namespace concurrency;
 using namespace Platform;
@@ -1736,7 +1736,7 @@ ViewMode StandardCalculatorViewModel::GetCalculatorMode()
     return ViewMode::Programmer;
 }
 
-void StandardCalculatorViewModel::ValueBitLength::set(CalculatorApp::ViewModel::Common::BitLength value)
+void StandardCalculatorViewModel::ValueBitLength::set(CalculatorApp::ViewModelNative::Common::BitLength value)
 {
     if (m_valueBitLength != value)
     {
@@ -1787,24 +1787,24 @@ void StandardCalculatorViewModel::SetBitshiftRadioButtonCheckedAnnouncement(Plat
     Announcement = CalculatorAnnouncement::GetBitShiftRadioButtonCheckedAnnouncement(announcement);
 }
 
-CalculatorApp::ViewModel::Snapshot::StandardCalculatorSnapshot ^ StandardCalculatorViewModel::Snapshot::get()
+CalculatorApp::ViewModelNative::Snapshot::StandardCalculatorSnapshot ^ StandardCalculatorViewModel::Snapshot::get()
 {
-    auto result = ref new CalculatorApp::ViewModel::Snapshot::StandardCalculatorSnapshot();
-    result->CalcManager = ref new CalculatorApp::ViewModel::Snapshot::CalcManagerSnapshot(m_standardCalculatorManager);
-    result->PrimaryDisplay = ref new CalculatorApp::ViewModel::Snapshot::PrimaryDisplaySnapshot(m_DisplayValue, m_IsInError);
+    auto result = ref new CalculatorApp::ViewModelNative::Snapshot::StandardCalculatorSnapshot();
+    result->CalcManager = ref new CalculatorApp::ViewModelNative::Snapshot::CalcManagerSnapshot(m_standardCalculatorManager);
+    result->PrimaryDisplay = ref new CalculatorApp::ViewModelNative::Snapshot::PrimaryDisplaySnapshot(m_DisplayValue, m_IsInError);
     if (!m_tokens->empty() && !m_commands->empty())
     {
-        result->ExpressionDisplay = ref new CalculatorApp::ViewModel::Snapshot::ExpressionDisplaySnapshot(*m_tokens, *m_commands);
+        result->ExpressionDisplay = ref new CalculatorApp::ViewModelNative::Snapshot::ExpressionDisplaySnapshot(*m_tokens, *m_commands);
     }
-    result->DisplayCommands = ref new Platform::Collections::Vector<CalculatorApp::ViewModel::Snapshot::ICalcManagerIExprCommand ^>();
+    result->DisplayCommands = ref new Platform::Collections::Vector<CalculatorApp::ViewModelNative::Snapshot::ICalcManagerIExprCommand ^>();
     for (auto cmd : m_standardCalculatorManager.GetDisplayCommandsSnapshot())
     {
-        result->DisplayCommands->Append(CalculatorApp::ViewModel::Snapshot::CreateExprCommand(cmd.get()));
+        result->DisplayCommands->Append(CalculatorApp::ViewModelNative::Snapshot::CreateExprCommand(cmd.get()));
     }
     return result;
 }
 
-void CalculatorApp::ViewModel::StandardCalculatorViewModel::Snapshot::set(CalculatorApp::ViewModel::Snapshot::StandardCalculatorSnapshot ^ snapshot)
+void CalculatorApp::ViewModelNative::StandardCalculatorViewModel::Snapshot::set(CalculatorApp::ViewModelNative::Snapshot::StandardCalculatorSnapshot ^ snapshot)
 {
     assert(snapshot != nullptr);
     m_standardCalculatorManager.Reset();
@@ -1821,7 +1821,7 @@ void CalculatorApp::ViewModel::StandardCalculatorViewModel::Snapshot::set(Calcul
             assert(!snapshot->PrimaryDisplay->IsError);
             using RawTokenCollection = std::vector<std::pair<std::wstring, int>>;
             RawTokenCollection rawTokens;
-            for (CalculatorApp::ViewModel::Snapshot::CalcManagerToken ^ token : snapshot->ExpressionDisplay->Tokens)
+            for (CalculatorApp::ViewModelNative::Snapshot::CalcManagerToken ^ token : snapshot->ExpressionDisplay->Tokens)
             {
                 rawTokens.push_back(std::pair{ token->OpCodeName->Data(), token->CommandIndex });
             }

@@ -19,8 +19,8 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
 using CalculatorApp.Utils;
-using CalculatorApp.ViewModel.Common;
-using CalculatorApp.ViewModel.Common.Automation;
+using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModelNative.Common.Automation;
 
 namespace CalculatorApp
 {

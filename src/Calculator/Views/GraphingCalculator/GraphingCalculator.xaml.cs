@@ -4,9 +4,9 @@
 using CalculatorApp.Common;
 using CalculatorApp.Controls;
 using CalculatorApp.Utils;
-using CalculatorApp.ViewModel;
-using CalculatorApp.ViewModel.Common;
-using CalculatorApp.ViewModel.Common.Automation;
+using CalculatorApp.ViewModelNative;
+using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModelNative.Common.Automation;
 
 using GraphControl;
 
@@ -86,13 +86,13 @@ namespace CalculatorApp
                 if (isMatchAppLocalSetting)
                 {
                     IsMatchAppTheme = true;
-                    CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphTheme("IsMatchAppTheme");
+                    CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphTheme("IsMatchAppTheme");
                 }
             }
             else
             {
                 IsMatchAppTheme = false;
-                CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphTheme("IsAlwaysLightTheme");
+                CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphTheme("IsAlwaysLightTheme");
             }
         }
 
@@ -200,7 +200,7 @@ namespace CalculatorApp
         }
         private bool m_IsManualAdjustment;
 
-        public CalculatorApp.ViewModel.GraphingCalculatorViewModel ViewModel
+        public CalculatorApp.ViewModelNative.GraphingCalculatorViewModel ViewModel
         {
             get => m_viewModel;
             set
@@ -327,13 +327,13 @@ namespace CalculatorApp
         private void OnZoomInCommand(object parameter)
         {
             GraphingControl.ZoomFromCenter(zoomInScale);
-            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ZoomIn, GraphButtonValue.None);
+            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ZoomIn, GraphButtonValue.None);
         }
 
         private void OnZoomOutCommand(object parameter)
         {
             GraphingControl.ZoomFromCenter(zoomOutScale);
-            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ZoomOut, GraphButtonValue.None);
+            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ZoomOut, GraphButtonValue.None);
         }
 
         private void OnShareClick(object sender, RoutedEventArgs e)
@@ -342,7 +342,7 @@ namespace CalculatorApp
             try
             {
                 DataTransferManager.ShowShareUI();
-                CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.Share, GraphButtonValue.None);
+                CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.Share, GraphButtonValue.None);
             }
             catch (System.Runtime.InteropServices.COMException ex)
             {
@@ -351,7 +351,7 @@ namespace CalculatorApp
                 if (ex.HResult == unchecked(rpc_e_servercall_retrylater))
                 {
                     ShowShareError();
-                    CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogPlatformExceptionInfo(ViewMode.Graphing, System.Reflection.MethodBase.GetCurrentMethod().Name, ex.Message, ex.HResult);
+                    CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogPlatformExceptionInfo(ViewMode.Graphing, System.Reflection.MethodBase.GetCurrentMethod().Name, ex.Message, ex.HResult);
                 }
                 else
                 {
@@ -434,7 +434,7 @@ namespace CalculatorApp
 
                         equationHtml += "<tr style=\"margin: 0pt 0pt 0pt 0pt; padding: 0pt 0pt 0pt 0pt; \"><td><span style=\"font-size: 22pt; line-height: 0;"
                                         + equationColorHtml + "\">&#x25A0;</span></td><td><div style=\"margin: 4pt 0pt 0pt 6pt;\">"
-                                        + Utilities.EscapeHtmlSpecialCharacters(expression) + "</div></td>";
+                                        + CalculatorApp.ViewModel.Common.Utilities.EscapeHtmlSpecialCharacters(expression) + "</div></td>";
                     }
                     equationHtml += "</table>";
 
@@ -495,7 +495,7 @@ namespace CalculatorApp
             catch (Exception ex)
             {
                 ShowShareError();
-                CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogPlatformExceptionInfo(ViewMode.Graphing, System.Reflection.MethodBase.GetCurrentMethod().Name, ex.Message, ex.HResult);
+                CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogPlatformExceptionInfo(ViewMode.Graphing, System.Reflection.MethodBase.GetCurrentMethod().Name, ex.Message, ex.HResult);
             }
         }
 
@@ -619,7 +619,7 @@ namespace CalculatorApp
             KeyboardShortcutManager.IgnoreEscape(false);
 
             TracePointer.Visibility = Visibility.Visible;
-            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ActiveTracingChecked, GraphButtonValue.None);
+            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ActiveTracingChecked, GraphButtonValue.None);
         }
 
         private void ActiveTracing_Unchecked(object sender, RoutedEventArgs e)
@@ -629,7 +629,7 @@ namespace CalculatorApp
             KeyboardShortcutManager.HonorEscape();
 
             TracePointer.Visibility = Visibility.Collapsed;
-            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ActiveTracingUnchecked, GraphButtonValue.None);
+            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ActiveTracingUnchecked, GraphButtonValue.None);
         }
 
         private void ActiveTracing_KeyUp(CoreWindow sender, KeyEventArgs args)
@@ -656,7 +656,7 @@ namespace CalculatorApp
         private void GraphSettingsButton_Click(object sender, RoutedEventArgs e)
         {
             DisplayGraphSettings();
-            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.GraphSettings, GraphButtonValue.None);
+            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.GraphSettings, GraphButtonValue.None);
         }
 
         private void SwitchModeToggleButton_Toggled(object sender, RoutedEventArgs e)
@@ -794,7 +794,7 @@ namespace CalculatorApp
         private const string sc_ViewModelPropertyName = "ViewModel";
         private const string sc_IsGraphThemeMatchApp = "IsGraphThemeMatchApp";
 
-        private CalculatorApp.ViewModel.GraphingCalculatorViewModel m_viewModel;
+        private CalculatorApp.ViewModelNative.GraphingCalculatorViewModel m_viewModel;
         private readonly Windows.UI.ViewManagement.AccessibilitySettings m_accessibilitySettings;
         private bool m_cursorShadowInitialized;
         private readonly Windows.UI.ViewManagement.UISettings m_uiSettings;
@@ -843,7 +843,7 @@ namespace CalculatorApp
 
         private void OnVisualStateChanged(object sender, VisualStateChangedEventArgs e)
         {
-            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogVisualStateChanged(ViewMode.Graphing, e.NewState.Name, false);
+            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogVisualStateChanged(ViewMode.Graphing, e.NewState.Name, false);
         }
 
         private void GraphViewButton_Click(object sender, RoutedEventArgs e)
@@ -864,7 +864,7 @@ namespace CalculatorApp
             var announcement = CalculatorAnnouncement.GetGraphViewBestFitChangedAnnouncement(announcementText);
             narratorNotifier.Announce(announcement);
 
-            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphButtonClicked(
+            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphButtonClicked(
                 GraphButton.GraphView, IsManualAdjustment ? GraphButtonValue.ManualAdjustment : GraphButtonValue.AutomaticBestFit);
         }
 

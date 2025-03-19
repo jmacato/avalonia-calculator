@@ -12,7 +12,7 @@ namespace
         LR"([{"CountryCode":"USA","CountryName":"United States","CurrencyCode":"USD","CurrencyName":"Dollar","CurrencySymbol":"$"},{"CountryCode":"EUR","CountryName":"Europe","CurrencyCode":"EUR","CurrencyName":"Euro","CurrencySymbol":"€"}])";
 }
 
-namespace CalculatorApp::ViewModel::DataLoaders
+namespace CalculatorApp::ViewModelNative::DataLoaders
 {
     bool CurrencyHttpClient::ForceWebFailure = false;
     void CurrencyHttpClient::Initialize(Platform::String ^ sourceCurrencyCode, Platform::String ^ responseLanguage)

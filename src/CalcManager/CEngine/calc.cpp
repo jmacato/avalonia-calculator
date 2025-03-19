@@ -4,6 +4,7 @@
 #include <cassert>
 #include "Header Files/CalcEngine.h"
 #include "CalculatorResource.h"
+// #include <iostream>
 
 using namespace std;
 using namespace CalcEngine;
@@ -108,6 +109,50 @@ CCalcEngine::CCalcEngine(
     SetRadixTypeAndNumWidth(RadixType::Decimal, m_numwidth);
     SettingsChanged();
     DisplayNum();
+/*
+    auto num1 = StringToNumber(L"1", 10, 64);
+    auto num2 = StringToNumber(L"3", 10, 64);
+    divnum(&num1, num2, 10, 64);
+
+    std::cout << "num1 mantissa: ";
+
+    for(int i = 0; i < num1->cdigit; i++)
+    {
+        std::cout << num1->mant[i] << ",";
+    }
+
+    std::cout << endl;
+
+    std::cout << "num1 cdigit: " << num1->cdigit << endl;
+    std::cout << "num1 exp: " << num1->exp << endl;
+    std::cout << "num1 sign: " << num1->sign << endl;
+
+    std::wcout << NumberToString(num1, NumberFormat::Scientific, 10, 64) << endl;
+
+    auto precision = 64;
+    auto num1a = StringToNumber(L"2", 16, precision);
+    auto num2a = StringToNumber(L"3", 16, precision);
+    auto num3a = StringToNumber(L"3", 16, precision);
+    auto num4a = StringToNumber(L"7", 16, precision);
+
+    auto rat1 = numtorat(num1a, 16);
+    auto rat2 = numtorat(num2a, 16);
+    auto rat3 = numtorat(num3a, 16);
+    auto rat4 = numtorat(num4a, 16);
+
+    divrat(& rat1, rat2, precision);
+    divrat(& rat3, rat4, precision);
+    mulrat(& rat1, rat3, precision);
+
+    std::wcout << RatToString(pi, NumberFormat::Float, 10, 64) << endl;
+    std::wcout << RatToString(two_pi, NumberFormat::Float, 10, 64) << endl;
+    std::wcout << RatToString(pi_over_two, NumberFormat::Float, 10, 64) << endl;
+    std::wcout << RatToString(one_pt_five_pi, NumberFormat::Float, 10, 64) << endl;
+    std::wcout << RatToString(e_to_one_half, NumberFormat::Float, 10, 64) << endl;
+    std::wcout << RatToString(rad_to_deg, NumberFormat::Float, 10, 64) << endl;
+    std::wcout << RatToString(rad_to_grad, NumberFormat::Float, 10, 64) << endl;
+    std::wcout << RatToString(pt_eight_five, NumberFormat::Float, 10, 64) << endl;
+*/
 }
 
 void CCalcEngine::InitChopNumbers()

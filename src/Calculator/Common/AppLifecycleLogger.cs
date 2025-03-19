@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalculatorApp.ViewModel.Common;
+using CalculatorApp.ViewModelNative.Common;
 
 using System;
 
@@ -131,7 +131,7 @@ namespace CalculatorApp
         private void LogAppLifecycleEvent(string eventName, LoggingFields fields)
         {
             m_appLifecycleProvider.LogEvent(
-                eventName, fields, LoggingLevel.Information, new LoggingOptions(Globals.MICROSOFT_KEYWORD_LEVEL_3 | Utilities.GetConst_WINEVENT_KEYWORD_RESPONSE_TIME()));
+                eventName, fields, LoggingLevel.Information, new LoggingOptions(Globals.MICROSOFT_KEYWORD_LEVEL_3 | ViewModel.Common.Utilities.GetConst_WINEVENT_KEYWORD_RESPONSE_TIME()));
         }
 
         private void PopulateAppInfo(LoggingFields fields)

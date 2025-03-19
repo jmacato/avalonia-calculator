@@ -24,7 +24,7 @@ namespace CalculatorApp
     namespace WS = Windows::System;
     namespace CM = CalculationManager;
 
-    namespace ViewModel
+    namespace ViewModelNative
     {
 #define ASCII_0 48
     public
@@ -33,7 +33,7 @@ namespace CalculatorApp
     public
         value struct ButtonInfo
         {
-            CalculatorApp::ViewModel::Common::NumbersAndOperatorsEnum buttonId;
+            CalculatorApp::ViewModelNative::Common::NumbersAndOperatorsEnum buttonId;
             bool canSendNegate;
         };
 
@@ -76,12 +76,12 @@ namespace CalculatorApp
             OBSERVABLE_PROPERTY_R(Platform::String ^, CalculationResultAutomationName);
             OBSERVABLE_PROPERTY_R(Platform::String ^, CalculationExpressionAutomationName);
             OBSERVABLE_PROPERTY_R(bool, IsShiftProgrammerChecked);
-            OBSERVABLE_PROPERTY_R(CalculatorApp::ViewModel::Common::NumberBase, CurrentRadixType);
+            OBSERVABLE_PROPERTY_R(CalculatorApp::ViewModelNative::Common::NumberBase, CurrentRadixType);
             OBSERVABLE_PROPERTY_R(bool, AreTokensUpdated);
             OBSERVABLE_PROPERTY_R(bool, AreAlwaysOnTopResultsUpdated);
             OBSERVABLE_PROPERTY_R(bool, AreProgrammerRadixOperatorsVisible);
             OBSERVABLE_PROPERTY_R(bool, IsInputEmpty);
-            OBSERVABLE_PROPERTY_R(CalculatorApp::ViewModel::Common::Automation::NarratorAnnouncement ^, Announcement);
+            OBSERVABLE_PROPERTY_R(CalculatorApp::ViewModelNative::Common::Automation::NarratorAnnouncement ^, Announcement);
             OBSERVABLE_PROPERTY_R(unsigned int, OpenParenthesisCount);
 
             COMMAND_FOR_METHOD(CopyCommand, StandardCalculatorViewModel::OnCopyCommand);
@@ -114,13 +114,13 @@ namespace CalculatorApp
             static property Platform::String
                 ^ IsBitFlipCheckedPropertyName { Platform::String ^ get() { return Platform::StringReference(L"IsBitFlipChecked"); } }
 
-                property CalculatorApp::ViewModel::Common::BitLength ValueBitLength
+                property CalculatorApp::ViewModelNative::Common::BitLength ValueBitLength
             {
-                CalculatorApp::ViewModel::Common::BitLength get()
+                CalculatorApp::ViewModelNative::Common::BitLength get()
                 {
                     return m_valueBitLength;
                 }
-                void set(CalculatorApp::ViewModel::Common::BitLength value);
+                void set(CalculatorApp::ViewModelNative::Common::BitLength value);
             }
 
             property bool IsStandard
@@ -243,9 +243,9 @@ namespace CalculatorApp
                 }
             }
 
-            property CalculatorApp::ViewModel::Snapshot::StandardCalculatorSnapshot ^ Snapshot {
-                CalculatorApp::ViewModel::Snapshot::StandardCalculatorSnapshot ^ get();
-                void set(CalculatorApp::ViewModel::Snapshot::StandardCalculatorSnapshot ^ snapshot);
+            property CalculatorApp::ViewModelNative::Snapshot::StandardCalculatorSnapshot ^ Snapshot {
+                CalculatorApp::ViewModelNative::Snapshot::StandardCalculatorSnapshot ^ get();
+                void set(CalculatorApp::ViewModelNative::Snapshot::StandardCalculatorSnapshot ^ snapshot);
             };
 
             // Used by unit tests
@@ -261,15 +261,20 @@ namespace CalculatorApp
             void OnMemoryClear(_In_ Platform::Object ^ memoryItemPosition);
 
             void SelectHistoryItem(HistoryItemViewModel ^ item);
-            void SwitchProgrammerModeBase(CalculatorApp::ViewModel::Common::NumberBase calculatorBase);
+            void SwitchProgrammerModeBase(CalculatorApp::ViewModelNative::Common::NumberBase calculatorBase);
             void SetBitshiftRadioButtonCheckedAnnouncement(Platform::String ^ announcement);
             void SetOpenParenthesisCountNarratorAnnouncement();
-            void SwitchAngleType(CalculatorApp::ViewModel::Common::NumbersAndOperatorsEnum num);
+            void SwitchAngleType(CalculatorApp::ViewModelNative::Common::NumbersAndOperatorsEnum num);
             void FtoEButtonToggled();
 
-            internal : void OnPaste(Platform::String ^ pastedString);
+            // ⌄⌄⌄ Temporarily promoted to public, from internal. ⌄⌄⌄
             void OnCopyCommand(Platform::Object ^ parameter);
             void OnPasteCommand(Platform::Object ^ parameter);
+            void SetCalculatorType(CalculatorApp::ViewModelNative::Common::ViewMode targetState);
+            // ⌃⌃⌃ Temporarily promoted to public, from internal. ⌃⌃⌃
+
+         internal :
+            void OnPaste(Platform::String ^ pastedString);
 
             ButtonInfo MapCharacterToButtonId(char16 ch);
 
@@ -284,7 +289,6 @@ namespace CalculatorApp
 
             Platform::String ^ GetLocalizedStringFormat(Platform::String ^ format, Platform::String ^ displayValue);
             void OnPropertyChanged(Platform::String ^ propertyname);
-            void SetCalculatorType(CalculatorApp::ViewModel::Common::ViewMode targetState);
 
             Platform::String ^ GetRawDisplayValue();
             void Recalculate(bool fromHistory = false);
@@ -297,12 +301,13 @@ namespace CalculatorApp
             {
                 m_standardCalculatorManager.UpdateMaxIntDigits();
             }
-            CalculatorApp::ViewModel::Common::NumbersAndOperatorsEnum GetCurrentAngleType()
+            CalculatorApp::ViewModelNative::Common::NumbersAndOperatorsEnum GetCurrentAngleType()
             {
                 return m_CurrentAngleType;
             }
 
-            internal :;
+            // Made this ctor public for now.
+            public:
             explicit StandardCalculatorViewModel();
 
         private:
@@ -317,12 +322,12 @@ namespace CalculatorApp
                 _Inout_ std::shared_ptr<std::vector<std::pair<std::wstring, int>>> const& tokens,
                 _Inout_ std::shared_ptr<std::vector<std::shared_ptr<IExpressionCommand>>> const& commands);
             void SetTokens(_Inout_ std::shared_ptr<std::vector<std::pair<std::wstring, int>>> const& tokens);
-            CalculatorApp::ViewModel::Common::NumbersAndOperatorsEnum ConvertIntegerToNumbersAndOperatorsEnum(unsigned int parameter);
-            static RadixType GetRadixTypeFromNumberBase(CalculatorApp::ViewModel::Common::NumberBase base);
-            CalculatorApp::ViewModel::Common::NumbersAndOperatorsEnum m_CurrentAngleType;
+            CalculatorApp::ViewModelNative::Common::NumbersAndOperatorsEnum ConvertIntegerToNumbersAndOperatorsEnum(unsigned int parameter);
+            static RadixType GetRadixTypeFromNumberBase(CalculatorApp::ViewModelNative::Common::NumberBase base);
+            CalculatorApp::ViewModelNative::Common::NumbersAndOperatorsEnum m_CurrentAngleType;
             wchar_t m_decimalSeparator;
-            CalculatorApp::ViewModel::Common::CalculatorDisplay m_calculatorDisplay;
-            CalculatorApp::ViewModel::Common::EngineResourceProvider m_resourceProvider;
+            CalculatorApp::ViewModelNative::Common::CalculatorDisplay m_calculatorDisplay;
+            CalculatorApp::ViewModelNative::Common::EngineResourceProvider m_resourceProvider;
             CalculationManager::CalculatorManager m_standardCalculatorManager;
             Platform::String ^ m_expressionAutomationNameFormat;
             Platform::String ^ m_localizedCalculationResultAutomationFormat;
@@ -349,17 +354,17 @@ namespace CalculatorApp
             bool m_isRtlLanguage;
             bool m_operandUpdated;
             bool m_isLastOperationHistoryLoad;
-            CalculatorApp::ViewModel::Common::BitLength m_valueBitLength;
+            CalculatorApp::ViewModelNative::Common::BitLength m_valueBitLength;
             Platform::String ^ m_selectedExpressionLastData;
             Common::DisplayExpressionToken ^ m_selectedExpressionToken;
 
             Platform::String ^ LocalizeDisplayValue(_In_ std::wstring const& displayValue);
             Platform::String ^ CalculateNarratorDisplayValue(_In_ std::wstring const& displayValue, _In_ Platform::String ^ localizedDisplayValue);
-            CalculatorApp::ViewModel::Common::Automation::NarratorAnnouncement ^ GetDisplayUpdatedNarratorAnnouncement();
+            CalculatorApp::ViewModelNative::Common::Automation::NarratorAnnouncement ^ GetDisplayUpdatedNarratorAnnouncement();
             Platform::String ^ GetCalculatorExpressionAutomationName();
             Platform::String ^ GetNarratorStringReadRawNumbers(_In_ Platform::String ^ localizedDisplayValue);
 
-            CalculationManager::Command ConvertToOperatorsEnum(CalculatorApp::ViewModel::Common::NumbersAndOperatorsEnum operation);
+            CalculationManager::Command ConvertToOperatorsEnum(CalculatorApp::ViewModelNative::Common::NumbersAndOperatorsEnum operation);
             void DisableButtons(CalculationManager::CommandType selectedExpressionCommandType);
 
             Platform::String ^ m_feedbackForButtonPress;
@@ -380,9 +385,9 @@ namespace CalculatorApp
 
             void SaveEditedCommand(_In_ unsigned int index, _In_ CalculationManager::Command command);
 
-            CalculatorApp::ViewModel::Common::ViewMode GetCalculatorMode();
+            CalculatorApp::ViewModelNative::Common::ViewMode GetCalculatorMode();
 
-            friend class CalculatorApp::ViewModel::Common::CalculatorDisplay;
+            friend class CalculatorApp::ViewModelNative::Common::CalculatorDisplay;
             friend class CalculatorUnitTests::MultiWindowUnitTests;
         };
     }

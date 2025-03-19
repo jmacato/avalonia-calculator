@@ -15,7 +15,7 @@
 #include "Common/ExpressionCommandDeserializer.h"
 
 using namespace CalculatorApp;
-using namespace CalculatorApp::ViewModel::Common;
+using namespace CalculatorApp::ViewModelNative::Common;
 using namespace concurrency;
 using namespace Graphing::Renderer;
 using namespace Platform;
@@ -45,20 +45,6 @@ double Utils::GetDoubleFromWstring(wstring input)
     constexpr wchar_t unWantedChars[] = { L' ', L',', 8234, 8235, 8236, 8237 };
     wstring ws = RemoveUnwantedCharsFromString(input, unWantedChars);
     return stod(ws);
-}
-
-// Returns windowId for the current view
-int Utils::GetWindowId()
-{
-    int windowId = -1;
-
-    auto window = CoreWindow::GetForCurrentThread();
-    if (window != nullptr)
-    {
-        windowId = ApplicationView::GetApplicationViewIdForWindow(window);
-    }
-
-    return windowId;
 }
 
 void Utils::RunOnUIThreadNonblocking(std::function<void()>&& function, _In_ CoreDispatcher ^ currentDispatcher)
@@ -181,94 +167,14 @@ bool operator!=(const Color& color1, const Color& color2)
     return !(color1 == color2);
 }
 
-String^ CalculatorApp::ViewModel::Common::Utilities::EscapeHtmlSpecialCharacters(String^ originalString)
-{
-    // Construct a default special characters if not provided.
-    const std::vector<wchar_t> specialCharacters {L'&', L'\"', L'\'', L'<', L'>'};
 
-    bool replaceCharacters = false;
-    const wchar_t* pCh;
-    String^ replacementString = nullptr;
-
-    // First step is scanning the string for special characters.
-    // If there isn't any special character, we simply return the original string
-    for (pCh = originalString->Data(); *pCh; pCh++)
-    {
-        if (std::find(specialCharacters.begin(), specialCharacters.end(), *pCh) != specialCharacters.end())
-        {
-            replaceCharacters = true;
-            break;
-        }
-    }
-
-    if (replaceCharacters)
-    {
-        // If we indeed find a special character, we step back one character (the special
-        // character), and we create a new string where we replace those characters one by one
-        pCh--;
-        wstringstream buffer;
-        buffer << wstring(originalString->Data(), pCh);
-
-        for (; *pCh; pCh++)
-        {
-            switch (*pCh)
-            {
-            case L'&':
-                buffer << L"&amp;";
-                break;
-            case L'\"':
-                buffer << L"&quot;";
-                break;
-            case L'\'':
-                buffer << L"&apos;";
-                break;
-            case L'<':
-                buffer << L"&lt;";
-                break;
-            case L'>':
-                buffer << L"&gt;";
-                break;
-            default:
-                buffer << *pCh;
-            }
-        }
-        replacementString = ref new String(buffer.str().c_str());
-    }
-
-    return replaceCharacters ? replacementString : originalString;
-}
-
-bool CalculatorApp::ViewModel::Common::Utilities::AreColorsEqual(Windows::UI::Color color1, Windows::UI::Color color2)
+bool CalculatorApp::ViewModelNative::Common::Utilities::AreColorsEqual(Windows::UI::Color color1, Windows::UI::Color color2)
 {
     return Utils::AreColorsEqual(color1, color2);
 }
 
-// This method calculates the luminance ratio between White and the given background color.
-// The luminance is calculate using the RGB values and does not use the A value.
-// White or Black is returned
-SolidColorBrush ^ CalculatorApp::ViewModel::Common::Utilities::GetContrastColor(Color backgroundColor)
-{
-    auto luminance = 0.2126 * backgroundColor.R + 0.7152 * backgroundColor.G + 0.0722 * backgroundColor.B;
 
-    if ((255 + 0.05) / (luminance + 0.05) >= 2.5)
-    {
-        return static_cast<SolidColorBrush ^>(Application::Current->Resources->Lookup(L"WhiteBrush"));
-    }
-
-    return static_cast<SolidColorBrush ^>(Application::Current->Resources->Lookup(L"BlackBrush"));
-}
-
-int CalculatorApp::ViewModel::Common::Utilities::GetWindowId()
-{
-    return Utils::GetWindowId();
-}
-
-long long CalculatorApp::ViewModel::Common::Utilities::GetConst_WINEVENT_KEYWORD_RESPONSE_TIME()
-{
-    return WINEVENT_KEYWORD_RESPONSE_TIME;
-}
-
-bool CalculatorApp::ViewModel::Common::Utilities::GetIntegratedDisplaySize(double* size)
+bool CalculatorApp::ViewModelNative::Common::Utilities::GetIntegratedDisplaySize(double* size)
 {
     if (SUCCEEDED(::GetIntegratedDisplaySize(size)))
         return true;

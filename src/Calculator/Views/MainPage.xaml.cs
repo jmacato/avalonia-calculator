@@ -19,9 +19,9 @@ using Microsoft.UI.Xaml.Controls;
 using CalculatorApp.Common;
 using CalculatorApp.Converters;
 using CalculatorApp.JsonUtils;
-using CalculatorApp.ViewModel;
-using CalculatorApp.ViewModel.Common;
-using CalculatorApp.ViewModel.Common.Automation;
+using CalculatorApp.ViewModelNative;
+using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModelNative.Common.Automation;
 
 using wuxc = Windows.UI.Xaml.Controls;
 
@@ -38,11 +38,11 @@ namespace CalculatorApp
             set => SetValue(NavViewCategoriesSourceProperty, value);
         }
 
-        public ApplicationViewModel Model { get; }
+        public ViewModel.ApplicationViewModel Model { get; }
 
         public MainPage()
         {
-            Model = new ApplicationViewModel();
+            Model = new ViewModel.ApplicationViewModel();
             InitializeNavViewCategoriesSource();
             InitializeComponent();
 
@@ -159,9 +159,9 @@ namespace CalculatorApp
         {
             var initialMode = ViewMode.Standard;
             var localSettings = ApplicationData.Current.LocalSettings;
-            if (localSettings.Values.ContainsKey(ApplicationViewModel.ModePropertyName))
+            if (localSettings.Values.ContainsKey(nameof(ViewModel.ApplicationViewModel.Mode)))
             {
-                initialMode = NavCategoryStates.Deserialize(localSettings.Values[ApplicationViewModel.ModePropertyName]);
+                initialMode = NavCategoryStates.Deserialize(localSettings.Values[nameof(ViewModel.ApplicationViewModel.Mode)]);
             }
 
             if (e.Parameter == null)
@@ -258,7 +258,7 @@ namespace CalculatorApp
         private void OnAppPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             string propertyName = e.PropertyName;
-            if (propertyName == ApplicationViewModel.ModePropertyName)
+            if (propertyName == nameof(ViewModel.ApplicationViewModel.Mode))
             {
                 ViewMode newValue = Model.Mode;
                 ViewMode previousMode = Model.PreviousMode;
@@ -324,7 +324,7 @@ namespace CalculatorApp
                 UpdateViewState();
                 SetDefaultFocus();
             }
-            else if (propertyName == ApplicationViewModel.CategoryNamePropertyName)
+            else if (propertyName == nameof(ViewModel.ApplicationViewModel.CategoryName))
             {
                 SetHeaderAutomationName();
                 AnnounceCategoryName();
@@ -541,8 +541,8 @@ namespace CalculatorApp
             if (Model.IsAlwaysOnTop)
             {
                 ApplicationDataContainer localSettings = ApplicationData.Current.LocalSettings;
-                localSettings.Values[ApplicationViewModel.WidthLocalSettings] = ActualWidth;
-                localSettings.Values[ApplicationViewModel.HeightLocalSettings] = ActualHeight;
+                localSettings.Values[ViewModel.ApplicationViewModel.WidthLocalSettings] = ActualWidth;
+                localSettings.Values[ViewModel.ApplicationViewModel.HeightLocalSettings] = ActualHeight;
             }
         }
 

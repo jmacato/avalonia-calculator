@@ -4,7 +4,7 @@
              xmlns:Controls="using:CalculatorApp.Controls"
              xmlns:common="using:CalculatorApp.Common"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:local="using:CalculatorApp.ViewModel.Common"
+             xmlns:local="using:CalculatorApp.ViewModelNative.Common"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:utils="using:CalculatorApp.Utils"
              x:Name="ControlRoot"

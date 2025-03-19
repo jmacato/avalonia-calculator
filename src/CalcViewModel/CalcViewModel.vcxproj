@@ -37,7 +37,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{812d1a7b-b8ac-49e4-8e6d-af5d59500d56}</ProjectGuid>
     <Keyword>WindowsRuntimeComponent</Keyword>
-    <RootNamespace>CalculatorApp.ViewModel</RootNamespace>
+    <RootNamespace>CalculatorApp.ViewModelNative</RootNamespace>
     <DefaultLanguage>en-US</DefaultLanguage>
     <MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
     <AppContainerApplication>true</AppContainerApplication>
@@ -314,7 +314,6 @@
     <ResourceCompile Include="CalcViewModel.rc" PreprocessorDefinitions="%(PreprocessorDefinitions);APP_VERSION_MAJOR=$(Version.Split(`.`)[0]);APP_VERSION_MINOR=$(Version.Split(`.`)[1]);APP_VERSION_BUILD=$(Version.Split(`.`)[2]);APP_VERSION_REVISION=$(Version.Split(`.`)[3])" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ApplicationViewModel.h" />
     <ClInclude Include="Common\AppResourceProvider.h" />
     <ClInclude Include="Common\Automation\NarratorAnnouncement.h" />
     <ClInclude Include="Common\Automation\NarratorNotifier.h" />
@@ -359,7 +358,6 @@
     <ClInclude Include="UnitConverterViewModel.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ApplicationViewModel.cpp" />
     <ClCompile Include="Common\AppResourceProvider.cpp" />
     <ClCompile Include="Common\Automation\NarratorAnnouncement.cpp" />
     <ClCompile Include="Common\Automation\NarratorNotifier.cpp" />

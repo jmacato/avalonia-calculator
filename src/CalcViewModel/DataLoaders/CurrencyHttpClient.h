@@ -5,7 +5,7 @@
 #include <cassert>
 #include <future>
 
-namespace CalculatorApp::ViewModel::DataLoaders
+namespace CalculatorApp::ViewModelNative::DataLoaders
 {
     class CurrencyHttpClient
     {

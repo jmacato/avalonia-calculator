@@ -9,7 +9,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ts="using:CalculatorApp.TemplateSelectors"
              xmlns:utils="using:CalculatorApp.Utils"
-             xmlns:vm="using:CalculatorApp.ViewModel"
+             xmlns:vm="using:CalculatorApp.ViewModelNative"
              Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
              mc:Ignorable="d">
     <UserControl.Resources>

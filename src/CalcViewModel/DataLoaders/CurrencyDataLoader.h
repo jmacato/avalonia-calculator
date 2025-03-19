@@ -9,7 +9,7 @@
 
 namespace CalculatorApp
 {
-    namespace ViewModel::DataLoaders
+    namespace ViewModelNative::DataLoaders
     {
     public
         enum class CurrencyLoadStatus
@@ -82,7 +82,7 @@ namespace CalculatorApp
             std::future<bool> TryLoadDataFromWebOverrideAsync() override;
             // ICurrencyConverterDataLoader
 
-            void OnNetworkBehaviorChanged(CalculatorApp::ViewModel::Common::NetworkAccessBehavior newBehavior);
+            void OnNetworkBehaviorChanged(CalculatorApp::ViewModelNative::Common::NetworkAccessBehavior newBehavior);
 
         private:
             void ResetLoadStatus();
@@ -130,8 +130,8 @@ namespace CalculatorApp
 
             CurrencyLoadStatus m_loadStatus;
 
-            CalculatorApp::ViewModel::Common::NetworkManager ^ m_networkManager;
-            CalculatorApp::ViewModel::Common::NetworkAccessBehavior m_networkAccessBehavior;
+            CalculatorApp::ViewModelNative::Common::NetworkManager ^ m_networkManager;
+            CalculatorApp::ViewModelNative::Common::NetworkAccessBehavior m_networkAccessBehavior;
             Windows::Foundation::EventRegistrationToken m_networkBehaviorToken;
             bool m_meteredOverrideSet;
         };

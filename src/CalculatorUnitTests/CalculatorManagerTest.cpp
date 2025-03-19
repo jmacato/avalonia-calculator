@@ -455,6 +455,55 @@ namespace CalculatorManagerTest
     // Scientific functions from the scientific calculator
     TEST_F(CalculatorManagerTest, CalculatorManagerTestScientific2)
     {
+        /*
+        // Arrange
+        auto num = StringToNumber(L"1e100", 10, _precision);
+        auto rat = numtorat(num, 10);
+
+        // Act
+        auto result = RatToString(rat, NumberFormat::Float, 10, _precision);
+        std::wcout << result << endl;
+        auto num2 = StringToNumber(L"2.718281828459045", 10, _precision);
+        auto num3 = StringToNumber(L"7.389056098930650", 10, _precision);
+        PRAT rat1 = numtorat(num2, 10);
+        lograt(&rat1, _precision);
+        auto result1 = RatToString(rat1, NumberFormat::Float, 10, _precision);
+        PRAT rat2 = numtorat(num3, 10);
+        lograt(&rat2, _precision);
+
+        auto _precision = 64;
+        ChangeConstants(10, _precision);
+        auto sp = StringToNumber(L"66.67", 10, _precision);
+        auto sratp = numtorat(sp, 10);
+
+        cosanglerat(&sratp, AngleType::Gradians, 10, _precision);
+        auto result2 = RatToString(sratp, NumberFormat::Float, 10, _precision);
+
+      //  acosrat(&sratp, 10, _precision);
+     //   auto result3 = RatToString(sratp, NumberFormat::Float, 10, _precision);
+
+
+        auto num = StringToNumber(L"123.99", 10, _precision);
+        auto rat = numtorat(num, 10);
+        uint64_t res029 = rattoUi64(rat, 10, _precision);
+
+
+
+
+        // Arrange
+        auto originalNum = StringToNumber(L"0.127", 10, _precision);
+
+        // Act - Convert to internal base
+        auto internalBaseNum = numtonRadixx(originalNum, 10);
+
+        // Convert to target radix
+        auto targetNum = nRadixxtonum(internalBaseNum, 16, _precision);
+        auto result = NumberToString(targetNum, NumberFormat::Float, 16, _precision);
+
+        */
+
+
+
         Command commands1[] = { Command::Command1, Command::Command2, Command::CommandSQR, Command::CommandNULL };
         TestDriver::Test(L"144", L"sqr(12)", commands1, true, true);
 
@@ -656,6 +705,9 @@ namespace CalculatorManagerTest
 
         Command commands6[] = { Command::CommandGRAD, Command::Command4, Command::Command0, Command::Command0, Command::CommandTAN, Command::CommandNULL };
         TestDriver::Test(L"0", L"N/A", commands6, true, true);
+
+
+
     }
 
     TEST_F(CalculatorManagerTest, CalculatorManagerTestModeChange)

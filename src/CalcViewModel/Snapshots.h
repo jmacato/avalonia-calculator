@@ -7,7 +7,7 @@
 
 #include "CalcManager/CalculatorManager.h"
 
-namespace CalculatorApp::ViewModel::Snapshot
+namespace CalculatorApp::ViewModelNative::Snapshot
 {
 public
     interface struct ICalcManagerIExprCommand
@@ -153,4 +153,4 @@ public
     std::vector<std::shared_ptr<IExpressionCommand>> ToUnderlying(Windows::Foundation::Collections::IVector<ICalcManagerIExprCommand ^> ^ commands);
     std::vector<std::shared_ptr<CalculationManager::HISTORYITEM>> ToUnderlying(Windows::Foundation::Collections::IVector<CalcManagerHistoryItem ^> ^ items);
 
-} // namespace CalculatorApp::ViewModel
+} // namespace CalculatorApp::ViewModelNative

@@ -23,6 +23,16 @@
 #include <cstring>              // for memmove
 #include "sal_cross_platform.h" // for SAL
 
+#ifdef _WIN32
+#include <specstrings.h>
+#else
+// Define the macros you need as empty
+#define _In_
+#define _Out_
+// etc.
+#endif
+
+
 static constexpr uint32_t BASEXPWR = 31L;     // Internal log2(BASEX)
 static constexpr uint32_t BASEX = 0x80000000; // Internal radix used in calculations, hope to raise
                                               // this to 2^32 after solving scaling problems with
@@ -427,6 +437,7 @@ extern PRAT numtorat(_In_ PNUMBER pin, uint32_t radix);
 
 extern void sinhrat(_Inout_ PRAT* px, uint32_t radix, int32_t precision);
 extern void sinrat(_Inout_ PRAT* px);
+extern void sinrat(_Inout_ PRAT* px, uint32_t radix, int32_t precision);
 
 // returns a new rat structure with the sin of x->p/x->q taking into account
 // angle type

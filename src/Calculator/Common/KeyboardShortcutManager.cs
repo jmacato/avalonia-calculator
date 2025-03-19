@@ -1,8 +1,10 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalculatorApp.ViewModel;
 using CalculatorApp.ViewModel.Common;
+using CalculatorApp.ViewModelNative;
+using CalculatorApp.ViewModelNative.Common;
+using Utilities = CalculatorApp.ViewModel.Common.Utilities;
 
 using System;
 using System.Collections.Generic;
@@ -573,7 +575,7 @@ namespace CalculatorApp
             }
 
             private static bool CanNavigateModeByShortcut(MUXC.NavigationView navView, object nvi
-                , ApplicationViewModel vm, ViewMode toMode)
+                , ViewModel.ApplicationViewModel vm, ViewMode toMode)
             {
                 if (nvi is NavCategory navCategory)
                 {
@@ -599,7 +601,7 @@ namespace CalculatorApp
                             var menuItems = ((List<object>)item.MenuItemsSource);
                             if (menuItems != null)
                             {
-                                if (item.DataContext is ApplicationViewModel vm)
+                                if (item.DataContext is ViewModel.ApplicationViewModel vm)
                                 {
                                     ViewMode realToMode = toMode ?? NavCategoryStates.GetViewModeForVirtualKey(((MyVirtualKey)key));
 

@@ -3,9 +3,9 @@ using System.Linq;
 using System.Text.Json;
 using Windows.ApplicationModel.Activation;
 
-using CalculatorApp.ViewModel.Snapshot;
+using CalculatorApp.ViewModelNative.Snapshot;
 using CalculatorApp.JsonUtils;
-using CalculatorApp.ViewModel.Common;
+using CalculatorApp.ViewModelNative.Common;
 
 namespace CalculatorApp
 {

@@ -125,7 +125,7 @@ namespace
 ])";
 } // namespace
 
-namespace CalculatorApp::ViewModel::DataLoaders
+namespace CalculatorApp::ViewModelNative::DataLoaders
 {
     void CurrencyHttpClient::Initialize(Platform::String ^ sourceCurrencyCode, Platform::String ^ responseLanguage)
     {
@@ -148,4 +148,4 @@ namespace CalculatorApp::ViewModel::DataLoaders
         mockedTask.set_value(ref new Platform::String(MockCurrencyConverterData));
         return mockedTask.get_future();
     }
-} // namespace CalculatorApp::ViewModel::DataLoaders
+} // namespace CalculatorApp::ViewModelNative::DataLoaders
