@@ -26,10 +26,10 @@ using wchar_t = System.Char;
 using wstring_view = string;
 using wstring = string;
 using MANTTYPE = System.UInt32;
-using PNUMBER = CalcManagerPort.RatPak.NUMBER;
-using PRAT = CalcManagerPort.RatPak.RAT;
+using PNUMBER = CalcEngine.RatPak.NUMBER;
+using PRAT = CalcEngine.RatPak.RAT;
 
-namespace CalcManagerPort;
+namespace CalcEngine;
 
 public partial class RatPak
 {

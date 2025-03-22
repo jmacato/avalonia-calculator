@@ -19,9 +19,9 @@ using uint32_t = System.UInt32;
 using int32_t = System.Int32;
 using MANTTYPE = System.UInt32;
 using TWO_MANTTYPE = System.UInt64;
-using PNUMBER = CalcManagerPort.RatPak.NUMBER;
+using PNUMBER = CalcEngine.RatPak.NUMBER;
 
-namespace CalcManagerPort;
+namespace CalcEngine;
 
 public partial class RatPak
 {

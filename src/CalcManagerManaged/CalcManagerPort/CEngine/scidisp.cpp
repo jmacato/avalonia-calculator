@@ -243,6 +243,8 @@ vector<uint32_t> CCalcEngine::DigitGroupingStringToGroupingVector(wstring_view g
     return grouping;
 }
 
+
+
 wstring CCalcEngine::GroupDigitsPerRadix(wstring_view numberString, uint32_t radix)
 {
     if (numberString.empty())

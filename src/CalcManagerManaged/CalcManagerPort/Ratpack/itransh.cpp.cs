@@ -19,9 +19,9 @@
 
 using uint32_t = System.UInt32;
 using int32_t = System.Int32;
-using PRAT = CalcManagerPort.RatPak.RAT;
+using PRAT = CalcEngine.RatPak.RAT;
 
-namespace CalcManagerPort;
+namespace CalcEngine;
 
 public partial class RatPak
 {

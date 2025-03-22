@@ -3,7 +3,7 @@
 
 using uint32_t = System.UInt32;
 
-namespace CalcManagerPort;
+namespace CalcEngine;
 
 public enum CalcErr : uint32_t
 {

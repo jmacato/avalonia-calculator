@@ -1,10 +1,10 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
-using CalcManagerPort;
+using RatPak = CalcEngine.RatPak;
 
 Console.WriteLine("Hello, World!");
 var precision = 64;
-var k = new CalcManagerPort.RatPak();
+var k = new RatPak();
 var num1pi = k.StringToNumber("1584525424547797615479348427121", 10, precision);
 var num2pi = k.StringToNumber("504370107543132052380609147136", 10, precision);
 var num1 = k.StringToNumber("2", 10, precision);

@@ -25,6 +25,7 @@ namespace
     }
 }
 
+
 void CHistoryCollector::ReinitHistory()
 {
     m_lastOpStartIndex = -1;

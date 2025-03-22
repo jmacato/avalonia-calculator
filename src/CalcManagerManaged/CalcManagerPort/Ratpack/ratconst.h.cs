@@ -5,7 +5,7 @@
 
 // ReSharper disable InconsistentNaming
 
-namespace CalcManagerPort;
+namespace CalcEngine;
 
 public partial class RatPak
 {

@@ -36,6 +36,7 @@ add_custom_command(
 add_executable(${PROJECT_NAME}
         CalcEngineTests.cpp
         CalculatorManagerTest.cpp
+        UnitConverterTests2.cpp
         ResourceProvider.cpp
         ${GENERATED_HEADER}
 )

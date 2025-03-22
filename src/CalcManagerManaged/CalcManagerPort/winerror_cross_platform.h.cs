@@ -11,7 +11,7 @@
 using uint32_t = System.UInt32;
 using ResultCode = System.Int32;
 
-namespace CalcManagerPort;
+namespace CalcEngine;
 
 public partial class RatPak
 {
@@ -24,7 +24,7 @@ public partial class RatPak
 
     private bool SUCCEEDED(ResultCode hr) => hr >= 0;
     private bool FAILED(ResultCode hr) => hr < 0;
-    private uint32_t SCODE_CODE(uint32_t sc) => sc & 0xFFFF;
+    public uint32_t SCODE_CODE(uint32_t sc) => sc & 0xFFFF;
 }
 
 //

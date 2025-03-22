@@ -10,7 +10,6 @@
 
     <ItemGroup>
         <Compile Remove="**/*.cs"/>
-        <Compile Include="Class1.cs"/>
     </ItemGroup>
 
 
@@ -52,7 +51,7 @@
 
 
     <ItemGroup>
-        <Compile Include="Ratpack\CalcErrException.cs" />
+        <Compile Include="Ratpack\CalcErrException.cs"/>
         <Compile Include="Ratpack\conv.cpp.cs"/>
         <Compile Include="Ratpack\rat.cpp.cs"/>
         <Compile Include="Ratpack\ratpak.h.cs"/>
@@ -69,6 +68,47 @@
         <Compile Include="Ratpack\itransh.cpp.cs"/>
         <Compile Include="Ratpack\trans.cpp.cs"/>
         <Compile Include="Ratpack\transh.cpp.cs"/>
+    </ItemGroup>
+
+
+    <ItemGroup>
+        <Compile Include="CEngine\Number.cpp.cs"/>
+        <Compile Include="CEngine\Rational.cpp.cs"/>
+        <Compile Include="Header Files\Rational.h.cs"/>
+        <Compile Include="CEngine\calc.cpp.cs"/>
+        <Compile Include="CalculatorResource.h.cs"/>
+        <Compile Include="CalculatorManager.h.cs"/>
+        <Compile Include="CalculatorHistory.h.cs"/>
+        <Compile Include="Command.h.cs"/>
+        <Compile Include="ExpressionCommand.h.cs"/>
+        <Compile Include="ExpressionCommandInterface.h.cs"/>
+        <Compile Include="ExpressionCommand.cpp.cs"/>
+        <Compile Include="NumberFormattingUtils.cpp.cs"/>
+        <Compile Include="Header Files\CalcEngine.h.cs"/>
+        <Compile Include="Header Files\History.h.cs"/>
+        <Compile Include="CEngine\History.cpp.cs"/>
+        <Compile Include="Header Files\CCommand.h.cs"/>
+        <Compile Include="CEngine\CalcUtils.cpp.cs"/>
+        <Compile Include="CEngine\CalcInput.cpp.cs"/>
+        <Compile Include="CEngine\scicomm.cpp.cs"/>
+        <Compile Include="CEngine\scidisp.cpp.cs"/>
+        <Compile Include="CEngine\scifunc.cpp.cs"/>
+        <Compile Include="CEngine\scioper.cpp.cs"/>
+        <Compile Include="CEngine\sciset.cpp.cs"/>
+        <Compile Include="Header Files\ICalcDisplay.h.cs"/>
+        <Compile Include="Header Files\CalcInput.h.cs"/>
+        <Compile Include="Header Files\IHistoryDisplay.h.cs"/>
+        <Compile Include="CEngine\RationalMath.cpp.cs"/>
+        <Compile Include="Header Files\EngineStrings.h.cs"/>
+        <Compile Include="Header Files\RadixType.h.cs"/>
+        <Compile Include="CalculatorHistory.cpp.cs"/> 
+      <Compile Include="CalculatorManager.cpp.cs" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+      <Compile Include="UnitConverter.cpp.cs" />
+      <Compile Include="UnitConverter.h.cs" />
     </ItemGroup>
 
 </Project>
