@@ -84,10 +84,10 @@
                 FontSize="14"
                 FontWeight="Thin"
                 AutomationProperties.AutomationId="ExitAlwaysOnTopButton"
-                AutomationProperties.Name="{utils:ResourceString Name=ExitAlwaysOnTopButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                AutomationProperties.Name="{utils:ResourceString Name=ExitAlwaysOnTopButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                 Click="AlwaysOnTopButton_Click"
                 Content="&#xEE47;"
-                ToolTipService.ToolTip="{utils:ResourceString Name=ExitAlwaysOnTopButton/[using:Windows.UI.Xaml.Controls]ToolTipService/ToolTip}"
+                ToolTipService.ToolTip="{utils:ResourceString Name=ExitAlwaysOnTopButton/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}"
                 Visibility="Collapsed"
                 x:Load="False">
             <Button.KeyboardAccelerators>

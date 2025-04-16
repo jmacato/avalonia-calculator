@@ -9,7 +9,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ts="using:CalculatorApp.TemplateSelectors"
              xmlns:utils="using:CalculatorApp.Utils"
-             xmlns:vm="using:CalculatorApp.ViewModelNative"
+             xmlns:vm="using:CalculatorApp.ViewModel"
              Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
              mc:Ignorable="d">
     <UserControl.Resources>
@@ -222,7 +222,7 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Grid AutomationProperties.Name="{utils:ResourceString Name=FunctionAnalysisGrid/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}">
+    <Grid AutomationProperties.Name="{utils:ResourceString Name=FunctionAnalysisGrid/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -240,9 +240,9 @@
                     VerticalAlignment="Stretch"
                     Style="{ThemeResource ThemedBackButtonStyle}"
                     contract7Present:CornerRadius="{ThemeResource ControlCornerRadius}"
-                    AutomationProperties.Name="{utils:ResourceString Name=equationAnalysisBack/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                    AutomationProperties.Name="{utils:ResourceString Name=equationAnalysisBack/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                     Click="BackButton_Click"
-                    ToolTipService.ToolTip="{utils:ResourceString Name=equationAnalysisBack/[using:Windows.UI.Xaml.Controls]ToolTipService/ToolTip}">
+                    ToolTipService.ToolTip="{utils:ResourceString Name=equationAnalysisBack/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}">
                 <StackPanel Margin="5,0"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
@@ -266,7 +266,7 @@
                                       VerticalContentAlignment="Center"
                                       Style="{StaticResource KGF_RichEditBoxStyle}"
                                       Foreground="{ThemeResource TitleMathRichEditBoxForegroundBrush}"
-                                      AutomationProperties.Name="{utils:ResourceString Name=KGFEquationTextBox/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                      AutomationProperties.Name="{utils:ResourceString Name=KGFEquationTextBox/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                       MathText="{x:Bind ViewModel.Expression, Mode=OneWay}"/>
         </Grid>
         <TextBlock Grid.Row="1"

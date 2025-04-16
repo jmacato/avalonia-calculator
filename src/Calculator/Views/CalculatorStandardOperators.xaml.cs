@@ -6,7 +6,7 @@
 // Declaration of the CalculatorStandardOperators class
 //
 
-using Windows.UI.Xaml;
+using Microsoft.UI.Xaml;
 
 namespace CalculatorApp
 {

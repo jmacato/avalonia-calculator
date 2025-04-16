@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalculatorApp.ViewModelNative.Common;
-using Windows.UI.Xaml.Markup;
+using CalculatorApp.ViewModel.Common;
+using Microsoft.UI.Xaml.Markup;
 
 namespace CalculatorApp.Utils
 {

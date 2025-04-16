@@ -6,6 +6,7 @@ public static class NumberFormattingUtils
     /// Trims out any trailing zeros or decimals in the given input string
     /// </summary>
     /// <param name="number">number to trim</param>
+    /// TODO: Check this to be compatible with localization, especially the hardcoded '.' comparisons.
     public static void TrimTrailingZeros(ref string number)
     {
         // If no decimal point exists, return the original string
@@ -18,7 +19,7 @@ public static class NumberFormattingUtils
         string result = number.TrimEnd('0');
 
         // If the result ends with a decimal point, remove it
-        if (result.EndsWith('.'))
+        if (result.EndsWith("."))
         {
             result = result.Substring(0, result.Length - 1);
         }

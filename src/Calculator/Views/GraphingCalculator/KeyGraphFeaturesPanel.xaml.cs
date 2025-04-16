@@ -3,7 +3,7 @@
 
 using System.ComponentModel;
 
-using Windows.UI.Xaml;
+using Microsoft.UI.Xaml;
 
 namespace CalculatorApp
 {
@@ -23,7 +23,7 @@ namespace CalculatorApp
 #endif
         }
 
-        public CalculatorApp.ViewModelNative.EquationViewModel ViewModel
+        public CalculatorApp.ViewModel.EquationViewModel ViewModel
         {
             get => m_viewModel;
             set
@@ -36,12 +36,12 @@ namespace CalculatorApp
             }
         }
 
-        public event Windows.UI.Xaml.RoutedEventHandler KeyGraphFeaturesClosed;
+        public event Microsoft.UI.Xaml.RoutedEventHandler KeyGraphFeaturesClosed;
 
-        public static Windows.UI.Xaml.Media.SolidColorBrush
+        public static Microsoft.UI.Xaml.Media.SolidColorBrush
                      ToSolidColorBrush(Windows.UI.Color color)
         {
-            return new Windows.UI.Xaml.Media.SolidColorBrush(color);
+            return new Microsoft.UI.Xaml.Media.SolidColorBrush(color);
         }
 
         private void KeyGraphFeaturesPanel_Loaded(object sender, RoutedEventArgs e)
@@ -54,6 +54,6 @@ namespace CalculatorApp
             KeyGraphFeaturesClosed?.Invoke(this, new RoutedEventArgs());
         }
 
-        private CalculatorApp.ViewModelNative.EquationViewModel m_viewModel;
+        private CalculatorApp.ViewModel.EquationViewModel m_viewModel;
     }
 }

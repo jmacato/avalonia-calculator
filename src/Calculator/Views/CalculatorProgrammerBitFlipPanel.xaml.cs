@@ -9,13 +9,13 @@
 // The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
 
 using CalculatorApp.Controls;
-using CalculatorApp.ViewModelNative;
-using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModel;
+using CalculatorApp.ViewModel.Common;
 
 using System.Diagnostics;
 
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Automation;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 
 
 namespace CalculatorApp

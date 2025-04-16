@@ -3,13 +3,13 @@
 
 using System.Collections.Generic;
 
-using Windows.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Automation.Peers;
 
 namespace CalculatorApp
 {
     namespace Controls
     {
-        public sealed class OverflowTextBlockAutomationPeer : Windows.UI.Xaml.Automation.Peers.FrameworkElementAutomationPeer
+        public sealed class OverflowTextBlockAutomationPeer : FrameworkElementAutomationPeer
         {
             public OverflowTextBlockAutomationPeer(OverflowTextBlock owner) : base(owner)
             {

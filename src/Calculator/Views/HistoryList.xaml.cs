@@ -1,8 +1,7 @@
-using CalculatorApp.ViewModelNative;
-using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModel;
+using CalculatorApp.ViewModel.Common;
 
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
+using Microsoft.UI.Xaml;
 
 using MUXC = Microsoft.UI.Xaml.Controls;
 
@@ -11,7 +10,7 @@ using MUXC = Microsoft.UI.Xaml.Controls;
 namespace CalculatorApp
 {
     [Windows.Foundation.Metadata.WebHostHidden]
-    public sealed partial class HistoryList : UserControl
+    public sealed partial class HistoryList : MUXC.UserControl
     {
         public HistoryList()
         {
@@ -20,7 +19,7 @@ namespace CalculatorApp
             HistoryEmpty.FlowDirection = LocalizationService.GetInstance().GetFlowDirection();
         }
 
-        public CalculatorApp.ViewModelNative.HistoryViewModel Model => (CalculatorApp.ViewModelNative.HistoryViewModel)DataContext;
+        public CalculatorApp.ViewModel.HistoryViewModel Model => (CalculatorApp.ViewModel.HistoryViewModel)DataContext;
 
         public void ScrollToBottom()
         {
@@ -31,22 +30,22 @@ namespace CalculatorApp
             }
         }
 
-        public Windows.UI.Xaml.GridLength RowHeight
+        public Microsoft.UI.Xaml.GridLength RowHeight
         {
-            get => (Windows.UI.Xaml.GridLength)GetValue(RowHeightProperty);
+            get => (Microsoft.UI.Xaml.GridLength)GetValue(RowHeightProperty);
             set => SetValue(RowHeightProperty, value);
         }
 
         // Using a DependencyProperty as the backing store for RowHeight.  This enables animation, styling, binding, etc...
         public static readonly DependencyProperty RowHeightProperty =
-            DependencyProperty.Register(nameof(RowHeight), typeof(Windows.UI.Xaml.GridLength), typeof(HistoryList), new PropertyMetadata(default(Windows.UI.Xaml.GridLength)));
+            DependencyProperty.Register(nameof(RowHeight), typeof(Microsoft.UI.Xaml.GridLength), typeof(HistoryList), new PropertyMetadata(default(Microsoft.UI.Xaml.GridLength)));
 
         public static string GetHistoryItemAutomationName(string accExpression, string accResult)
         {
             return $"{accExpression} {accResult}";
         }
 
-        private void ListView_ItemClick(object sender, ItemClickEventArgs e)
+        private void ListView_ItemClick(object sender, MUXC.ItemClickEventArgs e)
         {
             // When the user clears the history list in the overlay view and presses enter, the clickedItem is nullptr
             if (e.ClickedItem is HistoryItemViewModel clickedItem && DataContext is HistoryViewModel historyVM)

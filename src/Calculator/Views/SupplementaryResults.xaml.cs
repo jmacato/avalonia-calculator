@@ -1,21 +1,21 @@
-using CalculatorApp.ViewModelNative;
+using CalculatorApp.ViewModel;
 
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
+using UnitConversionManager;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 // The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
 
 namespace CalculatorApp
 {
-    public sealed class DelighterUnitToStyleConverter : Windows.UI.Xaml.Data.IValueConverter
+    public sealed class DelighterUnitToStyleConverter : Microsoft.UI.Xaml.Data.IValueConverter
     {
         public DelighterUnitToStyleConverter()
         {
-            m_delighters = new Windows.UI.Xaml.ResourceDictionary
+            m_delighters = new Microsoft.UI.Xaml.ResourceDictionary
             {
                 Source = new Uri(@"ms-appx:///Views/DelighterUnitStyles.xaml")
             };
@@ -24,13 +24,13 @@ namespace CalculatorApp
         public object Convert(object value, Type targetType, object parameter, string language)
         {
             Unit unit = (Unit)value;
-            Debug.Assert(unit.IsModelUnitWhimsical());
-            if (!unit.IsModelUnitWhimsical())
+            Debug.Assert(unit.isWhimsical);
+            if (!unit.isWhimsical)
             {
                 return null;
             }
 
-            string key = $"Unit_{unit.ModelUnitID()}";
+            string key = $"Unit_{unit.id}";
             return (Style)m_delighters[key];
         }
 
@@ -41,17 +41,17 @@ namespace CalculatorApp
             return null;
         }
 
-        private readonly Windows.UI.Xaml.ResourceDictionary m_delighters;
+        private readonly Microsoft.UI.Xaml.ResourceDictionary m_delighters;
     }
 
-    public sealed class SupplementaryResultDataTemplateSelector : Windows.UI.Xaml.Controls.DataTemplateSelector
+    public sealed class SupplementaryResultDataTemplateSelector : DataTemplateSelector
     {
         public SupplementaryResultDataTemplateSelector()
         { }
 
-        public Windows.UI.Xaml.DataTemplate RegularTemplate { get; set; }
+        public Microsoft.UI.Xaml.DataTemplate RegularTemplate { get; set; }
 
-        public Windows.UI.Xaml.DataTemplate DelighterTemplate { get; set; }
+        public Microsoft.UI.Xaml.DataTemplate DelighterTemplate { get; set; }
 
         protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
         {
@@ -93,14 +93,14 @@ namespace CalculatorApp
             InitializeComponent();
         }
 
-        public IEnumerable<ViewModelNative.SupplementaryResult> Results
+        public IEnumerable<ViewModel.SupplementaryResult> Results
         {
-            get => (IEnumerable<ViewModelNative.SupplementaryResult>)GetValue(ResultsProperty);
+            get => (IEnumerable<ViewModel.SupplementaryResult>)GetValue(ResultsProperty);
             set => SetValue(ResultsProperty, value);
         }
 
         // Using a DependencyProperty as the backing store for Results.  This enables animation, styling, binding, etc...
         public static readonly DependencyProperty ResultsProperty =
-            DependencyProperty.Register(nameof(Results), typeof(IEnumerable<ViewModelNative.SupplementaryResult>), typeof(SupplementaryResult), new PropertyMetadata(null));
+            DependencyProperty.Register(nameof(Results), typeof(IEnumerable<ViewModel.SupplementaryResult>), typeof(SupplementaryResult), new PropertyMetadata(null));
     }
 }

@@ -8,8 +8,8 @@ namespace CalculationManager
 {
     public  struct HISTORYITEMVECTOR
     {
-        public  IEnumerable<(wstring, int)> spTokens;
-        public  IEnumerable <IExpressionCommand> spCommands;
+        public  List<(wstring, int)> spTokens;
+        public  List <IExpressionCommand> spCommands;
         public  wstring expression;
         public  wstring result;
     };

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
 using System;
@@ -7,22 +7,55 @@ using System.Collections.Generic;
 
 using Windows.Foundation;
 using Windows.Foundation.Collections;
-using Windows.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml;
+using CommunityToolkit.Common;
+using System.Collections.Specialized;
+using ObservableCollectionShim;
 
 namespace CalculatorApp
 {
     namespace Common
     {
-        internal sealed class AlwaysSelectedCollectionView : Windows.UI.Xaml.DependencyObject, Windows.UI.Xaml.Data.ICollectionView
+        internal sealed class AlwaysSelectedCollectionView : DependencyObject, ICollectionView
         {
             internal AlwaysSelectedCollectionView(IList source)
             {
                 CurrentPosition = -1;
                 m_source = source;
 
-                if (source is Windows.UI.Xaml.Interop.IBindableObservableVector observable)
+                if (source is Microsoft.UI.Xaml.Interop.IBindableObservableVector observable)
                 {
                     observable.VectorChanged += OnSourceBindableVectorChanged;
+                } else if (source is INotifyCollectionChanged incc)
+                {
+                    incc.CollectionChanged += (x, e) =>
+                    {
+                        VectorChangedEventArgs args = new VectorChangedEventArgs();
+
+                        switch (e.Action)
+                        {
+                            case NotifyCollectionChangedAction.Add:
+                                args.CollectionChange = CollectionChange.ItemInserted;
+                                args.Index = (uint)e.NewStartingIndex;
+                                break;
+
+                            case NotifyCollectionChangedAction.Remove:
+                                args.CollectionChange = CollectionChange.ItemRemoved;
+                                args.Index = (uint)e.OldStartingIndex;
+                                break;
+                            case NotifyCollectionChangedAction.Replace:
+                                args.CollectionChange = CollectionChange.ItemChanged;
+                                args.Index = (uint)e.NewStartingIndex;
+                                break;
+                            case NotifyCollectionChangedAction.Reset:
+                            case NotifyCollectionChangedAction.Move:
+                                args.CollectionChange = CollectionChange.Reset;
+                                break;
+                        }
+
+                        VectorChanged?.Invoke(this, args);
+                    };
                 }
             }
 
@@ -47,7 +80,7 @@ namespace CalculatorApp
                     Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
                     {
                         CurrentChanged?.Invoke(this, null);
-                    }).AsTask().Wait();
+                    }).AsTask().GetResultOrDefault();
                 }
                 return false;
             }
@@ -177,7 +210,7 @@ namespace CalculatorApp
             }
 
             // Event handlers
-            private void OnSourceBindableVectorChanged(Windows.UI.Xaml.Interop.IBindableObservableVector source, object e)
+            private void OnSourceBindableVectorChanged(Microsoft.UI.Xaml.Interop.IBindableObservableVector source, object e)
             {
                 Windows.Foundation.Collections.IVectorChangedEventArgs args = (Windows.Foundation.Collections.IVectorChangedEventArgs)e;
                 VectorChanged?.Invoke(this, args);
@@ -194,7 +227,7 @@ namespace CalculatorApp
             private readonly IList m_source;
         }
 
-        public sealed class AlwaysSelectedCollectionViewConverter : Windows.UI.Xaml.Data.IValueConverter
+        public sealed class AlwaysSelectedCollectionViewConverter : IValueConverter
         {
             public AlwaysSelectedCollectionViewConverter()
             {
@@ -206,12 +239,12 @@ namespace CalculatorApp
                 {
                     return new AlwaysSelectedCollectionView(result);
                 }
-                return Windows.UI.Xaml.DependencyProperty.UnsetValue; // Can't convert
+                return DependencyProperty.UnsetValue; // Can't convert
             }
 
             public object ConvertBack(object value, Type targetType, object parameter, string language)
             {
-                return Windows.UI.Xaml.DependencyProperty.UnsetValue;
+                return DependencyProperty.UnsetValue;
             }
         }
     }

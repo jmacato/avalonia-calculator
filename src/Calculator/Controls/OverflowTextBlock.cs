@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Automation;
-using Windows.UI.Xaml.Automation.Peers;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Input;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace CalculatorApp
 {
@@ -17,7 +17,7 @@ namespace CalculatorApp
             Above
         };
 
-        public sealed class OverflowTextBlock : Windows.UI.Xaml.Controls.Control
+        public sealed class OverflowTextBlock : Control
         {
             public OverflowTextBlock()
             {
@@ -67,7 +67,7 @@ namespace CalculatorApp
             public static readonly DependencyProperty IsActiveProperty =
                 DependencyProperty.Register(nameof(IsActive), typeof(bool), typeof(OverflowTextBlock), new PropertyMetadata(default(bool)));
 
-            public Windows.UI.Xaml.Style TextStyle
+            public Microsoft.UI.Xaml.Style TextStyle
             {
                 get => (Style)GetValue(TextStyleProperty);
                 set => SetValue(TextStyleProperty, value);
@@ -301,11 +301,11 @@ namespace CalculatorApp
             private const double SCROLL_RATIO = 0.7;
 
             private bool m_isAccessibilityViewControl;
-            private Windows.UI.Xaml.FrameworkElement m_expressionContent;
-            private Windows.UI.Xaml.Controls.ItemsControl m_itemsControl;
-            private Windows.UI.Xaml.Controls.ScrollViewer m_expressionContainer;
-            private Windows.UI.Xaml.Controls.Button m_scrollLeft;
-            private Windows.UI.Xaml.Controls.Button m_scrollRight;
+            private Microsoft.UI.Xaml.FrameworkElement m_expressionContent;
+            private ItemsControl m_itemsControl;
+            private ScrollViewer m_expressionContainer;
+            private Button m_scrollLeft;
+            private Button m_scrollRight;
         }
 
     }

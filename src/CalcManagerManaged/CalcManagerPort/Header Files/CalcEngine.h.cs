@@ -128,7 +128,7 @@ public partial class CCalcEngine
     //             resourceProvider); // Once per load time to call to initialize all shared global variables
 
     // returns the ptr to string representing the operator. Mostly same as the button, but few special cases for x^y etc.
-    public   wstring_view GetString(int ids)
+    public    wstring_view GetString(int ids)
     {
         return s_engineStrings[ids.ToString()];
     }

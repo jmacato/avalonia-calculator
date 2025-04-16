@@ -225,6 +225,13 @@ public class CurrencyRatio
     public double ratio;
     public wstring sourceCurrencyCode;
     public wstring targetCurrencyCode;
+
+    public CurrencyRatio(double ratio, string sourceCurrencyCode, string targetCurrencyCode)
+    {
+        this.ratio = ratio;
+        this.sourceCurrencyCode = sourceCurrencyCode;
+        this.targetCurrencyCode = targetCurrencyCode;
+    }
 }
 
 public class UnitToUnitToConversionDataMap
@@ -372,8 +379,8 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
     CategoryToUnitVectorMap m_categoryToUnits = [];
     UnitToUnitToConversionDataMap m_ratioMap = new  ();
     Category m_currentCategory;
-    Unit m_fromType;
-    Unit m_toType;
+    Unit m_fromType = Unit.EMPTY_UNIT;
+    Unit m_toType= Unit.EMPTY_UNIT;
     wstring m_currentDisplay;
     wstring m_returnDisplay;
     bool m_currentHasDecimal;

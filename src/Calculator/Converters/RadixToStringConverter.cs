@@ -1,7 +1,8 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalculatorApp.ViewModelNative.Common;
+using CalcEngine;
+using CalculatorApp.ViewModel.Common;
 
 using System;
 
@@ -13,7 +14,7 @@ namespace CalculatorApp
         /// Value converter that translates true to false and vice versa.
         /// </summary>
         [Windows.Foundation.Metadata.WebHostHidden]
-        public sealed class RadixToStringConverter : Windows.UI.Xaml.Data.IValueConverter
+        public sealed class RadixToStringConverter : Microsoft.UI.Xaml.Data.IValueConverter
         {
             public object Convert(object value, Type targetType, object parameter, string language)
             {

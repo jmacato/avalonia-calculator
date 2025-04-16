@@ -3,7 +3,7 @@
 
 using System;
 
-using Windows.UI.Xaml;
+using Microsoft.UI.Xaml;
 
 namespace CalculatorApp
 {
@@ -13,11 +13,11 @@ namespace CalculatorApp
         /// Value converter that translates true to <see cref="Visibility.Visible"/> and false
         /// to <see cref="Visibility.Collapsed"/>.
         /// </summary>
-        public sealed class BooleanToVisibilityConverter : Windows.UI.Xaml.Data.IValueConverter
+        public sealed class BooleanToVisibilityConverter : Microsoft.UI.Xaml.Data.IValueConverter
         {
-            public static Windows.UI.Xaml.Visibility Convert(bool visibility)
+            public static Visibility Convert(bool visibility)
             {
-                return visibility ? Windows.UI.Xaml.Visibility.Visible : Windows.UI.Xaml.Visibility.Collapsed;
+                return visibility ? Visibility.Visible : Visibility.Collapsed;
             }
 
             public object Convert(object value, Type targetType, object parameter, string language)
@@ -36,7 +36,7 @@ namespace CalculatorApp
         /// Value converter that translates false to <see cref="Visibility.Visible"/> and true
         /// to <see cref="Visibility.Collapsed"/>.
         /// </summary>
-        public sealed class BooleanToVisibilityNegationConverter : Windows.UI.Xaml.Data.IValueConverter
+        public sealed class BooleanToVisibilityNegationConverter : Microsoft.UI.Xaml.Data.IValueConverter
         {
             public object Convert(object value, Type targetType, object parameter, string language)
             {

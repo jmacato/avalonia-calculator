@@ -6,10 +6,12 @@ using System.Runtime.InteropServices;
 
 using Windows.ApplicationModel;
 using Windows.System;
+using Microsoft.Windows.System;
 using Windows.UI.Core;
-using Windows.UI.Text;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Input;
+using Microsoft.UI.Text;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace CalculatorApp
 {
@@ -66,7 +68,7 @@ namespace CalculatorApp
 
         }
 
-        public sealed class MathRichEditBox : Windows.UI.Xaml.Controls.RichEditBox
+        public sealed class MathRichEditBox : RichEditBox
         {
             public MathRichEditBox()
             {
@@ -131,7 +133,7 @@ namespace CalculatorApp
                 }
 
                 // insert the text in place of selection
-                TextDocument.Selection.SetText(Windows.UI.Text.TextSetOptions.FormatRtf, text);
+                TextDocument.Selection.SetText(TextSetOptions.FormatRtf, text);
 
                 // Move the cursor to the next logical place for users to enter text.
                 TextDocument.Selection.StartPosition += cursorOffSet;
@@ -174,7 +176,7 @@ namespace CalculatorApp
                 // if anything is selected, just delete the selection.  Note: EndPosition can be before start position.
                 if (TextDocument.Selection.StartPosition != TextDocument.Selection.EndPosition)
                 {
-                    TextDocument.Selection.SetText(Windows.UI.Text.TextSetOptions.None, "");
+                    TextDocument.Selection.SetText(TextSetOptions.None, "");
                     return;
                 }
 
@@ -193,15 +195,15 @@ namespace CalculatorApp
                 var text = TextDocument.Selection.Text;
                 if (text.Length == 1)
                 {
-                    TextDocument.Selection.SetText(Windows.UI.Text.TextSetOptions.None, "");
+                    TextDocument.Selection.SetText(TextSetOptions.None, "");
                 }
             }
 
             protected override void OnKeyDown(KeyRoutedEventArgs e)
             {
                 // suppress control + B to prevent bold input from being entered
-                if ((Window.Current.CoreWindow.GetKeyState(VirtualKey.Control) & CoreVirtualKeyStates.Down) != CoreVirtualKeyStates.Down ||
-                    e.Key != VirtualKey.B)
+                //if ((App.Window.CoreWindow.GetKeyState(VirtualKey.Control) & CoreVirtualKeyStates.Down) != CoreVirtualKeyStates.Down ||
+                //    e.Key != VirtualKey.B)
                 {
                     base.OnKeyDown(e);
                 }
@@ -209,7 +211,7 @@ namespace CalculatorApp
 
             private string GetMathTextProperty()
             {
-                TextDocument.GetMath(out string math);
+                TextDocument.GetMathML(out string math);
                 return math;
             }
 
@@ -218,7 +220,7 @@ namespace CalculatorApp
                 bool readOnlyState = IsReadOnly;
                 IsReadOnly = false;
 
-                TextDocument.SetMath(newValue);
+                TextDocument.SetMathML(newValue);
 
                 IsReadOnly = readOnlyState;
             }

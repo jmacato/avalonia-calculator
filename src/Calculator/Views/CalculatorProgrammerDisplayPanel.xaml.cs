@@ -1,11 +1,11 @@
 using CalculatorApp.Utils;
-using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModel.Common;
 
 using System.Diagnostics;
 using System.Windows.Input;
 
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 // The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
 
@@ -32,12 +32,12 @@ namespace CalculatorApp
 
         private ICommand donotuse_BitLengthButtonPressed;
 
-        public ViewModelNative.StandardCalculatorViewModel Model
+        public ViewModel.StandardCalculatorViewModel Model
         {
             get
             {
-                Debug.Assert(DataContext is ViewModelNative.StandardCalculatorViewModel, "static_cast result must NOT be null");
-                return DataContext as ViewModelNative.StandardCalculatorViewModel;
+                Debug.Assert(DataContext is ViewModel.StandardCalculatorViewModel, "static_cast result must NOT be null");
+                return DataContext as ViewModel.StandardCalculatorViewModel;
             }
         }
 

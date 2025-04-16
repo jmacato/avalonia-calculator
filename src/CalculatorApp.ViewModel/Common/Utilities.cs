@@ -1,81 +1,58 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Windows.Storage;
 using Windows.UI;
 using Windows.UI.Core;
 using Windows.UI.ViewManagement;
-using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml;
-using System;
-using System.Linq;
-using System.Text;
+using Windows.UI.Xaml.Media;
 
-using System;
-using System.Windows.Input;
-using Windows.Foundation;
-using Windows.UI.Xaml.Input;
+namespace CalculatorApp
+{
 
+    // Helper class to mimic C++'s scoped_lock
+    public class ReaderLockScope : IDisposable
+    {
+        private readonly ReaderWriterLockSlim _lock;
+
+        public ReaderLockScope(ReaderWriterLockSlim rwLock)
+        {
+            _lock = rwLock;
+            _lock.EnterReadLock();
+        }
+
+        public void Dispose()
+        {
+            _lock.ExitReadLock();
+        }
+    }
+    public class WriterLockScope : IDisposable
+    {
+        private readonly ReaderWriterLockSlim _lock;
+
+        public WriterLockScope(ReaderWriterLockSlim rwLock)
+        {
+            _lock = rwLock;
+            _lock.EnterWriteLock();
+        }
+
+        public void Dispose()
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+}
 
 namespace CalculatorApp.ViewModel.Common
 {
-
-        // Equivalent to the C++ DelegateCommandHandler delegate
-        public delegate void DelegateCommandHandler(object parameter);
-
-        // Equivalent to the C++ DelegateCommand class
-        public sealed class DelegateCommand : ICommand
-        {
-            private readonly DelegateCommandHandler _handler;
-            private event EventHandler _canExecuteChanged;
-
-            public DelegateCommand(DelegateCommandHandler handler)
-            {
-                _handler = handler;
-            }
-
-            // ICommand implementation
-            bool ICommand.CanExecute(object parameter)
-            {
-                return true;
-            }
-
-            void ICommand.Execute(object parameter)
-            {
-                _handler?.Invoke(parameter);
-            }
-
-            event EventHandler ICommand.CanExecuteChanged
-            {
-                add
-                {
-                    _canExecuteChanged += value;
-                }
-                remove
-                {
-                    _canExecuteChanged -= value;
-                }
-            }
-        }
-
-        // Static helper class to provide the MakeDelegateCommandHandler functionality
-        public static class CommandHelpers
-        {
-            // Generic method to create a command handler with weak reference to the target
-            public static DelegateCommandHandler MakeDelegateCommandHandler<T>(T target, Action<T, object> function) where T : class
-            {
-                WeakReference weakTarget = new WeakReference(target);
-
-                return parameter =>
-                {
-                    if (weakTarget.Target is T thatTarget)
-                    {
-                        function(thatTarget, parameter);
-                    }
-                };
-            }
-        }
-
-
     public static class Utilities
     {
         public static int GetWindowId()
@@ -121,7 +98,7 @@ namespace CalculatorApp.ViewModel.Common
             string replacementString = null;
 
             // First step is scanning the string for special characters.
-            // If there isn't any special character, we simply return the original string 
+            // If there isn't any special character, we simply return the original string
             replaceCharacters = replacementString.Any(x => specialCharacters.Contains(x));
 
             if (replaceCharacters)
@@ -169,5 +146,75 @@ namespace CalculatorApp.ViewModel.Common
             }
             return inputString;
         }
+
+        // Returns if the last character of a wstring is the target wchar_t
+        public static bool IsLastCharacterTarget(string input, char target)
+        {
+            return input.Length != 0 && input.Last() == target;
+
+        }
+
+
+        public static bool IsDateTimeOlderThan(DateTime dateTime, long duration)
+        {
+            DateTime now = GetUniversalSystemTime();
+
+            return dateTime.Ticks + duration < now.Ticks;
+
+        }
+
+        public static DateTime GetUniversalSystemTime()
+        {
+            return DateTime.Now.ToUniversalTime();
+
+        }
+
+        public static async Task<string> ReadFileFromFolder(StorageFolder folder, string fileName)
+
+        {
+            if (folder == null)
+            {
+                return null;
+            }
+
+            StorageFile file = await folder.GetFileAsync(fileName);
+            if (file == null)
+            {
+                return null;
+            }
+
+            return await FileIO.ReadTextAsync(file);
+        }
+
+        public static async Task WriteFileToFolder(IStorageFolder folder, String fileName, String contents, CreationCollisionOption collisionOption)
+        {
+            if (folder == null)
+            {
+                return;
+            }
+
+            StorageFile file = await folder.CreateFileAsync(fileName, collisionOption);
+            if (file == null)
+            {
+                return;
+            }
+
+            await FileIO.WriteTextAsync(file, contents);
+        }
+
+        public static bool GetIntegratedDisplaySize(out double size)
+        {
+            return WinNativeMethods.GetIntegratedDisplaySize(out size) != 0;
+            //bool res = ViewModel.Common.Utilities.GetIntegratedDisplaySize(out size);
+            //Console.WriteLine($"{GetIntegratedDisplaySize} {size}");
+            //return res;
+        }
+    }
+
+    static class WinNativeMethods
+    {
+        // Define the PInvoke signature for GetIntegratedDisplaySize
+        [DllImport("kernelbase.dll", SetLastError = true)]
+        public static extern int GetIntegratedDisplaySize(out double sizeInInches);
     }
 }

@@ -140,7 +140,7 @@
     <Grid x:Name="BitFlipPanel"
           Margin="0,1,0,1"
           AutomationProperties.HeadingLevel="Level1"
-          AutomationProperties.Name="{utils:ResourceString Name=BitFlipPanel/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}">
+          AutomationProperties.Name="{utils:ResourceString Name=BitFlipPanel/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="1*"/>

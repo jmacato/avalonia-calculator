@@ -2,8 +2,7 @@
 // Licensed under the MIT License.
 
 using CalculatorApp.ViewModel.Common;
-using CalculatorApp.ViewModelNative;
-using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModel; 
 using Utilities = CalculatorApp.ViewModel.Common.Utilities;
 
 using System;
@@ -12,9 +11,8 @@ using System.Diagnostics;
 using System.Linq;
 
 using Windows.UI.Core;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls.Primitives;
 
 using MUXC = Microsoft.UI.Xaml.Controls;
 
@@ -100,7 +98,7 @@ namespace CalculatorApp
                         command.Execute(parameter);
                     }
 
-                    if (button is RadioButton radio)
+                    if (button is MUXC.RadioButton radio)
                     {
                         radio.IsChecked = true;
                         return;
@@ -243,12 +241,12 @@ namespace CalculatorApp
 
             internal static void Initialize()
             {
-                var coreWindow = Window.Current.CoreWindow;
-                coreWindow.CharacterReceived += OnCharacterReceivedHandler;
-                coreWindow.KeyDown += OnKeyDownHandler;
-                coreWindow.KeyUp += OnKeyUpHandler;
-                coreWindow.Dispatcher.AcceleratorKeyActivated += OnAcceleratorKeyActivated;
-                KeyboardShortcutManager.RegisterNewAppViewId();
+                var coreWindow = App.Window;
+                //coreWindow.CharacterReceived += OnCharacterReceivedHandler;
+                //coreWindow.KeyDown += OnKeyDownHandler;
+                //coreWindow.KeyUp += OnKeyUpHandler;
+                //coreWindow.Dispatcher.AcceleratorKeyActivated += OnAcceleratorKeyActivated;
+                //KeyboardShortcutManager.RegisterNewAppViewId();
             }
 
             // Sometimes, like with popups, escape is treated as special and even
@@ -487,7 +485,7 @@ namespace CalculatorApp
                 lock (s_keyboardShortcutMapLockMutex)
                 {
                     // Handling Ctrl+E shortcut for Date Calc, target would be NavigationView^ in that case
-                    Control control = (target as ButtonBase) ?? (Control)(target as MUXC.NavigationView);
+                    MUXC.Control control = (target as ButtonBase) ?? (MUXC.Control)(target as MUXC.NavigationView);
 
                     int viewId = Utilities.GetWindowId();
 
@@ -649,9 +647,9 @@ namespace CalculatorApp
                 var key = args.VirtualKey;
                 int viewId = Utilities.GetWindowId();
 
-                bool isControlKeyPressed = (Window.Current.CoreWindow.GetKeyState(Windows.System.VirtualKey.Control) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
-                bool isShiftKeyPressed = (Window.Current.CoreWindow.GetKeyState(Windows.System.VirtualKey.Shift) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
-                bool isAltKeyPressed = (Window.Current.CoreWindow.GetKeyState(Windows.System.VirtualKey.Menu) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
+                bool isControlKeyPressed = (App.Window.CoreWindow.GetKeyState(Windows.System.VirtualKey.Control) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
+                bool isShiftKeyPressed = (App.Window.CoreWindow.GetKeyState(Windows.System.VirtualKey.Shift) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
+                bool isAltKeyPressed = (App.Window.CoreWindow.GetKeyState(Windows.System.VirtualKey.Menu) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
 
                 // Handle Ctrl + E for DateCalculator
                 if ((key == Windows.System.VirtualKey.E) && isControlKeyPressed && !isShiftKeyPressed && !isAltKeyPressed)
@@ -720,7 +718,8 @@ namespace CalculatorApp
                 }             
             }
             
-            private static void OnAcceleratorKeyActivated(CoreDispatcher dispatcher, AcceleratorKeyEventArgs args)
+            private static void OnAcceleratorKeyActivated(// TODO Windows.UI.Core.CoreDispatcher is not longer supported. For more details see https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/threading
+CoreDispatcher dispatcher, AcceleratorKeyEventArgs args)
             {
                 if (args.KeyStatus.IsKeyReleased)
                 {
@@ -733,14 +732,14 @@ namespace CalculatorApp
                         return;
                     }
 
-                    bool controlKeyPressed = (Window.Current.CoreWindow.GetKeyState(Windows.System.VirtualKey.Control) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
+                    bool controlKeyPressed = (App.Window.CoreWindow.GetKeyState(Windows.System.VirtualKey.Control) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
                     // Ctrl is pressed in addition to alt, this means Alt Gr is intended.  do not navigate.
                     if (controlKeyPressed)
                     {
                         return;
                     }
 
-                    bool shiftKeyPressed = (Window.Current.CoreWindow.GetKeyState(Windows.System.VirtualKey.Shift) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
+                    bool shiftKeyPressed = (App.Window.CoreWindow.GetKeyState(Windows.System.VirtualKey.Shift) & CoreVirtualKeyStates.Down) == CoreVirtualKeyStates.Down;
                     NavigateModeByShortcut(false, shiftKeyPressed, true, key, null);
                 }
             }

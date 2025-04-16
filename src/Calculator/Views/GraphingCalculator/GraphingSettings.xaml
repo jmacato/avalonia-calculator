@@ -250,15 +250,15 @@
                        Margin="0,16,0,6"
                        Style="{StaticResource SubTitleTextBoxStyle}"
                        AutomationProperties.HeadingLevel="Level2"
-                       AutomationProperties.Name="{utils:ResourceString Name=GraphThemeHeading/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                       AutomationProperties.Name="{utils:ResourceString Name=GraphThemeHeading/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                        Text="{utils:ResourceString Name=GraphThemeHeading/Text}"/>
 
             <StackPanel AutomationProperties.LabeledBy="{Binding ElementName=GraphThemeHeading}">
-                <RadioButton AutomationProperties.Name="{utils:ResourceString Name=AlwaysLightTheme/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                <RadioButton AutomationProperties.Name="{utils:ResourceString Name=AlwaysLightTheme/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                              Content="{utils:ResourceString Name=AlwaysLightTheme/Content}"
                              IsChecked="{x:Bind IsMatchAppTheme, Mode=TwoWay, Converter={StaticResource BooleanNegationConverter}}"/>
                 <RadioButton Margin="1,0"
-                             AutomationProperties.Name="{utils:ResourceString Name=MatchAppTheme/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                             AutomationProperties.Name="{utils:ResourceString Name=MatchAppTheme/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                              Content="{utils:ResourceString Name=MatchAppTheme/Content}"
                              IsChecked="{x:Bind IsMatchAppTheme, Mode=TwoWay}"/>
             </StackPanel>

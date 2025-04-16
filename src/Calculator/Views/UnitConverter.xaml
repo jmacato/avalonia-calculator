@@ -1,7 +1,7 @@
 <UserControl x:Class="CalculatorApp.UnitConverter"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:automation="using:CalculatorApp.ViewModelNative.Common.Automation"
+             xmlns:automation="using:CalculatorApp.ViewModel.Common.Automation"
              xmlns:common="using:CalculatorApp.Common"
              xmlns:contract7NotPresent="http://schemas.microsoft.com/winfx/2006/xaml/presentation?IsApiContractNotPresent(Windows.Foundation.UniversalApiContract,7)"
              xmlns:contract7Present="http://schemas.microsoft.com/winfx/2006/xaml/presentation?IsApiContractPresent(Windows.Foundation.UniversalApiContract,7)"
@@ -13,7 +13,7 @@
              xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
              xmlns:triggers="using:CalculatorApp.Views.StateTriggers"
              xmlns:utils="using:CalculatorApp.Utils"
-             xmlns:vm="using:CalculatorApp.ViewModelNative"
+             xmlns:vm="using:CalculatorApp.ViewModel" xmlns:ucm="using:UnitConversionManager"
              d:DesignHeight="658"
              d:DesignWidth="830"
              DataContextChanged="OnDataContextChanged"
@@ -29,10 +29,10 @@
         <converters:BooleanToVisibilityNegationConverter x:Name="BooleanToVisibilityNegationConverter"/>
         <automation:NarratorNotifier x:Name="NarratorNotifier" Announcement="{x:Bind Model.Announcement, Mode=OneWay}"/>
 
-        <DataTemplate x:Key="UnitTemplate" x:DataType="vm:Unit">
+        <DataTemplate x:Key="UnitTemplate" x:DataType="ucm:Unit">
             <TextBlock Style="{ThemeResource BodyTextBlockStyle}"
-                       AutomationProperties.Name="{x:Bind AccessibleName}"
-                       Text="{x:Bind Name}"
+                       AutomationProperties.Name="{x:Bind accessibleName}"
+                       Text="{x:Bind name}"
                        TextWrapping="NoWrap"/>
         </DataTemplate>
 
@@ -41,8 +41,8 @@
         <DataTemplate x:Key="SelectedUnitTemplate">
             <TextBlock Style="{ThemeResource BodyTextBlockStyle}"
                        FontWeight="Normal"
-                       AutomationProperties.Name="{Binding AccessibleName, Mode=OneTime, FallbackValue=''}"
-                       Text="{Binding Name, Mode=OneTime, FallbackValue=''}"
+                       AutomationProperties.Name="{Binding accessibleName, Mode=OneTime, FallbackValue=''}"
+                       Text="{Binding name, Mode=OneTime, FallbackValue=''}"
                        TextWrapping="NoWrap"/>
         </DataTemplate>
 
@@ -728,7 +728,7 @@
                   Grid.Column="1"
                   Grid.ColumnSpan="2"
                   AutomationProperties.HeadingLevel="Level1"
-                  AutomationProperties.Name="{utils:ResourceString Name=DisplayControls/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}">
+                  AutomationProperties.Name="{utils:ResourceString Name=DisplayControls/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>
                     <ColumnDefinition/>
@@ -738,7 +738,7 @@
                                            Style="{StaticResource OperatorButtonStyle}"
                                            FontSize="14"
                                            common:KeyboardShortcutManager.VirtualKey="{utils:ResourceVirtualKey Name=clearEntryButton/[using:CalculatorApp.Common]KeyboardShortcutManager/VirtualKey}"
-                                           AutomationProperties.Name="{utils:ResourceString Name=clearEntryButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                           AutomationProperties.Name="{utils:ResourceString Name=clearEntryButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                            ButtonId="Clear"
                                            Content="CE"
                                            TabIndex="7"/>
@@ -747,7 +747,7 @@
                                            Style="{StaticResource SymbolOperatorButtonStyle}"
                                            FontSize="14"
                                            common:KeyboardShortcutManager.VirtualKey="{utils:ResourceVirtualKey Name=backSpaceButton/[using:CalculatorApp.Common]KeyboardShortcutManager/VirtualKey}"
-                                           AutomationProperties.Name="{utils:ResourceString Name=backSpaceButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                           AutomationProperties.Name="{utils:ResourceString Name=backSpaceButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                            ButtonId="Backspace"
                                            Content="&#xE94F;"
                                            TabIndex="8"/>
@@ -760,7 +760,7 @@
                              Grid.ColumnSpan="3"
                              VerticalAlignment="Stretch"
                              AutomationProperties.HeadingLevel="Level1"
-                             AutomationProperties.Name="{utils:ResourceString Name=NumberPad/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                             AutomationProperties.Name="{utils:ResourceString Name=NumberPad/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                              ButtonStyle="{StaticResource NumericButtonStyle18}"
                              TabIndex="10"
                              TabNavigation="Local"/>
@@ -771,7 +771,7 @@
                                        FontSize="16"
                                        common:KeyboardShortcutManager.Character="{utils:ResourceString Name=converterNegateButton/[using:CalculatorApp.Common]KeyboardShortcutManager/Character}"
                                        common:KeyboardShortcutManager.VirtualKey="{utils:ResourceVirtualKey Name=converterNegateButton/[using:CalculatorApp.Common]KeyboardShortcutManager/VirtualKey}"
-                                       AutomationProperties.Name="{utils:ResourceString Name=converterNegateButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                       AutomationProperties.Name="{utils:ResourceString Name=converterNegateButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                        ButtonId="Negate"
                                        Content="&#xF898;"
                                        TabIndex="6"

@@ -789,7 +789,7 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
             }
 
             List<Unit> units = activeDataLoader.GetOrderedUnits(category);
-            m_categoryToUnits[category.id] = units;
+            m_categoryToUnits.Add(category.id, units);
 
             // Just because the units are empty, doesn't mean the user can't select this category,
             // we just want to make sure we don't let an unready category be the default.
@@ -918,7 +918,8 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
         }
 
         var conversionTable = m_ratioMap[m_fromType];
-        if (AnyUnitIsEmpty() || (conversionTable[m_toType].ratio == 1.0 && conversionTable[m_toType].offset == 0.0))
+        if (AnyUnitIsEmpty() || ( conversionTable.FirstOrDefault(x=>x.Key.id == m_fromType.id) is { } aaa &&
+            aaa.Value.ratio == 1.0 && conversionTable.FirstOrDefault(x => x.Key.id == m_toType.id) is { } bbb && bbb.Value.offset == 0.0))
         {
             m_returnDisplay = m_currentDisplay;
             m_returnHasDecimal = m_currentHasDecimal;

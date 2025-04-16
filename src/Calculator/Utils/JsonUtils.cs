@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
-using CalculatorApp.ViewModelNative.Snapshot;
+using CalculatorApp.ViewModel.Snapshot;
 using Windows.ApplicationModel;
 
 namespace CalculatorApp.JsonUtils
@@ -44,7 +44,7 @@ namespace CalculatorApp.JsonUtils
         public UnaryCommand Value;
 
         [JsonPropertyName("c")]
-        public IReadOnlyList<int> Commands
+        public List<int> Commands
         {
             get => Value.Commands;
             set => Value.Commands = value;
@@ -94,7 +94,7 @@ namespace CalculatorApp.JsonUtils
             set => Value.IsSciFmt = value;
         }
         [JsonPropertyName("c")]
-        public IReadOnlyList<int> Commands
+        public List<int> Commands
         {
             get => Value.Commands;
             set => Value.Commands = value;

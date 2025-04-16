@@ -311,79 +311,20 @@
     <Version Condition="'$(Version)' == ''">0.0.0.0</Version>
   </PropertyGroup>
   <ItemGroup>
-    <ResourceCompile Include="CalcViewModel.rc" PreprocessorDefinitions="%(PreprocessorDefinitions);APP_VERSION_MAJOR=$(Version.Split(`.`)[0]);APP_VERSION_MINOR=$(Version.Split(`.`)[1]);APP_VERSION_BUILD=$(Version.Split(`.`)[2]);APP_VERSION_REVISION=$(Version.Split(`.`)[3])" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Common\AppResourceProvider.h" />
-    <ClInclude Include="Common\Automation\NarratorAnnouncement.h" />
-    <ClInclude Include="Common\Automation\NarratorNotifier.h" />
-    <ClInclude Include="Common\BitLength.h" />
-    <ClInclude Include="Common\CalculatorButtonPressedEventArgs.h" />
-    <ClInclude Include="Common\CalculatorButtonUser.h" />
-    <ClInclude Include="Common\CalculatorDisplay.h" />
-    <ClInclude Include="Common\CopyPasteManager.h" />
-    <ClInclude Include="Common\DateCalculator.h" />
-    <ClInclude Include="Common\DelegateCommand.h" />
-    <ClInclude Include="Common\DisplayExpressionToken.h" />
-    <ClInclude Include="Common\EngineResourceProvider.h" />
-    <ClInclude Include="Common\ExpressionCommandDeserializer.h" />
-    <ClInclude Include="Common\ExpressionCommandSerializer.h" />
-    <ClInclude Include="Common\LocalizationService.h" />
-    <ClInclude Include="Common\LocalizationSettings.h" />
-    <ClInclude Include="Common\LocalizationStringUtil.h" />
-    <ClInclude Include="Common\MyVirtualKey.h" />
-    <ClInclude Include="Common\NavCategory.h" />
-    <ClInclude Include="Common\NetworkManager.h" />
-    <ClInclude Include="Common\NumberBase.h" />
-    <ClInclude Include="Common\RadixType.h" />
-    <ClInclude Include="Common\TraceLogger.h" />
     <ClInclude Include="Common\Utils.h" />
-    <ClInclude Include="DataLoaders\CurrencyDataLoader.h" />
-    <ClInclude Include="DataLoaders\CurrencyHttpClient.h" />
-    <ClInclude Include="DataLoaders\UnitConverterDataConstants.h" />
-    <ClInclude Include="DataLoaders\UnitConverterDataLoader.h" />
-    <ClInclude Include="DateCalculatorViewModel.h" />
-    <ClInclude Include="GraphingCalculatorEnums.h" />
-    <ClInclude Include="GraphingCalculator\EquationViewModel.h" />
-    <ClInclude Include="GraphingCalculator\GraphingCalculatorViewModel.h" />
-    <ClInclude Include="GraphingCalculator\VariableViewModel.h" />
-    <ClInclude Include="GraphingCalculator\GraphingSettingsViewModel.h" />
-    <ClInclude Include="HistoryItemViewModel.h" />
-    <ClInclude Include="HistoryViewModel.h" />
-    <ClInclude Include="MemoryItemViewModel.h" />
+    <!--    <ClInclude Include="GraphingCalculatorEnums.h" />-->
+    <!--    <ClInclude Include="GraphingCalculator\EquationViewModel.h" />-->
+    <!--    <ClInclude Include="GraphingCalculator\GraphingCalculatorViewModel.h" />-->
+    <!--    <ClInclude Include="GraphingCalculator\VariableViewModel.h" />-->
+    <!--    <ClInclude Include="GraphingCalculator\GraphingSettingsViewModel.h" />-->
     <ClInclude Include="pch.h" />
-    <ClInclude Include="Snapshots.h" />
-    <ClInclude Include="StandardCalculatorViewModel.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="UnitConverterViewModel.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Common\AppResourceProvider.cpp" />
-    <ClCompile Include="Common\Automation\NarratorAnnouncement.cpp" />
-    <ClCompile Include="Common\Automation\NarratorNotifier.cpp" />
-    <ClCompile Include="Common\CalculatorButtonPressedEventArgs.cpp" />
-    <ClCompile Include="Common\CalculatorDisplay.cpp" />
-    <ClCompile Include="Common\CopyPasteManager.cpp" />
-    <ClCompile Include="Common\DateCalculator.cpp" />
-    <ClCompile Include="Common\EngineResourceProvider.cpp" />
-    <ClCompile Include="Common\ExpressionCommandDeserializer.cpp" />
-    <ClCompile Include="Common\ExpressionCommandSerializer.cpp" />
-    <ClCompile Include="Common\LocalizationService.cpp" />
-    <ClCompile Include="Common\NavCategory.cpp" />
-    <ClCompile Include="Common\NetworkManager.cpp" />
-    <ClCompile Include="Common\RadixType.cpp" />
-    <ClCompile Include="Common\TraceLogger.cpp" />
     <ClCompile Include="Common\Utils.cpp" />
-    <ClCompile Include="DataLoaders\CurrencyDataLoader.cpp" />
-    <ClCompile Include="DataLoaders\CurrencyHttpClient.cpp" />
-    <ClCompile Include="DataLoaders\UnitConverterDataLoader.cpp" />
-    <ClCompile Include="DateCalculatorViewModel.cpp" />
-    <ClCompile Include="GraphingCalculator\EquationViewModel.cpp" />
-    <ClCompile Include="GraphingCalculator\GraphingCalculatorViewModel.cpp" />
-    <ClCompile Include="GraphingCalculator\GraphingSettingsViewModel.cpp" />
-    <ClCompile Include="HistoryItemViewModel.cpp" />
-    <ClCompile Include="HistoryViewModel.cpp" />
-    <ClCompile Include="MemoryItemViewModel.cpp" />
+    <!--    <ClCompile Include="GraphingCalculator\EquationViewModel.cpp" />-->
+    <!--    <ClCompile Include="GraphingCalculator\GraphingCalculatorViewModel.cpp" />-->
+    <!--    <ClCompile Include="GraphingCalculator\GraphingSettingsViewModel.cpp" />-->
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -394,23 +335,14 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Snapshots.cpp" />
-    <ClCompile Include="StandardCalculatorViewModel.cpp" />
-    <ClCompile Include="UnitConverterViewModel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CalcManager\CalcManager.vcxproj">
       <Project>{311e866d-8b93-4609-a691-265941fee101}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\GraphControl\GraphControl.vcxproj">
-      <Project>{e727a92b-f149-492c-8117-c039a298719b}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\TraceLogging\TraceLogging.vcxproj">
       <Project>{fc81ff41-02cd-4cd9-9bc5-45a1e39ac6ed}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="DataLoaders\DefaultFromToCurrency.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,195 +1,89 @@
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License.
-
-//
-// App.xaml.h
-// Declaration of the App class.
-//
-
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Navigation;
+using Microsoft.UI.Xaml.Shapes;
+using Microsoft.Windows.AppLifecycle;
 using System;
-using System.Diagnostics;
-using System.Threading.Tasks;
-
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
-using Windows.Storage;
-using Windows.UI.StartScreen;
-using Windows.UI.ViewManagement;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
+using Windows.Foundation;
+using Windows.Foundation.Collections;
+using CalculatorApp;
 
-using CalculatorApp.Utils;
-using CalculatorApp.ViewModelNative.Common;
-using CalculatorApp.ViewModelNative.Common.Automation;
+// To learn more about WinUI, the WinUI project structure,
+// and more about our project templates, see: http://aka.ms/winui-project-info.
 
 namespace CalculatorApp
 {
     /// <summary>
     /// Provides application-specific behavior to supplement the default Application class.
     /// </summary>
-    public sealed partial class App
+    public partial class App : Application
     {
         /// <summary>
-        /// Initializes the singleton application object. This is the first line of authored code
+        /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
         /// </summary>
         public App()
         {
-            InitializeComponent();
-            NarratorNotifier.RegisterDependencyProperties();
-
-            // TODO: MSFT 14645325: Set this directly from XAML.
-            // Currently this is bugged so the property is only respected from code-behind.
-            HighContrastAdjustment = ApplicationHighContrastAdjustment.None;
-            Suspending += OnSuspending;
-#if DEBUG
-            DebugSettings.IsBindingTracingEnabled = true;
-            DebugSettings.BindingFailed += (sender, args) =>
-            {
-                if (Debugger.IsAttached)
-                {
-                    string errorMessage = args.Message;
-                    Debugger.Break();
-                }
-            };
-#endif
+            this.InitializeComponent();
         }
 
         /// <summary>
-        /// Invoked when the application is launched normally by the end user. Other entry points
-        /// will be used when the application is launched to open a specific file, to display
-        /// search results, and so forth.
+        /// Invoked when the application is launched normally by the end user.  Other entry points
+        /// will be used such as when the application is launched to open a specific file.
         /// </summary>
-        /// <param name="e">Details about the launch request and process.</param>
-        protected override void OnLaunched(LaunchActivatedEventArgs args)
+        /// <param name="args">Details about the launch request and process.</param>
+        protected override async void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs e)
         {
-            NavCategoryStates.SetCurrentUser(args.User.NonRoamableId);
+            // TODO This code defaults the app to a single instance app. If you need multi instance app, remove this part.
+            // Read: https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/applifecycle#single-instancing-in-applicationonlaunched
+            // If this is the first instance launched, then register it as the "main" instance.
+            // If this isn't the first instance launched, then "main" will already be registered,
+            // so retrieve it.
+            var mainInstance = Microsoft.Windows.AppLifecycle.AppInstance.FindOrRegisterForKey("main");
+            var activatedEventArgs = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
 
-            // It takes time to check GraphingMode at the very first time. Warm up in a background thread.
-            Task.Run(() => NavCategoryStates.IsViewModeEnabled(ViewMode.Graphing));
-
-            OnAppLaunch(args, args.Arguments, args.PrelaunchActivated);
-        }
-
-        protected override void OnActivated(IActivatedEventArgs args)
-        {
-            if (args.Kind != ActivationKind.Protocol)
+            // If the instance that's executing the OnLaunched handler right now
+            // isn't the "main" instance.
+            if (!mainInstance.IsCurrent)
             {
-                return;
-            }
-            else if (args.TryGetSnapshotProtocol(out var protoArgs))
-            {
-                OnAppLaunch(args, protoArgs.GetSnapshotLaunchArgs(), false);
-            }
-            else
-            {
-                // handle any unknown protocol launch as a normal app launch.
-                OnAppLaunch(args, null, false);
-            }
-        }
-
-        private void OnAppLaunch(IActivatedEventArgs args, object arguments, bool isPreLaunch)
-        {
-            // Uncomment the following lines to display frame-rate and per-frame CPU usage info.
-            //#if DEBUG
-            //    if (IsDebuggerPresent())
-            //    {
-            //        DebugSettings.EnableFrameRateCounter = true;
-            //    }
-            //#endif
-
-            args.SplashScreen.Dismissed += async (_, __) => await SetupJumpListAsync();
-
-            var minWindowWidth = Convert.ToSingle(Resources["AppMinWindowWidth"]);
-            var minWindowHeight = Convert.ToSingle(Resources["AppMinWindowHeight"]);
-            var minWindowSize = SizeHelper.FromDimensions(minWindowWidth, minWindowHeight);
-            var appView = ApplicationView.GetForCurrentView();
-            var localSettings = ApplicationData.Current.LocalSettings;
-
-            // SetPreferredMinSize should always be called before Window.Activate
-            appView.SetPreferredMinSize(minWindowSize);
-
-            // For very first launch, set the size of the calc as size of the default standard mode
-            if (!localSettings.Values.ContainsKey("VeryFirstLaunch"))
-            {
-                localSettings.Values["VeryFirstLaunch"] = false;
-                appView.TryResizeView(minWindowSize); // the requested size must not be less than the min size.
-            }
-            else
-            {
-                ApplicationView.PreferredLaunchWindowingMode = ApplicationViewWindowingMode.Auto;
-            }
-
-            // Do not repeat app initialization when the Window already has content,
-            // just ensure that the window is active
-            var rootFrame = Window.Current.Content as Frame;
-            if (rootFrame == null)
-            {
-                rootFrame = new Frame
-                {
-                    FlowDirection = LocalizationService.GetInstance().GetFlowDirection()
-                };
-            }
-
-            if (isPreLaunch)
-            {
+                // Redirect the activation (and args) to the "main" instance, and exit.
+                await mainInstance.RedirectActivationToAsync(activatedEventArgs);
+                System.Diagnostics.Process.GetCurrentProcess().Kill();
                 return;
             }
 
-            // When the navigation stack isn't restored navigate to the first page,
-            // configuring the new page by passing required information as a navigation
-            // parameter
-            if (rootFrame.Content == null && !rootFrame.Navigate(typeof(MainPage), arguments))
+            // TODO This code handles app activation types. Add any other activation kinds you want to handle.
+            // Read: https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/applifecycle#file-type-association
+            if (activatedEventArgs.Kind == ExtendedActivationKind.File)
             {
-                // We couldn't navigate to the main page, kill the app so we have a good
-                // stack to debug
-                throw new SystemException("6d430286-eb5d-4f8d-95d2-3d1059552968");
+                OnFileActivated(activatedEventArgs);
             }
 
-            // Place the frame in the current Window
-            Window.Current.Content = rootFrame;
-            ThemeHelper.InitializeAppTheme();
-            Window.Current.Activate();
+            // Initialize MainWindow here
+            Window = new MainWindow();
+            Window.Activate();
+            WindowHandle = WinRT.Interop.WindowNative.GetWindowHandle(Window);
         }
 
-        private void OnSuspending(object sender, SuspendingEventArgs args)
+        // TODO This is an example method for the case when app is activated through a file.
+        // Feel free to remove this if you do not need this.
+        public void OnFileActivated(AppActivationArguments activatedEventArgs)
         {
-            TraceLogger.GetInstance().LogButtonUsage();
+
         }
 
-        private async Task SetupJumpListAsync()
-        {
-            try
-            {
-                var calculatorOptions = NavCategoryStates.CreateCalculatorCategoryGroup();
+        public static MainWindow Window { get; private set; }
 
-                var jumpList = await JumpList.LoadCurrentAsync();
-                jumpList.SystemGroupKind = JumpListSystemGroupKind.None;
-                jumpList.Items.Clear();
-
-                foreach (NavCategory option in calculatorOptions.Categories)
-                {
-                    if (!NavCategoryStates.IsViewModeEnabled(option.ViewMode))
-                    {
-                        continue;
-                    }
-                    ViewMode mode = option.ViewMode;
-                    var item = JumpListItem.CreateWithArguments(((int)mode).ToString(), "ms-resource:///Resources/" + NavCategoryStates.GetNameResourceKey(mode));
-                    item.Description = "ms-resource:///Resources/" + NavCategoryStates.GetNameResourceKey(mode);
-                    item.Logo = new Uri("ms-appx:///Assets/" + mode + ".png");
-                    jumpList.Items.Add(item);
-                }
-
-                await jumpList.SaveAsync();
-            }
-            catch (Exception ex)
-            {
-                TraceLogger.GetInstance().LogError(ViewMode.None, nameof(SetupJumpListAsync), ex.ToString());
-#if DEBUG
-                throw;
-#endif
-            }
-        }
+        public static IntPtr WindowHandle { get; private set; }
     }
 }
-

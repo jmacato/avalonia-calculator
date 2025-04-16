@@ -1,6 +1,6 @@
 using CalculatorApp.Utils;
-using CalculatorApp.ViewModelNative.Common;
-using CalculatorApp.ViewModelNative.Common.Automation;
+using CalculatorApp.ViewModel.Common;
+using CalculatorApp.ViewModel.Common.Automation;
 
 using System;
 using System.Diagnostics;
@@ -8,11 +8,12 @@ using System.Linq;
 
 using Windows.ApplicationModel;
 using Windows.System;
+using Microsoft.Windows.System;
 using Windows.UI.Core;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Automation.Peers;
-using Windows.UI.Xaml.Automation.Provider;
-using Windows.UI.Xaml.Controls;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Automation.Provider;
+using Microsoft.UI.Xaml.Controls;
 
 // The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
 
@@ -22,7 +23,7 @@ namespace CalculatorApp
     {
         private const string BUILD_YEAR = "2025";
 
-        public event Windows.UI.Xaml.RoutedEventHandler BackButtonClick;
+        public event Microsoft.UI.Xaml.RoutedEventHandler BackButtonClick;
 
         public GridLength TitleBarHeight
         {
@@ -66,7 +67,15 @@ namespace CalculatorApp
         // OnLoaded would be invoked by Popup several times while contructed once
         private void OnLoaded(object sender, RoutedEventArgs args)
         {
-            SystemNavigationManager.GetForCurrentView().BackRequested += System_BackRequested;
+            /*
+                TODO Default back button in the title bar does not exist in WinUI3 apps.
+                The tool has generated a custom back button in the MainWindow.xaml.cs file.
+                Feel free to edit its position, behavior and use the custom back button instead.
+                Read: https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/case-study-1#restoring-back-button-functionality
+            */
+            //SystemNavigationManager.GetForCurrentView().BackRequested += System_BackRequested;
+
+            MainWindow.CurrentInstance.BackButton.Click += System_BackRequested;
 
             AnnouncePageOpened();
 
@@ -79,7 +88,7 @@ namespace CalculatorApp
         private void AnnouncePageOpened()
         {
             string announcementText = AppResourceProvider.GetInstance().GetResourceString("SettingsPageOpenedAnnouncement");
-            NarratorAnnouncement announcement = CalculatorAnnouncement.GetSettingsPageOpenedAnnouncement(announcementText);
+            NarratorAnnouncement announcement = NarratorAnnouncement.GetSettingsPageOpenedAnnouncement(announcementText);
             NarratorNotifier.Announce(announcement);
         }
 
@@ -89,7 +98,8 @@ namespace CalculatorApp
             // back to the default state
             AppThemeExpander.IsExpanded = false;
 
-            SystemNavigationManager.GetForCurrentView().BackRequested -= System_BackRequested;
+            MainWindow.CurrentInstance.BackButton.Click -= System_BackRequested;
+            //SystemNavigationManager.GetForCurrentView().BackRequested -= System_BackRequested;
         }
 
         private void FeedbackButton_Click(object sender, RoutedEventArgs e)
@@ -139,15 +149,15 @@ namespace CalculatorApp
             ContributeRunAfterLink.Text = contributeTextAfterHyperlink;
         }
 
-        private void System_BackRequested(object sender, BackRequestedEventArgs e)
+        private void System_BackRequested(object sender, RoutedEventArgs e)
         {
-            if (!e.Handled && BackButton.IsEnabled)
+            //if (!e.Handled && BackButton.IsEnabled)
             {
                 var buttonPeer = new ButtonAutomationPeer(BackButton);
                 IInvokeProvider invokeProvider = buttonPeer.GetPattern(PatternInterface.Invoke) as IInvokeProvider;
                 invokeProvider.Invoke();
 
-                e.Handled = true;
+                //e.Handled = true;
             }
         }
 

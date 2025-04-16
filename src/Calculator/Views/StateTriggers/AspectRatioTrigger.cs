@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
 /* The AspectRatioTrigger class is a custom trigger for use with a VisualState. The trigger is designed to fire when the
@@ -10,7 +10,7 @@
 using System;
 
 using Windows.Foundation;
-using Windows.UI.Xaml;
+using Microsoft.UI.Xaml;
 
 namespace CalculatorApp.Views.StateTriggers
 {
@@ -20,7 +20,7 @@ namespace CalculatorApp.Views.StateTriggers
         Width
     };
 
-    public sealed class AspectRatioTrigger : Windows.UI.Xaml.StateTriggerBase
+    public sealed class AspectRatioTrigger : Microsoft.UI.Xaml.StateTriggerBase
     {
         public AspectRatioTrigger()
         {

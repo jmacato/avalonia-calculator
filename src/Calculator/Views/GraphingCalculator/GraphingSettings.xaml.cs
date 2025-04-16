@@ -5,13 +5,14 @@
 
 
 //using Graphing;
-using CalculatorApp.ViewModelNative;
-using CalculatorApp.ViewModelNative.Common;
-
+using CalculatorApp.ViewModel;
+using CalculatorApp.ViewModel.Common;
+using GraphControl;
 using Windows.Storage;
 using Windows.System;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Input;
+using Microsoft.Windows.System;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Input;
 
 namespace CalculatorApp
 {
@@ -25,7 +26,7 @@ namespace CalculatorApp
             InitializeComponent();
         }
 
-        public CalculatorApp.ViewModelNative.GraphingSettingsViewModel ViewModel { get; set; }
+        public GraphingSettingsViewModel ViewModel { get; set; }
 
         public bool IsMatchAppTheme
         {
@@ -54,7 +55,7 @@ namespace CalculatorApp
             }
         }
 
-        public void SetGrapher(GraphControl.Grapher grapher)
+        public void SetGrapher(Grapher grapher)
         {
             ViewModel.SetGrapher(grapher);
         }
@@ -112,7 +113,7 @@ namespace CalculatorApp
             ApplicationDataContainer localSettings = ApplicationData.Current.LocalSettings;
             localSettings.Values["IsGraphThemeMatchApp"] = isMatchAppTheme;
             GraphThemeSettingChanged?.Invoke(this, isMatchAppTheme);
-            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphSettingsChanged(GraphSettingsType.Theme, propertyName);
+            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphSettingsChanged(GraphSettingsType.Theme, propertyName);
         }
 
         private bool m_IsMatchAppTheme;

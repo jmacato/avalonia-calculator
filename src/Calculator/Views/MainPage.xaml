@@ -1,7 +1,7 @@
 <Page x:Class="CalculatorApp.MainPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      xmlns:automation="using:CalculatorApp.ViewModelNative.Common.Automation"
+      xmlns:automation="using:CalculatorApp.ViewModel.Common.Automation"
       xmlns:common="using:CalculatorApp.Common"
       xmlns:converters="using:CalculatorApp.Converters"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -10,10 +10,9 @@
       xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
       xmlns:selectors="using:CalculatorApp.TemplateSelectors"
       xmlns:utils="using:CalculatorApp.Utils"
-      xmlns:vmcom="using:CalculatorApp.ViewModelNative.Common"
+      xmlns:vmcom="using:CalculatorApp.ViewModel.Common"
       x:Name="PageRoot"
-      muxc:BackdropMaterial.ApplyToRootOrPageBackground="True"
-      Loaded="OnPageLoaded"
+       Loaded="OnPageLoaded"
       mc:Ignorable="d">
 
     <Page.Resources>
@@ -166,11 +165,11 @@
                             Grid.Column="2"
                             Style="{StaticResource SquareIconButtonStyle}"
                             AutomationProperties.AutomationId="NormalAlwaysOnTopButton"
-                            AutomationProperties.Name="{utils:ResourceString Name=EnterAlwaysOnTopButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                            AutomationProperties.Name="{utils:ResourceString Name=EnterAlwaysOnTopButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                             Click="AlwaysOnTopButtonClick"
                             Content="&#xEE49;"
                             TabIndex="3"
-                            ToolTipService.ToolTip="{utils:ResourceString Name=EnterAlwaysOnTopButton/[using:Windows.UI.Xaml.Controls]ToolTipService/ToolTip}"
+                            ToolTipService.ToolTip="{utils:ResourceString Name=EnterAlwaysOnTopButton/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}"
                             Visibility="{x:Bind Model.DisplayNormalAlwaysOnTopOption, Mode=OneWay}">
                         <Button.KeyboardAccelerators>
                             <KeyboardAccelerator Key="Up" Modifiers="Menu"/>

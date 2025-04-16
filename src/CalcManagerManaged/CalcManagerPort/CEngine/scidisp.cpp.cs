@@ -265,7 +265,7 @@ public partial class CCalcEngine
             if (endIndex > index)
             {
                 // Parse the number
-                if (uint32_t.TryParse(str.AsSpan(index, endIndex - index), out var currentGroup))
+                if (uint32_t.TryParse(str.Substring(index, endIndex - index), out var currentGroup))
                 {
                     // If we successfully parsed a group, add it to the grouping
                     if (currentGroup < MAX_GROUPING_SIZE)

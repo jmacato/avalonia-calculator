@@ -560,7 +560,7 @@
                           VerticalAlignment="Center"
                           Style="{StaticResource ConditionalGraphModeToggleSwitchStyle}"
                           AutomationProperties.AutomationId="SwitchModeToggleButton"
-                          AutomationProperties.Name="{utils:ResourceString Name=SwitchModeToggleButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                          AutomationProperties.Name="{utils:ResourceString Name=SwitchModeToggleButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                           Toggled="SwitchModeToggleButton_Toggled"
                           ToolTipService.ToolTip="{x:Bind local:GraphingCalculator.GetInfoForSwitchModeToggleButton(SwitchModeToggleButton.IsOn), Mode=OneWay}"
                           Visibility="Collapsed"/>
@@ -584,7 +584,7 @@
                     </ResourceDictionary.ThemeDictionaries>
                 </ResourceDictionary>
             </Grid.Resources>
-            <graphControl:Grapher Name="GraphingControl"
+            <graphControl:Grapher x:Name="GraphingControl"
                                   AutomationProperties.Name="{x:Bind GraphControlAutomationName, Mode=OneWay}"
                                   ForceProportionalAxes="False"
                                   GraphPlottedEvent="GraphingControl_GraphPlottedEvent"
@@ -644,9 +644,9 @@
                             Margin="0,4,0,4"
                             Style="{ThemeResource ThemedGraphButtonStyle}"
                             contract7Present:CornerRadius="{ThemeResource ControlCornerRadius}"
-                            AutomationProperties.Name="{utils:ResourceString Name=shareButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                            AutomationProperties.Name="{utils:ResourceString Name=shareButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                             Click="OnShareClick"
-                            ToolTipService.ToolTip="{utils:ResourceString Name=shareButton/[using:Windows.UI.Xaml.Controls]ToolTipService/ToolTip}">
+                            ToolTipService.ToolTip="{utils:ResourceString Name=shareButton/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}">
                         <FontIcon FontFamily="{StaticResource CalculatorFontFamily}"
                                   FontSize="16"
                                   Glyph="&#xE72D;"/>
@@ -657,9 +657,9 @@
                             Margin="4"
                             Style="{ThemeResource ThemedGraphButtonStyle}"
                             contract7Present:CornerRadius="{ThemeResource ControlCornerRadius}"
-                            AutomationProperties.Name="{utils:ResourceString Name=graphSettingsButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                            AutomationProperties.Name="{utils:ResourceString Name=graphSettingsButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                             Click="GraphSettingsButton_Click"
-                            ToolTipService.ToolTip="{utils:ResourceString Name=graphSettingsButton/[using:Windows.UI.Xaml.Controls]ToolTipService/ToolTip}">
+                            ToolTipService.ToolTip="{utils:ResourceString Name=graphSettingsButton/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}">
                         <FontIcon FontFamily="{StaticResource CalculatorFontFamily}"
                                   FontSize="16"
                                   Glyph="&#xE3B4;"/>
@@ -711,9 +711,9 @@
                                   FontFamily="{StaticResource CalculatorFontFamily}"
                                   contract7Present:CornerRadius="{ThemeResource ControlCornerRadius}"
                                   AutomationProperties.AutomationId="zoomInButton"
-                                  AutomationProperties.Name="{utils:ResourceString Name=zoomInButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                  AutomationProperties.Name="{utils:ResourceString Name=zoomInButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                   Command="{x:Bind ZoomInButtonPressed, Mode=OneTime}"
-                                  ToolTipService.ToolTip="{utils:ResourceString Name=zoomInButton/[using:Windows.UI.Xaml.Controls]ToolTipService/ToolTip}">
+                                  ToolTipService.ToolTip="{utils:ResourceString Name=zoomInButton/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}">
                         <FontIcon FontFamily="{StaticResource CalculatorFontFamily}"
                                   FontSize="14"
                                   Glyph="&#xE948;"/>
@@ -730,9 +730,9 @@
                                   FontFamily="{StaticResource CalculatorFontFamily}"
                                   contract7Present:CornerRadius="{ThemeResource ControlCornerRadius}"
                                   AutomationProperties.AutomationId="zoomOutButton"
-                                  AutomationProperties.Name="{utils:ResourceString Name=zoomOutButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                  AutomationProperties.Name="{utils:ResourceString Name=zoomOutButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                   Command="{x:Bind ZoomOutButtonPressed, Mode=OneTime}"
-                                  ToolTipService.ToolTip="{utils:ResourceString Name=zoomOutButton/[using:Windows.UI.Xaml.Controls]ToolTipService/ToolTip}">
+                                  ToolTipService.ToolTip="{utils:ResourceString Name=zoomOutButton/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}">
                         <FontIcon FontFamily="{StaticResource CalculatorFontFamily}"
                                   FontSize="14"
                                   Glyph="&#xE949;"/>
@@ -747,10 +747,10 @@
                                   common:KeyboardShortcutManager.VirtualKeyControlChord="{utils:ResourceVirtualKey Name=graphViewButton/[using:CalculatorApp.Common]KeyboardShortcutManager/VirtualKeyControlChord}"
                                   contract7Present:CornerRadius="{ThemeResource ControlCornerRadius}"
                                   AutomationProperties.AutomationId="graphViewButton"
-                                  AutomationProperties.Name="{utils:ResourceString Name=graphViewButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                  AutomationProperties.Name="{utils:ResourceString Name=graphViewButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                   Click="GraphViewButton_Click"
                                   IsChecked="{x:Bind IsManualAdjustment, Mode=TwoWay}"
-                                  ToolTipService.ToolTip="{utils:ResourceString Name=graphViewButton/[using:Windows.UI.Xaml.Controls]ToolTipService/ToolTip}">
+                                  ToolTipService.ToolTip="{utils:ResourceString Name=graphViewButton/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}">
                         <ToggleButton.Content>
                             <Grid>
                                 <FontIcon FontFamily="{StaticResource CalculatorFontFamily}"

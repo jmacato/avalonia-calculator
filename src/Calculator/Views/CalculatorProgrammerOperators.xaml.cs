@@ -2,12 +2,12 @@
 // Licensed under the MIT License.
 
 using CalculatorApp.Controls;
-using CalculatorApp.ViewModelNative;
-using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModel;
+using CalculatorApp.ViewModel.Common;
 
 using System.Diagnostics;
 
-using Windows.UI.Xaml;
+using Microsoft.UI.Xaml;
 
 namespace CalculatorApp
 {

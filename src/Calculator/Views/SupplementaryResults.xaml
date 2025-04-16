@@ -8,7 +8,7 @@
              xmlns:local="using:CalculatorApp"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:utils="using:CalculatorApp.Utils"
-             xmlns:vm="using:CalculatorApp.ViewModelNative"
+             xmlns:vm="using:CalculatorApp.ViewModel"
              d:DesignHeight="300"
              d:DesignWidth="400"
              mc:Ignorable="d">
@@ -31,7 +31,7 @@
                            Foreground="{ThemeResource SystemControlPageTextBaseMediumBrush}"
                            AutomationProperties.AutomationId="SupplementaryResultUnit"
                            IsTextScaleFactorEnabled="False"
-                           Text="{x:Bind Unit.Abbreviation}"/>
+                           Text="{x:Bind Unit.abbreviation}"/>
             </StackPanel>
         </DataTemplate>
 
@@ -56,7 +56,7 @@
                            Foreground="{ThemeResource SystemControlPageTextBaseMediumBrush}"
                            AutomationProperties.AutomationId="DelighterResultUnit"
                            IsTextScaleFactorEnabled="False"
-                           Text="{x:Bind Unit.Abbreviation}"/>
+                           Text="{x:Bind Unit.abbreviation}"/>
             </StackPanel>
         </DataTemplate>
 

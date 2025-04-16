@@ -68,11 +68,11 @@ public partial class CalculatorHistory
         return (uint)(m_historyItems.Count - 1);
     }
 
-    public bool RemoveItem(uint uIdx)
+    public bool RemoveItem(int uIdx)
     {
         if (uIdx < m_historyItems.Count)
         {
-            m_historyItems.RemoveAt((int)uIdx);
+            m_historyItems.RemoveAt(uIdx);
             //m_historyItems.erase(m_historyItems.begin() + uIdx);
             return true;
         }

@@ -8,7 +8,7 @@ namespace CalculatorApp
     namespace Converters
     {
         [Windows.Foundation.Metadata.WebHostHidden]
-        public sealed class ItemSizeToVisibilityConverter : Windows.UI.Xaml.Data.IValueConverter
+        public sealed class ItemSizeToVisibilityConverter : Microsoft.UI.Xaml.Data.IValueConverter
         {
             public object Convert(object value, Type targetType, object parameter, string language)
             {
@@ -22,7 +22,7 @@ namespace CalculatorApp
             }
         }
 
-        public sealed class ItemSizeToVisibilityNegationConverter : Windows.UI.Xaml.Data.IValueConverter
+        public sealed class ItemSizeToVisibilityNegationConverter : Microsoft.UI.Xaml.Data.IValueConverter
         {
             public object Convert(object value, Type targetType, object parameter, string language)
             {

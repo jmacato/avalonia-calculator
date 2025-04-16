@@ -103,9 +103,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="ApplicationViewModel.cs" />
-    <Compile Include="Common\Utilities.cs" />
-    <Compile Include="Common\ViewModelBase.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Snapshots.cpp.cs" />
+    <Compile Include="Snapshots.h.cs" />
     <EmbeddedResource Include="Properties\Calculator.ViewModel.rd.xml" />
   </ItemGroup>
   <ItemGroup>
@@ -117,20 +117,40 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CalcViewModel\CalcViewModel.vcxproj">
-      <Project>{812d1a7b-b8ac-49e4-8e6d-af5d59500d56}</Project>
-      <Name>CalcViewModel</Name>
+    <ProjectReference Include="..\CalcManagerManaged\CalcManagerPort\CalcManagerPort.csproj">
+      <Project>{4f8c29c3-171f-44b5-65f6-8900679102aa}</Project>
+      <Name>CalcManagerPort</Name>
     </ProjectReference>
-    <ProjectReference Include="..\TraceLogging\TraceLogging.vcxproj">
-      <Project>{fc81ff41-02cd-4cd9-9bc5-45a1e39ac6ed}</Project>
-      <Name>TraceLogging</Name>
-    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Common\**\*.cs" />
+    <Compile Include="Staging\**\*.cs" />
+    <Content Include="Common\**\*.cpp" />
+    <Content Include="Common\**\*.h" />
+    <Compile Include="UnitConverterViewModel.cpp.cs" />
+    <Compile Include="UnitConverterViewModel.h.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="DateCalculatorViewModel.cpp.cs" />
+    <Compile Include="DateCalculatorViewModel.h.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Common\CopyPasteManager.cpp.cs" />
+    <Compile Include="Common\CopyPasteManager.h.cs" />
+    <Compile Include="HistoryItemViewModel.cpp.cs" />
+    <Compile Include="HistoryItemViewModel.h.cs" />
+    <Compile Include="HistoryViewModel.cpp.cs" />
+    <Compile Include="HistoryViewModel.h.cs" />
+    <Compile Include="MemoryItemViewModel.cpp.cs" />
+    <Compile Include="MemoryItemViewModel.h.cs" />
+    <Compile Include="StandardCalculatorViewModel.cpp.cs" />
+    <Compile Include="StandardCalculatorViewModel.h.cs" />
   </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\WindowsXaml\v$(VisualStudioVersion)\Microsoft.Windows.UI.Xaml.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
   </Target>

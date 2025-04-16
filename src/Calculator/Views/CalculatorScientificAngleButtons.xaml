@@ -4,7 +4,7 @@
              xmlns:Controls="using:CalculatorApp.Controls"
              xmlns:common="using:CalculatorApp.Common"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:local="using:CalculatorApp.ViewModelNative.Common"
+             xmlns:local="using:CalculatorApp.ViewModel.Common"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:utils="using:CalculatorApp.Utils"
              x:Name="ControlRoot"
@@ -30,7 +30,7 @@
     <Grid x:Name="ScientificAngleOperators"
           Margin="3,0,3,0"
           AutomationProperties.HeadingLevel="Level1"
-          AutomationProperties.Name="{utils:ResourceString Name=ScientificAngleOperators/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}">
+          AutomationProperties.Name="{utils:ResourceString Name=ScientificAngleOperators/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="1*" MaxWidth="80"/>
             <ColumnDefinition Width="1*" MaxWidth="80"/>
@@ -76,7 +76,7 @@
                 Style="{StaticResource CaptionButtonSmallStyle}"
                 common:KeyboardShortcutManager.VirtualKey="{utils:ResourceVirtualKey Name=degButton/[using:CalculatorApp.Common]KeyboardShortcutManager/VirtualKey}"
                 AutomationProperties.AutomationId="degButton"
-                AutomationProperties.Name="{utils:ResourceString Name=degButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                AutomationProperties.Name="{utils:ResourceString Name=degButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                 Command="{x:Bind ButtonPressed}"
                 CommandParameter="0"
                 Content="DEG"/>
@@ -84,7 +84,7 @@
                 Style="{StaticResource CaptionButtonSmallStyle}"
                 common:KeyboardShortcutManager.VirtualKey="{utils:ResourceVirtualKey Name=radButton/[using:CalculatorApp.Common]KeyboardShortcutManager/VirtualKey}"
                 AutomationProperties.AutomationId="radButton"
-                AutomationProperties.Name="{utils:ResourceString Name=radButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                AutomationProperties.Name="{utils:ResourceString Name=radButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                 Command="{x:Bind ButtonPressed}"
                 CommandParameter="1"
                 Content="RAD"
@@ -93,7 +93,7 @@
                 Style="{StaticResource CaptionButtonSmallStyle}"
                 common:KeyboardShortcutManager.VirtualKey="{utils:ResourceVirtualKey Name=gradButton/[using:CalculatorApp.Common]KeyboardShortcutManager/VirtualKey}"
                 AutomationProperties.AutomationId="gradButton"
-                AutomationProperties.Name="{utils:ResourceString Name=gradButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                AutomationProperties.Name="{utils:ResourceString Name=gradButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                 Command="{x:Bind ButtonPressed}"
                 CommandParameter="2"
                 Content="GRAD"
@@ -104,7 +104,7 @@
                       Background="{ThemeResource SystemControlBackgroundTransparentBrush}"
                       common:KeyboardShortcutManager.VirtualKey="{utils:ResourceVirtualKey Name=ftoeButton/[using:CalculatorApp.Common]KeyboardShortcutManager/VirtualKey}"
                       AutomationProperties.AutomationId="ftoeButton"
-                      AutomationProperties.Name="{utils:ResourceString Name=ftoeButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                      AutomationProperties.Name="{utils:ResourceString Name=ftoeButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                       Checked="FToEButton_Toggled"
                       Content="F-E"
                       IsChecked="{x:Bind Model.IsFToEChecked, Mode=OneWay}"

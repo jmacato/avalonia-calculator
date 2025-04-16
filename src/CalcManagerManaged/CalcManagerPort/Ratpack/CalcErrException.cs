@@ -8,6 +8,6 @@ public class CalcErrException : Exception
     public CalcErrException(CalcErr _err)
     {
         err = _err;
-        Message = $"CalcError {Enum.GetName(err)}";
+        Message = $"CalcError {Enum.GetName(typeof(CalcErr),err)}";
     }
 }

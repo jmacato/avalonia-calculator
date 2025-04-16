@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 using CalculatorApp.Utils;
-using CalculatorApp.ViewModelNative;
-using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModel;
+using CalculatorApp.ViewModel.Common;
 
 using System;
 using Windows.ApplicationModel.Resources;
@@ -11,11 +11,12 @@ using Windows.Foundation;
 using Windows.Globalization.NumberFormatting;
 using Windows.UI.Core;
 using Windows.UI.ViewManagement;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Automation;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Input;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Windowing;
 
 namespace CalculatorApp
 {
@@ -62,7 +63,7 @@ namespace CalculatorApp
             this.SizeChanged += Calculator_SizeChanged;
         }
 
-        public CalculatorApp.ViewModelNative.StandardCalculatorViewModel Model => (StandardCalculatorViewModel)this.DataContext;
+        public CalculatorApp.ViewModel.StandardCalculatorViewModel Model => (StandardCalculatorViewModel)this.DataContext;
 
         public bool IsStandard
         {
@@ -175,7 +176,7 @@ namespace CalculatorApp
             }
         }
 
-        public void InitializeHistoryView(CalculatorApp.ViewModelNative.HistoryViewModel historyVM)
+        public void InitializeHistoryView(CalculatorApp.ViewModel.HistoryViewModel historyVM)
         {
             if (m_historyList == null)
             {
@@ -246,20 +247,24 @@ namespace CalculatorApp
             string memoryPaneName = AppResourceProvider.GetInstance().GetResourceString("MemoryPane");
             MemoryFlyout.FlyoutPresenterStyle.Setters.Add(new Setter(AutomationProperties.NameProperty, memoryPaneName));
             OnIsInErrorPropertyChanged();
+            GetMemory();
 
-            // Delay load things later when we get a chance.
-            WeakReference weakThis = new WeakReference(this);
-            _ = this.Dispatcher.RunAsync(
-                CoreDispatcherPriority.Normal, () =>
-                {
-                    if (TraceLogger.GetInstance().IsWindowIdInLog(ApplicationView.GetApplicationViewIdForWindow(CoreWindow.GetForCurrentThread())))
-                    {
-                        if (weakThis.Target is Calculator refThis)
-                        {
-                            refThis.GetMemory();
-                        }
-                    }
-                });
+            //// Delay load things later when we get a chance.
+            //WeakReference weakThis = new WeakReference(this);
+            //_ = this.Dispatcher.RunAsync(
+            //    CoreDispatcherPriority.Normal, () =>
+            //    {
+            //        // TODO Windows.UI.ViewManagement.ApplicationView is no longer supported. Use Microsoft.UI.Windowing.AppWindow instead. For more details see https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/windowing
+            //       // if (TraceLogger.GetInstance().IsWindowIdInLog(ApplicationView.GetApplicationViewIdForWindow()))
+            //       {
+
+            //           AppWindow.Create();
+            //            if (weakThis.Target is Calculator refThis)
+            //            {
+            //                refThis.GetMemory();
+            //            }
+            //        }
+            //    });
         }
 
         private void LoadResourceStrings()
@@ -633,7 +638,7 @@ namespace CalculatorApp
             }
         }
 
-        private readonly Windows.UI.Xaml.Controls.MenuFlyout m_displayFlyout;
+        private readonly MenuFlyout m_displayFlyout;
         private bool m_doAnimate;
         private bool m_resultAnimate;
         private bool m_isLastAnimatedInScientific;
@@ -648,7 +653,7 @@ namespace CalculatorApp
         private string m_dockPanelHistoryMemoryLists;
         private string m_dockPanelMemoryList;
 
-        private Windows.UI.Xaml.Controls.PivotItem m_pivotItem;
+        private PivotItem m_pivotItem;
         private Memory m_memory;
 
         private void HistoryFlyout_Opened(object sender, object args)
@@ -876,14 +881,14 @@ namespace CalculatorApp
 
         private string GetMemoryPivotItemUiaString(bool isEmpty)
         {
-            var loader = ResourceLoader.GetForCurrentView();
+            var loader = ResourceLoader.GetForViewIndependentUse();
             var label = loader.GetString("MemoryLabel/Text");
             return isEmpty ? $"{loader.GetString("MemoryPaneEmpty/Text")} {label}" : label;
         }
 
         private string GetHistoryPivotItemUiaString(bool isEmpty)
         {
-            var loader = ResourceLoader.GetForCurrentView();
+            var loader = ResourceLoader.GetForViewIndependentUse();
             var label = loader.GetString("HistoryLabel/Text");
             return isEmpty ? $"{loader.GetString("HistoryEmpty/Text")} {label}" : label;
         }

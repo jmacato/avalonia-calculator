@@ -1,15 +1,15 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModel.Common;
 
 using System;
 using System.Diagnostics;
 
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Automation.Peers;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Input;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace CalculatorApp
 {
@@ -17,7 +17,7 @@ namespace CalculatorApp
     {
         public delegate void SelectedEventHandler(object sender);
 
-        public sealed class CalculationResult : Windows.UI.Xaml.Controls.Control
+        public sealed class CalculationResult : Control
         {
             public CalculationResult()
             {
@@ -469,10 +469,10 @@ namespace CalculatorApp
             // and no events are launched when they scroll again in the same direction
             private const double SCROLL_BUTTONS_APPROXIMATION_RANGE = 4;
 
-            private Windows.UI.Xaml.Controls.ScrollViewer m_textContainer;
-            private Windows.UI.Xaml.Controls.TextBlock m_textBlock;
-            private Windows.UI.Xaml.Controls.HyperlinkButton m_scrollLeft;
-            private Windows.UI.Xaml.Controls.HyperlinkButton m_scrollRight;
+            private ScrollViewer m_textContainer;
+            private TextBlock m_textBlock;
+            private HyperlinkButton m_scrollLeft;
+            private HyperlinkButton m_scrollRight;
             private bool m_isScalingText;
             private bool m_haveCalculatedMax;
         }

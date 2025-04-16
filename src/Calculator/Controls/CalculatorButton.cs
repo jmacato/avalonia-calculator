@@ -1,18 +1,20 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalculatorApp.ViewModelNative.Common;
-
 using Windows.System;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
+using CalculatorApp.ViewModel.Common;
+
+using Microsoft.Windows.System;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Input;
 
 namespace CalculatorApp
 {
     namespace Controls
     {
-        public sealed class CalculatorButton : Windows.UI.Xaml.Controls.Button
+        public sealed class CalculatorButton : Button
         {
             public CalculatorButton()
             {
@@ -53,65 +55,65 @@ namespace CalculatorApp
                     self.OnAuditoryFeedbackPropertyChanged((string)args.OldValue, (string)args.NewValue);
                 }));
 
-            public Windows.UI.Xaml.Media.Brush HoverBackground
+            public Microsoft.UI.Xaml.Media.Brush HoverBackground
             {
-                get => (Windows.UI.Xaml.Media.Brush)GetValue(HoverBackgroundProperty);
+                get => (Microsoft.UI.Xaml.Media.Brush)GetValue(HoverBackgroundProperty);
                 set => SetValue(HoverBackgroundProperty, value);
             }
 
             // Using a DependencyProperty as the backing store for HoverBackground.  This enables animation, styling, binding, etc...
             public static readonly DependencyProperty HoverBackgroundProperty =
-                DependencyProperty.Register(nameof(HoverBackground), typeof(Windows.UI.Xaml.Media.Brush), typeof(CalculatorButton), new PropertyMetadata(default(Windows.UI.Xaml.Media.Brush)));
+                DependencyProperty.Register(nameof(HoverBackground), typeof(Microsoft.UI.Xaml.Media.Brush), typeof(CalculatorButton), new PropertyMetadata(default(Microsoft.UI.Xaml.Media.Brush)));
 
-            public Windows.UI.Xaml.Media.Brush HoverForeground
+            public Microsoft.UI.Xaml.Media.Brush HoverForeground
             {
-                get => (Windows.UI.Xaml.Media.Brush)GetValue(HoverForegroundProperty);
+                get => (Microsoft.UI.Xaml.Media.Brush)GetValue(HoverForegroundProperty);
                 set => SetValue(HoverForegroundProperty, value);
             }
 
             // Using a DependencyProperty as the backing store for HoverForeground.  This enables animation, styling, binding, etc...
             public static readonly DependencyProperty HoverForegroundProperty =
-                DependencyProperty.Register(nameof(HoverForeground), typeof(Windows.UI.Xaml.Media.Brush), typeof(CalculatorButton), new PropertyMetadata(default(Windows.UI.Xaml.Media.Brush)));
+                DependencyProperty.Register(nameof(HoverForeground), typeof(Microsoft.UI.Xaml.Media.Brush), typeof(CalculatorButton), new PropertyMetadata(default(Microsoft.UI.Xaml.Media.Brush)));
 
-            public Windows.UI.Xaml.Media.Brush PressBackground
+            public Microsoft.UI.Xaml.Media.Brush PressBackground
             {
-                get => (Windows.UI.Xaml.Media.Brush)GetValue(PressBackgroundProperty);
+                get => (Microsoft.UI.Xaml.Media.Brush)GetValue(PressBackgroundProperty);
                 set => SetValue(PressBackgroundProperty, value);
             }
 
             // Using a DependencyProperty as the backing store for PressBackground.  This enables animation, styling, binding, etc...
             public static readonly DependencyProperty PressBackgroundProperty =
-                DependencyProperty.Register(nameof(PressBackground), typeof(Windows.UI.Xaml.Media.Brush), typeof(CalculatorButton), new PropertyMetadata(default(Windows.UI.Xaml.Media.Brush)));
+                DependencyProperty.Register(nameof(PressBackground), typeof(Microsoft.UI.Xaml.Media.Brush), typeof(CalculatorButton), new PropertyMetadata(default(Microsoft.UI.Xaml.Media.Brush)));
 
-            public Windows.UI.Xaml.Media.Brush PressForeground
+            public Microsoft.UI.Xaml.Media.Brush PressForeground
             {
-                get => (Windows.UI.Xaml.Media.Brush)GetValue(PressForegroundProperty);
+                get => (Microsoft.UI.Xaml.Media.Brush)GetValue(PressForegroundProperty);
                 set => SetValue(PressForegroundProperty, value);
             }
 
             // Using a DependencyProperty as the backing store for PressForeground.  This enables animation, styling, binding, etc...
             public static readonly DependencyProperty PressForegroundProperty =
-                DependencyProperty.Register(nameof(PressForeground), typeof(Windows.UI.Xaml.Media.Brush), typeof(CalculatorButton), new PropertyMetadata(default(Windows.UI.Xaml.Media.Brush)));
+                DependencyProperty.Register(nameof(PressForeground), typeof(Microsoft.UI.Xaml.Media.Brush), typeof(CalculatorButton), new PropertyMetadata(default(Microsoft.UI.Xaml.Media.Brush)));
 
-            public Windows.UI.Xaml.Media.Brush DisabledBackground
+            public Microsoft.UI.Xaml.Media.Brush DisabledBackground
             {
-                get => (Windows.UI.Xaml.Media.Brush)GetValue(DisabledBackgroundProperty);
+                get => (Microsoft.UI.Xaml.Media.Brush)GetValue(DisabledBackgroundProperty);
                 set => SetValue(DisabledBackgroundProperty, value);
             }
 
             // Using a DependencyProperty as the backing store for DisabledBackground.  This enables animation, styling, binding, etc...
             public static readonly DependencyProperty DisabledBackgroundProperty =
-                DependencyProperty.Register(nameof(DisabledBackground), typeof(Windows.UI.Xaml.Media.Brush), typeof(CalculatorButton), new PropertyMetadata(default(Windows.UI.Xaml.Media.Brush)));
+                DependencyProperty.Register(nameof(DisabledBackground), typeof(Microsoft.UI.Xaml.Media.Brush), typeof(CalculatorButton), new PropertyMetadata(default(Microsoft.UI.Xaml.Media.Brush)));
 
-            public Windows.UI.Xaml.Media.Brush DisabledForeground
+            public Microsoft.UI.Xaml.Media.Brush DisabledForeground
             {
-                get => (Windows.UI.Xaml.Media.Brush)GetValue(DisabledForegroundProperty);
+                get => (Microsoft.UI.Xaml.Media.Brush)GetValue(DisabledForegroundProperty);
                 set => SetValue(DisabledForegroundProperty, value);
             }
 
             // Using a DependencyProperty as the backing store for DisabledForeground.  This enables animation, styling, binding, etc...
             public static readonly DependencyProperty DisabledForegroundProperty =
-                DependencyProperty.Register(nameof(DisabledForeground), typeof(Windows.UI.Xaml.Media.Brush), typeof(CalculatorButton), new PropertyMetadata(default(Windows.UI.Xaml.Media.Brush)));
+                DependencyProperty.Register(nameof(DisabledForeground), typeof(Microsoft.UI.Xaml.Media.Brush), typeof(CalculatorButton), new PropertyMetadata(default(Microsoft.UI.Xaml.Media.Brush)));
 
             protected override void OnKeyDown(KeyRoutedEventArgs e)
             {

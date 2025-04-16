@@ -8,17 +8,18 @@
 
 // The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
 
-using CalculatorApp.ViewModelNative;
-using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModel;
+using CalculatorApp.ViewModel;
+using CalculatorApp.ViewModel.Common;
 
 using System;
 
 using Windows.Globalization;
 using Windows.Globalization.DateTimeFormatting;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Automation;
-using Windows.UI.Xaml.Automation.Peers;
-using Windows.UI.Xaml.Controls;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Controls;
 
 namespace CalculatorApp
 {
@@ -34,8 +35,8 @@ namespace CalculatorApp
             DateDiff_ToDate.CalendarIdentifier = localizationSettings.GetCalendarIdentifier();
 
             // Setting the FirstDayofWeek
-            DateDiff_FromDate.FirstDayOfWeek = localizationSettings.GetFirstDayOfWeek();
-            DateDiff_ToDate.FirstDayOfWeek = localizationSettings.GetFirstDayOfWeek();
+            DateDiff_FromDate.FirstDayOfWeek = (Windows.Globalization.DayOfWeek)localizationSettings.GetFirstDayOfWeek();
+            DateDiff_ToDate.FirstDayOfWeek = (Windows.Globalization.DayOfWeek)localizationSettings.GetFirstDayOfWeek();
 
             // Setting the Language explicitly is not required,
             // Set Language so the control refreshes the displayed date
@@ -109,7 +110,7 @@ namespace CalculatorApp
             if (e.NewDate != null)
             {
                 var dateCalcViewModel = (DateCalculatorViewModel)DataContext;
-                dateCalcViewModel.FromDate = e.NewDate.Value;
+                dateCalcViewModel.FromDate = (e.NewDate.Value.Date);
                 TraceLogger.GetInstance().LogDateCalculationModeUsed(false);
             }
             else
@@ -123,7 +124,7 @@ namespace CalculatorApp
             if (e.NewDate != null)
             {
                 var dateCalcViewModel = (DateCalculatorViewModel)this.DataContext;
-                dateCalcViewModel.ToDate = e.NewDate.Value;
+                dateCalcViewModel.ToDate = e.NewDate.Value.Date;
                 TraceLogger.GetInstance().LogDateCalculationModeUsed(false);
             }
             else
@@ -137,7 +138,7 @@ namespace CalculatorApp
             if (e.NewDate != null)
             {
                 var dateCalcViewModel = (DateCalculatorViewModel)this.DataContext;
-                dateCalcViewModel.StartDate = e.NewDate.Value;
+                dateCalcViewModel.StartDate = e.NewDate.Value.Date;
                 TraceLogger.GetInstance().LogDateCalculationModeUsed(true);
             }
             else
@@ -197,7 +198,7 @@ namespace CalculatorApp
         {
             AddSubtract_FromDate.PlaceholderText = DateDiff_FromDate.PlaceholderText;
             AddSubtract_FromDate.CalendarIdentifier = localizationSettings.GetCalendarIdentifier();
-            AddSubtract_FromDate.FirstDayOfWeek = localizationSettings.GetFirstDayOfWeek();
+            AddSubtract_FromDate.FirstDayOfWeek = (Windows.Globalization.DayOfWeek)localizationSettings.GetFirstDayOfWeek();
             AddSubtract_FromDate.Language = localizationSettings.GetLocaleName();
 
             AddSubtract_FromDate.MinDate = DateDiff_FromDate.MinDate;

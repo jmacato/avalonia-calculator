@@ -2,15 +2,15 @@
 // Licensed under the MIT License.
 
 using Windows.Devices.Input;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Input;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace CalculatorApp
 {
     namespace Controls
     {
-        public sealed class OperatorPanelListView : Windows.UI.Xaml.Controls.ListView
+        public sealed class OperatorPanelListView : ListView
         {
             public OperatorPanelListView()
             {
@@ -61,7 +61,7 @@ namespace CalculatorApp
 
             private void OnPointerEntered(object sender, PointerRoutedEventArgs e)
             {
-                if (e.Pointer.PointerDeviceType == PointerDeviceType.Mouse)
+                if ((int)e.Pointer.PointerDeviceType == (int)PointerDeviceType.Mouse)
                 {
                     UpdateScrollButtons();
                     m_isPointerEntered = true;
@@ -147,10 +147,10 @@ namespace CalculatorApp
 
             private bool m_isPointerEntered;
 
-            private Windows.UI.Xaml.Controls.ItemsPresenter m_content;
-            private Windows.UI.Xaml.Controls.ScrollViewer m_scrollViewer;
-            private Windows.UI.Xaml.Controls.Button m_scrollLeft;
-            private Windows.UI.Xaml.Controls.Button m_scrollRight;
+            private ItemsPresenter m_content;
+            private ScrollViewer m_scrollViewer;
+            private Button m_scrollLeft;
+            private Button m_scrollRight;
         }
     }
 }

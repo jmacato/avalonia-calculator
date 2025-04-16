@@ -41,6 +41,8 @@ public partial class CalculatorManager : ICalcDisplay
         m_pStdHistory = (new CalculatorHistory(MAX_HISTORY_ITEMS));
         m_pSciHistory = (new CalculatorHistory(MAX_HISTORY_ITEMS));
         m_pHistory = (null);
+
+        SetStandardMode();
     }
 
     /// <summary>
@@ -372,7 +374,7 @@ public partial class CalculatorManager : ICalcDisplay
     /// The memorized number gets loaded to the primary display
     /// </summary>
     /// <param name="indexOfMemory">Index of the target memory</param>
-    public void MemorizedNumberLoad(uint indexOfMemory)
+    public void MemorizedNumberLoad(int indexOfMemory)
     {
         if (m_currentCalculatorEngine.FInErrorState())
         {
@@ -390,7 +392,7 @@ public partial class CalculatorManager : ICalcDisplay
     /// Notify the client with new the new memorize value vector
     /// </summary>
     /// <param name="indexOfMemory">Index of the target memory</param>
-    public void MemorizedNumberAdd(uint indexOfMemory)
+    public void MemorizedNumberAdd(int indexOfMemory)
     {
         if (m_currentCalculatorEngine.FInErrorState())
         {
@@ -411,10 +413,10 @@ public partial class CalculatorManager : ICalcDisplay
             this.SetMemorizedNumbersString();
         }
 
-        m_displayCallback.MemoryItemChanged(indexOfMemory);
+        m_displayCallback.MemoryItemChanged((uint)indexOfMemory);
     }
 
-    public void MemorizedNumberClear(uint indexOfMemory)
+    public void MemorizedNumberClear(int indexOfMemory)
     {
         if (indexOfMemory < m_memorizedNumbers.Count)
         {
@@ -428,7 +430,7 @@ public partial class CalculatorManager : ICalcDisplay
     /// Notify the client with new the new memorize value vector
     /// </summary>
     /// <param name="indexOfMemory">Index of the target memory</param>
-    public void MemorizedNumberSubtract(uint indexOfMemory)
+    public void MemorizedNumberSubtract(int indexOfMemory)
     {
         if (m_currentCalculatorEngine.FInErrorState())
         {
@@ -452,7 +454,7 @@ public partial class CalculatorManager : ICalcDisplay
             this.SetMemorizedNumbersString();
         }
 
-        m_displayCallback.MemoryItemChanged(indexOfMemory);
+        m_displayCallback.MemoryItemChanged((uint)indexOfMemory);
     }
 
     /// <summary>
@@ -472,7 +474,7 @@ public partial class CalculatorManager : ICalcDisplay
     /// Saved RAT number needs to be copied and passed in, as CCalcEngine destroyed the passed in RAT
     /// </summary>
     /// <param name="indexOfMemory">Index of the target memory</param>
-    public void MemorizedNumberSelect(uint indexOfMemory)
+    public void MemorizedNumberSelect(int indexOfMemory)
     {
         if (m_currentCalculatorEngine.FInErrorState())
         {
@@ -488,7 +490,7 @@ public partial class CalculatorManager : ICalcDisplay
     /// When memory is modified, destroy the old RAT and put the new RAT in vector
     /// </summary>
     /// <param name="indexOfMemory">Index of the target memory</param>
-    public void MemorizedNumberChanged(uint indexOfMemory)
+    public void MemorizedNumberChanged(int indexOfMemory)
     {
         if (m_currentCalculatorEngine.FInErrorState())
         {
@@ -531,17 +533,17 @@ public partial class CalculatorManager : ICalcDisplay
         m_displayCallback.OnHistoryItemAdded(addedItemIndex);
     }
 
-    bool RemoveHistoryItem(uint uIdx)
+    public bool RemoveHistoryItem(int uIdx)
     {
         return m_pHistory.RemoveItem(uIdx);
     }
 
-    void ClearHistory()
+    public void ClearHistory()
     {
         m_pHistory.ClearHistory();
     }
 
-    void SetRadix(RadixType iRadixType)
+    public void SetRadix(RadixType iRadixType)
     {
         switch (iRadixType)
         {
@@ -630,7 +632,7 @@ public partial class CalculatorManager : ICalcDisplay
         m_inHistoryItemLoadMode = isHistoryItemLoadMode;
     }
 
-    List<IExpressionCommand> GetDisplayCommandsSnapshot()
+ public    List<IExpressionCommand> GetDisplayCommandsSnapshot()
     {
         return m_currentCalculatorEngine.GetHistoryCollectorCommandsSnapshot();
     }

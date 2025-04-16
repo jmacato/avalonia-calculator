@@ -1,23 +1,24 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalculatorApp.ViewModelNative;
+using CalculatorApp.ViewModel; 
 
-using Windows.UI.Xaml;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace CalculatorApp
 {
     namespace TemplateSelectors
     {
-        public sealed class KeyGraphFeaturesTemplateSelector : Windows.UI.Xaml.Controls.DataTemplateSelector
+        public sealed class KeyGraphFeaturesTemplateSelector : DataTemplateSelector
         {
             public KeyGraphFeaturesTemplateSelector()
             {
             }
 
-            public Windows.UI.Xaml.DataTemplate RichEditTemplate { get; set; }
-            public Windows.UI.Xaml.DataTemplate GridTemplate { get; set; }
-            public Windows.UI.Xaml.DataTemplate TextBlockTemplate { get; set; }
+            public Microsoft.UI.Xaml.DataTemplate RichEditTemplate { get; set; }
+            public Microsoft.UI.Xaml.DataTemplate GridTemplate { get; set; }
+            public Microsoft.UI.Xaml.DataTemplate TextBlockTemplate { get; set; }
 
             protected override DataTemplate SelectTemplateCore(object item)
             {

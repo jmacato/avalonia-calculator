@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModel.Common;
 
 using System;
 
@@ -84,12 +84,14 @@ namespace CalculatorApp
 
         public void ResizeUIResponsive()
         {
+            // TODO Windows.UI.ViewManagement.ApplicationView is no longer supported. Use Microsoft.UI.Windowing.AppWindow instead. For more details see https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/windowing
             ResizeUIResponsive(ApplicationView.GetForCurrentView().Id);
         }
 
         public void ResizeVisibleComplete()
         {
-            ResizeVisibleComplete(ApplicationView.GetForCurrentView().Id);
+            // TODO Windows.UI.ViewManagement.ApplicationView is no longer supported. Use Microsoft.UI.Windowing.AppWindow instead. For more details see https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/windowing
+           // ResizeVisibleComplete(ApplicationView.GetForCurrentView().Id);
         }
 
         public void ResizeUIResponsive(int viewId)

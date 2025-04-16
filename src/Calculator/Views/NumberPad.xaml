@@ -42,14 +42,14 @@
                                    Style="{x:Bind Path=ButtonStyle, Mode=OneWay}"
                                    common:KeyboardShortcutManager.Character="{utils:ResourceString Name=num0Button/[using:CalculatorApp.Common]KeyboardShortcutManager/Character}"
                                    AutomationProperties.AutomationId="num0Button"
-                                   AutomationProperties.Name="{utils:ResourceString Name=num0Button/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                   AutomationProperties.Name="{utils:ResourceString Name=num0Button/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                    ButtonId="Zero"/>
         <controls:CalculatorButton x:Name="Num1Button"
                                    Grid.Row="2"
                                    Style="{x:Bind Path=ButtonStyle, Mode=OneWay}"
                                    common:KeyboardShortcutManager.Character="{utils:ResourceString Name=num1Button/[using:CalculatorApp.Common]KeyboardShortcutManager/Character}"
                                    AutomationProperties.AutomationId="num1Button"
-                                   AutomationProperties.Name="{utils:ResourceString Name=num1Button/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                   AutomationProperties.Name="{utils:ResourceString Name=num1Button/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                    ButtonId="One"/>
         <controls:CalculatorButton x:Name="Num2Button"
                                    Grid.Row="2"
@@ -57,7 +57,7 @@
                                    Style="{x:Bind Path=ButtonStyle, Mode=OneWay}"
                                    common:KeyboardShortcutManager.Character="{utils:ResourceString Name=num2Button/[using:CalculatorApp.Common]KeyboardShortcutManager/Character}"
                                    AutomationProperties.AutomationId="num2Button"
-                                   AutomationProperties.Name="{utils:ResourceString Name=num2Button/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                   AutomationProperties.Name="{utils:ResourceString Name=num2Button/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                    ButtonId="Two"/>
         <controls:CalculatorButton x:Name="Num3Button"
                                    Grid.Row="2"
@@ -65,14 +65,14 @@
                                    Style="{x:Bind Path=ButtonStyle, Mode=OneWay}"
                                    common:KeyboardShortcutManager.Character="{utils:ResourceString Name=num3Button/[using:CalculatorApp.Common]KeyboardShortcutManager/Character}"
                                    AutomationProperties.AutomationId="num3Button"
-                                   AutomationProperties.Name="{utils:ResourceString Name=num3Button/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                   AutomationProperties.Name="{utils:ResourceString Name=num3Button/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                    ButtonId="Three"/>
         <controls:CalculatorButton x:Name="Num4Button"
                                    Grid.Row="1"
                                    Style="{x:Bind Path=ButtonStyle, Mode=OneWay}"
                                    common:KeyboardShortcutManager.Character="{utils:ResourceString Name=num4Button/[using:CalculatorApp.Common]KeyboardShortcutManager/Character}"
                                    AutomationProperties.AutomationId="num4Button"
-                                   AutomationProperties.Name="{utils:ResourceString Name=num4Button/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                   AutomationProperties.Name="{utils:ResourceString Name=num4Button/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                    ButtonId="Four"/>
         <controls:CalculatorButton x:Name="Num5Button"
                                    Grid.Row="1"
@@ -80,7 +80,7 @@
                                    Style="{x:Bind Path=ButtonStyle, Mode=OneWay}"
                                    common:KeyboardShortcutManager.Character="{utils:ResourceString Name=num5Button/[using:CalculatorApp.Common]KeyboardShortcutManager/Character}"
                                    AutomationProperties.AutomationId="num5Button"
-                                   AutomationProperties.Name="{utils:ResourceString Name=num5Button/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                   AutomationProperties.Name="{utils:ResourceString Name=num5Button/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                    ButtonId="Five"/>
         <controls:CalculatorButton x:Name="Num6Button"
                                    Grid.Row="1"
@@ -88,27 +88,27 @@
                                    Style="{x:Bind Path=ButtonStyle, Mode=OneWay}"
                                    common:KeyboardShortcutManager.Character="{utils:ResourceString Name=num6Button/[using:CalculatorApp.Common]KeyboardShortcutManager/Character}"
                                    AutomationProperties.AutomationId="num6Button"
-                                   AutomationProperties.Name="{utils:ResourceString Name=num6Button/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                   AutomationProperties.Name="{utils:ResourceString Name=num6Button/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                    ButtonId="Six"/>
         <controls:CalculatorButton x:Name="Num7Button"
                                    Style="{x:Bind Path=ButtonStyle, Mode=OneWay}"
                                    common:KeyboardShortcutManager.Character="{utils:ResourceString Name=num7Button/[using:CalculatorApp.Common]KeyboardShortcutManager/Character}"
                                    AutomationProperties.AutomationId="num7Button"
-                                   AutomationProperties.Name="{utils:ResourceString Name=num7Button/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                   AutomationProperties.Name="{utils:ResourceString Name=num7Button/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                    ButtonId="Seven"/>
         <controls:CalculatorButton x:Name="Num8Button"
                                    Grid.Column="1"
                                    Style="{x:Bind Path=ButtonStyle, Mode=OneWay}"
                                    common:KeyboardShortcutManager.Character="{utils:ResourceString Name=num8Button/[using:CalculatorApp.Common]KeyboardShortcutManager/Character}"
                                    AutomationProperties.AutomationId="num8Button"
-                                   AutomationProperties.Name="{utils:ResourceString Name=num8Button/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                   AutomationProperties.Name="{utils:ResourceString Name=num8Button/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                    ButtonId="Eight"/>
         <controls:CalculatorButton x:Name="Num9Button"
                                    Grid.Column="2"
                                    Style="{x:Bind Path=ButtonStyle, Mode=OneWay}"
                                    common:KeyboardShortcutManager.Character="{utils:ResourceString Name=num9Button/[using:CalculatorApp.Common]KeyboardShortcutManager/Character}"
                                    AutomationProperties.AutomationId="num9Button"
-                                   AutomationProperties.Name="{utils:ResourceString Name=num9Button/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                   AutomationProperties.Name="{utils:ResourceString Name=num9Button/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                    ButtonId="Nine"/>
         <!-- DO NOT REMOVE the common:KeyboardShortcutManager.Character from this element, it's value will be overwritten by the KeyboardShortcutManager -->
         <controls:CalculatorButton x:Name="DecimalSeparatorButton"
@@ -118,7 +118,7 @@
                                    common:KeyboardShortcutManager.Character="."
                                    common:KeyboardShortcutManager.VirtualKey="{utils:ResourceVirtualKey Name=decimalSeparatorButton/[using:CalculatorApp.Common]KeyboardShortcutManager/VirtualKey}"
                                    AutomationProperties.AutomationId="decimalSeparatorButton"
-                                   AutomationProperties.Name="{utils:ResourceString Name=decimalSeparatorButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                   AutomationProperties.Name="{utils:ResourceString Name=decimalSeparatorButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                    ButtonId="Decimal"
                                    IsEnabled="{Binding IsDecimalEnabled}"/>
     </Grid>

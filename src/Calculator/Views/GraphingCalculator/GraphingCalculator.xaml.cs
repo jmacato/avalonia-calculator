@@ -4,27 +4,29 @@
 using CalculatorApp.Common;
 using CalculatorApp.Controls;
 using CalculatorApp.Utils;
-using CalculatorApp.ViewModelNative;
-using CalculatorApp.ViewModelNative.Common;
-using CalculatorApp.ViewModelNative.Common.Automation;
+using CalculatorApp.ViewModel;
+using CalculatorApp.ViewModel.Common;
+using CalculatorApp.ViewModel.Common.Automation;
 
 using GraphControl;
 
 using System;
-
+using System.Collections.Specialized;
+using System.Linq;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.ApplicationModel.Resources;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Storage;
 using Windows.System;
+using Microsoft.Windows.System;
 using Windows.UI.Core;
 using Windows.UI.ViewManagement;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Automation.Peers;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Input;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 
 namespace CalculatorApp
 {
@@ -34,11 +36,11 @@ namespace CalculatorApp
         {
             InitializeComponent();
 
-            m_accessibilitySettings = new AccessibilitySettings();
-            DataTransferManager dataTransferManager = DataTransferManager.GetForCurrentView();
+            //m_accessibilitySettings = new AccessibilitySettings();
+            //DataTransferManager dataTransferManager = DataTransferManager.GetForCurrentView();
 
             // Register the current control as a share source.
-            dataTransferManager.DataRequested += OnDataRequested;
+           // dataTransferManager.DataRequested += OnDataRequested;
 
             // Request notifications when we should be showing the trace values
             GraphingControl.TracingChangedEvent += OnShowTracePopupChanged;
@@ -68,12 +70,12 @@ namespace CalculatorApp
             };
             ZoomInButton.KeyboardAccelerators.Add(virtualKey);
 
-            if (Windows.Foundation.Metadata.ApiInformation.IsTypePresent("Windows.UI.Xaml.Media.ThemeShadow"))
+            if (Windows.Foundation.Metadata.ApiInformation.IsTypePresent("Microsoft.UI.Xaml.Media.ThemeShadow"))
             {
                 SharedShadow.Receivers.Add(GraphingControl);
             }
 
-            m_accessibilitySettings.HighContrastChanged += OnHighContrastChanged;
+            //m_accessibilitySettings.HighContrastChanged += OnHighContrastChanged;
 
             m_uiSettings = new UISettings();
             m_uiSettings.ColorValuesChanged += OnColorValuesChanged;
@@ -86,13 +88,13 @@ namespace CalculatorApp
                 if (isMatchAppLocalSetting)
                 {
                     IsMatchAppTheme = true;
-                    CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphTheme("IsMatchAppTheme");
+                    CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphTheme("IsMatchAppTheme");
                 }
             }
             else
             {
                 IsMatchAppTheme = false;
-                CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphTheme("IsAlwaysLightTheme");
+                CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphTheme("IsAlwaysLightTheme");
             }
         }
 
@@ -200,7 +202,7 @@ namespace CalculatorApp
         }
         private bool m_IsManualAdjustment;
 
-        public CalculatorApp.ViewModelNative.GraphingCalculatorViewModel ViewModel
+        public CalculatorApp.ViewModel.GraphingCalculatorViewModel ViewModel
         {
             get => m_viewModel;
             set
@@ -230,7 +232,7 @@ namespace CalculatorApp
             }
         }
 
-        public static Windows.UI.Xaml.Visibility ManageEditVariablesButtonVisibility(uint numberOfVariables)
+        public static Visibility ManageEditVariablesButtonVisibility(uint numberOfVariables)
         {
             return numberOfVariables == 0 ? Visibility.Collapsed : Visibility.Visible;
         }
@@ -258,38 +260,40 @@ namespace CalculatorApp
         {
             if (ViewModel != null)
             {
-                ViewModel.Equations.VectorChanged -= OnEquationsVectorChanged;
+                ViewModel.Equations.CollectionChanged -= OnEquationsVectorChanged;
                 ViewModel.VariableUpdated -= OnVariableChanged;
             }
 
             ViewModel = args.NewValue as GraphingCalculatorViewModel;
-            ViewModel.Equations.VectorChanged += OnEquationsVectorChanged;
+            ViewModel.Equations.CollectionChanged += OnEquationsVectorChanged;
             ViewModel.VariableUpdated += OnVariableChanged;
 
             UpdateGraphAutomationName();
         }
+         
 
         private void OnVariableChanged(object sender, VariableChangedEventArgs args)
         {
             GraphingControl.SetVariable(args.variableName, args.newValue);
         }
 
-        private void OnEquationsVectorChanged(IObservableVector<EquationViewModel> sender, IVectorChangedEventArgs e)
+        private void OnEquationsVectorChanged(object sender, NotifyCollectionChangedEventArgs e)
+//        private void OnEquationsVectorChanged(IObservableVector<EquationViewModel> sender, IVectorChangedEventArgs e)
         {
             // If an item is already added to the graph, changing it should automatically trigger a graph update
-            if (e.CollectionChange == CollectionChange.ItemChanged)
+            if (e.Action == NotifyCollectionChangedAction.Replace)
             {
                 return;
             }
 
             // Do not plot the graph if we are removing an empty equation, just remove it
-            if (e.CollectionChange == CollectionChange.ItemRemoved)
+            if (e.Action == NotifyCollectionChangedAction.Remove)
             {
-                var itemToRemove = GraphingControl.Equations[(int)e.Index];
+                var itemToRemove = GraphingControl.Equations[(int)e.OldStartingIndex];
 
                 if (string.IsNullOrEmpty(itemToRemove.Expression))
                 {
-                    GraphingControl.Equations.RemoveAt((int)e.Index);
+                    GraphingControl.Equations.RemoveAt((int)e.OldStartingIndex);
 
                     if (GraphingControl.Equations.Count == 1 && string.IsNullOrEmpty(GraphingControl.Equations[0].Expression))
                     {
@@ -301,16 +305,19 @@ namespace CalculatorApp
             }
 
             // Do not plot the graph if we are adding an empty equation, just add it
-            if (e.CollectionChange == CollectionChange.ItemInserted)
+            if (e.Action == NotifyCollectionChangedAction.Add)
             {
-                var itemToAdd = sender[(int)e.Index];
-
-                if (string.IsNullOrEmpty(itemToAdd.Expression))
+                foreach(var newEq in e.NewItems.Cast<EquationViewModel>().Select(x=>x.GraphEquation))
                 {
-                    GraphingControl.Equations.Add(itemToAdd.GraphEquation);
-
-                    return;
+                    GraphingControl.Equations.Add(newEq);
                 }
+
+                //if (string.IsNullOrEmpty(itemToAdd.Expression))
+                //{
+                //    GraphingControl.Equations.Add(itemToAdd.GraphEquation);
+
+                //    return;
+                //}
             }
 
             // We are either adding or removing a valid equation, or resetting the collection. We will need to plot the graph
@@ -327,13 +334,13 @@ namespace CalculatorApp
         private void OnZoomInCommand(object parameter)
         {
             GraphingControl.ZoomFromCenter(zoomInScale);
-            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ZoomIn, GraphButtonValue.None);
+            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ZoomIn, GraphButtonValue.None);
         }
 
         private void OnZoomOutCommand(object parameter)
         {
             GraphingControl.ZoomFromCenter(zoomOutScale);
-            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ZoomOut, GraphButtonValue.None);
+            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ZoomOut, GraphButtonValue.None);
         }
 
         private void OnShareClick(object sender, RoutedEventArgs e)
@@ -341,8 +348,8 @@ namespace CalculatorApp
             // Ask the OS to start a share action.
             try
             {
-                DataTransferManager.ShowShareUI();
-                CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.Share, GraphButtonValue.None);
+                Windows.ApplicationModel.DataTransfer.DataTransferManager.As<UWPToWinAppSDKUpgradeHelpers.IDataTransferManagerInterop>().ShowShareUIForWindow(App.WindowHandle);
+                CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.Share, GraphButtonValue.None);
             }
             catch (System.Runtime.InteropServices.COMException ex)
             {
@@ -351,7 +358,7 @@ namespace CalculatorApp
                 if (ex.HResult == unchecked(rpc_e_servercall_retrylater))
                 {
                     ShowShareError();
-                    CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogPlatformExceptionInfo(ViewMode.Graphing, System.Reflection.MethodBase.GetCurrentMethod().Name, ex.Message, ex.HResult);
+                    CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogPlatformExceptionInfo(ViewMode.Graphing, System.Reflection.MethodBase.GetCurrentMethod().Name, ex.Message, ex.HResult);
                 }
                 else
                 {
@@ -398,7 +405,7 @@ namespace CalculatorApp
         // data to be shared. We will request the current graph image from the grapher as a stream that will pass to the share request.
         private void OnDataRequested(DataTransferManager sender, DataRequestedEventArgs args)
         {
-            var resourceLoader = ResourceLoader.GetForCurrentView();
+            var resourceLoader = ResourceLoader.GetForViewIndependentUse();
 
             try
             {
@@ -484,18 +491,18 @@ namespace CalculatorApp
 
                 requestData.SetHtmlFormat(html);
 
-                var bitmapStream = GraphingControl.GetGraphBitmapStream();
+                //var bitmapStream = GraphingControl.GetGraphBitmapStream();
 
-                requestData.ResourceMap.Add("graph.png", bitmapStream);
-                requestData.SetBitmap(bitmapStream);
+                //requestData.ResourceMap.Add("graph.png", bitmapStream);
+                //requestData.SetBitmap(bitmapStream);
 
-                // Set the thumbnail image (in case the share target can't handle HTML)
-                requestData.Properties.Thumbnail = bitmapStream;
+                //// Set the thumbnail image (in case the share target can't handle HTML)
+                //requestData.Properties.Thumbnail = bitmapStream;
             }
             catch (Exception ex)
             {
                 ShowShareError();
-                CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogPlatformExceptionInfo(ViewMode.Graphing, System.Reflection.MethodBase.GetCurrentMethod().Name, ex.Message, ex.HResult);
+                CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogPlatformExceptionInfo(ViewMode.Graphing, System.Reflection.MethodBase.GetCurrentMethod().Name, ex.Message, ex.HResult);
             }
         }
 
@@ -537,7 +544,7 @@ namespace CalculatorApp
             IsManualAdjustment = (reason == GraphViewChangedReason.Manipulation);
             UpdateGraphAutomationName();
 
-            var announcement = CalculatorAnnouncement.GetGraphViewChangedAnnouncement(GraphControlAutomationName);
+            var announcement = NarratorAnnouncement.GetGraphViewChangedAnnouncement(GraphControlAutomationName);
             var peer = FrameworkElementAutomationPeer.FromElement(GraphingControl);
             if (peer != null)
             {
@@ -604,7 +611,7 @@ namespace CalculatorApp
                 AddTracePointerShadow();
 
                 // hide the shadow in high contrast mode
-                CursorShadow.Visibility = m_accessibilitySettings.HighContrast ? Visibility.Collapsed : Visibility.Visible;
+                //CursorShadow.Visibility = m_accessibilitySettings.HighContrast ? Visibility.Collapsed : Visibility.Visible;
 
                 Canvas.SetLeft(TracePointer, TraceCanvas.ActualWidth / 2 + 40);
                 Canvas.SetTop(TracePointer, TraceCanvas.ActualHeight / 2 - 40);
@@ -614,22 +621,22 @@ namespace CalculatorApp
 
             _ = FocusManager.TryFocusAsync(GraphingControl, FocusState.Programmatic);
 
-            Window.Current.CoreWindow.KeyUp += ActiveTracing_KeyUp;
+            App.Window.CoreWindow.KeyUp += ActiveTracing_KeyUp;
 
             KeyboardShortcutManager.IgnoreEscape(false);
 
             TracePointer.Visibility = Visibility.Visible;
-            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ActiveTracingChecked, GraphButtonValue.None);
+            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ActiveTracingChecked, GraphButtonValue.None);
         }
 
         private void ActiveTracing_Unchecked(object sender, RoutedEventArgs e)
         {
             ActiveTracing.PointerCaptureLost -= ActiveTracing_PointerCaptureLost;
-            Window.Current.CoreWindow.KeyUp -= ActiveTracing_KeyUp;
+            App.Window.CoreWindow.KeyUp -= ActiveTracing_KeyUp;
             KeyboardShortcutManager.HonorEscape();
 
             TracePointer.Visibility = Visibility.Collapsed;
-            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ActiveTracingUnchecked, GraphButtonValue.None);
+            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.ActiveTracingUnchecked, GraphButtonValue.None);
         }
 
         private void ActiveTracing_KeyUp(CoreWindow sender, KeyEventArgs args)
@@ -656,7 +663,7 @@ namespace CalculatorApp
         private void GraphSettingsButton_Click(object sender, RoutedEventArgs e)
         {
             DisplayGraphSettings();
-            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.GraphSettings, GraphButtonValue.None);
+            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.GraphSettings, GraphButtonValue.None);
         }
 
         private void SwitchModeToggleButton_Toggled(object sender, RoutedEventArgs e)
@@ -672,7 +679,7 @@ namespace CalculatorApp
                 announcementText = AppResourceProvider.GetInstance().GetResourceString("GraphSwitchedToGraphModeAnnouncement");
             }
 
-            var announcement = CalculatorAnnouncement.GetGraphModeChangedAnnouncement(announcementText);
+            var announcement = NarratorAnnouncement.GetGraphModeChangedAnnouncement(announcementText);
             narratorNotifier.Announce(announcement);
         }
 
@@ -704,7 +711,7 @@ namespace CalculatorApp
 
         private void AddTracePointerShadow()
         {
-            var compositor = Windows.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(CursorPath).Compositor;
+            var compositor = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(CursorPath).Compositor;
             var dropShadow = compositor.CreateDropShadow();
             dropShadow.BlurRadius = 6;
             dropShadow.Opacity = 0.33f;
@@ -714,7 +721,7 @@ namespace CalculatorApp
             var shadowSpriteVisual = compositor.CreateSpriteVisual();
             shadowSpriteVisual.Size = new System.Numerics.Vector2(18, 18);
             shadowSpriteVisual.Shadow = dropShadow;
-            Windows.UI.Xaml.Hosting.ElementCompositionPreview.SetElementChildVisual(CursorShadow, shadowSpriteVisual);
+            Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.SetElementChildVisual(CursorShadow, shadowSpriteVisual);
         }
 
         private void UpdateGraphAutomationName()
@@ -755,11 +762,11 @@ namespace CalculatorApp
 
         private void UpdateGraphTheme()
         {
-            if (m_accessibilitySettings.HighContrast)
-            {
-                VisualStateManager.GoToState(this, "GrapherHighContrast", true);
-                return;
-            }
+            //if (m_accessibilitySettings.HighContrast)
+            //{
+            //    VisualStateManager.GoToState(this, "GrapherHighContrast", true);
+            //    return;
+            //}
 
             if (IsMatchAppTheme && Application.Current.RequestedTheme == ApplicationTheme.Dark)
             {
@@ -794,11 +801,11 @@ namespace CalculatorApp
         private const string sc_ViewModelPropertyName = "ViewModel";
         private const string sc_IsGraphThemeMatchApp = "IsGraphThemeMatchApp";
 
-        private CalculatorApp.ViewModelNative.GraphingCalculatorViewModel m_viewModel;
-        private readonly Windows.UI.ViewManagement.AccessibilitySettings m_accessibilitySettings;
+        private CalculatorApp.ViewModel.GraphingCalculatorViewModel m_viewModel;
+       // private readonly Windows.UI.ViewManagement.AccessibilitySettings m_accessibilitySettings;
         private bool m_cursorShadowInitialized;
         private readonly Windows.UI.ViewManagement.UISettings m_uiSettings;
-        private Windows.UI.Xaml.Controls.Flyout m_graphFlyout;
+        private Flyout m_graphFlyout;
         private CalculatorApp.GraphingSettings m_graphSettings;
 
         private void Canvas_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -836,14 +843,15 @@ namespace CalculatorApp
                 RequestedOperation = DataPackageOperation.Copy
             };
 
-            var bitmapStream = GraphingControl.GetGraphBitmapStream();
-            dataPackage.SetBitmap(bitmapStream);
-            Clipboard.SetContent(dataPackage);
+            // TODO:
+            //var bitmapStream = GraphingControl.GetGraphBitmapStream();
+            //dataPackage.SetBitmap(bitmapStream);
+            //Clipboard.SetContent(dataPackage);
         }
 
         private void OnVisualStateChanged(object sender, VisualStateChangedEventArgs e)
         {
-            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogVisualStateChanged(ViewMode.Graphing, e.NewState.Name, false);
+            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogVisualStateChanged(ViewMode.Graphing, e.NewState.Name, false);
         }
 
         private void GraphViewButton_Click(object sender, RoutedEventArgs e)
@@ -861,23 +869,33 @@ namespace CalculatorApp
                 GraphingControl.ResetGrid();
             }
 
-            var announcement = CalculatorAnnouncement.GetGraphViewBestFitChangedAnnouncement(announcementText);
+            var announcement = NarratorAnnouncement.GetGraphViewBestFitChangedAnnouncement(announcementText);
             narratorNotifier.Announce(announcement);
 
-            CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphButtonClicked(
+            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphButtonClicked(
                 GraphButton.GraphView, IsManualAdjustment ? GraphButtonValue.ManualAdjustment : GraphButtonValue.AutomaticBestFit);
         }
 
         private void ShowShareError()
         {
             // Something went wrong, notify the user.
-            var resourceLoader = ResourceLoader.GetForCurrentView();
+            var resourceLoader = ResourceLoader.GetForViewIndependentUse();
             var errDialog = new ContentDialog
             {
                 Content = resourceLoader.GetString("ShareActionErrorMessage"),
                 CloseButtonText = resourceLoader.GetString("ShareActionErrorOk")
             };
-            _ = errDialog.ShowAsync();
+            /* TODO You should replace 'this' with the instance of UserControl that this ContentDialog is meant to be a part of. */
+            _ = SetContentDialogRoot(errDialog,this);
+        }
+
+         private static ContentDialog SetContentDialogRoot(ContentDialog contentDialog, UserControl control)
+         {
+            if (Windows.Foundation.Metadata.ApiInformation.IsApiContractPresent("Windows.Foundation.UniversalApiContract", 8))
+            {
+                contentDialog.XamlRoot = control.Content.XamlRoot;
+            }
+            return contentDialog;
         }
 
         private void OnGraphingCalculatorLoaded(object sender, RoutedEventArgs e)

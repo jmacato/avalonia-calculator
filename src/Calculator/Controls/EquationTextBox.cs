@@ -1,54 +1,55 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModel.Common;
 
-using Windows.UI.Text;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Automation;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Input;
+using Microsoft.UI.Text;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
+using System;
 
 namespace CalculatorApp
 {
     namespace Controls
     {
-        public sealed class EquationTextBox : Windows.UI.Xaml.Controls.Control
+        public sealed class EquationTextBox : Control
         {
             public EquationTextBox()
             {
             }
 
-            public Windows.UI.Xaml.Media.SolidColorBrush EquationColor
+            public Microsoft.UI.Xaml.Media.SolidColorBrush EquationColor
             {
-                get => (Windows.UI.Xaml.Media.SolidColorBrush)GetValue(EquationColorProperty);
+                get => (Microsoft.UI.Xaml.Media.SolidColorBrush)GetValue(EquationColorProperty);
                 set => SetValue(EquationColorProperty, value);
             }
 
             // Using a DependencyProperty as the backing store for EquationColor.  This enables animation, styling, binding, etc...
             public static readonly DependencyProperty EquationColorProperty =
-                DependencyProperty.Register(nameof(EquationColor), typeof(Windows.UI.Xaml.Media.SolidColorBrush), typeof(EquationTextBox), new PropertyMetadata(default(Windows.UI.Xaml.Media.SolidColorBrush)));
+                DependencyProperty.Register(nameof(EquationColor), typeof(Microsoft.UI.Xaml.Media.SolidColorBrush), typeof(EquationTextBox), new PropertyMetadata(default(Microsoft.UI.Xaml.Media.SolidColorBrush)));
 
-            public Windows.UI.Xaml.Media.SolidColorBrush EquationButtonForegroundColor
+            public Microsoft.UI.Xaml.Media.SolidColorBrush EquationButtonForegroundColor
             {
-                get => (Windows.UI.Xaml.Media.SolidColorBrush)GetValue(EquationButtonForegroundColorProperty);
+                get => (Microsoft.UI.Xaml.Media.SolidColorBrush)GetValue(EquationButtonForegroundColorProperty);
                 set => SetValue(EquationButtonForegroundColorProperty, value);
             }
 
             // Using a DependencyProperty as the backing store for EquationButtonForegroundColor.  This enables animation, styling, binding, etc...
             public static readonly DependencyProperty EquationButtonForegroundColorProperty =
-                DependencyProperty.Register(nameof(EquationButtonForegroundColor), typeof(Windows.UI.Xaml.Media.SolidColorBrush), typeof(EquationTextBox), new PropertyMetadata(default(Windows.UI.Xaml.Media.SolidColorBrush)));
+                DependencyProperty.Register(nameof(EquationButtonForegroundColor), typeof(Microsoft.UI.Xaml.Media.SolidColorBrush), typeof(EquationTextBox), new PropertyMetadata(default(Microsoft.UI.Xaml.Media.SolidColorBrush)));
 
-            public Windows.UI.Xaml.Controls.Flyout ColorChooserFlyout
+            public Flyout ColorChooserFlyout
             {
-                get => (Windows.UI.Xaml.Controls.Flyout)GetValue(ColorChooserFlyoutProperty);
+                get => (Flyout)GetValue(ColorChooserFlyoutProperty);
                 set => SetValue(ColorChooserFlyoutProperty, value);
             }
 
             // Using a DependencyProperty as the backing store for ColorChooserFlyout.  This enables animation, styling, binding, etc...
             public static readonly DependencyProperty ColorChooserFlyoutProperty =
-                DependencyProperty.Register(nameof(ColorChooserFlyout), typeof(Windows.UI.Xaml.Controls.Flyout), typeof(EquationTextBox), new PropertyMetadata(default(Windows.UI.Xaml.Controls.Flyout)));
+                DependencyProperty.Register(nameof(ColorChooserFlyout), typeof(Flyout), typeof(EquationTextBox), new PropertyMetadata(default(Flyout)));
 
             public string EquationButtonContentIndex
             {
@@ -124,11 +125,11 @@ namespace CalculatorApp
 
             private bool HasFocus { get; set; }
 
-            public event Windows.UI.Xaml.RoutedEventHandler RemoveButtonClicked;
-            public event Windows.UI.Xaml.RoutedEventHandler KeyGraphFeaturesButtonClicked;
+            public event Microsoft.UI.Xaml.RoutedEventHandler RemoveButtonClicked;
+            public event Microsoft.UI.Xaml.RoutedEventHandler KeyGraphFeaturesButtonClicked;
             public event System.EventHandler<MathRichEditBoxSubmission> EquationSubmitted;
             public event System.EventHandler<MathRichEditBoxFormatRequest> EquationFormatRequested;
-            public event Windows.UI.Xaml.RoutedEventHandler EquationButtonClicked;
+            public event Microsoft.UI.Xaml.RoutedEventHandler EquationButtonClicked;
 
             public void SetEquationText(string equationText)
             {
@@ -357,7 +358,15 @@ namespace CalculatorApp
             private bool RichEditHasContent()
             {
                 string text = null;
-                m_richEditBox?.TextDocument.GetText(Windows.UI.Text.TextGetOptions.NoHidden, out text);
+                try
+                {
+                    Console.Write("a");
+                    m_richEditBox?.TextDocument.GetText(TextGetOptions.NoHidden, out text);
+                }
+                catch
+                {
+                    return false;
+                }
                 return !string.IsNullOrEmpty(text);
             }
 
@@ -561,21 +570,21 @@ namespace CalculatorApp
             }
 
             private CalculatorApp.Controls.MathRichEditBox m_richEditBox;
-            private Windows.UI.Xaml.Controls.Primitives.ToggleButton m_equationButton;
-            private Windows.UI.Xaml.Controls.Button m_deleteButton;
-            private Windows.UI.Xaml.Controls.Button m_removeButton;
-            private Windows.UI.Xaml.Controls.Button m_functionButton;
-            private Windows.UI.Xaml.Controls.Primitives.ToggleButton m_colorChooserButton;
+            private ToggleButton m_equationButton;
+            private Button m_deleteButton;
+            private Button m_removeButton;
+            private Button m_functionButton;
+            private ToggleButton m_colorChooserButton;
 
-            private Windows.UI.Xaml.Controls.MenuFlyout m_richEditContextMenu;
-            private Windows.UI.Xaml.Controls.MenuFlyoutItem m_cutMenuItem;
-            private Windows.UI.Xaml.Controls.MenuFlyoutItem m_copyMenuItem;
-            private Windows.UI.Xaml.Controls.MenuFlyoutItem m_pasteMenuItem;
-            private Windows.UI.Xaml.Controls.MenuFlyoutItem m_undoMenuItem;
-            private Windows.UI.Xaml.Controls.MenuFlyoutItem m_selectAllMenuItem;
-            private Windows.UI.Xaml.Controls.MenuFlyoutItem m_kgfEquationMenuItem;
-            private Windows.UI.Xaml.Controls.MenuFlyoutItem m_removeMenuItem;
-            private Windows.UI.Xaml.Controls.MenuFlyoutItem m_colorChooserMenuItem;
+            private MenuFlyout m_richEditContextMenu;
+            private MenuFlyoutItem m_cutMenuItem;
+            private MenuFlyoutItem m_copyMenuItem;
+            private MenuFlyoutItem m_pasteMenuItem;
+            private MenuFlyoutItem m_undoMenuItem;
+            private MenuFlyoutItem m_selectAllMenuItem;
+            private MenuFlyoutItem m_kgfEquationMenuItem;
+            private MenuFlyoutItem m_removeMenuItem;
+            private MenuFlyoutItem m_colorChooserMenuItem;
 
             private bool m_isPointerOver;
             private bool m_isColorChooserFlyoutOpen;

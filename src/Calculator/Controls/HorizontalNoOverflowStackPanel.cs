@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
 //
@@ -9,14 +9,15 @@
 using System;
 
 using Windows.Foundation;
-using Windows.UI.Xaml.Automation;
-using Windows.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Controls;
 
 namespace CalculatorApp
 {
     namespace Controls
     {
-        public class HorizontalNoOverflowStackPanel : Windows.UI.Xaml.Controls.Panel
+        public class HorizontalNoOverflowStackPanel : Panel
         {
             // Prioritize the last item over all other items (except the first one)
             internal HorizontalNoOverflowStackPanel()

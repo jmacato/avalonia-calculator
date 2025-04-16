@@ -59,12 +59,12 @@
                                      Opacity="0.4"
                                      Color="{ThemeResource SystemAltMediumLowColor}"/>
                     <SolidColorBrush x:Key="AppControlPageTextBaseMediumHighBrush" Color="{StaticResource SystemBaseMediumHighColor}"/>
-                    <RevealBackgroundBrush x:Key="AppControlHoverButtonFaceBrush"
+                    <!--<RevealBackgroundBrush x:Key="AppControlHoverButtonFaceBrush"
                                            FallbackColor="#18FFFFFF"
                                            Color="#18FFFFFF"/>
                     <RevealBackgroundBrush x:Key="AppControlPressedButtonFaceBrush"
                                            FallbackColor="#30FFFFFF"
-                                           Color="#30FFFFFF"/>
+                                           Color="#30FFFFFF"/>-->
                     <SolidColorBrush x:Key="AppControlTransparentAccentColorBrush" Color="{ThemeResource SystemAccentColor}"/>
                     <SolidColorBrush x:Key="AppControlPageTextBaseHighColorBrush" Color="{StaticResource SystemBaseHighColor}"/>
                     <SolidColorBrush x:Key="OperatorPanelScrollButtonBackgroundBrush" Color="{ThemeResource OperatorPanelScrollButtonBackgroundColor}"/>
@@ -81,7 +81,7 @@
 
                     <SolidColorBrush x:Key="AppControlForegroundAccentBrush" Color="{ThemeResource SystemAccentColor}"/>
                     <SolidColorBrush x:Key="AppControlPageTextRedColorBrush" Color="Red"/>
-                    <RevealBorderBrush x:Key="AppControlForegroundTransparentRevealBorderBrush"
+                    <!--<RevealBorderBrush x:Key="AppControlForegroundTransparentRevealBorderBrush"
                                        FallbackColor="Transparent"
                                        TargetTheme="Dark"
                                        Color="Transparent"/>
@@ -92,10 +92,9 @@
                     <RevealBackgroundBrush x:Key="AppControlBackgroundListAccentHighRevealBackgroundBrush"
                                            FallbackColor="{ThemeResource SystemAccentColorDark3}"
                                            TargetTheme="Dark"
-                                           Color="{ThemeResource SystemAccentColorDark3}"/>
+                                           Color="{ThemeResource SystemAccentColorDark3}"/>-->
                     <AcrylicBrush x:Key="AppChromeAcrylicHostBackdropMediumLowBrush"
-                                  BackgroundSource="HostBackdrop"
-                                  FallbackColor="{ThemeResource SystemChromeMediumColor}"
+                                   FallbackColor="{ThemeResource SystemChromeMediumColor}"
                                   TintColor="{ThemeResource SystemChromeLowColor}"
                                   TintOpacity="0.7"/>
                     <ApplicationTheme x:Key="CalcApplicationTheme">Dark</ApplicationTheme>
@@ -172,12 +171,12 @@
                                      Opacity="0.4"
                                      Color="{ThemeResource SystemAltMediumLowColor}"/>
                     <SolidColorBrush x:Key="AppControlPageTextBaseMediumHighBrush" Color="{StaticResource SystemBaseMediumHighColor}"/>
-                    <RevealBackgroundBrush x:Key="AppControlHoverButtonFaceBrush"
+                    <!--<RevealBackgroundBrush x:Key="AppControlHoverButtonFaceBrush"
                                            FallbackColor="#17000000"
                                            Color="#17000000"/>
                     <RevealBackgroundBrush x:Key="AppControlPressedButtonFaceBrush"
                                            FallbackColor="#30000000"
-                                           Color="#30000000"/>
+                                           Color="#30000000"/>-->
                     <SolidColorBrush x:Key="AppControlTransparentAccentColorBrush" Color="{ThemeResource SystemAccentColor}"/>
                     <SolidColorBrush x:Key="AppControlPageTextBaseHighColorBrush" Color="{StaticResource SystemBaseHighColor}"/>
                     <SolidColorBrush x:Key="OperatorPanelScrollButtonBackgroundBrush" Color="{ThemeResource OperatorPanelScrollButtonBackgroundColor}"/>
@@ -194,7 +193,7 @@
                                      Opacity="0.7"
                                      Color="{ThemeResource SystemAccentColor}"/>
 
-                    <RevealBorderBrush x:Key="AppControlForegroundTransparentRevealBorderBrush"
+                    <!--<RevealBorderBrush x:Key="AppControlForegroundTransparentRevealBorderBrush"
                                        FallbackColor="Transparent"
                                        TargetTheme="Light"
                                        Color="Transparent"/>
@@ -205,15 +204,13 @@
                     <RevealBackgroundBrush x:Key="AppControlBackgroundListAccentHighRevealBackgroundBrush"
                                            FallbackColor="{ThemeResource SystemAccentColorLight3}"
                                            TargetTheme="Light"
-                                           Color="{ThemeResource SystemAccentColorLight3}"/>
+                                           Color="{ThemeResource SystemAccentColorLight3}"/>-->
                     <AcrylicBrush x:Key="AppChromeAcrylicHostBackdropMediumLowBrush"
-                                  BackgroundSource="HostBackdrop"
-                                  FallbackColor="{ThemeResource SystemChromeMediumColor}"
+                                   FallbackColor="{ThemeResource SystemChromeMediumColor}"
                                   TintColor="{ThemeResource SystemChromeLowColor}"
                                   TintOpacity="0.7"/>
                     <AcrylicBrush x:Key="AppChromeAcrylicOperatorFlyoutBackgroundBrush"
-                                  BackgroundSource="HostBackdrop"
-                                  FallbackColor="{ThemeResource SystemChromeMediumColor}"
+                                   FallbackColor="{ThemeResource SystemChromeMediumColor}"
                                   TintColor="{ThemeResource SystemChromeLowColor}"
                                   TintOpacity="0.8"/>
                     <ApplicationTheme x:Key="CalcApplicationTheme">Light</ApplicationTheme>
@@ -284,15 +281,12 @@
                     <SolidColorBrush x:Key="AppBackgroundAltMediumLowBrush" Color="{ThemeResource SystemColorButtonFaceColor}"/>
                     <SolidColorBrush x:Key="AppOperatorPanelBackground" Color="{ThemeResource SystemColorButtonFaceColor}"/>
                     <SolidColorBrush x:Key="AppControlPageTextBaseMediumHighBrush" Color="{ThemeResource SystemColorWindowTextColor}"/>
-                    <SolidColorBrush x:Key="AppControlHoverButtonFaceBrush" Color="{ThemeResource SystemColorHighlightColor}"/>
-                    <SolidColorBrush x:Key="AppControlPressedButtonFaceBrush" Color="{ThemeResource SystemColorHighlightColor}"/>
-                    <SolidColorBrush x:Key="AppControlTransparentAccentColorBrush" Color="Transparent"/>
+                     <SolidColorBrush x:Key="AppControlTransparentAccentColorBrush" Color="Transparent"/>
                     <SolidColorBrush x:Key="AppControlPageTextBaseHighColorBrush" Color="{ThemeResource SystemColorWindowTextColor}"/>
                     <SolidColorBrush x:Key="OperatorPanelScrollButtonBackgroundBrush" Color="{ThemeResource SystemColorButtonFaceColor}"/>
                     <SolidColorBrush x:Key="AppControlForegroundAccentBrush" Color="{ThemeResource SystemColorButtonTextColor}"/>
                     <SolidColorBrush x:Key="AppControlPageTextRedColorBrush" Color="{ThemeResource SystemColorWindowTextColor}"/>
-                    <SolidColorBrush x:Key="AppControlForegroundTransparentRevealBorderBrush" Color="{ThemeResource SystemColorButtonTextColor}"/>
-                    <SolidColorBrush x:Key="AppControlHighlightAccentRevealBackgroundBrush" Color="{ThemeResource SystemColorHighlightColor}"/>
+                     <SolidColorBrush x:Key="AppControlHighlightAccentRevealBackgroundBrush" Color="{ThemeResource SystemColorHighlightColor}"/>
                     <SolidColorBrush x:Key="AppControlBackgroundListAccentHighRevealBackgroundBrush" Color="{ThemeResource SystemColorButtonFaceColor}"/>
                     <SolidColorBrush x:Key="AppControlListLowRevealHighlightBrush" Color="{ThemeResource SystemColorHighlightColor}"/>
                     <SolidColorBrush x:Key="AppChromeAcrylicHostBackdropMediumLowBrush" Color="{ThemeResource SystemColorWindowColor}"/>
@@ -803,7 +797,7 @@
                                                  Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
                                                  BorderThickness="0"
                                                  AutomationProperties.AutomationId="CalculationResultScrollLeft"
-                                                 AutomationProperties.Name="{utils:ResourceString Name=CalculationResultScrollLeft/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                                 AutomationProperties.Name="{utils:ResourceString Name=CalculationResultScrollLeft/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                                  Visibility="Collapsed">
                                     <FontIcon x:Name="ScrollLeftText"
                                               FontFamily="{ThemeResource CalculatorFontFamily}"
@@ -823,7 +817,7 @@
                                                  Foreground="{ThemeResource SystemControlForegroundAccentBrush}"
                                                  BorderThickness="0"
                                                  AutomationProperties.AutomationId="CalculationResultScrollRight"
-                                                 AutomationProperties.Name="{utils:ResourceString Name=CalculationResultScrollRight/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                                 AutomationProperties.Name="{utils:ResourceString Name=CalculationResultScrollRight/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                                  Visibility="Collapsed">
                                     <FontIcon x:Name="ScrollRightText"
                                               FontFamily="{ThemeResource CalculatorFontFamily}"
@@ -1781,8 +1775,7 @@
                                                   Margin="{TemplateBinding Padding}"
                                                   HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
                                                   VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-                                                  BorderBrush="{ThemeResource AppControlForegroundTransparentRevealBorderBrush}"
-                                                  BorderThickness="{TemplateBinding BorderThickness}"
+                                                   BorderThickness="{TemplateBinding BorderThickness}"
                                                   FontSize="{TemplateBinding FontSize}"
                                                   FontWeight="Normal"
                                                   AutomationProperties.AccessibilityView="Raw"
@@ -1862,7 +1855,7 @@
                                         </VisualState>
                                         <VisualState x:Name="CheckedPointerOver">
                                             <VisualState.Setters>
-                                                <Setter Target="RootGrid.Background" Value="{ThemeResource AppControlHoverButtonFaceBrush}"/>
+                                                <!--<Setter Target="RootGrid.Background" Value="{ThemeResource AppControlHoverButtonFaceBrush}"/>-->
                                                 <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource SystemControlHighlightAltBaseMediumBrush}"/>
                                                 <Setter Target="Carrot.Opacity" Value="1"/>
                                             </VisualState.Setters>
@@ -1904,8 +1897,7 @@
                                                   HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
                                                   VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
                                                   Foreground="{TemplateBinding Foreground}"
-                                                  BorderBrush="{ThemeResource AppControlForegroundTransparentRevealBorderBrush}"
-                                                  BorderThickness="{TemplateBinding BorderThickness}"
+                                                   BorderThickness="{TemplateBinding BorderThickness}"
                                                   AutomationProperties.AccessibilityView="Raw"
                                                   Content="{TemplateBinding Content}"
                                                   ContentTemplate="{TemplateBinding ContentTemplate}"
@@ -2001,8 +1993,7 @@
                                                   VerticalAlignment="{TemplateBinding VerticalAlignment}"
                                                   HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
                                                   VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-                                                  BorderBrush="{ThemeResource AppControlForegroundTransparentRevealBorderBrush}"
-                                                  BorderThickness="{TemplateBinding BorderThickness}"
+                                                   BorderThickness="{TemplateBinding BorderThickness}"
                                                   AutomationProperties.AccessibilityView="Raw"
                                                   ContentTemplate="{TemplateBinding ContentTemplate}"
                                                   ContentTransitions="{TemplateBinding ContentTransitions}">
@@ -2252,8 +2243,8 @@
             <Style x:Key="MathRichEditBoxStyle" TargetType="Controls:MathRichEditBox">
                 <Setter Property="Foreground" Value="{ThemeResource TextControlForeground}"/>
                 <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="ContentLinkForegroundColor" Value="{ThemeResource ContentLinkForegroundColor}"/>
-                <Setter Property="ContentLinkBackgroundColor" Value="{ThemeResource ContentLinkBackgroundColor}"/>
+                <!--<Setter Property="ContentLinkForegroundColor" Value="{ThemeResource ContentLinkForegroundColor}"/>-->
+                <!--<Setter Property="ContentLinkBackgroundColor" Value="{ThemeResource ContentLinkBackgroundColor}"/>-->
                 <Setter Property="SelectionHighlightColor" Value="{ThemeResource TextControlSelectionHighlightColor}"/>
                 <Setter Property="BorderBrush" Value="{ThemeResource TextControlBorderBrush}"/>
                 <Setter Property="BorderThickness" Value="{ThemeResource TextControlBorderThemeThickness}"/>

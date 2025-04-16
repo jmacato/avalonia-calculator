@@ -118,5 +118,10 @@ namespace CalculationManager
     //
     public CCalcEngine? m_currentCalculatorEngine;
     public  List<Rational> m_memorizedNumbers = [];
+
+        public int MaxHistorySize()
+        {
+            return (int)MAX_HISTORY_ITEMS;
+        }
     }
 }

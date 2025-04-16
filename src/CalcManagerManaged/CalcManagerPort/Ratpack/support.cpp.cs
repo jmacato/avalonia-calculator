@@ -175,7 +175,7 @@ public partial class RatPak
         // in the internal BASEX radix, this is important for length calculations
         // in translating from radix to BASEX and back.
 
-        g_ratio = (int32_t)(Math.Ceiling(BASEXPWR / Math.Log2(radix))) - 1;
+        g_ratio = (int32_t)(Math.Ceiling(BASEXPWR / Math.Log(radix, 2))) - 1;
 
         destroyrat(ref rat_nRadix);
         rat_nRadix = i32torat((int32_t)radix);

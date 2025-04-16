@@ -10,7 +10,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:mux="using:Microsoft.UI.Xaml.Controls"
              xmlns:utils="using:CalculatorApp.Utils"
-             xmlns:vm="using:CalculatorApp.ViewModelNative"
+             xmlns:vm="using:CalculatorApp.ViewModel"
              d:DesignHeight="300"
              d:DesignWidth="400"
              mc:Ignorable="d">
@@ -122,7 +122,7 @@
                                          VerticalAlignment="Center"
                                          Style="{StaticResource ThemedVariableTextBoxStyle}"
                                          FontStyle="Italic"
-                                         AutomationProperties.Name="{utils:ResourceString Name=VariableValueTextBox/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                         AutomationProperties.Name="{utils:ResourceString Name=VariableValueTextBox/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                          GotFocus="TextBoxGotFocus"
                                          KeyDown="TextBoxKeyDown"
                                          LosingFocus="TextBoxLosingFocus"
@@ -137,7 +137,7 @@
                                     Margin="8,0,8,-6"
                                     VerticalAlignment="Center"
                                     contract7Present:CornerRadius="{ThemeResource ControlCornerRadius}"
-                                    AutomationProperties.Name="{utils:ResourceString Name=VariableValueSlider/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                    AutomationProperties.Name="{utils:ResourceString Name=VariableValueSlider/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                     DataContext="{x:Bind}"
                                     SmallChange="{x:Bind Step, Mode=TwoWay}"
                                     StepFrequency="{x:Bind Step, Mode=TwoWay}"
@@ -170,7 +170,7 @@
                                              Padding="2,16,2,2"
                                              Style="{StaticResource ThemedVariableTextBoxStyle}"
                                              FontSize="12"
-                                             AutomationProperties.Name="{utils:ResourceString Name=VariableMinTextBox/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                             AutomationProperties.Name="{utils:ResourceString Name=VariableMinTextBox/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                              GotFocus="TextBoxGotFocus"
                                              KeyDown="TextBoxKeyDown"
                                              LosingFocus="TextBoxLosingFocus"
@@ -196,7 +196,7 @@
                                              Padding="2,16,2,2"
                                              Style="{StaticResource ThemedVariableTextBoxStyle}"
                                              FontSize="12"
-                                             AutomationProperties.Name="{utils:ResourceString Name=VariableStepTextBox/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                             AutomationProperties.Name="{utils:ResourceString Name=VariableStepTextBox/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                              GotFocus="TextBoxGotFocus"
                                              KeyDown="TextBoxKeyDown"
                                              LosingFocus="TextBoxLosingFocus"
@@ -221,7 +221,7 @@
                                              Padding="2,16,2,2"
                                              Style="{StaticResource ThemedVariableTextBoxStyle}"
                                              FontSize="12"
-                                             AutomationProperties.Name="{utils:ResourceString Name=VariableMaxTextBox/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                             AutomationProperties.Name="{utils:ResourceString Name=VariableMaxTextBox/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                              GotFocus="TextBoxGotFocus"
                                              KeyDown="TextBoxKeyDown"
                                              LosingFocus="TextBoxLosingFocus"
@@ -238,11 +238,11 @@
                                           HorizontalAlignment="Center"
                                           VerticalAlignment="Center"
                                           BorderThickness="0"
-                                          AutomationProperties.Name="{utils:ResourceString Name=VariableAreaSettings/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                          AutomationProperties.Name="{utils:ResourceString Name=VariableAreaSettings/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                           Click="VariableAreaClicked"
                                           IsChecked="{x:Bind SliderSettingsVisible, Mode=OneWay}"
                                           Tapped="VariableAreaButtonTapped"
-                                          ToolTipService.ToolTip="{utils:ResourceString Name=VariableAreaSettings/[using:Windows.UI.Xaml.Controls]ToolTipService/ToolTip}">
+                                          ToolTipService.ToolTip="{utils:ResourceString Name=VariableAreaSettings/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}">
                                 <ToggleButton.Resources>
                                     <ResourceDictionary>
                                         <ResourceDictionary.ThemeDictionaries>
@@ -661,7 +661,7 @@
                                                                   FontSize="{TemplateBinding FontSize}"
                                                                   FontWeight="{TemplateBinding FontWeight}"
                                                                   AcceptsReturn="false"
-                                                                  AutomationProperties.Name="{utils:ResourceString Name=MathRichEditBox/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                                                  AutomationProperties.Name="{utils:ResourceString Name=MathRichEditBox/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                                                   InputScope="Text"
                                                                   MathText="{Binding MathEquation, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                                                                   MaxLength="2048"
@@ -711,10 +711,10 @@
                                                 BorderThickness="0"
                                                 FontFamily="{StaticResource CalculatorFontFamily}"
                                                 AutomationProperties.AccessibilityView="Raw"
-                                                AutomationProperties.Name="{utils:ResourceString Name=functionAnalysisButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                                AutomationProperties.Name="{utils:ResourceString Name=functionAnalysisButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                                 Content="&#xE945;"
                                                 IsTabStop="False"
-                                                ToolTipService.ToolTip="{utils:ResourceString Name=functionAnalysisButton/[using:Windows.UI.Xaml.Controls]ToolTipService/ToolTip}"
+                                                ToolTipService.ToolTip="{utils:ResourceString Name=functionAnalysisButton/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}"
                                                 Visibility="Collapsed"/>
                                         <ToggleButton x:Name="ColorChooserButton"
                                                       Grid.Column="3"
@@ -725,10 +725,10 @@
                                                       BorderThickness="0"
                                                       FontFamily="{StaticResource CalculatorFontFamily}"
                                                       AutomationProperties.AccessibilityView="Raw"
-                                                      AutomationProperties.Name="{utils:ResourceString Name=colorChooserButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                                      AutomationProperties.Name="{utils:ResourceString Name=colorChooserButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                                       Content="&#xE790;"
                                                       IsTabStop="False"
-                                                      ToolTipService.ToolTip="{utils:ResourceString Name=colorChooserButton/[using:Windows.UI.Xaml.Controls]ToolTipService/ToolTip}"
+                                                      ToolTipService.ToolTip="{utils:ResourceString Name=colorChooserButton/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}"
                                                       Visibility="Collapsed">
                                             <ToggleButton.Resources>
                                                 <ResourceDictionary>
@@ -742,7 +742,7 @@
                                                             <SolidColorBrush x:Name="ToggleButtonRevealBackgroundCheckedPressed" Color="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=EquationColor.Color}"/>
                                                             <SolidColorBrush x:Name="ToggleButtonRevealBackgroundPressed" Color="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=EquationColor.Color}"/>
                                                             <SolidColorBrush x:Name="ToggleButtonRevealBackgroundPointerOver" Color="{ThemeResource SubtleFillColorSecondary}"/>
-                                                            <RevealBorderBrush x:Key="ToggleButtonRevealBorderBrush"
+                                                            <!--<RevealBorderBrush x:Key="ToggleButtonRevealBorderBrush"
                                                                                Opacity="0.33"
                                                                                FallbackColor="Transparent"
                                                                                TargetTheme="{ThemeResource CalcApplicationTheme}"
@@ -751,7 +751,7 @@
                                                                                Opacity="0.33"
                                                                                FallbackColor="{StaticResource SystemBaseMediumLowColor}"
                                                                                TargetTheme="{ThemeResource CalcApplicationTheme}"
-                                                                               Color="{StaticResource SystemRevealBaseMediumLowColor}"/>
+                                                                               Color="{StaticResource SystemRevealBaseMediumLowColor}"/>-->
                                                         </ResourceDictionary>
                                                         <ResourceDictionary x:Key="HighContrast"/>
                                                     </ResourceDictionary.ThemeDictionaries>
@@ -778,10 +778,10 @@
                                                     BorderThickness="0"
                                                     FontFamily="{StaticResource CalculatorFontFamily}"
                                                     AutomationProperties.AccessibilityView="Raw"
-                                                    AutomationProperties.Name="{utils:ResourceString Name=removeButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                                    AutomationProperties.Name="{utils:ResourceString Name=removeButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                                     Content=""
                                                     IsTabStop="False"
-                                                    ToolTipService.ToolTip="{utils:ResourceString Name=removeButton/[using:Windows.UI.Xaml.Controls]ToolTipService/ToolTip}"
+                                                    ToolTipService.ToolTip="{utils:ResourceString Name=removeButton/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}"
                                                     Visibility="Collapsed"/>
                                         </Grid>
                                         <Button x:Name="DeleteButton"
@@ -808,10 +808,10 @@
         </ResourceDictionary>
     </UserControl.Resources>
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel AutomationProperties.Name="{utils:ResourceString Name=EquationInputPanel/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}">
+        <StackPanel AutomationProperties.Name="{utils:ResourceString Name=EquationInputPanel/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}">
             <!-- This ListView and the one below should be replacted by an ItemRepeater once https://github.com/microsoft/microsoft-ui-xaml/issues/2011 is fixed. -->
             <ListView x:Name="EquationInputList"
-                      AutomationProperties.Name="{utils:ResourceString Name=EquationInputList/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                      AutomationProperties.Name="{utils:ResourceString Name=EquationInputList/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                       IsItemClickEnabled="False"
                       ItemsSource="{x:Bind Equations}"
                       SelectionMode="None"
@@ -841,7 +841,7 @@
                         <controls:EquationTextBox x:Name="EquationInputButton"
                                                   Margin="1,0,1,2"
                                                   Style="{StaticResource EquationTextBoxStyle}"
-                                                  AutomationProperties.Name="{utils:ResourceString Name=EquationInputButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                                                  AutomationProperties.Name="{utils:ResourceString Name=EquationInputButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                                                   DataContext="{x:Bind Mode=OneWay}"
                                                   DataContextChanged="EquationTextBox_DataContextChanged"
                                                   EquationButtonClicked="EquationTextBox_EquationButtonClicked"
@@ -876,7 +876,7 @@
                 <Rectangle Height="1"
                            Margin="12"
                            Fill="{ThemeResource DividerStrokeColorDefaultBrush}"/>
-                <ListView AutomationProperties.Name="{utils:ResourceString Name=VariableListView/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                <ListView AutomationProperties.Name="{utils:ResourceString Name=VariableListView/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                           IsItemClickEnabled="False"
                           ItemTemplate="{StaticResource VariableDataTemplate}"
                           ItemsSource="{x:Bind Variables, Mode=OneWay}"

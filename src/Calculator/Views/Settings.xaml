@@ -1,7 +1,7 @@
 <UserControl x:Class="CalculatorApp.Settings"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:automation="using:CalculatorApp.ViewModelNative.Common.Automation"
+             xmlns:automation="using:CalculatorApp.ViewModel.Common.Automation"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
@@ -57,7 +57,7 @@
                 Padding="2,0,0,0"
                 Style="{StaticResource SquareIconButtonStyle}"
                 FontSize="12"
-                AutomationProperties.Name="{utils:ResourceString Name=TitleBarBackButton/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+                AutomationProperties.Name="{utils:ResourceString Name=TitleBarBackButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
                 Click="BackButton_Click"
                 Content="&#xE72B;"/>
 

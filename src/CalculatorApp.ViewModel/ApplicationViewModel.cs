@@ -2,10 +2,11 @@
 // Licensed under the MIT License.
 
 using CalculatorApp.ViewModel.Common;
-using CalculatorApp.ViewModelNative;
-using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModel;
+using CalculatorApp.ViewModel.Common;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows.Input;
@@ -37,7 +38,7 @@ namespace CalculatorApp.ViewModel
 
 
         [ObservableProperty]
-        private CalculatorApp.ViewModelNative.Common.ViewMode _previousMode;
+        private CalculatorApp.ViewModel.Common.ViewMode _previousMode;
 
         [ObservableProperty]
 
@@ -50,7 +51,7 @@ namespace CalculatorApp.ViewModel
         private bool _displayNormalAlwaysOnTopOption;
 
         [ObservableProperty]
-        public IObservableVector<NavCategoryGroup> _categories;
+        public ObservableCollection<NavCategoryGroup> _categories;
 
         private ICommand donotuse_CopyCommand;
         public ICommand CopyCommand
@@ -100,56 +101,35 @@ namespace CalculatorApp.ViewModel
                 }
             }
         }
-          
+
         public Visibility ClearMemoryVisibility
         {
             get
             {
-                return CalculatorApp.ViewModelNative.Common.NavCategory.IsCalculatorViewMode(Mode) ? Windows.UI.Xaml.Visibility.Visible
+                return CalculatorApp.ViewModel.Common.NavCategory.IsCalculatorViewMode((ViewModel.Common.ViewMode)Mode) ? Windows.UI.Xaml.Visibility.Visible
                                                                                       : Windows.UI.Xaml.Visibility.Collapsed;
             }
         }
 
-        public CalculatorApp.ViewModelNative.Snapshot.ApplicationSnapshot Snapshot
+        public CalculatorApp.ViewModel.Snapshot.ApplicationSnapshot Snapshot
         {
             get
             {
-                var snapshot = new CalculatorApp.ViewModelNative.Snapshot.ApplicationSnapshot();
+                var snapshot = new CalculatorApp.ViewModel.Snapshot.ApplicationSnapshot();
                 snapshot.Mode = (int)(Mode);
-                if (_calculatorViewModel != null && m_mode == ViewMode.Standard)
+                if (CalculatorViewModel != null && m_mode == ViewMode.Standard)
                 {
-                    snapshot.StandardCalculator = _calculatorViewModel.Snapshot;
+                    snapshot.StandardCalculator = CalculatorViewModel.Snapshot;
                 }
                 return snapshot;
             }
         }
-        public static string LaunchedLocalSettings
-        {
+
         public static string HeightLocalSettings { get; } = "calculatorAlwaysOnTopLastWidth";
-            {
-                return "calculatorAlwaysOnTopLaunched";
-            }
-        }
-
-        public static string WidthLocalSettings
-        {
-            get
-            {
-                return "calculatorAlwaysOnTopLastWidth";
-            }
-        }
-
-        public static string HeightLocalSettings
-        {
-            get
-            {
-                return "calculatorAlwaysOnTopLastHeight";
-            }
-        }
+        public static string LaunchedLocalSettings { get; } = "calculatorAlwaysOnTopLaunched";
+        public static string WidthLocalSettings { get; } = "calculatorAlwaysOnTopLastWidth";
 
         ViewMode m_mode;
-
-
 
         public ApplicationViewModel()
         {
@@ -181,12 +161,12 @@ namespace CalculatorApp.ViewModel
             }
         }
 
-        public void RestoreFromSnapshot(CalculatorApp.ViewModelNative.Snapshot.ApplicationSnapshot snapshot)
+        public void RestoreFromSnapshot(CalculatorApp.ViewModel.Snapshot.ApplicationSnapshot snapshot)
         {
             Mode = (ViewMode)(snapshot.Mode);
             if (snapshot.StandardCalculator is null)
             {
-                _calculatorViewModel.Snapshot = snapshot.StandardCalculator;
+                CalculatorViewModel.Snapshot = snapshot.StandardCalculator;
             }
         }
 
@@ -211,37 +191,37 @@ namespace CalculatorApp.ViewModel
             Debug.Assert(NavCategoryStates.IsValidViewMode(m_mode));
             if (NavCategory.IsCalculatorViewMode(m_mode))
             {
-                if (_calculatorViewModel is null)
+                if (CalculatorViewModel is null)
                 {
-                    _calculatorViewModel = new StandardCalculatorViewModel();
+                    CalculatorViewModel = new  ();
                 }
-                _calculatorViewModel.SetCalculatorType(m_mode);
+
+                CalculatorViewModel.SetCalculatorType(m_mode);
             }
             else if (NavCategory.IsGraphingCalculatorViewMode(m_mode))
             {
-                if (_graphingCalcViewModel is null)
+                if (GraphingCalcViewModel is null)
                 {
-                    _graphingCalcViewModel = new GraphingCalculatorViewModel();
+                    GraphingCalcViewModel = new  ();
                 }
             }
             else if (NavCategory.IsDateCalculatorViewMode(m_mode))
             {
-                if (_dateCalcViewModel is null)
+                if (DateCalcViewModel is null)
                 {
-                    _dateCalcViewModel = new DateCalculatorViewModel();
+                    DateCalcViewModel = new DateCalculatorViewModel();
                 }
             }
             else if (NavCategory.IsConverterViewMode(m_mode))
             {
-                if (_converterViewModel is null)
+                if (ConverterViewModel is null)
                 {
-                    _converterViewModel = new UnitConverterViewModel();
+                    ConverterViewModel = new  ();
                 }
-
-                _converterViewModel.Mode = m_mode;
+                ConverterViewModel.Mode = m_mode;
             }
 
-            var resProvider = AppResourceProvider.GetInstance();
+            var resProvider = ViewModel.Common.AppResourceProvider.GetInstance();
             CategoryName = resProvider.GetResourceString(NavCategoryStates.GetNameResourceKey(m_mode));
 
             // Cast mode to an int in order to save it to app data.
@@ -250,7 +230,7 @@ namespace CalculatorApp.ViewModel
             ApplicationData.Current.LocalSettings.Values[nameof(Mode)] = NavCategoryStates.Serialize(m_mode);
 
             // Log ModeChange event when not first launch, log WindowCreated on first launch
-            if (NavCategoryStates.IsValidViewMode(_previousMode))
+            if (NavCategoryStates.IsValidViewMode((ViewModel.Common.ViewMode)PreviousMode))
             {
                 TraceLogger.GetInstance().LogModeChange(m_mode);
             }

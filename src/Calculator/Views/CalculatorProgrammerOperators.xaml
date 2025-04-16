@@ -176,7 +176,7 @@
           MaxHeight="244"
           Margin="4,0"
           AutomationProperties.HeadingLevel="Level1"
-          AutomationProperties.Name="{utils:ResourceString Name=RadixGroup/[using:Windows.UI.Xaml.Automation]AutomationProperties/Name}"
+          AutomationProperties.Name="{utils:ResourceString Name=RadixGroup/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
           FlowDirection="LeftToRight">
         <Grid.RowDefinitions>
             <RowDefinition Height="1*" MinHeight="0"/>

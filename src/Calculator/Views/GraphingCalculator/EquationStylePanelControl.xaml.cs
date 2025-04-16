@@ -1,13 +1,14 @@
-using CalculatorApp.ViewModelNative.Common;
+using CalculatorApp.ViewModel.Common;
 
 using GraphControl;
 
 using System.Collections.Generic;
 
 using Windows.UI;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Media;
+using Microsoft.UI;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 // The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
 
@@ -37,24 +38,28 @@ namespace CalculatorApp
 
         // Using a DependencyProperty as the backing store for SelectedColor.  This enables animation, styling, binding, etc...
         public static readonly DependencyProperty SelectedColorProperty =
-            DependencyProperty.Register(nameof(SelectedColor), typeof(Windows.UI.Color), typeof(EquationStylePanelControl), new PropertyMetadata(Windows.UI.Colors.Black, (sender, args) =>
+            DependencyProperty.Register(nameof(SelectedColor), typeof(Windows.UI.Color), typeof(EquationStylePanelControl), new PropertyMetadata(Colors.Black, (sender, args) =>
             {
                 var self = (EquationStylePanelControl)sender;
                 self.OnSelectedColorPropertyChanged((Windows.UI.Color)args.OldValue, (Windows.UI.Color)args.NewValue);
             }));
 
-        public GraphControl.EquationLineStyle SelectedStyle
+        public EquationLineStyle SelectedStyle
         {
-            get => (GraphControl.EquationLineStyle)GetValue(SelectedStyleProperty);
-            set => SetValue(SelectedStyleProperty, value);
+            get => (EquationLineStyle)GetValue(SelectedStyleProperty);
+            set
+            {
+                return;
+                SetValue(SelectedStyleProperty, value);
+            }
         }
 
         // Using a DependencyProperty as the backing store for SelectedStyle.  This enables animation, styling, binding, etc...
         public static readonly DependencyProperty SelectedStyleProperty =
-            DependencyProperty.Register(nameof(SelectedStyle), typeof(GraphControl.EquationLineStyle), typeof(EquationStylePanelControl), new PropertyMetadata(GraphControl.EquationLineStyle.Solid, (sender, args) =>
+            DependencyProperty.Register(nameof(SelectedStyle), typeof(EquationLineStyle), typeof(EquationStylePanelControl), new PropertyMetadata(EquationLineStyle.Solid, (sender, args) =>
             {
                 var self = (EquationStylePanelControl)sender;
-                self.OnSelectedStylePropertyChanged((GraphControl.EquationLineStyle)args.OldValue, (GraphControl.EquationLineStyle)args.NewValue);
+                //self.OnSelectedStylePropertyChanged((EquationLineStyle)args.OldValue, (EquationLineStyle)args.NewValue);
             }));
 
         public int SelectedColorIndex
@@ -67,15 +72,15 @@ namespace CalculatorApp
         public static readonly DependencyProperty SelectedColorIndexProperty =
             DependencyProperty.Register(nameof(SelectedColorIndex), typeof(int), typeof(EquationStylePanelControl), new PropertyMetadata(default(int)));
 
-        public IList<Windows.UI.Xaml.Media.SolidColorBrush> AvailableColors
+        public IList<Microsoft.UI.Xaml.Media.SolidColorBrush> AvailableColors
         {
-            get => (IList<Windows.UI.Xaml.Media.SolidColorBrush>)GetValue(AvailableColorsProperty);
+            get => (IList<Microsoft.UI.Xaml.Media.SolidColorBrush>)GetValue(AvailableColorsProperty);
             set => SetValue(AvailableColorsProperty, value);
         }
 
         // Using a DependencyProperty as the backing store for AvailableColors.  This enables animation, styling, binding, etc...
         public static readonly DependencyProperty AvailableColorsProperty =
-            DependencyProperty.Register(nameof(AvailableColors), typeof(IList<Windows.UI.Xaml.Media.SolidColorBrush>), typeof(EquationStylePanelControl), new PropertyMetadata(null));
+            DependencyProperty.Register(nameof(AvailableColors), typeof(IList<Microsoft.UI.Xaml.Media.SolidColorBrush>), typeof(EquationStylePanelControl), new PropertyMetadata(null));
 
         public bool EnableLineStylePicker
         {
@@ -87,7 +92,7 @@ namespace CalculatorApp
         public static readonly DependencyProperty EnableLineStylePickerProperty =
             DependencyProperty.Register(nameof(EnableLineStylePicker), typeof(bool), typeof(EquationStylePanelControl), new PropertyMetadata(default(bool)));
 
-        public static Windows.UI.Xaml.Media.DoubleCollection GetLinePattern(object line)
+        public static Microsoft.UI.Xaml.Media.DoubleCollection GetLinePattern(object line)
         {
             var lineStyle = ((EquationLineStyle?)line).Value;
 
@@ -125,7 +130,7 @@ namespace CalculatorApp
             }
         }
 
-        public static string GetColorAutomationName(Windows.UI.Xaml.Media.Brush brush)
+        public static string GetColorAutomationName(Microsoft.UI.Xaml.Media.Brush brush)
         {
             var resourceLoader = AppResourceProvider.GetInstance();
             var color = ((SolidColorBrush)brush);
@@ -239,7 +244,7 @@ namespace CalculatorApp
                     SelectedColor = brush.Color;
                 }
 
-                CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphLineStyleChanged(LineStyleType.Color);
+                CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphLineStyleChanged(LineStyleType.Color);
             }
         }
 
@@ -266,7 +271,7 @@ namespace CalculatorApp
                     continue;
                 }
 
-                if (Utilities.AreColorsEqual(brush.Color, selectedColor))
+                if ((brush.Color == selectedColor))
                 {
                     gridViewItem.IsSelected = true;
                     SelectedColorIndex = i;
@@ -284,7 +289,7 @@ namespace CalculatorApp
             if (oldStyle != newStyle)
             {
                 SelectStyle(newStyle);
-                CalculatorApp.ViewModelNative.Common.TraceLogger.GetInstance().LogGraphLineStyleChanged(LineStyleType.Pattern);
+                CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphLineStyleChanged(LineStyleType.Pattern);
             }
         }
 
