@@ -1,400 +1,222 @@
-using CalculatorApp.Common;
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
+using System.ComponentModel;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using CalculatorApp.Controls;
 using CalculatorApp.ViewModel;
 using CalculatorApp.ViewModel.Common;
 
-using System;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Threading.Tasks;
+namespace CalculatorApp;
 
-using Windows.Foundation;
-using Windows.System;
-using Microsoft.Windows.System;
-using Windows.UI.ViewManagement;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Automation;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
-
-// The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
-
-namespace CalculatorApp
+public sealed partial class UnitConverter : UserControl
 {
-    internal class Activatable : ViewModel.IActivatable
+    private UnitConverterViewModel? _subscribedModel;
+
+    public UnitConverter()
     {
-        public Activatable(Func<bool> getter, Action<bool> setter)
-        {
-            m_getter = getter;
-            m_setter = setter;
-        }
-
-        public bool IsActive
-        {
-            get => m_getter();
-            set => m_setter(value);
-        }
-
-        private readonly Func<bool> m_getter;
-        private readonly Action<bool> m_setter;
+        InitializeComponent();
     }
 
-    public sealed partial class UnitConverter : UserControl
+    public UnitConverterViewModel? Model => DataContext as UnitConverterViewModel;
+
+    public void SetDefaultFocus() => Value1.Focus();
+
+    private void OnLoaded(object? sender, RoutedEventArgs e)
     {
-        public UnitConverter()
+        SubscribeToModel();
+        ApplyResponsiveLayout();
+        SetDefaultFocus();
+    }
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        SubscribeToModel();
+        ApplyResponsiveLayout();
+    }
+
+    private void SubscribeToModel()
+    {
+        if (ReferenceEquals(_subscribedModel, Model))
         {
-            m_meteredConnectionOverride = false;
-            LayoutDirection = LocalizationService.GetInstance().GetFlowDirection();
-            FlowDirectionHorizontalAlignment = LayoutDirection == FlowDirection.RightToLeft ? HorizontalAlignment.Right : HorizontalAlignment.Left;
-
-            InitializeComponent();
-
-            // adding ESC key shortcut binding to clear button
-            ClearEntryButtonPos0.SetValue(KeyboardShortcutManager.VirtualKeyProperty, MyVirtualKey.Escape);
-
-            // Is currency symbol preference set to right side
-            bool preferRight = LocalizationSettings.GetInstance().GetCurrencySymbolPrecedence() == 0;
-            VisualStateManager.GoToState(this, preferRight ? "CurrencySymbolRightState" : "CurrencySymbolLeftState", false);
-
-            var resLoader = AppResourceProvider.GetInstance();
-            m_chargesMayApplyText = resLoader.GetResourceString("DataChargesMayApply");
-            m_failedToRefreshText = resLoader.GetResourceString("FailedToRefresh");
-
-            InitializeOfflineStatusTextBlock();
-
-            if (Resources.TryGetValue("CalculationResultContextMenu", out var value))
-            {
-                m_resultsFlyout = (MenuFlyout)value;
-            }
-
-            CopyMenuItem.Text = resLoader.GetResourceString("copyMenuItem");
-            PasteMenuItem.Text = resLoader.GetResourceString("pasteMenuItem");
+            return;
         }
 
-        public Microsoft.UI.Xaml.HorizontalAlignment FlowDirectionHorizontalAlignment { get; } = default;
-
-        public void AnimateConverter()
+        if (_subscribedModel is { } oldModel)
         {
-            if (uiSettings.Value.AnimationsEnabled)
-            {
-                AnimationStory.Begin();
-            }
+            oldModel.PropertyChanged -= OnModelPropertyChanged;
         }
 
-        public CalculatorApp.ViewModel.UnitConverterViewModel Model => (CalculatorApp.ViewModel.UnitConverterViewModel)this.DataContext;
-
-        public Microsoft.UI.Xaml.FlowDirection LayoutDirection { get; } = default;
-
-        public void SetDefaultFocus()
+        _subscribedModel = Model;
+        if (_subscribedModel is { } model)
         {
-            Control[] focusPrecedence = { Value1, CurrencyRefreshBlockControl, OfflineBlock, ClearEntryButtonPos0 };
+            model.PropertyChanged += OnModelPropertyChanged;
+            UpdateActiveValueState();
+        }
+    }
 
-            foreach (Control control in focusPrecedence)
-            {
-                if (control.Focus(FocusState.Programmatic))
-                {
-                    break;
-                }
-            }
+    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(UnitConverterViewModel.Value1Active)
+            or nameof(UnitConverterViewModel.Value2Active))
+        {
+            UpdateActiveValueState();
+        }
+    }
+
+    private void UpdateActiveValueState()
+    {
+        Value1.UpdateTextState();
+        Value2.UpdateTextState();
+    }
+
+    private void OnSizeChanged(object? sender, SizeChangedEventArgs e) => ApplyResponsiveLayout();
+
+    /// <summary>
+    /// Direct equivalent of UnitConverter.xaml's AspectRatioTrigger and sizing
+    /// VisualStates. Landscape begins when width is equal to or greater than
+    /// height, exactly as in the WinUI source.
+    /// </summary>
+    private void ApplyResponsiveLayout()
+    {
+        if (Bounds.Width <= 0 || Bounds.Height <= 0)
+        {
+            return;
         }
 
-        private void OnValueKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+        bool landscape = Bounds.Width >= Bounds.Height;
+        var columns = UnitConverterRootGrid.ColumnDefinitions;
+        var rows = UnitConverterRootGrid.RowDefinitions;
+
+        columns[0].Width = new GridLength(0);
+        columns[1].Width = new GridLength(1, GridUnitType.Star);
+        columns[2].Width = landscape
+            ? new GridLength(1, GridUnitType.Star)
+            : new GridLength(0);
+        columns[3].Width = new GridLength(0);
+
+        if (landscape)
         {
-            if (e.Key == VirtualKey.Space)
-            {
-                OnValueSelected(sender);
-            }
+            rows[1].Height = new GridLength(4, GridUnitType.Star);
+            rows[2].Height = new GridLength(2, GridUnitType.Star);
+            rows[3].Height = new GridLength(4, GridUnitType.Star);
+            rows[4].Height = new GridLength(2, GridUnitType.Star);
+            rows[5].Height = new GridLength(2, GridUnitType.Star);
+            rows[6].MinHeight = 0;
+            rows[6].Height = new GridLength(0);
+
+            Grid.SetRow(ConverterNumPad, 1);
+            Grid.SetRowSpan(ConverterNumPad, 5);
+            Grid.SetColumn(ConverterNumPad, 2);
+            Grid.SetColumnSpan(ConverterNumPad, 2);
+            SupplementaryResults.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
+        }
+        else
+        {
+            rows[1].Height = new GridLength(56, GridUnitType.Star);
+            rows[2].Height = new GridLength(32, GridUnitType.Star);
+            rows[3].Height = new GridLength(56, GridUnitType.Star);
+            rows[4].Height = new GridLength(32, GridUnitType.Star);
+            rows[5].Height = GridLength.Auto;
+            rows[6].MinHeight = 0;
+            rows[6].Height = new GridLength(272, GridUnitType.Star);
+
+            Grid.SetRow(ConverterNumPad, 6);
+            Grid.SetRowSpan(ConverterNumPad, 1);
+            Grid.SetColumn(ConverterNumPad, 1);
+            Grid.SetColumnSpan(ConverterNumPad, 1);
+            SupplementaryResults.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center;
         }
 
-        private void OnContextRequested(UIElement sender, ContextRequestedEventArgs e)
+        bool wide = Bounds.Width >= 640;
+        bool extraWide = Bounds.Width >= 1280 && Bounds.Height >= 768;
+        double currencyFontSize = wide ? 32 : 20;
+        double unitHeight = wide ? 44 : 32;
+        double commandFontSize = extraWide ? 24 : wide ? 20 : 14;
+        double numberFontSize = extraWide ? 46 : wide ? 28 : 18;
+
+        Value1.MaxFontSize = wide ? 46 : 40;
+        Value2.MaxFontSize = wide ? 46 : 40;
+        Value1.DisplayMargin = wide ? new Thickness(0, 0, 0, 12) : new Thickness(0, 0, 0, 4);
+        Value2.DisplayMargin = wide ? new Thickness(0, 0, 0, 12) : new Thickness(0, 0, 0, 4);
+        CurrencySymbol1Block.FontSize = currencyFontSize;
+        CurrencySymbol2Block.FontSize = currencyFontSize;
+        CurrencySymbol1Block.Margin = wide ? new Thickness(0, 0, 0, 17) : new Thickness(0, 0, 0, 8);
+        CurrencySymbol2Block.Margin = wide ? new Thickness(0, 0, 0, 17) : new Thickness(0, 0, 0, 8);
+        Units1.Height = unitHeight;
+        Units2.Height = unitHeight;
+        ClearEntryButtonPos0.FontSize = commandFontSize;
+        BackSpaceButtonSmall.FontSize = commandFontSize;
+        ConverterNegateButton.FontSize = extraWide ? 24 : wide ? 20 : 16;
+        NumberPad.SetButtonFontSize(numberFontSize);
+    }
+
+    private void OnSupplementaryResultsPanelSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        // Retained from the original WinUI handler. The epsilon prevents a
+        // SizeChanged feedback loop caused by floating-point layout rounding.
+        UnitConverterRootGrid.RowDefinitions[5].MinHeight = Math.Max(48, e.NewSize.Height + 0.01);
+    }
+
+    private void OnValueSelected(object sender)
+    {
+        if (sender is CalculationResult value)
         {
-            OnValueSelected(sender);
-            var requestedElement = ((FrameworkElement)sender);
+            value.UpdateTextState();
+            value.IsActive = true;
+        }
+    }
 
-            PasteMenuItem.IsEnabled = CopyPasteManager.HasStringToPaste();
+    private void OnDropDownOpened(object? sender, EventArgs e)
+    {
+        if (Model is { } model)
+        {
+            model.IsDropDownOpen = true;
+        }
+    }
 
-            if (e.TryGetPosition(requestedElement, out Point point))
-            {
-                m_resultsFlyout.ShowAt(requestedElement, point);
-            }
-            else
-            {
-                // Not invoked via pointer, so let XAML choose a default location.
-                m_resultsFlyout.ShowAt(requestedElement);
-            }
+    private void OnDropDownClosed(object? sender, EventArgs e)
+    {
+        if (Model is { } model)
+        {
+            model.IsDropDownOpen = false;
+        }
+    }
 
+    private void OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (Model is not { } model)
+        {
+            return;
+        }
+
+        NumbersAndOperatorsEnum operation = e.Key switch
+        {
+            Key.D0 or Key.NumPad0 => NumbersAndOperatorsEnum.Zero,
+            Key.D1 or Key.NumPad1 => NumbersAndOperatorsEnum.One,
+            Key.D2 or Key.NumPad2 => NumbersAndOperatorsEnum.Two,
+            Key.D3 or Key.NumPad3 => NumbersAndOperatorsEnum.Three,
+            Key.D4 or Key.NumPad4 => NumbersAndOperatorsEnum.Four,
+            Key.D5 or Key.NumPad5 => NumbersAndOperatorsEnum.Five,
+            Key.D6 or Key.NumPad6 => NumbersAndOperatorsEnum.Six,
+            Key.D7 or Key.NumPad7 => NumbersAndOperatorsEnum.Seven,
+            Key.D8 or Key.NumPad8 => NumbersAndOperatorsEnum.Eight,
+            Key.D9 or Key.NumPad9 => NumbersAndOperatorsEnum.Nine,
+            Key.Decimal or Key.OemPeriod or Key.OemComma => NumbersAndOperatorsEnum.Decimal,
+            Key.Back => NumbersAndOperatorsEnum.Backspace,
+            Key.Delete or Key.Escape => NumbersAndOperatorsEnum.Clear,
+            Key.Subtract or Key.OemMinus => NumbersAndOperatorsEnum.Negate,
+            _ => NumbersAndOperatorsEnum.None
+        };
+
+        if (operation != NumbersAndOperatorsEnum.None)
+        {
+            model.ButtonPressed.Execute(operation);
             e.Handled = true;
         }
-
-        private void OnContextCanceled(UIElement sender, RoutedEventArgs e)
-        {
-            m_resultsFlyout.Hide();
-        }
-
-        private void OnCopyMenuItemClicked(object sender, RoutedEventArgs e)
-        {
-            var calcResult = ((CalculationResult)m_resultsFlyout.Target);
-            CopyPasteManager.CopyToClipboard(calcResult.GetRawDisplayValue());
-        }
-
-        private void OnPasteMenuItemClicked(object sender, RoutedEventArgs e)
-        {
-            UnitConverter that = this;
-            _ = Task.Run(async () =>
-            {
-                string pastedString = await CopyPasteManager.GetStringToPaste(Model.Mode, CategoryGroupType.Converter, NumberBase.Unknown, BitLength.BitLengthUnknown);
-                that.Model.OnPaste(pastedString);
-            });
-        }
-
-        private void OnValueSelected(object sender)
-        {
-            var value = ((CalculationResult)sender);
-            // update the font size since the font is changed to bold
-            value.UpdateTextState();
-            ((UnitConverterViewModel)this.DataContext).OnValueActivated(new Activatable(() => value.IsActive, flag => value.IsActive = flag));
-        }
-
-        private void UpdateDropDownState(object sender, object e)
-        {
-            ((UnitConverterViewModel)this.DataContext).IsDropDownOpen = (Units1.IsDropDownOpen) || (Units2.IsDropDownOpen);
-            KeyboardShortcutManager.UpdateDropDownState((Units1.IsDropDownOpen) || (Units2.IsDropDownOpen));
-        }
-
-        private void OnLoaded(object sender, RoutedEventArgs e)
-        {
-        }
-
-        private void CurrencyRefreshButton_Click(object sender, RoutedEventArgs e)
-        {
-            // If IsCurrencyLoadingVisible is true that means CurrencyRefreshButton_Click was recently called
-            // and is still executing. In this case there is no reason to process the click.
-            if (!Model.IsCurrencyLoadingVisible)
-            {
-                if (Model.NetworkBehavior == NetworkAccessBehavior.OptIn)
-                {
-                    m_meteredConnectionOverride = true;
-                }
-
-                Model.RefreshCurrencyRatios();
-            }
-        }
-
-        private void OnPropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            string propertyName = e.PropertyName;
-            if (propertyName == UnitConverterViewModel.NetworkBehaviorPropertyName || propertyName == UnitConverterViewModel.CurrencyDataLoadFailedPropertyName)
-            {
-                OnNetworkBehaviorChanged();
-            }
-            else if (propertyName == UnitConverterViewModel.CurrencyDataIsWeekOldPropertyName)
-            {
-                SetCurrencyTimestampFontWeight();
-            }
-            else if (
-                propertyName == UnitConverterViewModel.IsCurrencyLoadingVisiblePropertyName
-                || propertyName == UnitConverterViewModel.IsCurrencyCurrentCategoryPropertyName)
-            {
-                OnIsDisplayVisibleChanged();
-            }
-        }
-
-        private void OnDataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
-        {
-            Model.PropertyChanged -= OnPropertyChanged;
-            Model.PropertyChanged += OnPropertyChanged;
-
-            OnNetworkBehaviorChanged();
-        }
-
-        private void OnIsDisplayVisibleChanged()
-        {
-            if (!Model.IsCurrencyCurrentCategory)
-            {
-                VisualStateManager.GoToState(this, UnitLoadedState.Name, false);
-            }
-            else
-            {
-                if (Model.IsCurrencyLoadingVisible)
-                {
-                    VisualStateManager.GoToState(this, UnitNotLoadedState.Name, false);
-                    StartProgressRingWithDelay();
-                }
-                else
-                {
-                    HideProgressRing();
-                    VisualStateManager.GoToState(this, !string.IsNullOrEmpty(Model.CurrencyTimestamp) ? UnitLoadedState.Name : UnitNotLoadedState.Name, true);
-                }
-            }
-        }
-
-        private void Units1_IsEnabledChanged(object sender, DependencyPropertyChangedEventArgs e)
-        {
-            if ((Units1.Visibility == Visibility.Visible) && Units1.IsEnabled)
-            {
-                SetDefaultFocus();
-            }
-        }
-
-        private void OnNetworkBehaviorChanged()
-        {
-            switch (Model.NetworkBehavior)
-            {
-                case NetworkAccessBehavior.Normal:
-                    OnNormalNetworkAccess();
-                    break;
-                case NetworkAccessBehavior.OptIn:
-                    OnOptInNetworkAccess();
-                    break;
-                case NetworkAccessBehavior.Offline:
-                    OnOfflineNetworkAccess();
-                    break;
-            }
-        }
-
-        private void OnNormalNetworkAccess()
-        {
-            CurrencyRefreshBlockControl.Visibility = Visibility.Visible;
-            OfflineBlock.Visibility = Visibility.Collapsed;
-
-            if (Model.CurrencyDataLoadFailed)
-            {
-                SetFailedToRefreshStatus();
-            }
-            else
-            {
-                SetNormalCurrencyStatus();
-            }
-        }
-
-        private void OnOptInNetworkAccess()
-        {
-            CurrencyRefreshBlockControl.Visibility = Visibility.Visible;
-            OfflineBlock.Visibility = Visibility.Collapsed;
-
-            if (m_meteredConnectionOverride && Model.CurrencyDataLoadFailed)
-            {
-                SetFailedToRefreshStatus();
-            }
-            else
-            {
-                SetChargesMayApplyStatus();
-            }
-        }
-
-        private void OnOfflineNetworkAccess()
-        {
-            CurrencyRefreshBlockControl.Visibility = Visibility.Collapsed;
-            OfflineBlock.Visibility = Visibility.Visible;
-        }
-
-        private void InitializeOfflineStatusTextBlock()
-        {
-            var resProvider = AppResourceProvider.GetInstance();
-            string offlineStatusHyperlinkText = resProvider.GetResourceString("OfflineStatusHyperlinkText");
-
-            // The resource string has the 'NetworkSettings' hyperlink wrapped with '%HL%'.
-            // Break the string and assign pieces appropriately.
-            const string delimiter = "%HL%";
-            int delimiterLength = delimiter.Length;
-
-            // Find the delimiters.
-            int firstSplitPosition = offlineStatusHyperlinkText.IndexOf(delimiter);
-            Debug.Assert(firstSplitPosition != -1);
-            int secondSplitPosition = offlineStatusHyperlinkText.IndexOf(delimiter, firstSplitPosition + 1);
-            Debug.Assert(secondSplitPosition != -1);
-            int hyperlinkTextLength = secondSplitPosition - (firstSplitPosition + delimiterLength);
-
-            // Assign pieces.
-            var offlineStatusTextBeforeHyperlink = offlineStatusHyperlinkText.Substring(0, firstSplitPosition);
-            var offlineStatusTextLink = offlineStatusHyperlinkText.Substring(firstSplitPosition + delimiterLength, hyperlinkTextLength);
-            var offlineStatusTextAfterHyperlink = offlineStatusHyperlinkText.Substring(secondSplitPosition + delimiterLength);
-
-            OfflineRunBeforeLink.Text = offlineStatusTextBeforeHyperlink;
-            OfflineRunLink.Text = offlineStatusTextLink;
-            OfflineRunAfterLink.Text = offlineStatusTextAfterHyperlink;
-
-            AutomationProperties.SetName(OfflineBlock, offlineStatusTextBeforeHyperlink + " " + offlineStatusTextLink + " " + offlineStatusTextAfterHyperlink);
-        }
-
-        private void SetNormalCurrencyStatus()
-        {
-            CurrencySecondaryStatus.Text = "";
-        }
-
-        private void SetChargesMayApplyStatus()
-        {
-            VisualStateManager.GoToState(this, "ChargesMayApplyCurrencyStatus", false);
-            CurrencySecondaryStatus.Text = m_chargesMayApplyText;
-        }
-
-        private void SetFailedToRefreshStatus()
-        {
-            VisualStateManager.GoToState(this, "FailedCurrencyStatus", false);
-            CurrencySecondaryStatus.Text = m_failedToRefreshText;
-        }
-
-        private void SetCurrencyTimestampFontWeight()
-        {
-            if (Model.CurrencyDataIsWeekOld)
-            {
-                VisualStateManager.GoToState(this, "WeekOldTimestamp", false);
-            }
-            else
-            {
-                VisualStateManager.GoToState(this, "DefaultTimestamp", false);
-            }
-        }
-
-        private void StartProgressRingWithDelay()
-        {
-            HideProgressRing();
-
-            TimeSpan delay = TimeSpan.FromMilliseconds(500);
-
-            m_delayTimer = new DispatcherTimer
-            {
-                Interval = delay
-            };
-            m_delayTimer.Tick += OnDelayTimerTick;
-
-            m_delayTimer.Start();
-        }
-
-        private void OnDelayTimerTick(object sender, object e)
-        {
-            CurrencyLoadingProgressRing.IsActive = true;
-            m_delayTimer.Stop();
-        }
-
-        private void HideProgressRing()
-        {
-            m_delayTimer?.Stop();
-
-            CurrencyLoadingProgressRing.IsActive = false;
-        }
-
-        private void SupplementaryResultsPanelInGrid_SizeChanged(object sender, Microsoft.UI.Xaml.SizeChangedEventArgs e)
-        {
-            // We add 0.01 to be sure to not create an infinite loop with SizeChanged events cascading due to float approximation
-            RowDltrUnits.MinHeight = Math.Max(48.0, e.NewSize.Height + 0.01);
-        }
-
-        private void OnVisualStateChanged(object sender, Microsoft.UI.Xaml.VisualStateChangedEventArgs e)
-        {
-            var mode = NavCategoryStates.Deserialize(Model.CurrentCategory.GetModelCategoryId());
-            TraceLogger.GetInstance().LogVisualStateChanged(mode, e.NewState.Name, false);
-        }
-
-        private static readonly Lazy<UISettings> uiSettings = new Lazy<UISettings>(true);
-        private readonly MenuFlyout m_resultsFlyout = default;
-
-        private readonly string m_chargesMayApplyText;
-        private readonly string m_failedToRefreshText;
-
-        private bool m_meteredConnectionOverride;
-
-        private Microsoft.UI.Xaml.DispatcherTimer m_delayTimer;
     }
 }
-

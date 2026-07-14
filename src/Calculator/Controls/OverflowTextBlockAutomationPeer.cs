@@ -1,29 +1,16 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Collections.Generic;
+using Avalonia.Automation.Peers;
 
-using Microsoft.UI.Xaml.Automation.Peers;
+namespace CalculatorApp.Controls;
 
-namespace CalculatorApp
+public sealed class OverflowTextBlockAutomationPeer(OverflowTextBlock owner)
+    : ControlAutomationPeer(owner)
 {
-    namespace Controls
-    {
-        public sealed class OverflowTextBlockAutomationPeer : FrameworkElementAutomationPeer
-        {
-            public OverflowTextBlockAutomationPeer(OverflowTextBlock owner) : base(owner)
-            {
-            }
+    protected override AutomationControlType GetAutomationControlTypeCore() =>
+        AutomationControlType.Text;
 
-            protected override AutomationControlType GetAutomationControlTypeCore()
-            {
-                return AutomationControlType.Text;
-            }
-
-            protected override IList<AutomationPeer> GetChildrenCore()
-            {
-                return null;
-            }
-        }
-    }
+    protected override IReadOnlyList<AutomationPeer> GetChildrenCore() =>
+        Array.Empty<AutomationPeer>();
 }

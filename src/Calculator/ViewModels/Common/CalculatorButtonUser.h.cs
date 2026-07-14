@@ -70,7 +70,7 @@ namespace CalculatorApp.ViewModel.Common;
         Lsh = (int)CM.Command.CommandLSHF,
         Rsh = (int)CM.Command.CommandRSHF,
         Xor = (int)CM.Command.CommandXor,
-        Not = (int)CM.Command.CommandNot,
+        Not = (int)CM.Command.Not,
         A = (int)CM.Command.CommandA,
         B = (int)CM.Command.CommandB,
         C = (int)CM.Command.CommandC,
@@ -118,7 +118,7 @@ namespace CalculatorApp.ViewModel.Common;
         RorC = (int)CM.Command.CommandRORC,
 
         BINSTART = (int)CM.Command.CommandBINEDITSTART,
-        BINPOS0 = (int)CM.Command.CommandBINPOS0,
+        BINPOS0 = (int)CM.Command.BinPos0,
         BINPOS1 = (int)CM.Command.CommandBINPOS1,
         BINPOS2 = (int)CM.Command.CommandBINPOS2,
         BINPOS3 = (int)CM.Command.CommandBINPOS3,
@@ -182,7 +182,7 @@ namespace CalculatorApp.ViewModel.Common;
         BINPOS61 = (int)CM.Command.CommandBINPOS61,
         BINPOS62 = (int)CM.Command.CommandBINPOS62,
         BINPOS63 = (int)CM.Command.CommandBINPOS63,
-        BINEND = (int)CM.Command.CommandBINEDITEND,
+        BINEND = (int)CM.Command.BinEditEnd,
 
         // Enum values below are used for Tracelogging and do not map to the Calculator engine
         MemoryAdd = (int)CM.Command.CommandMPLUS,
@@ -201,4 +201,3 @@ namespace CalculatorApp.ViewModel.Common;
         Y,
         Submit
     };
-

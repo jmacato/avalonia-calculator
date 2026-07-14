@@ -6,7 +6,7 @@ using System.Collections.Generic;
 // Assuming these namespaces exist in your C# project
 using CalcManager = UnitConversionManager; // Alias for clarity if needed, or use full name
 using CalculatorApp.ViewModel.Common; // For ViewMode, NavCategory etc.
-using Windows.Globalization;
+using System.Globalization;
 using System.Linq; // For LINQ methods like Any()
 using System.Diagnostics; // For Debug.Assert
 
@@ -81,12 +81,24 @@ namespace CalculatorApp.ViewModel.Common // Adjusted namespace slightly for C# c
         private readonly string m_currentRegionCode;
 
         // Constructor
-        public UnitConverterDataLoader(GeographicRegion region)
+        public UnitConverterDataLoader(string? regionCode = null)
         {
-            m_currentRegionCode = region.CodeTwoLetter;
+            m_currentRegionCode = regionCode ?? GetCurrentRegionCode();
             m_categoryList = new List<CalcManager.Category>();
             m_categoryIDToUnitsMap = new Dictionary<int, List<CalcManager.Unit>>();
             m_ratioMap = new Dictionary<CalcManager.Unit, Dictionary<CalcManager.Unit, CalcManager.ConversionData>>();
+        }
+
+        private static string GetCurrentRegionCode()
+        {
+            try
+            {
+                return RegionInfo.CurrentRegion.TwoLetterISORegionName;
+            }
+            catch (ArgumentException)
+            {
+                return "US";
+            }
         }
 
     }

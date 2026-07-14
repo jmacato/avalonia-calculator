@@ -1,83 +1,44 @@
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Automation;
-using Microsoft.UI.Xaml.Automation.Peers;
-using Microsoft.UI.Xaml.Controls;
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
 
-namespace CalculatorApp.ViewModel.Common.Automation
+using Avalonia;
+using Avalonia.Automation;
+
+namespace CalculatorApp.ViewModel.Common.Automation;
+
+public sealed partial class NarratorNotifier
 {
-    public sealed class NarratorNotifier : DependencyObject
+    public NarratorNotifier()
     {
-        private static DependencyProperty s_announcementProperty;
-        private TextBlock m_announcementElement;
-        static NarratorNotifier()
+        Width = 1;
+        Height = 1;
+        Opacity = 0;
+        IsHitTestVisible = false;
+    }
+
+    public void Announce(NarratorAnnouncement? announcement)
+    {
+        if (!NarratorAnnouncement.IsValid(announcement))
         {
-            RegisterDependencyProperties();
+            return;
         }
 
-        public NarratorNotifier()
-        {
-        }
+        AutomationLiveSetting liveSetting = announcement!.Processing is
+            AutomationNotificationProcessing.ImportantMostRecent
+            or AutomationNotificationProcessing.CurrentThenMostRecent
+                ? AutomationLiveSetting.Assertive
+                : AutomationLiveSetting.Polite;
+        AutomationProperties.SetLiveSetting(this, liveSetting);
+        AutomationProperties.SetAutomationId(this, announcement.ActivityId);
+        Text = announcement.Announcement;
+    }
 
-        public void Announce(NarratorAnnouncement announcement)
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == AnnouncementProperty)
         {
-            if (NarratorAnnouncement.IsValid(announcement))
-            {
-                if (m_announcementElement == null)
-                {
-                    m_announcementElement = new TextBlock();
-                }
-
-                var peer = FrameworkElementAutomationPeer.FromElement(m_announcementElement);
-                if (peer != null)
-                {
-                    peer.RaiseNotificationEvent(
-                        announcement.Kind,
-                        announcement.Processing,
-                        announcement.Announcement,
-                        announcement.ActivityId);
-                }
-            }
-        }
-
-        public static void RegisterDependencyProperties()
-        {
-            s_announcementProperty = DependencyProperty.Register(
-                "Announcement",
-                typeof(NarratorAnnouncement),
-                typeof(NarratorNotifier),
-                new PropertyMetadata(
-                    null,
-                    OnAnnouncementChanged));
-        }
-
-        private static void OnAnnouncementChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
-        {
-            var instance = dependencyObject as NarratorNotifier;
-            if (instance != null)
-            {
-                instance.Announce(e.NewValue as NarratorAnnouncement);
-            }
-        }
-
-        public NarratorAnnouncement Announcement
-        {
-            get { return (NarratorAnnouncement)GetValue(AnnouncementProperty); }
-            set { SetValue(AnnouncementProperty, value); }
-        }
-
-        public static DependencyProperty AnnouncementProperty
-        {
-            get { return s_announcementProperty; }
-        }
-
-        public static NarratorAnnouncement GetAnnouncement(DependencyObject element)
-        {
-            return (NarratorAnnouncement)element.GetValue(s_announcementProperty);
-        }
-
-        public static void SetAnnouncement(DependencyObject element, NarratorAnnouncement value)
-        {
-            element.SetValue(s_announcementProperty, value);
+            Announce(change.GetNewValue<NarratorAnnouncement?>());
         }
     }
 }

@@ -1,5 +1,4 @@
 using CalcEngine;
-using  CalcEngine;
 
 namespace CalcManagerPortTests.RatPakTests;
 
@@ -7,7 +6,7 @@ public class BitwiseOperationTests
 {
     private readonly RatPak _ratPak;
     private readonly int _precision = 64;
-    private readonly Random _random;
+    private readonly DeterministicRandom _random;
 
     // Number of iterations for each fuzzing test
     private const int FuzzIterations = 5000;
@@ -16,7 +15,7 @@ public class BitwiseOperationTests
     {
         _ratPak = new RatPak(_precision);
         var seed = Guid.NewGuid().GetHashCode();
-        _random = new Random(seed);
+        _random = new DeterministicRandom(seed);
         Console.WriteLine($"Current Seed: {seed}");
     }
 
@@ -25,17 +24,17 @@ public class BitwiseOperationTests
     /// <summary>
     /// Converts an integer to a rational number
     /// </summary>
-    private RatPak.RAT IntToRat(int value)
+    private static RAT IntToRat(int value)
     {
-        return _ratPak.i32torat(value);
+        return RatPak.i32torat(value);
     }
 
     /// <summary>
     /// Converts a rational number to a string for comparison
     /// </summary>
-    private string RatToString(ref RatPak.RAT rat)
+    private string RatToString(ref RAT rat)
     {
-        return _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+        return _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
     }
 
     /// <summary>
@@ -51,7 +50,7 @@ public class BitwiseOperationTests
     #region Bitwise AND Tests
 
     [Fact]
-    public void AndRat_PositiveNumbers_CorrectBitwiseAnd()
+    public void AndRatPositiveNumbersCorrectBitwiseAnd()
     {
         var a = IntToRat(12); // 1100 in binary
         var b = IntToRat(5); // 0101 in binary
@@ -62,7 +61,7 @@ public class BitwiseOperationTests
     }
 
     [Fact]
-    public void AndRat_NegativeNumbers_CorrectBitwiseAnd()
+    public void AndRatNegativeNumbersCorrectBitwiseAnd()
     {
         var a = IntToRat(-12); // Negative number
         var b = IntToRat(-5); // Another negative number
@@ -73,7 +72,7 @@ public class BitwiseOperationTests
     }
 
     [Fact]
-    public void AndRat_ZeroAndNumber_ReturnsZero()
+    public void AndRatZeroAndNumberReturnsZero()
     {
         var a = IntToRat(0);
         var b = IntToRat(42);
@@ -88,7 +87,7 @@ public class BitwiseOperationTests
     #region Bitwise OR Tests
 
     [Fact]
-    public void OrRat_PositiveNumbers_CorrectBitwiseOr()
+    public void OrRatPositiveNumbersCorrectBitwiseOr()
     {
         var a = IntToRat(12); // 1100 in binary
         var b = IntToRat(5); // 0101 in binary
@@ -99,7 +98,7 @@ public class BitwiseOperationTests
     }
 
     [Fact]
-    public void OrRat_NegativeNumbers_CorrectBitwiseOr()
+    public void OrRatNegativeNumbersCorrectBitwiseOr()
     {
         var a = IntToRat(-12); // Negative number
         var b = IntToRat(-5); // Another negative number
@@ -110,7 +109,7 @@ public class BitwiseOperationTests
     }
 
     [Fact]
-    public void OrRat_ZeroAndNumber_ReturnsNumber()
+    public void OrRatZeroAndNumberReturnsNumber()
     {
         var a = IntToRat(0);
         var b = IntToRat(42);
@@ -125,7 +124,7 @@ public class BitwiseOperationTests
     #region Bitwise XOR Tests
 
     [Fact]
-    public void XorRat_PositiveNumbers_CorrectBitwiseXor()
+    public void XorRatPositiveNumbersCorrectBitwiseXor()
     {
         var a = IntToRat(12); // 1100 in binary
         var b = IntToRat(5); // 0101 in binary
@@ -136,7 +135,7 @@ public class BitwiseOperationTests
     }
 
     [Fact]
-    public void XorRat_SameNumbers_ReturnsZero()
+    public void XorRatSameNumbersReturnsZero()
     {
         var a = IntToRat(42);
         var b = IntToRat(42);
@@ -147,7 +146,7 @@ public class BitwiseOperationTests
     }
 
     [Fact]
-    public void XorRat_ZeroAndNumber_ReturnsNumber()
+    public void XorRatZeroAndNumberReturnsNumber()
     {
         var a = IntToRat(0);
         var b = IntToRat(42);
@@ -162,7 +161,7 @@ public class BitwiseOperationTests
     #region Left Shift Tests
 
     [Fact]
-    public void LshRat_PositiveShift_CorrectLeftShift()
+    public void LshRatPositiveShiftCorrectLeftShift()
     {
         var a = IntToRat(5); // 101 in binary
         var b = IntToRat(2); // Shift by 2
@@ -173,7 +172,7 @@ public class BitwiseOperationTests
     }
 
     [Fact]
-    public void LshRat_ZeroShift_NoChange()
+    public void LshRatZeroShiftNoChange()
     {
         var a = IntToRat(42);
         var b = IntToRat(0);
@@ -188,7 +187,7 @@ public class BitwiseOperationTests
     #region Right Shift Tests
 
     [Fact]
-    public void RshRat_PositiveShift_CorrectRightShift()
+    public void RshRatPositiveShiftCorrectRightShift()
     {
         var a = IntToRat(20); // 10100 in binary
         var b = IntToRat(2); // Shift by 2
@@ -199,7 +198,7 @@ public class BitwiseOperationTests
     }
 
     [Fact]
-    public void RshRat_ZeroShift_NoChange()
+    public void RshRatZeroShiftNoChange()
     {
         var a = IntToRat(42);
         var b = IntToRat(0);
@@ -214,7 +213,7 @@ public class BitwiseOperationTests
     #region Fuzz Testing
 
     [Fact]
-    public void FuzzBitwiseOperations_RandomInputs_NoExceptions()
+    public void FuzzBitwiseOperationsRandomInputsNoExceptions()
     {
         for (var i = 0; i < FuzzIterations; i++)
         {
@@ -241,7 +240,7 @@ public class BitwiseOperationTests
                 var shiftB = IntToRat(Math.Abs(GenerateRandomInt(0, 32)));
                 _ratPak.lshrat(ref aCopy4, shiftB, 10, _precision);
             }
-            catch (Exception ex)
+            catch (CalcErrException ex)
             {
                 Assert.Fail($"Bitwise operation failed. " +
                             $"A: {originalA}, B: {originalB}, " +

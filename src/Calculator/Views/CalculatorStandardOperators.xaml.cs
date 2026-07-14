@@ -1,38 +1,40 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-//
-// CalculatorStandardOperators.xaml.h
-// Declaration of the CalculatorStandardOperators class
-//
+using Avalonia.Controls;
 
-using Microsoft.UI.Xaml;
+namespace CalculatorApp;
 
-namespace CalculatorApp
+public sealed partial class CalculatorStandardOperators : UserControl
 {
-    [Windows.Foundation.Metadata.WebHostHidden]
-    public sealed partial class CalculatorStandardOperators
-    {
-        public CalculatorStandardOperators()
-        {
-            m_isErrorVisualState = false;
-            InitializeComponent();
-        }
+    private bool _isErrorVisualState;
 
-        public bool IsErrorVisualState
+    public CalculatorStandardOperators()
+    {
+        InitializeComponent();
+    }
+
+    public bool IsErrorVisualState
+    {
+        get => _isErrorVisualState;
+        set
         {
-            get => m_isErrorVisualState;
-            set
+            if (_isErrorVisualState == value)
             {
-                if (m_isErrorVisualState != value)
-                {
-                    m_isErrorVisualState = value;
-                    string newState = m_isErrorVisualState ? "ErrorLayout" : "NoErrorLayout";
-                    VisualStateManager.GoToState(this, newState, false);
-                    NumberPad.IsErrorVisualState = m_isErrorVisualState;
-                }
+                return;
             }
+
+            _isErrorVisualState = value;
+            PercentButton.IsEnabled = !value;
+            SquareRootButton.IsEnabled = !value;
+            XPower2Button.IsEnabled = !value;
+            InvertButton.IsEnabled = !value;
+            DivideButton.IsEnabled = !value;
+            MultiplyButton.IsEnabled = !value;
+            MinusButton.IsEnabled = !value;
+            PlusButton.IsEnabled = !value;
+            NegateButton.IsEnabled = !value;
+            NumberPad.IsErrorVisualState = value;
         }
-        private bool m_isErrorVisualState;
     }
 }

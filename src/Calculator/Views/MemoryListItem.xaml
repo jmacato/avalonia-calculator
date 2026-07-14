@@ -1,98 +1,78 @@
 <UserControl x:Class="CalculatorApp.MemoryListItem"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+             xmlns:controls="using:CalculatorApp.Controls"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:model="using:CalculatorApp.ViewModel"
              xmlns:utils="using:CalculatorApp.Utils"
-             FlowDirection="LeftToRight"
-             mc:Ignorable="d">
-    <UserControl.Resources>
-        <muxc:FontIconSource x:Key="MemClearGlyph"
-                             FontFamily="{StaticResource CalculatorFontFamily}"
-                             Glyph="&#xf754;"/>
-        <muxc:FontIconSource x:Key="MemPlusGlyph"
-                             FontFamily="{StaticResource CalculatorFontFamily}"
-                             Glyph="&#xf757;"/>
-        <muxc:FontIconSource x:Key="MemMinusGlyph"
-                             FontFamily="{StaticResource CalculatorFontFamily}"
-                             Glyph="&#xf758;"/>
+             x:DataType="model:MemoryItemViewModel"
+             x:CompileBindings="True"
+             FlowDirection="LeftToRight">
+  <UserControl.Resources>
+    <fa:FAPathIconSource x:Key="MemClearGlyph"
+                         Data="{StaticResource CalculatorMemoryClearIconGeometry}" />
+    <fa:FAPathIconSource x:Key="MemPlusGlyph"
+                         Data="{StaticResource CalculatorMemoryAddIconGeometry}" />
+    <fa:FAPathIconSource x:Key="MemMinusGlyph"
+                         Data="{StaticResource CalculatorMemorySubtractIconGeometry}" />
 
-        <muxc:SwipeItems x:Key="MemorySwipeItems" Mode="Reveal">
-            <muxc:SwipeItem Background="{ThemeResource SystemControlBackgroundAccentBrush}"
-                            AutomationProperties.Name="{utils:ResourceString Name=ClearMemorySwipeItem/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
-                            IconSource="{StaticResource MemClearGlyph}"
-                            Invoked="OnClearSwipeInvoked"/>
-            <muxc:SwipeItem Background="{ThemeResource SystemControlBackgroundAccentBrush}"
-                            AutomationProperties.Name="{utils:ResourceString Name=MemPlusSwipeItem/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
-                            IconSource="{StaticResource MemPlusGlyph}"
-                            Invoked="OnMemoryAddSwipeInvoked"/>
-            <muxc:SwipeItem Background="{ThemeResource SystemControlBackgroundAccentBrush}"
-                            AutomationProperties.Name="{utils:ResourceString Name=MemMinusSwipeItem/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
-                            IconSource="{StaticResource MemMinusGlyph}"
-                            Invoked="OnMemorySubtractSwipeInvoked"/>
-        </muxc:SwipeItems>
-    </UserControl.Resources>
+    <controls:SwipeItems x:Key="MemorySwipeItems" Mode="Reveal">
+      <controls:SwipeItem Background="{StaticResource AccentFillColorDefaultBrush}"
+                          AutomationProperties.Name="{utils:ResourceString Name='ClearMemorySwipeItem.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                          IconSource="{StaticResource MemClearGlyph}"
+                          Invoked="OnClearSwipeInvoked" />
+      <controls:SwipeItem Background="{StaticResource AccentFillColorDefaultBrush}"
+                          AutomationProperties.Name="{utils:ResourceString Name='MemPlusSwipeItem.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                          IconSource="{StaticResource MemPlusGlyph}"
+                          Invoked="OnMemoryAddSwipeInvoked" />
+      <controls:SwipeItem Background="{StaticResource AccentFillColorDefaultBrush}"
+                          AutomationProperties.Name="{utils:ResourceString Name='MemMinusSwipeItem.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                          IconSource="{StaticResource MemMinusGlyph}"
+                          Invoked="OnMemorySubtractSwipeInvoked" />
+    </controls:SwipeItems>
+  </UserControl.Resources>
 
-    <muxc:SwipeControl RightItems="{StaticResource MemorySwipeItems}">
-        <VisualStateManager.VisualStateGroups>
-            <VisualStateGroup x:Name="HoverStates">
-                <VisualState x:Name="MemoryButtonsVisible">
-                    <VisualState.Setters>
-                        <Setter Target="MemoryHoverButtons.Opacity" Value="1"/>
-                    </VisualState.Setters>
-                </VisualState>
-                <VisualState x:Name="MemoryButtonsHidden"/>
-            </VisualStateGroup>
-        </VisualStateManager.VisualStateGroups>
-        <Grid Background="Transparent">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <TextBlock Margin="0,4,20,0"
-                       HorizontalAlignment="Right"
-                       Style="{ThemeResource SubtitleTextBlockStyle}"
-                       AutomationProperties.AccessibilityView="Raw"
-                       AutomationProperties.AutomationId="MemoryItemValue"
-                       FlowDirection="LeftToRight"
-                       IsTextSelectionEnabled="True"
-                       Text="{x:Bind Model.Value, Mode=OneWay}"
-                       TextAlignment="Right"
-                       TextReadingOrder="DetectFromContent"
-                       TextWrapping="Wrap"/>
-            <Grid x:Name="MemoryHoverButtons"
-                  Grid.Row="1"
-                  Margin="0,0,16,4"
-                  HorizontalAlignment="Right"
-                  Opacity="0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <Button Style="{StaticResource MemoryHoverButtonStyle}"
-                        AutomationProperties.AutomationId="MClearButton"
-                        AutomationProperties.Name="{utils:ResourceString Name=ClearMemoryItemButton/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
-                        Click="OnClearButtonClicked"
-                        Content="MC"
-                        ToolTipService.ToolTip="{utils:ResourceString Name=ClearMemoryItemButton/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}"/>
-                <Button Grid.Column="1"
-                        Margin="1,0"
-                        Style="{StaticResource MemoryHoverButtonStyle}"
-                        AutomationProperties.AutomationId="MAddButton"
-                        AutomationProperties.Name="{utils:ResourceString Name=MemPlusItem/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
-                        Click="OnMemoryAddButtonClicked"
-                        Content="M+"
-                        ToolTipService.ToolTip="{utils:ResourceString Name=MemPlusItem/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}"/>
-                <Button Grid.Column="2"
-                        Style="{StaticResource MemoryHoverButtonStyle}"
-                        AutomationProperties.AutomationId="MSubButton"
-                        AutomationProperties.Name="{utils:ResourceString Name=MemMinusItem/[using:Microsoft.UI.Xaml.Automation]AutomationProperties/Name}"
-                        Click="OnMemorySubtractButtonClicked"
-                        Content="M-"
-                        ToolTipService.ToolTip="{utils:ResourceString Name=MemMinusItem/[using:Microsoft.UI.Xaml.Controls]ToolTipService/ToolTip}"/>
-            </Grid>
-        </Grid>
-    </muxc:SwipeControl>
+  <controls:SwipeControl RightItems="{StaticResource MemorySwipeItems}">
+    <Grid Background="Transparent" RowDefinitions="Auto,Auto">
+      <SelectableTextBlock Margin="0,4,20,0"
+                           HorizontalAlignment="Right"
+                           FontSize="20"
+                           FontWeight="SemiBold"
+                           AutomationProperties.AccessibilityView="Raw"
+                           AutomationProperties.AutomationId="MemoryItemValue"
+                           FlowDirection="LeftToRight"
+                           Text="{CompiledBinding Value}"
+                           TextAlignment="Right"
+                           TextWrapping="Wrap" />
+
+      <Grid x:Name="MemoryHoverButtons"
+            Grid.Row="1"
+            Margin="0,0,16,4"
+            HorizontalAlignment="Right"
+            ColumnDefinitions="Auto,Auto,Auto"
+            Opacity="0">
+        <Button Theme="{StaticResource MemoryHoverButtonStyle}"
+                AutomationProperties.AutomationId="MClearButton"
+                AutomationProperties.Name="{utils:ResourceString Name='ClearMemoryItemButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                Click="OnClearButtonClicked"
+                Content="MC"
+                ToolTip.Tip="{utils:ResourceString Name='ClearMemoryItemButton.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip'}" />
+        <Button Grid.Column="1"
+                Margin="1,0"
+                Theme="{StaticResource MemoryHoverButtonStyle}"
+                AutomationProperties.AutomationId="MAddButton"
+                AutomationProperties.Name="{utils:ResourceString Name='MemPlusItem.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                Click="OnMemoryAddButtonClicked"
+                Content="M+"
+                ToolTip.Tip="{utils:ResourceString Name='MemPlusItem.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip'}" />
+        <Button Grid.Column="2"
+                Theme="{StaticResource MemoryHoverButtonStyle}"
+                AutomationProperties.AutomationId="MSubButton"
+                AutomationProperties.Name="{utils:ResourceString Name='MemMinusItem.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                Click="OnMemorySubtractButtonClicked"
+                Content="M-"
+                ToolTip.Tip="{utils:ResourceString Name='MemMinusItem.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip'}" />
+      </Grid>
+    </Grid>
+  </controls:SwipeControl>
 </UserControl>

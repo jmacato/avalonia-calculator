@@ -1,76 +1,56 @@
-using Microsoft.UI.Input;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
 
-// The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using CalculatorApp.Controls;
+using CalculatorApp.ViewModel;
 
-namespace CalculatorApp
+namespace CalculatorApp;
+
+public sealed partial class MemoryListItem : UserControl
 {
-    [Windows.Foundation.Metadata.WebHostHidden]
-    public sealed partial class MemoryListItem : UserControl
+    public static readonly StyledProperty<MemoryItemViewModel?> ModelProperty =
+        AvaloniaProperty.Register<MemoryListItem, MemoryItemViewModel?>(nameof(Model));
+
+    public MemoryListItem()
     {
-        public MemoryListItem()
+        InitializeComponent();
+    }
+
+    public MemoryItemViewModel? Model
+    {
+        get => GetValue(ModelProperty) ?? DataContext as MemoryItemViewModel;
+        set => SetValue(ModelProperty, value);
+    }
+
+    protected override void OnPointerEntered(PointerEventArgs e)
+    {
+        base.OnPointerEntered(e);
+
+        if (e.Pointer.Type is PointerType.Mouse or PointerType.Pen)
         {
-            InitializeComponent();
-        }
-
-        public CalculatorApp.ViewModel.MemoryItemViewModel Model
-        {
-            get => (CalculatorApp.ViewModel.MemoryItemViewModel)GetValue(ModelProperty);
-            set => SetValue(ModelProperty, value);
-        }
-
-        // Using a DependencyProperty as the backing store for Model.  This enables animation, styling, binding, etc...
-        public static readonly DependencyProperty ModelProperty =
-            DependencyProperty.Register(nameof(Model), typeof(CalculatorApp.ViewModel.MemoryItemViewModel), typeof(MemoryListItem), new PropertyMetadata(default(CalculatorApp.ViewModel.MemoryItemViewModel)));
-
-        protected override void OnPointerEntered(Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-        {
-            base.OnPointerEntered(e);
-
-            // Only show hover buttons when the user is using mouse or pen.
-            if (e.Pointer.PointerDeviceType == PointerDeviceType.Mouse
-                || e.Pointer.PointerDeviceType == PointerDeviceType.Pen)
-            {
-                VisualStateManager.GoToState(this, "MemoryButtonsVisible", true);
-            }
-        }
-
-        protected override void OnPointerExited(Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-        {
-            base.OnPointerExited(e);
-
-            VisualStateManager.GoToState(this, "MemoryButtonsHidden", true);
-        }
-
-        private void OnMemoryAddButtonClicked(object sender, RoutedEventArgs e)
-        {
-            Model.MemoryAdd();
-        }
-
-        private void OnClearButtonClicked(object sender, RoutedEventArgs e)
-        {
-            Model.Clear();
-        }
-        private void OnMemorySubtractButtonClicked(object sender, RoutedEventArgs e)
-        {
-            Model.MemorySubtract();
-        }
-
-        private void OnClearSwipeInvoked(Microsoft.UI.Xaml.Controls.SwipeItem sender, Microsoft.UI.Xaml.Controls.SwipeItemInvokedEventArgs e)
-        {
-            Model.Clear();
-        }
-
-        private void OnMemoryAddSwipeInvoked(Microsoft.UI.Xaml.Controls.SwipeItem sender, Microsoft.UI.Xaml.Controls.SwipeItemInvokedEventArgs e)
-        {
-            Model.MemoryAdd();
-        }
-
-        private void OnMemorySubtractSwipeInvoked(Microsoft.UI.Xaml.Controls.SwipeItem sender, Microsoft.UI.Xaml.Controls.SwipeItemInvokedEventArgs e)
-        {
-            Model.MemorySubtract();
+            MemoryHoverButtons.Opacity = 1;
         }
     }
-}
 
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        MemoryHoverButtons.Opacity = 0;
+    }
+
+    private void OnMemoryAddButtonClicked(object? sender, RoutedEventArgs e) => Model?.MemoryAdd();
+
+    private void OnClearButtonClicked(object? sender, RoutedEventArgs e) => Model?.Clear();
+
+    private void OnMemorySubtractButtonClicked(object? sender, RoutedEventArgs e) => Model?.MemorySubtract();
+
+    private void OnClearSwipeInvoked(SwipeItem sender, SwipeItemInvokedEventArgs e) => Model?.Clear();
+
+    private void OnMemoryAddSwipeInvoked(SwipeItem sender, SwipeItemInvokedEventArgs e) => Model?.MemoryAdd();
+
+    private void OnMemorySubtractSwipeInvoked(SwipeItem sender, SwipeItemInvokedEventArgs e) => Model?.MemorySubtract();
+}

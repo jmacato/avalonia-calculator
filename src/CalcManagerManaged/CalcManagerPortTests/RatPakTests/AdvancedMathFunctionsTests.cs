@@ -1,5 +1,4 @@
 using CalcEngine;
-using  CalcEngine;
 
 namespace CalcManagerPortTests.RatPakTests;
 
@@ -24,18 +23,20 @@ public class AdvancedMathFunctionsTests
     [InlineData("5", "120")]
     [InlineData("6", "720")]
     [InlineData("10", "3628800")]
-    public void FactRat_IntegerValues_CorrectResults(string value, string expected)
+    public void FactRatIntegerValuesCorrectResults(string value, string expected)
     {
+        ArgumentNullException.ThrowIfNull(value);
+
         var rat = StringToRat(value);
 
         _ratPak.factrat(ref rat, 10, _precision);
 
-        var result = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(expected, result);
     }
 
     [Fact]
-    public void FactRat_NegativeValues_ThrowsException()
+    public void FactRatNegativeValuesThrowsException()
     {
         var rat = StringToRat("-1");
 
@@ -43,14 +44,14 @@ public class AdvancedMathFunctionsTests
     }
 
     [Fact]
-    public void FactRat_LargeValue_ComputesCorrectly()
+    public void FactRatLargeValueComputesCorrectly()
     {
         // try a larger but still reasonable factorial (15!)
         var rat = StringToRat("15");
 
         _ratPak.factrat(ref rat, 10, _precision);
 
-        var result = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("1307674368000", result);
     }
 
@@ -66,14 +67,17 @@ public class AdvancedMathFunctionsTests
     [InlineData("27", "3", "3")]
     [InlineData("1", "5", "1")]
     [InlineData("100", "2", "10")]
-    public void RootRat_VariousInputs_CorrectResults(string value, string root, string expected)
+    public void RootRatVariousInputsCorrectResults(string value, string root, string expected)
     {
+        ArgumentNullException.ThrowIfNull(value);
+        ArgumentNullException.ThrowIfNull(root);
+
         var valueRat = StringToRat(value);
         var rootRat = StringToRat(root);
 
         _ratPak.rootrat(ref valueRat, rootRat, 10, _precision);
 
-        var result = _ratPak.RatToString(ref valueRat, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref valueRat, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(expected, result);
     }
 
@@ -82,13 +86,16 @@ public class AdvancedMathFunctionsTests
     [InlineData("9", "1/2", "3")]
     [InlineData("16", "1/2", "4")]
     [InlineData("8", "1/3", "2")]
-    public void PowerAndRoot_AreInverses(string value, string root, string power)
+    public void PowerAndRootAreInverses(string value, string root, string power)
     {
+        ArgumentNullException.ThrowIfNull(value);
+        ArgumentNullException.ThrowIfNull(root);
+
         var valueRat = StringToRat(value);
         var rootRat = StringToRat(root);
         //raise to power (e.g., 2^0.5 = sqrt(2))
         _ratPak.powrat(ref valueRat, rootRat, 10, _precision);
-        var result0 = _ratPak.RatToString(ref valueRat, RatPak.NumberFormat.Float, 10, _precision);
+        var result0 = _ratPak.RatToString(ref valueRat, NumberFormat.FloatingPoint, 10, _precision);
 
         Assert.Equal(power, result0);
 
@@ -98,12 +105,12 @@ public class AdvancedMathFunctionsTests
         _ratPak.powrat(ref valueRat, recipRootRat, 10, _precision);
 
         //should get back original number
-        var result = _ratPak.RatToString(ref valueRat, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref valueRat, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(value, result);
     }
 
     [Fact]
-    public void RootRat_EquivalentToPowRat()
+    public void RootRatEquivalentToPowRat()
     {
         // Verify that root(x, n) is equivalent to x^(1/n)
 
@@ -123,14 +130,14 @@ public class AdvancedMathFunctionsTests
 
         _ratPak.powrat(ref valueRat2, rootRat2, 10, _precision);
 
-        var result1 = _ratPak.RatToString(ref valueRat1, RatPak.NumberFormat.Float, 10, _precision);
-        var result2 = _ratPak.RatToString(ref valueRat2, RatPak.NumberFormat.Float, 10, _precision);
+        var result1 = _ratPak.RatToString(ref valueRat1, NumberFormat.FloatingPoint, 10, _precision);
+        var result2 = _ratPak.RatToString(ref valueRat2, NumberFormat.FloatingPoint, 10, _precision);
 
         Assert.Equal(result1, result2);
     }
 
     [Fact]
-    public void RootRat_NegativeBaseEvenRoot_ThrowsException()
+    public void RootRatNegativeBaseEvenRootThrowsException()
     {
         var valueRat = StringToRat("-4");
         var rootRat = StringToRat("2");
@@ -139,14 +146,14 @@ public class AdvancedMathFunctionsTests
     }
 
     [Fact]
-    public void RootRat_NegativeBaseOddRoot_ReturnsNegativeResult()
+    public void RootRatNegativeBaseOddRootReturnsNegativeResult()
     {
         var valueRat = StringToRat("-8");
         var rootRat = StringToRat("3");
 
         _ratPak.rootrat(ref valueRat, rootRat, 10, _precision);
 
-        var result = _ratPak.RatToString(ref valueRat, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref valueRat, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("-2", result);
     }
 
@@ -161,13 +168,15 @@ public class AdvancedMathFunctionsTests
     [InlineData("-0.14159", "0")]
     [InlineData("42", "42")]
     [InlineData("0", "0")]
-    public void IntRat_VariousInputs_CorrectResults(string input, string expected)
+    public void IntRatVariousInputsCorrectResults(string input, string expected)
     {
+        ArgumentNullException.ThrowIfNull(input);
+
         var rat = StringToRat(input);
 
         _ratPak.intrat(ref rat, 10, _precision);
 
-        var result = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(expected, result);
     }
 
@@ -178,18 +187,20 @@ public class AdvancedMathFunctionsTests
     [InlineData("-0.14159", "-0.14159")]
     [InlineData("42", "0")]
     [InlineData("0", "0")]
-    public void FracRat_VariousInputs_CorrectResults(string input, string expected)
+    public void FracRatVariousInputsCorrectResults(string input, string expected)
     {
+        ArgumentNullException.ThrowIfNull(input);
+
         var rat = StringToRat(input);
 
         _ratPak.fracrat(ref rat, 10, _precision);
 
-        var result = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(expected, result);
     }
 
     [Fact]
-    public void IntAndFracRat_SumToOriginal()
+    public void IntAndFracRatSumToOriginal()
     {
         // Verify that int(x) + frac(x) = x
 
@@ -206,7 +217,7 @@ public class AdvancedMathFunctionsTests
         // Add them together
         _ratPak.addrat(ref intRat, fracRat, _precision);
 
-        var result = _ratPak.RatToString(ref intRat, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref intRat, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(value, result);
     }
 
@@ -215,25 +226,25 @@ public class AdvancedMathFunctionsTests
     #region FlatRat Function Tests
 
     [Fact]
-    public void FlatRat_SimplifiesFractions()
+    public void FlatRatSimplifiesFractions()
     {
         var rat = StringToRat("2/4"); // Should simplify to 1/2
 
         _ratPak.flatrat(ref rat, 10, _precision);
 
-        var result = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("0.5", result);
     }
 
     [Fact]
-    public void FlatRat_HandlesIrrationalNumbers()
+    public void FlatRatHandlesIrrationalNumbers()
     {
         var rat = StringToRat("1.414213562373095048801688724209"); // √2
 
         _ratPak.flatrat(ref rat, 10, _precision);
         // should still be close to the original value
-        var result = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
-        Assert.StartsWith("1.41421", result);
+        var result = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
+        Assert.StartsWith("1.41421", result, StringComparison.Ordinal);
     }
 
     #endregion
@@ -246,55 +257,61 @@ public class AdvancedMathFunctionsTests
     [InlineData("17", "13", "1")]
     [InlineData("0", "5", "5")]
     [InlineData("5", "0", "5")]
-    public void Gcd_VariousInputs_CorrectResults(string a, string b, string expected)
+    public void GcdVariousInputsCorrectResults(string a, string b, string expected)
     {
         var numA = _ratPak.StringToNumber(a, 10, _precision);
+        Assert.NotNull(numA);
         var numB = _ratPak.StringToNumber(b, 10, _precision);
+        Assert.NotNull(numB);
 
-        var result = _ratPak.gcd(numA, numB);
+        var result = RatPak.gcd(numA, numB);
 
-        var resultStr = _ratPak.NumberToString(ref result, RatPak.NumberFormat.Float, 10, _precision);
+        var resultStr = _ratPak.NumberToString(ref result, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(expected, resultStr);
     }
 
     [Fact]
-    public void GcdRat_SimplifiesFractions()
+    public void GcdRatSimplifiesFractions()
     {
         // create a fraction that needs simplification
         var numNumerator = _ratPak.StringToNumber("12", 10, _precision);
+        Assert.NotNull(numNumerator);
         var numDenominator = _ratPak.StringToNumber("18", 10, _precision);
+        Assert.NotNull(numDenominator);
 
-        var rat = _ratPak.numtorat(numNumerator, 10);
-        var denominator = _ratPak.numtorat(numDenominator, 10);
+        var rat = RatPak.numtorat(numNumerator, 10);
+        var denominator = RatPak.numtorat(numDenominator, 10);
 
         _ratPak.divrat(ref rat, denominator, _precision);
 
         _ratPak.gcdrat(ref rat, _precision);
 
-        var result = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("0.6666666666666666666666666666666666666666666666666666666666666667", result);
 
         // We can also verify by getting the internal numerator and denominator
         // Create 2/3 for comparison
         var expectedRat = StringToRat("2/3");
-        Assert.True(_ratPak.rat_equ(rat, expectedRat, _precision));
+        Assert.True(_ratPak.RatEqu(rat, expectedRat, _precision));
     }
 
     #endregion
 
     #region Helper Methods
 
-    private RatPak.RAT StringToRat(string input)
+    private RAT StringToRat(string input)
     {
         // Handle fractions like "1/3"
-        if (input.Contains('/'))
+        if (input.Contains('/', StringComparison.Ordinal))
         {
             string[] parts = input.Split('/');
             var numNumerator = _ratPak.StringToNumber(parts[0], 10, _precision);
+            Assert.NotNull(numNumerator);
             var numDenominator = _ratPak.StringToNumber(parts[1], 10, _precision);
+            Assert.NotNull(numDenominator);
 
-            var result = _ratPak.numtorat(numNumerator, 10);
-            var denominator = _ratPak.numtorat(numDenominator, 10);
+            var result = RatPak.numtorat(numNumerator, 10);
+            var denominator = RatPak.numtorat(numDenominator, 10);
 
             _ratPak.divrat(ref result, denominator, _precision);
             return result;
@@ -302,7 +319,8 @@ public class AdvancedMathFunctionsTests
 
         // Handle regular numbers
         var num = _ratPak.StringToNumber(input, 10, _precision);
-        return _ratPak.numtorat(num, 10);
+        Assert.NotNull(num);
+        return RatPak.numtorat(num, 10);
     }
 
     #endregion

@@ -1,94 +1,125 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
+using System.ComponentModel;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Selection;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using CalculatorApp.ViewModel;
-using CalculatorApp.ViewModel.Common;
 
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
+namespace CalculatorApp;
 
-// The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
-
-namespace CalculatorApp
+public sealed partial class Memory : UserControl
 {
-    public sealed partial class Memory : UserControl
+    public static readonly StyledProperty<GridLength> RowHeightProperty =
+        AvaloniaProperty.Register<Memory, GridLength>(
+            nameof(RowHeight),
+            default);
+
+    private bool _isErrorVisualState;
+
+    public Memory()
     {
-        public Memory()
+        InitializeComponent();
+    }
+
+    public StandardCalculatorViewModel? Model => DataContext as StandardCalculatorViewModel;
+
+    public GridLength RowHeight
+    {
+        get => GetValue(RowHeightProperty);
+        set => SetValue(RowHeightProperty, value);
+    }
+
+    public bool IsErrorVisualState
+    {
+        get => _isErrorVisualState;
+        set
         {
-            InitializeComponent();
-
-            MemoryPaneEmpty.FlowDirection = LocalizationService.GetInstance().GetFlowDirection();
-        }
-
-        public CalculatorApp.ViewModel.StandardCalculatorViewModel Model => (CalculatorApp.ViewModel.StandardCalculatorViewModel)this.DataContext;
-
-        public GridLength RowHeight
-        {
-            get => (GridLength)GetValue(RowHeightProperty);
-            set => SetValue(RowHeightProperty, value);
-        }
-
-        // Using a DependencyProperty as the backing store for RowHeight.  This enables animation, styling, binding, etc...
-        public static readonly DependencyProperty RowHeightProperty =
-            DependencyProperty.Register(nameof(RowHeight), typeof(GridLength), typeof(Memory), new PropertyMetadata(default(GridLength)));
-
-        public bool IsErrorVisualState
-        {
-            get => m_isErrorVisualState;
-            set
+            if (_isErrorVisualState == value)
             {
-                if (m_isErrorVisualState != value)
-                {
-                    m_isErrorVisualState = value;
-                    string newState = m_isErrorVisualState ? "ErrorLayout" : "NoErrorLayout";
-                    VisualStateManager.GoToState(this, newState, false);
-                }
+                return;
             }
-        }
 
-        private bool m_isErrorVisualState = false;
-
-        private void MemoryListItemClick(object sender, ItemClickEventArgs e)
-        {
-            MemoryItemViewModel memorySlot = ((MemoryItemViewModel)e.ClickedItem);
-
-            // In case the memory list is clicked and enter is pressed,
-            // On Item clicked event gets fired and e->ClickedItem is Null.
-            if (memorySlot != null)
-            {
-                Model.OnMemoryItemPressed(memorySlot.Position);
-            }
-        }
-
-        private void OnClearMenuItemClicked(object sender, RoutedEventArgs e)
-        {
-            var memoryItem = GetMemoryItemForCurrentFlyout();
-            if (memoryItem != null)
-            {
-                memoryItem.Clear();
-            }
-        }
-
-        private void OnMemoryAddMenuItemClicked(object sender, RoutedEventArgs e)
-        {
-            var memoryItem = GetMemoryItemForCurrentFlyout();
-            if (memoryItem != null)
-            {
-                memoryItem.MemoryAdd();
-            }
-        }
-
-        private void OnMemorySubtractMenuItemClicked(object sender, RoutedEventArgs e)
-        {
-            var memoryItem = GetMemoryItemForCurrentFlyout();
-            if (memoryItem != null)
-            {
-                memoryItem.MemorySubtract();
-            }
-        }
-
-        private MemoryItemViewModel GetMemoryItemForCurrentFlyout()
-        {
-            var listViewItem = MemoryContextMenu.Target;
-            return (MemoryListView.ItemFromContainer(listViewItem) as MemoryItemViewModel);
+            _isErrorVisualState = value;
+            MemoryListView.IsEnabled = !value;
         }
     }
-}
 
+    /// <summary>
+    /// Applies the original Memory DockedLayout/DefaultLayout VisualState
+    /// setters when Calculator reparents the single Memory instance.
+    /// </summary>
+    public void SetDockedLayout(bool isDocked)
+    {
+        Grid.SetRow(MemoryPanel, isDocked ? 0 : 1);
+        Grid.SetRowSpan(MemoryPanel, isDocked ? 2 : 1);
+        MemoryListView.Padding = isDocked ? default : new Thickness(0, 24, 0, 0);
+        BackgroundShade.IsVisible = !isDocked;
+    }
+
+    private void OnLoaded(object? sender, RoutedEventArgs e)
+    {
+        if (Model is not { } model)
+        {
+            return;
+        }
+
+        model.PropertyChanged -= OnModelPropertyChanged;
+        model.PropertyChanged += OnModelPropertyChanged;
+        UpdateState();
+    }
+
+    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e) => UpdateState();
+
+    private void UpdateState()
+    {
+        bool hasItems = Model is { IsMemoryEmpty: false };
+        MemoryPaneEmpty.IsVisible = !hasItems;
+        MemoryListView.IsVisible = hasItems;
+        ClearMemory.IsVisible = hasItems;
+    }
+
+    private void MemoryListSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (MemoryListView.SelectedItem is not null)
+        {
+            MemoryListView.SelectedItem = null;
+        }
+    }
+
+    private void MemoryListItemTapped(object? sender, TappedEventArgs e)
+    {
+        if (GetItemFromEventSource(e.Source) is MemoryItemViewModel memorySlot && Model is { } model)
+        {
+            model.OnMemoryItemPressed(memorySlot.Position);
+        }
+    }
+
+    private static object? GetItemFromEventSource(object? source)
+    {
+        if (source is not Visual visual)
+        {
+            return null;
+        }
+
+        ListBoxItem? container = visual as ListBoxItem
+                                 ?? visual.GetVisualAncestors().OfType<ListBoxItem>().FirstOrDefault();
+        return container?.DataContext;
+    }
+
+    private static void OnClearMenuItemClicked(object? sender, RoutedEventArgs e) =>
+        GetMemoryItem(sender)?.Clear();
+
+    private static void OnMemoryAddMenuItemClicked(object? sender, RoutedEventArgs e) =>
+        GetMemoryItem(sender)?.MemoryAdd();
+
+    private static void OnMemorySubtractMenuItemClicked(object? sender, RoutedEventArgs e) =>
+        GetMemoryItem(sender)?.MemorySubtract();
+
+    private static MemoryItemViewModel? GetMemoryItem(object? sender) =>
+        (sender as MenuItem)?.DataContext as MemoryItemViewModel;
+}

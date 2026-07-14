@@ -30,7 +30,7 @@ namespace CalculatorApp.ViewModel.Common
     //    void BinaryOperatorReceived() override;
     //    void MemoryItemChanged(uint indexOfMemory) override;
     //    void InputChanged() override;
-     WeakReference m_callbackReference;
-      WeakReference m_historyCallbackReference;
+     WeakReference? m_callbackReference;
+      WeakReference? m_historyCallbackReference;
     };
 }

@@ -7,7 +7,7 @@ namespace CalcEngine;
 public interface IHistoryDisplay
 {
     uint AddToHistory(
-        List<(string, int)> tokens,
-        List<IExpressionCommand> commands,
+        IList<(string, int)> tokens,
+        IList<IExpressionCommand> commands,
         string result);
 };

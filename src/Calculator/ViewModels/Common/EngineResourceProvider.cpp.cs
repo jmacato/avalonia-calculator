@@ -5,20 +5,12 @@
 // #include  "EngineResourceProvider.h"
 // #include  "Common/LocalizationSettings.h"
 
-using System;
-using CalculatorApp.ViewModel.Common;
-using Windows.ApplicationModel.Resources;
 using CalculationManager;
 
 namespace CalculatorApp.ViewModel.Common;
 
 public partial class EngineResourceProvider : IResourceProvider
 {
-    public EngineResourceProvider()
-    {
-        m_resLoader = ResourceLoader.GetForViewIndependentUse("CEngineStrings");
-    }
-
     public string GetCEngineString(string id)
     {
         LocalizationSettings localizationSettings = LocalizationSettings.GetInstance();
@@ -47,6 +39,6 @@ public partial class EngineResourceProvider : IResourceProvider
 
         // StringReference idRef(id.data
         // (), id.length());
-        return m_resLoader.GetString(id);
+        return AppResourceProvider.GetInstance().GetCEngineString(id);
     }
 }

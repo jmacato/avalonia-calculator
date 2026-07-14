@@ -1,312 +1,380 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Automation;
-using Microsoft.UI.Xaml.Automation.Peers;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
+using System.Collections;
+using Avalonia;
+using Avalonia.Automation;
+using Avalonia.Automation.Peers;
+using Avalonia.Controls;
+using Avalonia.Controls.Metadata;
+using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Templates;
+using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Styling;
 
-namespace CalculatorApp
+namespace CalculatorApp.Controls;
+
+public enum OverflowButtonPlacement
 {
-    namespace Controls
+    InLine,
+    Above
+}
+
+/// <summary>
+/// Direct Avalonia port of the WinUI expression overflow control. It retains
+/// the original right-anchored token row, 70-percent paging buttons, inline or
+/// overlaid button placement, focus transfer, and accessibility view changes.
+/// </summary>
+[PseudoClasses(ActivePseudoClass)]
+public sealed class OverflowTextBlock : TemplatedControl
+{
+    private const string ActivePseudoClass = ":active";
+    private const double ScrollButtonsApproximationRange = 4;
+    private const double ScrollRatio = 0.7;
+
+    public static readonly StyledProperty<bool> TokensUpdatedProperty =
+        AvaloniaProperty.Register<OverflowTextBlock, bool>(nameof(TokensUpdated));
+
+    public static readonly StyledProperty<OverflowButtonPlacement> ScrollButtonsPlacementProperty =
+        AvaloniaProperty.Register<OverflowTextBlock, OverflowButtonPlacement>(
+            nameof(ScrollButtonsPlacement));
+
+    public static readonly StyledProperty<bool> IsActiveProperty =
+        AvaloniaProperty.Register<OverflowTextBlock, bool>(nameof(IsActive));
+
+    public static readonly StyledProperty<IDataTemplate?> ItemTemplateProperty =
+        AvaloniaProperty.Register<OverflowTextBlock, IDataTemplate?>(nameof(ItemTemplate));
+
+    public static readonly StyledProperty<IEnumerable?> ItemsSourceProperty =
+        AvaloniaProperty.Register<OverflowTextBlock, IEnumerable?>(nameof(ItemsSource));
+
+    public static readonly StyledProperty<string> DisplayValueProperty =
+        AvaloniaProperty.Register<OverflowTextBlock, string>(nameof(DisplayValue), string.Empty);
+
+    public static readonly StyledProperty<double> ScrollButtonsWidthProperty =
+        AvaloniaProperty.Register<OverflowTextBlock, double>(nameof(ScrollButtonsWidth));
+
+    public static readonly StyledProperty<double> ScrollButtonsFontSizeProperty =
+        AvaloniaProperty.Register<OverflowTextBlock, double>(nameof(ScrollButtonsFontSize));
+
+    public static readonly StyledProperty<HorizontalAlignment> HorizontalContentAlignmentProperty =
+        AvaloniaProperty.Register<OverflowTextBlock, HorizontalAlignment>(
+            nameof(HorizontalContentAlignment),
+            HorizontalAlignment.Right);
+
+    public static readonly StyledProperty<VerticalAlignment> VerticalContentAlignmentProperty =
+        AvaloniaProperty.Register<OverflowTextBlock, VerticalAlignment>(
+            nameof(VerticalContentAlignment),
+            VerticalAlignment.Stretch);
+
+    private bool _isAccessibilityViewControl;
+    private Control? _expressionContent;
+    private ItemsControl? _itemsControl;
+    private ScrollViewer? _expressionContainer;
+    private Button? _scrollLeft;
+    private Button? _scrollRight;
+
+    public bool TokensUpdated
     {
-        public enum OverflowButtonPlacement
+        get => GetValue(TokensUpdatedProperty);
+        set => SetValue(TokensUpdatedProperty, value);
+    }
+
+    public OverflowButtonPlacement ScrollButtonsPlacement
+    {
+        get => GetValue(ScrollButtonsPlacementProperty);
+        set => SetValue(ScrollButtonsPlacementProperty, value);
+    }
+
+    public bool IsActive
+    {
+        get => GetValue(IsActiveProperty);
+        set => SetValue(IsActiveProperty, value);
+    }
+
+    public IDataTemplate? ItemTemplate
+    {
+        get => GetValue(ItemTemplateProperty);
+        set => SetValue(ItemTemplateProperty, value);
+    }
+
+    public IEnumerable? ItemsSource
+    {
+        get => GetValue(ItemsSourceProperty);
+        set => SetValue(ItemsSourceProperty, value);
+    }
+
+    public string DisplayValue
+    {
+        get => GetValue(DisplayValueProperty);
+        set => SetValue(DisplayValueProperty, value);
+    }
+
+    public double ScrollButtonsWidth
+    {
+        get => GetValue(ScrollButtonsWidthProperty);
+        set => SetValue(ScrollButtonsWidthProperty, value);
+    }
+
+    public double ScrollButtonsFontSize
+    {
+        get => GetValue(ScrollButtonsFontSizeProperty);
+        set => SetValue(ScrollButtonsFontSizeProperty, value);
+    }
+
+    public HorizontalAlignment HorizontalContentAlignment
+    {
+        get => GetValue(HorizontalContentAlignmentProperty);
+        set => SetValue(HorizontalContentAlignmentProperty, value);
+    }
+
+    public VerticalAlignment VerticalContentAlignment
+    {
+        get => GetValue(VerticalContentAlignmentProperty);
+        set => SetValue(VerticalContentAlignmentProperty, value);
+    }
+
+    public void UpdateScrollButtons()
+    {
+        if (_expressionContent is null
+            || _expressionContainer is null
+            || _scrollLeft is null
+            || _scrollRight is null)
         {
-            InLine,
-            Above
-        };
-
-        public sealed class OverflowTextBlock : Control
-        {
-            public OverflowTextBlock()
-            {
-                m_isAccessibilityViewControl = false;
-                m_expressionContent = null;
-                m_itemsControl = null;
-                m_expressionContainer = null;
-                m_scrollLeft = null;
-                m_scrollRight = null;
-            }
-
-            public bool TokensUpdated
-            {
-                get => (bool)GetValue(TokensUpdatedProperty);
-                set => SetValue(TokensUpdatedProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for TokensUpdated.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty TokensUpdatedProperty =
-                DependencyProperty.Register(nameof(TokensUpdated), typeof(bool), typeof(OverflowTextBlock), new PropertyMetadata(default(bool), (sender, args) =>
-                {
-                    var self = (OverflowTextBlock)sender;
-                    self.OnTokensUpdatedPropertyChanged((bool)args.OldValue, (bool)args.NewValue);
-                }));
-
-            public OverflowButtonPlacement ScrollButtonsPlacement
-            {
-                get => (OverflowButtonPlacement)GetValue(ScrollButtonsPlacementProperty);
-                set => SetValue(ScrollButtonsPlacementProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for ScrollButtonsPlacement.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty ScrollButtonsPlacementProperty =
-                DependencyProperty.Register(nameof(ScrollButtonsPlacement), typeof(OverflowButtonPlacement), typeof(OverflowTextBlock), new PropertyMetadata(default(OverflowButtonPlacement), (sender, args) =>
-                {
-                    var self = (OverflowTextBlock)sender;
-                    self.OnScrollButtonsPlacementPropertyChanged((OverflowButtonPlacement)args.OldValue, (OverflowButtonPlacement)args.NewValue);
-                }));
-
-            public bool IsActive
-            {
-                get => (bool)GetValue(IsActiveProperty);
-                set => SetValue(IsActiveProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for IsActive.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty IsActiveProperty =
-                DependencyProperty.Register(nameof(IsActive), typeof(bool), typeof(OverflowTextBlock), new PropertyMetadata(default(bool)));
-
-            public Microsoft.UI.Xaml.Style TextStyle
-            {
-                get => (Style)GetValue(TextStyleProperty);
-                set => SetValue(TextStyleProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for TextStyle.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty TextStyleProperty =
-                DependencyProperty.Register(nameof(TextStyle), typeof(Style), typeof(OverflowTextBlock), new PropertyMetadata(default(Style)));
-
-            public double ScrollButtonsWidth
-            {
-                get => (double)GetValue(ScrollButtonsWidthProperty);
-                set => SetValue(ScrollButtonsWidthProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for ScrollButtonsWidth.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty ScrollButtonsWidthProperty =
-                DependencyProperty.Register(nameof(ScrollButtonsWidth), typeof(double), typeof(OverflowTextBlock), new PropertyMetadata(default(double)));
-
-            public double ScrollButtonsFontSize
-            {
-                get => (double)GetValue(ScrollButtonsFontSizeProperty);
-                set => SetValue(ScrollButtonsFontSizeProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for ScrollButtonsFontSize.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty ScrollButtonsFontSizeProperty =
-                DependencyProperty.Register(nameof(ScrollButtonsFontSize), typeof(double), typeof(OverflowTextBlock), new PropertyMetadata(default(double)));
-
-            public void OnTokensUpdatedPropertyChanged(bool oldValue, bool newValue)
-            {
-                if (m_expressionContainer != null && newValue)
-                {
-                    m_expressionContainer.UpdateLayout();
-                    m_expressionContainer.ChangeView(m_expressionContainer.ScrollableWidth, null, null, true);
-                }
-                var newIsAccessibilityViewControl = m_itemsControl != null && m_itemsControl.Items.Count > 0;
-                if (m_isAccessibilityViewControl != newIsAccessibilityViewControl)
-                {
-                    m_isAccessibilityViewControl = newIsAccessibilityViewControl;
-                    AutomationProperties.SetAccessibilityView(this, newIsAccessibilityViewControl ? AccessibilityView.Control : AccessibilityView.Raw);
-                }
-                UpdateScrollButtons();
-            }
-
-            public void OnScrollButtonsPlacementPropertyChanged(OverflowButtonPlacement oldValue, OverflowButtonPlacement newValue)
-            {
-                if (newValue == OverflowButtonPlacement.InLine)
-                {
-                    m_expressionContainer.Padding = new Thickness(0);
-                    m_expressionContent.Margin = new Thickness(0);
-                }
-                UpdateScrollButtons();
-            }
-
-            public void UpdateScrollButtons()
-            {
-                if (m_expressionContent == null || m_expressionContainer == null || m_scrollLeft == null || m_scrollRight == null)
-                {
-                    return;
-                }
-
-                var realOffset = m_expressionContainer.HorizontalOffset + m_expressionContainer.Padding.Left + m_expressionContent.Margin.Left;
-                var scrollLeftVisibility = realOffset > SCROLL_BUTTONS_APPROXIMATION_RANGE ? Visibility.Visible : Visibility.Collapsed;
-                var scrollRightVisibility = realOffset + m_expressionContainer.ActualWidth + SCROLL_BUTTONS_APPROXIMATION_RANGE < m_expressionContent.ActualWidth
-                                                 ? Visibility.Visible
-                                                 : Visibility.Collapsed;
-
-                bool shouldTryFocusScrollRight = false;
-                if (m_scrollLeft.Visibility != scrollLeftVisibility)
-                {
-                    if (scrollLeftVisibility == Visibility.Collapsed)
-                    {
-                        shouldTryFocusScrollRight = m_scrollLeft.Equals(FocusManager.GetFocusedElement());
-                    }
-
-                    m_scrollLeft.Visibility = scrollLeftVisibility;
-                }
-
-                if (m_scrollRight.Visibility != scrollRightVisibility)
-                {
-                    if (scrollRightVisibility == Visibility.Collapsed && m_scrollLeft.Visibility == Visibility.Visible
-                        && m_scrollRight.Equals(FocusManager.GetFocusedElement()))
-                    {
-                        m_scrollLeft.Focus(FocusState.Programmatic);
-                    }
-                    m_scrollRight.Visibility = scrollRightVisibility;
-                }
-
-                if (shouldTryFocusScrollRight && scrollRightVisibility == Visibility.Visible)
-                {
-                    m_scrollRight.Focus(FocusState.Programmatic);
-                }
-
-                if (ScrollButtonsPlacement == OverflowButtonPlacement.Above && m_expressionContent != null)
-                {
-                    double left = m_scrollLeft != null && m_scrollLeft.Visibility == Visibility.Visible ? ScrollButtonsWidth : 0;
-                    double right = m_scrollRight != null && m_scrollRight.Visibility == Visibility.Visible ? ScrollButtonsWidth : 0;
-                    if (m_expressionContainer.Padding.Left != left || m_expressionContainer.Padding.Right != right)
-                    {
-                        m_expressionContainer.ViewChanged -= OnViewChanged;
-
-                        m_expressionContainer.Padding = new Thickness(left, 0, right, 0);
-                        m_expressionContent.Margin = new Thickness(-left, 0, -right, 0);
-                        m_expressionContainer.UpdateLayout();
-                        m_expressionContainer.Measure(m_expressionContainer.RenderSize);
-
-                        m_expressionContainer.ViewChanged += OnViewChanged;
-                    }
-                }
-            }
-
-            public void UnregisterEventHandlers()
-            {
-                // Unregister the event handlers
-                if (m_scrollLeft != null)
-                {
-                    m_scrollLeft.Click -= OnScrollLeftClick;
-                }
-
-                if (m_scrollRight != null)
-                {
-                    m_scrollRight.Click -= OnScrollRightClick;
-                }
-
-                if (m_expressionContainer != null)
-                {
-                    m_expressionContainer.ViewChanged -= OnViewChanged;
-                }
-            }
-
-            protected override void OnApplyTemplate()
-            {
-                UnregisterEventHandlers();
-
-                var uiElement = GetTemplateChild("ExpressionContainer");
-                if (uiElement != null)
-                {
-                    m_expressionContainer = (ScrollViewer)uiElement;
-                    m_expressionContainer.ChangeView(m_expressionContainer.ExtentWidth - m_expressionContainer.ViewportWidth, null, null);
-                    m_expressionContainer.ViewChanged += OnViewChanged;
-                }
-
-                uiElement = GetTemplateChild("ExpressionContent");
-                if (uiElement != null)
-                {
-                    m_expressionContent = (FrameworkElement)uiElement;
-                }
-
-                uiElement = GetTemplateChild("ScrollLeft");
-                if (uiElement != null)
-                {
-                    m_scrollLeft = (Button)uiElement;
-                    m_scrollLeft.Click += OnScrollLeftClick;
-                }
-
-                uiElement = GetTemplateChild("ScrollRight");
-                if (uiElement != null)
-                {
-                    m_scrollRight = (Button)uiElement;
-                    m_scrollRight.Click += OnScrollRightClick;
-                }
-
-                uiElement = GetTemplateChild("TokenList");
-                if (uiElement != null)
-                {
-                    m_itemsControl = (ItemsControl)uiElement;
-                }
-
-                UpdateAllState();
-
-            }
-
-            protected override AutomationPeer OnCreateAutomationPeer()
-            {
-                return new OverflowTextBlockAutomationPeer(this);
-            }
-
-            private void OnScrollLeftClick(object sender, RoutedEventArgs e)
-            {
-                ScrollLeft();
-            }
-
-            private void OnScrollRightClick(object sender, RoutedEventArgs e)
-            {
-                ScrollRight();
-            }
-
-            private void OnViewChanged(object sender, ScrollViewerViewChangedEventArgs args)
-            {
-                UpdateScrollButtons();
-            }
-
-            private void UpdateVisualState()
-            {
-                VisualStateManager.GoToState(this, IsActive ? "Active" : "Normal", true);
-            }
-
-            private void UpdateAllState()
-            {
-                UpdateVisualState();
-            }
-
-            private void ScrollLeft()
-            {
-                if (m_expressionContainer != null && m_expressionContainer.HorizontalOffset > 0)
-                {
-                    double offset = m_expressionContainer.HorizontalOffset - (SCROLL_RATIO * m_expressionContainer.ViewportWidth);
-                    m_expressionContainer.ChangeView(offset, null, null);
-                    m_expressionContainer.UpdateLayout();
-                    UpdateScrollButtons();
-                }
-            }
-
-            private void ScrollRight()
-            {
-                if (m_expressionContainer != null && m_expressionContent != null)
-                {
-                    var realOffset = m_expressionContainer.HorizontalOffset + m_expressionContainer.Padding.Left + m_expressionContent.Margin.Left;
-                    if (realOffset + m_expressionContainer.ActualWidth < m_expressionContent.ActualWidth)
-                    {
-                        double offset = m_expressionContainer.HorizontalOffset + (SCROLL_RATIO * m_expressionContainer.ViewportWidth);
-                        m_expressionContainer.ChangeView(offset, null, null);
-                        m_expressionContainer.UpdateLayout();
-                        UpdateScrollButtons();
-                    }
-                }
-            }
-
-            private const uint SCROLL_BUTTONS_APPROXIMATION_RANGE = 4;
-            private const double SCROLL_RATIO = 0.7;
-
-            private bool m_isAccessibilityViewControl;
-            private Microsoft.UI.Xaml.FrameworkElement m_expressionContent;
-            private ItemsControl m_itemsControl;
-            private ScrollViewer m_expressionContainer;
-            private Button m_scrollLeft;
-            private Button m_scrollRight;
+            return;
         }
 
+        double realOffset = _expressionContainer.Offset.X
+            + _expressionContainer.Padding.Left
+            + _expressionContent.Margin.Left;
+        bool showLeft = realOffset > ScrollButtonsApproximationRange;
+        bool showRight = realOffset
+            + _expressionContainer.Bounds.Width
+            + ScrollButtonsApproximationRange
+            < _expressionContent.Bounds.Width;
+
+        bool moveFocusRight = _scrollLeft.IsFocused && !showLeft;
+        _scrollLeft.IsVisible = showLeft;
+
+        bool moveFocusLeft = _scrollRight.IsFocused && !showRight && showLeft;
+        _scrollRight.IsVisible = showRight;
+        if (moveFocusLeft)
+        {
+            _scrollLeft.Focus();
+        }
+        else if (moveFocusRight && showRight)
+        {
+            _scrollRight.Focus();
+        }
+
+        if (ScrollButtonsPlacement == OverflowButtonPlacement.Above)
+        {
+            double left = showLeft ? ScrollButtonsWidth : 0;
+            double right = showRight ? ScrollButtonsWidth : 0;
+            if (_expressionContainer.Padding.Left != left
+                || _expressionContainer.Padding.Right != right)
+            {
+                _expressionContainer.ScrollChanged -= OnViewChanged;
+                _expressionContainer.Padding = new Thickness(left, 0, right, 0);
+                _expressionContent.Margin = new Thickness(-left, 0, -right, 0);
+                _expressionContainer.InvalidateMeasure();
+                _expressionContainer.ScrollChanged += OnViewChanged;
+            }
+        }
+    }
+
+    protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
+    {
+        UnregisterEventHandlers();
+        base.OnApplyTemplate(e);
+
+        _expressionContainer = e.NameScope.Find<ScrollViewer>("ExpressionContainer");
+        _expressionContent = e.NameScope.Find<Control>("ExpressionContent");
+        _scrollLeft = e.NameScope.Find<Button>("ScrollLeft");
+        _scrollRight = e.NameScope.Find<Button>("ScrollRight");
+        _itemsControl = e.NameScope.Find<ItemsControl>("TokenList");
+
+        if (_expressionContainer is not null)
+        {
+            _expressionContainer.ScrollChanged += OnViewChanged;
+            _expressionContainer.SizeChanged += OnExpressionSizeChanged;
+            _expressionContainer.LayoutUpdated += OnExpressionLayoutUpdated;
+        }
+
+        if (_expressionContent is not null)
+        {
+            _expressionContent.SizeChanged += OnExpressionSizeChanged;
+        }
+
+        if (_scrollLeft is not null)
+        {
+            _scrollLeft.Click += OnScrollLeftClick;
+        }
+
+        if (_scrollRight is not null)
+        {
+            _scrollRight.Click += OnScrollRightClick;
+        }
+
+        UpdateAllState();
+        ScrollToEnd();
+    }
+
+    protected override AutomationPeer OnCreateAutomationPeer() =>
+        new OverflowTextBlockAutomationPeer(this);
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+
+        if (change.Property == TokensUpdatedProperty)
+        {
+            OnTokensUpdatedPropertyChanged(change.GetOldValue<bool>(), change.GetNewValue<bool>());
+        }
+        else if (change.Property == ScrollButtonsPlacementProperty)
+        {
+            OnScrollButtonsPlacementPropertyChanged(
+                change.GetOldValue<OverflowButtonPlacement>(),
+                change.GetNewValue<OverflowButtonPlacement>());
+        }
+        else if (change.Property == IsActiveProperty)
+        {
+            UpdateVisualState();
+        }
+    }
+
+    private void OnTokensUpdatedPropertyChanged(bool oldValue, bool newValue)
+    {
+        if (newValue)
+        {
+            ScrollToEnd();
+        }
+
+        bool newAccessibilityViewControl = _itemsControl?.ItemCount > 0;
+        if (_isAccessibilityViewControl != newAccessibilityViewControl)
+        {
+            _isAccessibilityViewControl = newAccessibilityViewControl;
+            AutomationProperties.SetAccessibilityView(
+                this,
+                newAccessibilityViewControl ? AccessibilityView.Control : AccessibilityView.Raw);
+        }
+
+        UpdateScrollButtons();
+    }
+
+    private void OnScrollButtonsPlacementPropertyChanged(
+        OverflowButtonPlacement oldValue,
+        OverflowButtonPlacement newValue)
+    {
+        if (newValue == OverflowButtonPlacement.InLine)
+        {
+            if (_expressionContainer is not null)
+            {
+                _expressionContainer.Padding = default;
+            }
+
+            if (_expressionContent is not null)
+            {
+                _expressionContent.Margin = default;
+            }
+        }
+
+        UpdateScrollButtons();
+    }
+
+    private void UnregisterEventHandlers()
+    {
+        if (_scrollLeft is not null)
+        {
+            _scrollLeft.Click -= OnScrollLeftClick;
+        }
+
+        if (_scrollRight is not null)
+        {
+            _scrollRight.Click -= OnScrollRightClick;
+        }
+
+        if (_expressionContainer is not null)
+        {
+            _expressionContainer.ScrollChanged -= OnViewChanged;
+            _expressionContainer.SizeChanged -= OnExpressionSizeChanged;
+            _expressionContainer.LayoutUpdated -= OnExpressionLayoutUpdated;
+        }
+
+        if (_expressionContent is not null)
+        {
+            _expressionContent.SizeChanged -= OnExpressionSizeChanged;
+        }
+    }
+
+    private void OnScrollLeftClick(object? sender, RoutedEventArgs e) => ScrollLeft();
+
+    private void OnScrollRightClick(object? sender, RoutedEventArgs e) => ScrollRight();
+
+    private void OnViewChanged(object? sender, ScrollChangedEventArgs e) => UpdateScrollButtons();
+
+    private void OnExpressionSizeChanged(object? sender, SizeChangedEventArgs e) => UpdateScrollButtons();
+
+    private void OnExpressionLayoutUpdated(object? sender, EventArgs e) => UpdateScrollButtons();
+
+    private void UpdateVisualState() => PseudoClasses.Set(ActivePseudoClass, IsActive);
+
+    private void UpdateAllState()
+    {
+        UpdateVisualState();
+        OnTokensUpdatedPropertyChanged(TokensUpdated, TokensUpdated);
+    }
+
+    private void ScrollLeft()
+    {
+        if (_expressionContainer is not null && _expressionContainer.Offset.X > 0)
+        {
+            SetHorizontalOffset(
+                _expressionContainer.Offset.X
+                - ScrollRatio * _expressionContainer.Viewport.Width);
+            UpdateScrollButtons();
+        }
+    }
+
+    private void ScrollRight()
+    {
+        if (_expressionContainer is null || _expressionContent is null)
+        {
+            return;
+        }
+
+        double realOffset = _expressionContainer.Offset.X
+            + _expressionContainer.Padding.Left
+            + _expressionContent.Margin.Left;
+        if (realOffset + _expressionContainer.Bounds.Width < _expressionContent.Bounds.Width)
+        {
+            SetHorizontalOffset(
+                _expressionContainer.Offset.X
+                + ScrollRatio * _expressionContainer.Viewport.Width);
+            UpdateScrollButtons();
+        }
+    }
+
+    private void ScrollToEnd()
+    {
+        if (_expressionContainer is not null)
+        {
+            SetHorizontalOffset(
+                Math.Max(0, _expressionContainer.Extent.Width - _expressionContainer.Viewport.Width));
+        }
+    }
+
+    private void SetHorizontalOffset(double value)
+    {
+        if (_expressionContainer is null)
+        {
+            return;
+        }
+
+        double maximum = Math.Max(0, _expressionContainer.Extent.Width - _expressionContainer.Viewport.Width);
+        _expressionContainer.Offset = new Vector(
+            Math.Clamp(value, 0, maximum),
+            _expressionContainer.Offset.Y);
     }
 }

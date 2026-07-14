@@ -22,13 +22,12 @@ namespace CalculatorApp.ViewModel
     public
         delegate void HistoryItemClickedHandler(CalculatorApp.ViewModel.HistoryItemViewModel e);
 
-    [Microsoft.UI.Xaml.Data.Bindable]
     public partial class HistoryViewModel : INotifyPropertyChanged
     {
         // public:
 
         // Implementation of INotifyPropertyChanged
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         internal void RaisePropertyChanged(string propertyName)
         {
@@ -52,7 +51,7 @@ namespace CalculatorApp.ViewModel
             }
         }
 
-        private ObservableCollection<HistoryItemViewModel> m_Items;
+        private ObservableCollection<HistoryItemViewModel> m_Items = new();
 
         // OBSERVABLE_PROPERTY_RW(bool, AreHistoryShortcutsEnabled);
         public bool AreHistoryShortcutsEnabled
@@ -74,7 +73,7 @@ namespace CalculatorApp.ViewModel
         private bool m_AreHistoryShortcutsEnabled;
 
         // OBSERVABLE_PROPERTY_R(CalculatorApp.ViewModel.Common.Automation.NarratorAnnouncement, HistoryAnnouncement);
-        public CalculatorApp.ViewModel.Common.Automation.NarratorAnnouncement HistoryAnnouncement
+        public CalculatorApp.ViewModel.Common.Automation.NarratorAnnouncement? HistoryAnnouncement
         {
             get
             {
@@ -90,7 +89,7 @@ namespace CalculatorApp.ViewModel
             }
         }
 
-        private CalculatorApp.ViewModel.Common.Automation.NarratorAnnouncement m_HistoryAnnouncement;
+        private CalculatorApp.ViewModel.Common.Automation.NarratorAnnouncement? m_HistoryAnnouncement;
 
         // COMMAND_FOR_METHOD(HideCommand, HistoryViewModel.OnHideCommand);
         public ICommand HideCommand
@@ -99,13 +98,13 @@ namespace CalculatorApp.ViewModel
             {
                 if (donotuse_HideCommand == null)
                 {
-                    donotuse_HideCommand = new DelegateCommand(e => OnHideCommand(e));
+                    donotuse_HideCommand = new DelegateCommand(OnHideCommand);
                 }
                 return donotuse_HideCommand;
             }
         }
 
-        private ICommand donotuse_HideCommand;
+        private ICommand? donotuse_HideCommand;
 
         // COMMAND_FOR_METHOD(ClearCommand, HistoryViewModel.OnClearCommand);
         public ICommand ClearCommand
@@ -114,13 +113,13 @@ namespace CalculatorApp.ViewModel
             {
                 if (donotuse_ClearCommand == null)
                 {
-                    donotuse_ClearCommand = new DelegateCommand(e => OnClearCommand(e));
+                    donotuse_ClearCommand = new DelegateCommand(OnClearCommand);
                 }
                 return donotuse_ClearCommand;
             }
         }
 
-        private ICommand donotuse_ClearCommand;
+        private ICommand? donotuse_ClearCommand;
         public int ItemsCount
         {
             get
@@ -135,8 +134,8 @@ namespace CalculatorApp.ViewModel
         // void OnClearCommand( object   e);
 
         // events that are created
-        public event HideHistoryClickedHandler HideHistoryClicked;
-        public event HistoryItemClickedHandler HistoryItemClicked;
+        public event HideHistoryClickedHandler? HideHistoryClicked;
+        public event HistoryItemClickedHandler? HistoryItemClicked;
         // void ShowItem( CalculatorApp.ViewModel.HistoryItemViewModel   e);
         // void DeleteItem( CalculatorApp.ViewModel.HistoryItemViewModel   e);
         // void ReloadHistory( CalculatorApp.ViewModel.Common.ViewMode currentMode);
@@ -148,10 +147,8 @@ namespace CalculatorApp.ViewModel
 
         // private:
         CalculationManager.CalculatorManager m_calculatorManager;
-        Common.CalculatorDisplay m_calculatorDisplay;
         CalculationManager.CalculatorMode m_currentMode;
-        string m_localizedHistoryCleared;
-        string m_localizedHistorySlotCleared;
+        string m_localizedHistoryCleared = string.Empty;
+        string m_localizedHistorySlotCleared = string.Empty;
     };
 }
-

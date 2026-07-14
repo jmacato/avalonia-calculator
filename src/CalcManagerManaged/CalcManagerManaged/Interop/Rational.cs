@@ -6,14 +6,14 @@ namespace CalcManagerManaged.Interop
     /// <summary>
     /// Represents a rational number with arbitrary precision
     /// </summary>
-    public class Rational : IDisposable
+    internal sealed class Rational : IDisposable
     {
         private IntPtr _handle;
         private bool _disposed;
-        
+
         // Default precision for standard calculator mode
         public const int DefaultPrecision = 32;
-        
+
         // Default radix (decimal)
         public const uint DefaultRadix = 10;
 
@@ -22,9 +22,9 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public Rational(int value)
         {
-            _handle = NativeMethods.Calc_CreateRationalFromInt32(value);
+            _handle = NativeMethods.CalcCreateRationalFromInt32(value);
             if (_handle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to create rational number");
+                throw new InvalidOperationException("Failed to create rational number");
         }
 
         /// <summary>
@@ -32,9 +32,9 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public Rational(string value, uint radix = DefaultRadix, int precision = DefaultPrecision)
         {
-            _handle = NativeMethods.Calc_CreateRationalFromString(value, radix, precision);
+            _handle = NativeMethods.CalcCreateRationalFromString(value, radix, precision);
             if (_handle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to create rational number");
+                throw new InvalidOperationException("Failed to create rational number");
         }
 
         /// <summary>
@@ -45,13 +45,13 @@ namespace CalcManagerManaged.Interop
             _handle = handle;
             if (_handle == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(handle));
-            
+
             // If we're not transferring ownership, we need to clone the rational
             if (!transferOwnership)
             {
-                var clonedHandle = NativeMethods.Calc_RationalAdd(_handle, NativeMethods.Calc_CreateRationalFromInt32(0), DefaultPrecision);
+                var clonedHandle = NativeMethods.CalcRationalAdd(_handle, NativeMethods.CalcCreateRationalFromInt32(0), DefaultPrecision);
                 if (clonedHandle == IntPtr.Zero)
-                    throw new OutOfMemoryException("Failed to clone rational number");
+                    throw new InvalidOperationException("Failed to clone rational number");
                 _handle = clonedHandle;
             }
         }
@@ -64,22 +64,22 @@ namespace CalcManagerManaged.Interop
         /// <summary>
         /// Converts this rational number to a string
         /// </summary>
-        public string ToString(uint radix = DefaultRadix, CalcNumberFormat format = CalcNumberFormat.Float, 
+        public string ToString(uint radix = DefaultRadix, CalcNumberFormat format = CalcNumberFormat.FloatingPoint,
             int precision = DefaultPrecision)
         {
             CheckDisposed();
-            
-            var strPtr = NativeMethods.Calc_RationalToString(_handle, radix, format, precision);
+
+            var strPtr = NativeMethods.CalcRationalToString(_handle, radix, format, precision);
             if (strPtr == IntPtr.Zero)
                 return string.Empty;
-            
+
             try
             {
-                return Marshal.PtrToStringAnsi(strPtr);
+                return Marshal.PtrToStringAnsi(strPtr) ?? string.Empty;
             }
             finally
             {
-                NativeMethods.Calc_FreeString(strPtr);
+                NativeMethods.CalcFreeString(strPtr);
             }
         }
 
@@ -89,12 +89,12 @@ namespace CalcManagerManaged.Interop
         public int ToInt32(uint radix = DefaultRadix, int precision = DefaultPrecision)
         {
             CheckDisposed();
-            
+
             int value = 0;
-            var result = NativeMethods.Calc_RationalToInt32(_handle, radix, precision, ref value);
+            var result = NativeMethods.CalcRationalToInt32(_handle, radix, precision, ref value);
             if (result != CalcError.Success)
                 throw new InvalidOperationException($"Failed to convert rational to int32: {result}");
-                
+
             return value;
         }
 
@@ -104,12 +104,12 @@ namespace CalcManagerManaged.Interop
         public ulong ToUInt64(uint radix = DefaultRadix, int precision = DefaultPrecision)
         {
             CheckDisposed();
-            
+
             ulong value = 0;
-            var result = NativeMethods.Calc_RationalToUInt64(_handle, radix, precision, ref value);
+            var result = NativeMethods.CalcRationalToUInt64(_handle, radix, precision, ref value);
             if (result != CalcError.Success)
                 throw new InvalidOperationException($"Failed to convert rational to uint64: {result}");
-                
+
             return value;
         }
 
@@ -118,14 +118,25 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public static Rational operator +(Rational a, Rational b)
         {
+            ArgumentNullException.ThrowIfNull(a);
+            ArgumentNullException.ThrowIfNull(b);
+
             a.CheckDisposed();
             b.CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalAdd(a._handle, b._handle, DefaultPrecision);
+
+            var resultHandle = NativeMethods.CalcRationalAdd(a._handle, b._handle, DefaultPrecision);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to add rational numbers");
-                
+                throw new InvalidOperationException("Failed to add rational numbers");
+
             return new Rational(resultHandle);
+        }
+
+        /// <summary>
+        /// Adds two rational numbers
+        /// </summary>
+        public static Rational Add(Rational a, Rational b)
+        {
+            return a + b;
         }
 
         /// <summary>
@@ -133,14 +144,25 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public static Rational operator -(Rational a, Rational b)
         {
+            ArgumentNullException.ThrowIfNull(a);
+            ArgumentNullException.ThrowIfNull(b);
+
             a.CheckDisposed();
             b.CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalSubtract(a._handle, b._handle, DefaultPrecision);
+
+            var resultHandle = NativeMethods.CalcRationalSubtract(a._handle, b._handle, DefaultPrecision);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to subtract rational numbers");
-                
+                throw new InvalidOperationException("Failed to subtract rational numbers");
+
             return new Rational(resultHandle);
+        }
+
+        /// <summary>
+        /// Subtracts two rational numbers
+        /// </summary>
+        public static Rational Subtract(Rational a, Rational b)
+        {
+            return a - b;
         }
 
         /// <summary>
@@ -148,14 +170,25 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public static Rational operator *(Rational a, Rational b)
         {
+            ArgumentNullException.ThrowIfNull(a);
+            ArgumentNullException.ThrowIfNull(b);
+
             a.CheckDisposed();
             b.CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalMultiply(a._handle, b._handle, DefaultPrecision);
+
+            var resultHandle = NativeMethods.CalcRationalMultiply(a._handle, b._handle, DefaultPrecision);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to multiply rational numbers");
-                
+                throw new InvalidOperationException("Failed to multiply rational numbers");
+
             return new Rational(resultHandle);
+        }
+
+        /// <summary>
+        /// Multiplies two rational numbers
+        /// </summary>
+        public static Rational Multiply(Rational a, Rational b)
+        {
+            return a * b;
         }
 
         /// <summary>
@@ -163,14 +196,25 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public static Rational operator /(Rational a, Rational b)
         {
+            ArgumentNullException.ThrowIfNull(a);
+            ArgumentNullException.ThrowIfNull(b);
+
             a.CheckDisposed();
             b.CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalDivide(a._handle, b._handle, DefaultPrecision);
+
+            var resultHandle = NativeMethods.CalcRationalDivide(a._handle, b._handle, DefaultPrecision);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to divide rational numbers");
-                
+                throw new InvalidOperationException("Failed to divide rational numbers");
+
             return new Rational(resultHandle);
+        }
+
+        /// <summary>
+        /// Divides two rational numbers
+        /// </summary>
+        public static Rational Divide(Rational a, Rational b)
+        {
+            return a / b;
         }
 
         /// <summary>
@@ -178,14 +222,25 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public static Rational operator %(Rational a, Rational b)
         {
+            ArgumentNullException.ThrowIfNull(a);
+            ArgumentNullException.ThrowIfNull(b);
+
             a.CheckDisposed();
             b.CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalMod(a._handle, b._handle);
+
+            var resultHandle = NativeMethods.CalcRationalMod(a._handle, b._handle);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to compute modulo of rational numbers");
-                
+                throw new InvalidOperationException("Failed to compute modulo of rational numbers");
+
             return new Rational(resultHandle);
+        }
+
+        /// <summary>
+        /// Computes the modulo of two rational numbers
+        /// </summary>
+        public static Rational Mod(Rational a, Rational b)
+        {
+            return a % b;
         }
 
         /// <summary>
@@ -193,41 +248,43 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public static Rational operator -(Rational a)
         {
+            ArgumentNullException.ThrowIfNull(a);
+
             a.CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalNegate(a._handle);
+
+            var resultHandle = NativeMethods.CalcRationalNegate(a._handle);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to negate rational number");
-                
+                throw new InvalidOperationException("Failed to negate rational number");
+
             return new Rational(resultHandle);
+        }
+
+        /// <summary>
+        /// Negates a rational number
+        /// </summary>
+        public static Rational Negate(Rational a)
+        {
+            return -a;
         }
 
         /// <summary>
         /// Compares two rational numbers for equality
         /// </summary>
-        public static bool operator ==(Rational a, Rational b)
+        public static bool operator ==(Rational? a, Rational? b)
         {
-            if (ReferenceEquals(a, null) && ReferenceEquals(b, null))
-                return true;
-                
-            if (ReferenceEquals(a, null) || ReferenceEquals(b, null))
+            if (a is null)
+                return b is null;
+
+            if (b is null)
                 return false;
-                
-            a.CheckDisposed();
-            b.CheckDisposed();
-            
-            bool result = false;
-            var calcResult = NativeMethods.Calc_RationalEquals(a._handle, b._handle, DefaultPrecision, ref result);
-            if (calcResult != CalcError.Success)
-                throw new InvalidOperationException($"Failed to compare rational numbers: {calcResult}");
-                
-            return result;
+
+            return EqualsCore(a, b);
         }
 
         /// <summary>
         /// Compares two rational numbers for inequality
         /// </summary>
-        public static bool operator !=(Rational a, Rational b)
+        public static bool operator !=(Rational? a, Rational? b)
         {
             return !(a == b);
         }
@@ -237,15 +294,10 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public static bool operator <(Rational a, Rational b)
         {
-            a.CheckDisposed();
-            b.CheckDisposed();
-            
-            int result = 0;
-            var calcResult = NativeMethods.Calc_RationalCompare(a._handle, b._handle, DefaultPrecision, ref result);
-            if (calcResult != CalcError.Success)
-                throw new InvalidOperationException($"Failed to compare rational numbers: {calcResult}");
-                
-            return result < 0;
+            ArgumentNullException.ThrowIfNull(a);
+            ArgumentNullException.ThrowIfNull(b);
+
+            return CompareCore(a, b) < 0;
         }
 
         /// <summary>
@@ -253,15 +305,10 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public static bool operator >(Rational a, Rational b)
         {
-            a.CheckDisposed();
-            b.CheckDisposed();
-            
-            int result = 0;
-            var calcResult = NativeMethods.Calc_RationalCompare(a._handle, b._handle, DefaultPrecision, ref result);
-            if (calcResult != CalcError.Success)
-                throw new InvalidOperationException($"Failed to compare rational numbers: {calcResult}");
-                
-            return result > 0;
+            ArgumentNullException.ThrowIfNull(a);
+            ArgumentNullException.ThrowIfNull(b);
+
+            return CompareCore(a, b) > 0;
         }
 
         /// <summary>
@@ -269,15 +316,10 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public static bool operator <=(Rational a, Rational b)
         {
-            a.CheckDisposed();
-            b.CheckDisposed();
-            
-            int result = 0;
-            var calcResult = NativeMethods.Calc_RationalCompare(a._handle, b._handle, DefaultPrecision, ref result);
-            if (calcResult != CalcError.Success)
-                throw new InvalidOperationException($"Failed to compare rational numbers: {calcResult}");
-                
-            return result <= 0;
+            ArgumentNullException.ThrowIfNull(a);
+            ArgumentNullException.ThrowIfNull(b);
+
+            return CompareCore(a, b) <= 0;
         }
 
         /// <summary>
@@ -285,15 +327,53 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public static bool operator >=(Rational a, Rational b)
         {
+            ArgumentNullException.ThrowIfNull(a);
+            ArgumentNullException.ThrowIfNull(b);
+
+            return CompareCore(a, b) >= 0;
+        }
+
+        /// <summary>
+        /// Compares this rational number with another rational number
+        /// </summary>
+        public int CompareTo(Rational? other)
+        {
+            if (other is null)
+                return 1;
+
+            return CompareCore(this, other);
+        }
+
+        /// <summary>
+        /// Compares two rational numbers for equality using the native engine
+        /// </summary>
+        private static bool EqualsCore(Rational a, Rational b)
+        {
             a.CheckDisposed();
             b.CheckDisposed();
-            
-            int result = 0;
-            var calcResult = NativeMethods.Calc_RationalCompare(a._handle, b._handle, DefaultPrecision, ref result);
+
+            bool result = false;
+            var calcResult = NativeMethods.CalcRationalEquals(a._handle, b._handle, DefaultPrecision, ref result);
             if (calcResult != CalcError.Success)
                 throw new InvalidOperationException($"Failed to compare rational numbers: {calcResult}");
-                
-            return result >= 0;
+
+            return result;
+        }
+
+        /// <summary>
+        /// Compares two rational numbers using the native engine
+        /// </summary>
+        private static int CompareCore(Rational a, Rational b)
+        {
+            a.CheckDisposed();
+            b.CheckDisposed();
+
+            int result = 0;
+            var calcResult = NativeMethods.CalcRationalCompare(a._handle, b._handle, DefaultPrecision, ref result);
+            if (calcResult != CalcError.Success)
+                throw new InvalidOperationException($"Failed to compare rational numbers: {calcResult}");
+
+            return result;
         }
 
         /// <summary>
@@ -302,11 +382,11 @@ namespace CalcManagerManaged.Interop
         public Rational Sin(CalcAngleType angleType = CalcAngleType.Radians, uint radix = DefaultRadix, int precision = DefaultPrecision)
         {
             CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalSin(_handle, angleType, radix, precision);
+
+            var resultHandle = NativeMethods.CalcRationalSin(_handle, angleType, radix, precision);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to calculate sine");
-                
+                throw new InvalidOperationException("Failed to calculate sine");
+
             return new Rational(resultHandle);
         }
 
@@ -316,11 +396,11 @@ namespace CalcManagerManaged.Interop
         public Rational Cos(CalcAngleType angleType = CalcAngleType.Radians, uint radix = DefaultRadix, int precision = DefaultPrecision)
         {
             CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalCos(_handle, angleType, radix, precision);
+
+            var resultHandle = NativeMethods.CalcRationalCos(_handle, angleType, radix, precision);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to calculate cosine");
-                
+                throw new InvalidOperationException("Failed to calculate cosine");
+
             return new Rational(resultHandle);
         }
 
@@ -330,11 +410,11 @@ namespace CalcManagerManaged.Interop
         public Rational Tan(CalcAngleType angleType = CalcAngleType.Radians, uint radix = DefaultRadix, int precision = DefaultPrecision)
         {
             CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalTan(_handle, angleType, radix, precision);
+
+            var resultHandle = NativeMethods.CalcRationalTan(_handle, angleType, radix, precision);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to calculate tangent");
-                
+                throw new InvalidOperationException("Failed to calculate tangent");
+
             return new Rational(resultHandle);
         }
 
@@ -344,11 +424,11 @@ namespace CalcManagerManaged.Interop
         public Rational Sqrt(uint radix = DefaultRadix, int precision = DefaultPrecision)
         {
             CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalSqrt(_handle, radix, precision);
+
+            var resultHandle = NativeMethods.CalcRationalSqrt(_handle, radix, precision);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to calculate square root");
-                
+                throw new InvalidOperationException("Failed to calculate square root");
+
             return new Rational(resultHandle);
         }
 
@@ -357,13 +437,15 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public Rational Pow(Rational exponent, uint radix = DefaultRadix, int precision = DefaultPrecision)
         {
+            ArgumentNullException.ThrowIfNull(exponent);
+
             CheckDisposed();
             exponent.CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalPow(_handle, exponent._handle, radix, precision);
+
+            var resultHandle = NativeMethods.CalcRationalPow(_handle, exponent._handle, radix, precision);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to calculate power");
-                
+                throw new InvalidOperationException("Failed to calculate power");
+
             return new Rational(resultHandle);
         }
 
@@ -372,13 +454,15 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public Rational Root(Rational root, uint radix = DefaultRadix, int precision = DefaultPrecision)
         {
+            ArgumentNullException.ThrowIfNull(root);
+
             CheckDisposed();
             root.CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalRoot(_handle, root._handle, radix, precision);
+
+            var resultHandle = NativeMethods.CalcRationalRoot(_handle, root._handle, radix, precision);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to calculate root");
-                
+                throw new InvalidOperationException("Failed to calculate root");
+
             return new Rational(resultHandle);
         }
 
@@ -388,11 +472,11 @@ namespace CalcManagerManaged.Interop
         public Rational Factorial(uint radix = DefaultRadix, int precision = DefaultPrecision)
         {
             CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalFact(_handle, radix, precision);
+
+            var resultHandle = NativeMethods.CalcRationalFact(_handle, radix, precision);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to calculate factorial");
-                
+                throw new InvalidOperationException("Failed to calculate factorial");
+
             return new Rational(resultHandle);
         }
 
@@ -402,11 +486,11 @@ namespace CalcManagerManaged.Interop
         public Rational Ln(int precision = DefaultPrecision)
         {
             CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalLn(_handle, precision);
+
+            var resultHandle = NativeMethods.CalcRationalLn(_handle, precision);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to calculate natural logarithm");
-                
+                throw new InvalidOperationException("Failed to calculate natural logarithm");
+
             return new Rational(resultHandle);
         }
 
@@ -416,11 +500,11 @@ namespace CalcManagerManaged.Interop
         public Rational Log10(int precision = DefaultPrecision)
         {
             CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalLog10(_handle, precision);
+
+            var resultHandle = NativeMethods.CalcRationalLog10(_handle, precision);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to calculate base-10 logarithm");
-                
+                throw new InvalidOperationException("Failed to calculate base-10 logarithm");
+
             return new Rational(resultHandle);
         }
 
@@ -430,11 +514,11 @@ namespace CalcManagerManaged.Interop
         public Rational Exp(uint radix = DefaultRadix, int precision = DefaultPrecision)
         {
             CheckDisposed();
-            
-            var resultHandle = NativeMethods.Calc_RationalExp(_handle, radix, precision);
+
+            var resultHandle = NativeMethods.CalcRationalExp(_handle, radix, precision);
             if (resultHandle == IntPtr.Zero)
-                throw new OutOfMemoryException("Failed to calculate exponential");
-                
+                throw new InvalidOperationException("Failed to calculate exponential");
+
             return new Rational(resultHandle);
         }
 
@@ -443,18 +527,15 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         public override string ToString()
         {
-            return ToString(DefaultRadix, CalcNumberFormat.Float, DefaultPrecision);
+            return ToString(DefaultRadix, CalcNumberFormat.FloatingPoint, DefaultPrecision);
         }
 
         /// <summary>
         /// Compares this rational number with another object for equality
         /// </summary>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
-            if (!(obj is Rational other))
-                return false;
-                
-            return this == other;
+            return obj is Rational other && this == other;
         }
 
         /// <summary>
@@ -470,8 +551,7 @@ namespace CalcManagerManaged.Interop
         /// </summary>
         private void CheckDisposed()
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(Rational));
+            ObjectDisposedException.ThrowIf(_disposed, this);
         }
 
         /// <summary>
@@ -486,14 +566,14 @@ namespace CalcManagerManaged.Interop
         /// <summary>
         /// Disposes this rational number
         /// </summary>
-        protected virtual void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
             if (!_disposed && _handle != IntPtr.Zero)
             {
-                NativeMethods.Calc_DestroyRational(_handle);
+                NativeMethods.CalcDestroyRational(_handle);
                 _handle = IntPtr.Zero;
             }
-            
+
             _disposed = true;
         }
 

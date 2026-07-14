@@ -1,81 +1,136 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
+using System.ComponentModel;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Selection;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
+using CalculatorApp.Controls;
 using CalculatorApp.ViewModel;
 using CalculatorApp.ViewModel.Common;
 
-using Microsoft.UI.Xaml;
+namespace CalculatorApp;
 
-using MUXC = Microsoft.UI.Xaml.Controls;
-
-// The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
-
-namespace CalculatorApp
+public sealed partial class HistoryList : UserControl
 {
-    [Windows.Foundation.Metadata.WebHostHidden]
-    public sealed partial class HistoryList : MUXC.UserControl
+    public static readonly StyledProperty<GridLength> RowHeightProperty =
+        AvaloniaProperty.Register<HistoryList, GridLength>(nameof(RowHeight), default);
+
+    public HistoryList()
     {
-        public HistoryList()
-        {
-            InitializeComponent();
+        InitializeComponent();
+    }
 
-            HistoryEmpty.FlowDirection = LocalizationService.GetInstance().GetFlowDirection();
+    public HistoryViewModel? Model => DataContext as HistoryViewModel;
+
+    public GridLength RowHeight
+    {
+        get => GetValue(RowHeightProperty);
+        set => SetValue(RowHeightProperty, value);
+    }
+
+    public static string GetHistoryItemAutomationName(string accExpression, string accResult) =>
+        $"{accExpression} {accResult}";
+
+    public void ScrollToBottom()
+    {
+        if (HistoryListView.ItemCount > 0)
+        {
+            HistoryListView.ScrollIntoView(HistoryListView.ItemCount - 1);
+        }
+    }
+
+    /// <summary>
+    /// Applies the original HistoryList DockedLayout/DefaultLayout VisualState
+    /// setters. Avalonia has no window-scoped AdaptiveTrigger, so Calculator
+    /// drives the same state while it reparents this control between the
+    /// original flyout and dock holders.
+    /// </summary>
+    public void SetDockedLayout(bool isDocked)
+    {
+        Grid.SetRow(HistoryListRootGrid, isDocked ? 0 : 1);
+        Grid.SetRowSpan(HistoryListRootGrid, isDocked ? 2 : 1);
+        HistoryListView.Padding = isDocked ? default : new Thickness(0, 24, 0, 0);
+        BackgroundShade.IsVisible = !isDocked;
+    }
+
+    private void OnLoaded(object? sender, RoutedEventArgs e)
+    {
+        if (Model is not { } model)
+        {
+            return;
         }
 
-        public CalculatorApp.ViewModel.HistoryViewModel Model => (CalculatorApp.ViewModel.HistoryViewModel)DataContext;
+        model.PropertyChanged -= OnModelPropertyChanged;
+        model.PropertyChanged += OnModelPropertyChanged;
+        UpdateState();
+    }
 
-        public void ScrollToBottom()
+    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e) => UpdateState();
+
+    private void UpdateState()
+    {
+        bool hasItems = Model?.Items.Count > 0;
+        HistoryEmpty.IsVisible = !hasItems;
+        HistoryListView.IsVisible = hasItems;
+        ClearHistory.IsVisible = hasItems;
+    }
+
+    private void OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        // WinUI's original ListView uses SelectionMode=None and ItemClick.
+        // Avalonia ListBox has no None mode, so discard its pointer-down
+        // selection and perform the original completed-click action in Tapped.
+        if (HistoryListView.SelectedItem is not null)
         {
-            var historyItems = HistoryListView.Items;
-            if (historyItems.Count > 0)
-            {
-                HistoryListView.ScrollIntoView(historyItems[historyItems.Count - 1]);
-            }
+            HistoryListView.SelectedItem = null;
+        }
+    }
+
+    private void OnHistoryListTapped(object? sender, TappedEventArgs e)
+    {
+        if (GetItemFromEventSource(e.Source) is HistoryItemViewModel clickedItem && Model is { } model)
+        {
+            model.ShowItem(clickedItem);
+        }
+    }
+
+    private static object? GetItemFromEventSource(object? source)
+    {
+        if (source is not Visual visual)
+        {
+            return null;
         }
 
-        public Microsoft.UI.Xaml.GridLength RowHeight
-        {
-            get => (Microsoft.UI.Xaml.GridLength)GetValue(RowHeightProperty);
-            set => SetValue(RowHeightProperty, value);
-        }
+        ListBoxItem? container = visual as ListBoxItem
+                                 ?? visual.GetVisualAncestors().OfType<ListBoxItem>().FirstOrDefault();
+        return container?.DataContext;
+    }
 
-        // Using a DependencyProperty as the backing store for RowHeight.  This enables animation, styling, binding, etc...
-        public static readonly DependencyProperty RowHeightProperty =
-            DependencyProperty.Register(nameof(RowHeight), typeof(Microsoft.UI.Xaml.GridLength), typeof(HistoryList), new PropertyMetadata(default(Microsoft.UI.Xaml.GridLength)));
+    private static void OnCopyMenuItemClicked(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { DataContext: HistoryItemViewModel item })
+        {
+            CopyPasteManager.CopyToClipboard(item.Result);
+        }
+    }
 
-        public static string GetHistoryItemAutomationName(string accExpression, string accResult)
+    private void OnDeleteMenuItemClicked(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { DataContext: HistoryItemViewModel item })
         {
-            return $"{accExpression} {accResult}";
+            Model?.DeleteItem(item);
         }
+    }
 
-        private void ListView_ItemClick(object sender, MUXC.ItemClickEventArgs e)
+    private void OnDeleteSwipeInvoked(SwipeItem sender, SwipeItemInvokedEventArgs e)
+    {
+        if (e.SwipeControl.DataContext is HistoryItemViewModel swipedItem)
         {
-            // When the user clears the history list in the overlay view and presses enter, the clickedItem is nullptr
-            if (e.ClickedItem is HistoryItemViewModel clickedItem && DataContext is HistoryViewModel historyVM)
-            {
-                historyVM.ShowItem(clickedItem);
-            }
-        }
-        private void OnCopyMenuItemClicked(object sender, RoutedEventArgs e)
-        {
-            var listViewItem = HistoryContextMenu.Target;
-            if (HistoryListView.ItemFromContainer(listViewItem) is HistoryItemViewModel itemViewModel)
-            {
-                CopyPasteManager.CopyToClipboard(itemViewModel.Result);
-            }
-        }
-        private void OnDeleteMenuItemClicked(object sender, RoutedEventArgs e)
-        {
-            var listViewItem = HistoryContextMenu.Target;
-            if (HistoryListView.ItemFromContainer(listViewItem) is HistoryItemViewModel itemViewModel)
-            {
-                Model.DeleteItem(itemViewModel);
-            }
-        }
-        private void OnDeleteSwipeInvoked(MUXC.SwipeItem sender, MUXC.SwipeItemInvokedEventArgs e)
-        {
-            if (e.SwipeControl.DataContext is HistoryItemViewModel swipedItem)
-            {
-                Model.DeleteItem(swipedItem);
-            }
+            Model?.DeleteItem(swipedItem);
         }
     }
 }
-

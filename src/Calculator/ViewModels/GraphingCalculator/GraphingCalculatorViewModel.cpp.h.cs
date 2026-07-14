@@ -1,132 +1,107 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-// #pragma once
-
-// #include "../Common/Utils.h"
-// #include "EquationViewModel.cpp.h.cs"
-// #include "VariableViewModel.h"
-using CalculatorApp.ViewModel.Common;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-using Microsoft.UI.Xaml.Data;
-using  GraphControl;
+using CalculatorApp.ViewModel.Common;
 
-namespace CalculatorApp.ViewModel
+namespace CalculatorApp.ViewModel;
+
+/// <summary>
+/// The retained graphing ViewModel surface for the 1.0 shell. The native
+/// GraphControl engine is intentionally excluded; expression editing remains
+/// interactive and all engine-backed actions report themselves as unavailable.
+/// </summary>
+public sealed partial class GraphingCalculatorViewModel : ViewModelBase
 {
-    [Microsoft.UI.Xaml.Data.Bindable]
-    public sealed partial class GraphingCalculatorViewModel : INotifyPropertyChanged
+    private string _expressionText = string.Empty;
+
+    public GraphingCalculatorViewModel()
     {
+        AppendTokenCommand = new DelegateCommand(parameter =>
+            AppendToken(parameter?.ToString() ?? string.Empty));
+        BackspaceCommand = new DelegateCommand(_ => Backspace());
+        ClearExpressionCommand = new DelegateCommand(_ => ExpressionText = string.Empty);
+        ButtonPressed = new DelegateCommand(OnButtonPressed);
+    }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+    public string ExpressionText
+    {
+        get => _expressionText;
+        set => SetProperty(ref _expressionText, value ?? string.Empty);
+    }
 
-        internal void RaisePropertyChanged(string p)
+    public bool IsDecimalEnabled => true;
+
+    public bool EngineActionsEnabled => false;
+
+    public string LimitationNotice => AppResourceProvider.GetInstance()
+        .GetResourceString("GraphingEngineLimitationNotice");
+
+    public ICommand AppendTokenCommand { get; }
+
+    public ICommand BackspaceCommand { get; }
+
+    public ICommand ClearExpressionCommand { get; }
+
+    public ICommand ButtonPressed { get; }
+
+    public void AppendToken(string token)
+    {
+        if (!string.IsNullOrEmpty(token))
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
+            ExpressionText += token;
         }
+    }
 
-        public void UpdateVariables(IDictionary<string, Variable> variables)
+    private void Backspace()
+    {
+        if (ExpressionText.Length > 0)
         {
-            throw new NotImplementedException();
+            ExpressionText = ExpressionText[..^1];
         }
+    }
 
-        public bool IsDecimalEnabled
+    private void OnButtonPressed(object? parameter)
+    {
+        NumbersAndOperatorsEnum operation =
+            CalculatorButtonPressedEventArgs.GetOperationFromCommandParameter(parameter);
+        string token = operation switch
         {
-            get
-            {
-                return m_IsDecimalEnabled;
-            }
+            NumbersAndOperatorsEnum.Zero => "0",
+            NumbersAndOperatorsEnum.One => "1",
+            NumbersAndOperatorsEnum.Two => "2",
+            NumbersAndOperatorsEnum.Three => "3",
+            NumbersAndOperatorsEnum.Four => "4",
+            NumbersAndOperatorsEnum.Five => "5",
+            NumbersAndOperatorsEnum.Six => "6",
+            NumbersAndOperatorsEnum.Seven => "7",
+            NumbersAndOperatorsEnum.Eight => "8",
+            NumbersAndOperatorsEnum.Nine => "9",
+            NumbersAndOperatorsEnum.Decimal =>
+                LocalizationSettings.GetInstance().GetDecimalSeparator().ToString(),
+            NumbersAndOperatorsEnum.Add => "+",
+            NumbersAndOperatorsEnum.Subtract => "−",
+            NumbersAndOperatorsEnum.Multiply => "×",
+            NumbersAndOperatorsEnum.Divide => "÷",
+            NumbersAndOperatorsEnum.OpenParenthesis => "(",
+            NumbersAndOperatorsEnum.CloseParenthesis => ")",
+            NumbersAndOperatorsEnum.XPowerY => "^",
+            NumbersAndOperatorsEnum.Backspace => string.Empty,
+            NumbersAndOperatorsEnum.Clear or NumbersAndOperatorsEnum.ClearEntry => string.Empty,
+            _ => string.Empty
+        };
 
-            private set
-            {
-                if (m_IsDecimalEnabled != value)
-                {
-                    m_IsDecimalEnabled = value;
-                    RaisePropertyChanged(nameof(IsDecimalEnabled));
-                }
-            }
-        }
-
-        private bool m_IsDecimalEnabled;
-
-        public ObservableCollection<EquationViewModel> Equations
+        if (operation == NumbersAndOperatorsEnum.Backspace)
         {
-            get
-            {
-                return m_Equations;
-            }
-
-            private set
-            {
-                if (m_Equations != value)
-                {
-                    m_Equations = value;
-                    RaisePropertyChanged(nameof(Equations));
-                }
-            }
+            Backspace();
         }
-
-        private ObservableCollection<EquationViewModel> m_Equations;
-
-        public ObservableCollection<VariableViewModel> Variables
+        else if (operation is NumbersAndOperatorsEnum.Clear or NumbersAndOperatorsEnum.ClearEntry)
         {
-            get
-            {
-                return m_Variables;
-            }
-
-            private set
-            {
-                if (m_Variables != value)
-                {
-                    m_Variables = value;
-                    RaisePropertyChanged(nameof(Variables));
-                }
-            }
+            ExpressionText = string.Empty;
         }
-
-        private ObservableCollection<VariableViewModel> m_Variables;
-
-        public EquationViewModel SelectedEquation
+        else
         {
-            get
-            {
-                return m_SelectedEquation;
-            }
-
-            private set
-            {
-                if (m_SelectedEquation != value)
-                {
-                    m_SelectedEquation = value;
-                    RaisePropertyChanged(nameof(SelectedEquation));
-                }
-            }
+            AppendToken(token);
         }
-
-        private EquationViewModel m_SelectedEquation;
-
-        public ICommand ButtonPressed
-        {
-            get
-            {
-                if (donotuse_ButtonPressed == null)
-                {
-                    donotuse_ButtonPressed = new DelegateCommand(OnButtonPressed);
-                }
-                return donotuse_ButtonPressed;
-            }
-        }
-
-        private ICommand donotuse_ButtonPressed;
-
-        public event EventHandler<VariableChangedEventArgs> VariableUpdated;
-
     }
 }

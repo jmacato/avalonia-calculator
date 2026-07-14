@@ -3,10 +3,10 @@ namespace CalcManagerManaged.Interop;
 /// <summary>
 /// Radix type (number base)
 /// </summary>
-public enum CalcRadixType
+internal enum CalcRadixType
 {
     Hex = 0,
-    Decimal = 1,
+    Dec = 1,
     Octal = 2,
     Binary = 3
 }

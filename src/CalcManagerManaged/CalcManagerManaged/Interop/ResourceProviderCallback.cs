@@ -6,6 +6,6 @@ namespace CalcManagerManaged.Interop;
 /// Delegate for resource provider callback
 /// </summary>
 [UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-public delegate IntPtr ResourceProviderCallback(
+internal delegate IntPtr ResourceProviderCallback(
     [MarshalAs(UnmanagedType.LPStr)] string resourceId,
     IntPtr context);

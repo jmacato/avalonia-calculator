@@ -1,793 +1,421 @@
-using CalculatorApp.ViewModel.Common;
-using CalculatorApp.ViewModel;
-using System;
-using System.Collections.Generic;
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Globalization;
 using System.Windows.Input;
-using Windows.Foundation;
-using Windows.Globalization.NumberFormatting;
-using Windows.System.Threading;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Data;
+using CalculatorApp.ViewModel.Common;
 using UnitConversionManager;
-using Microsoft.UI.Xaml;
-using Windows.Foundation.Collections;
 
-namespace CalculatorApp.ViewModel
+namespace CalculatorApp.ViewModel;
+
+/// <summary>
+/// Avalonia wrapper for the converter category model. The wrapper is retained
+/// from the WinUI implementation so the view does not depend on engine details.
+/// </summary>
+public sealed class Category : INotifyPropertyChanged
 {
-    [Windows.UI.Xaml.Data.Bindable]
-    public partial class Category : INotifyPropertyChanged
+    private readonly UnitConversionManager.Category _original;
+
+    internal Category(UnitConversionManager.Category category)
     {
-        private readonly UnitConversionManager.Category m_original;
+        _original = category;
+    }
 
-        internal Category(UnitConversionManager.Category category)
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string Name => _original.Name;
+
+    public bool SupportsNegative => _original.SupportsNegative;
+
+    public int GetModelCategoryId() => _original.Id;
+
+    internal UnitConversionManager.Category GetModelCategory() => _original;
+
+    internal void RaisePropertyChanged(string propertyName) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+public sealed class SupplementaryResult : INotifyPropertyChanged
+{
+    internal SupplementaryResult(string value, Unit unit)
+    {
+        Value = value;
+        Unit = unit;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string Value { get; }
+
+    public Unit Unit { get; }
+
+    public bool IsWhimsical() => Unit.IsWhimsical;
+
+    public string LocalizedAutomationName
+    {
+        get
         {
-            m_original = category;
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        internal void RaisePropertyChanged(string p)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
-        }
-
-        public string Name
-        {
-            get { return m_original.name; }
-        }
-
-        public Visibility NegateVisibility
-        {
-            get
-            {
-                return m_original.supportsNegative ? Visibility.Visible : Visibility.Collapsed;
-            }
-        }
-
-        public int GetModelCategoryId()
-        {
-            return GetModelCategory().id;
-        }
-
-        internal UnitConversionManager.Category GetModelCategory()
-        {
-            return m_original;
+            string format = AppResourceProvider.GetInstance()
+                .GetResourceString("SupplementaryUnit_AutomationName");
+            return LocalizationStringUtil.GetLocalizedString(format, Value, Unit.Name);
         }
     }
 
-    [Windows.UI.Xaml.Data.Bindable]
-    public partial class SupplementaryResult : INotifyPropertyChanged
+    internal void RaisePropertyChanged(string propertyName) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+public interface IActivatable
+{
+    bool IsActive { get; set; }
+}
+
+public static class UnitConverterResourceKeys
+{
+    public const string ValueFromFormat = "Format_ValueFrom";
+    public const string ValueFromDecimalFormat = "Format_ValueFrom_Decimal";
+    public const string ValueToFormat = "Format_ValueTo";
+    public const string ConversionResultFormat = "Format_ConversionResult";
+    public const string InputUnitName = "InputUnit_Name";
+    public const string OutputUnitName = "OutputUnit_Name";
+    public const string MaxDigitsReachedFormat = "Format_MaxDigitsReached";
+    public const string UpdatingCurrencyRates = "UpdatingCurrencyRates";
+    public const string CurrencyRatesUpdated = "CurrencyRatesUpdated";
+    public const string CurrencyRatesUpdateFailed = "CurrencyRatesUpdateFailed";
+}
+
+/// <summary>
+/// Portable translation of the original WinUI UnitConverterViewModel. The
+/// calculation and suggestion behavior remains in UnitConversionManager.
+/// </summary>
+public partial class UnitConverterViewModel : ViewModelBase
+{
+    private enum ConversionParameter
     {
-        private string m_Value;
-        private Unit m_Unit;
-
-        internal SupplementaryResult(string value, Unit unit)
-        {
-            m_Value = value;
-            m_Unit = unit;
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        internal void RaisePropertyChanged(string p)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
-        }
-
-        public bool IsWhimsical()
-        {
-            return m_Unit.isWhimsical;
-        }
-
-        public String GetLocalizedAutomationName()
-        {
-            var format = AppResourceProvider.GetInstance().GetResourceString("SupplementaryUnit_AutomationName");
-            return LocalizationStringUtil.GetLocalizedString(format, this.Value, this.Unit.name);
-        }
-
-        public string Value
-        {
-            get { return m_Value; }
-            private set { m_Value = value; }
-        }
-
-        public Unit Unit
-        {
-            get { return m_Unit; }
-            private set { m_Unit = value; }
-        }
+        Source,
+        Target
     }
-     
 
-    [Windows.UI.Xaml.Data.Bindable]
-    public partial class UnitConverterViewModel : INotifyPropertyChanged
+    private readonly IUnitConverter _model;
+    private readonly NumberFormatInfo _numberFormat;
+    private readonly string _localizedValueFromFormat;
+    private readonly string _localizedValueToFormat;
+    private readonly string _localizedConversionResultFormat;
+    private ConversionParameter _value1Parameter = ConversionParameter.Source;
+    private ViewMode _mode = ViewMode.None;
+    private Category? _currentCategory;
+    private Unit? _unit1;
+    private Unit? _unit2;
+    private string _value1 = "0";
+    private string _value2 = "0";
+    private string _unlocalizedValueFrom = "0";
+    private string _unlocalizedValueTo = "0";
+    private bool _value1Active = true;
+    private bool _value2Active;
+    private bool _isChangingCategory;
+    private bool _isDecimalEnabled = true;
+    private bool _isDropDownOpen;
+    private bool _isDropDownEnabled = true;
+    private bool _isCurrencyLoadingVisible;
+    private bool _isCurrencyCurrentCategory;
+    private bool _currencyDataLoadFailed;
+    private bool _currencyDataIsWeekOld;
+    private string _currencySymbol1 = string.Empty;
+    private string _currencySymbol2 = string.Empty;
+    private string _currencyRatioEquality = string.Empty;
+    private string _currencyRatioEqualityAutomationName = string.Empty;
+    private string _currencyTimestamp = string.Empty;
+    private string _value1AutomationName = string.Empty;
+    private string _value2AutomationName = string.Empty;
+    private string _unit1AutomationName = string.Empty;
+    private string _unit2AutomationName = string.Empty;
+    private NetworkAccessBehavior _networkBehavior = NetworkAccessBehavior.Normal;
+    private Common.Automation.NarratorAnnouncement? _announcement;
+
+    public ObservableCollection<Category> Categories { get; } = new();
+
+    public ObservableCollection<Unit> Units { get; } = new();
+
+    public ObservableCollection<SupplementaryResult> SupplementaryResults { get; } = new();
+
+    public static string SupplementaryResultsPropertyName => nameof(SupplementaryResults);
+    public static string IsCurrencyLoadingVisiblePropertyName => nameof(IsCurrencyLoadingVisible);
+    public static string IsCurrencyCurrentCategoryPropertyName => nameof(IsCurrencyCurrentCategory);
+    public static string NetworkBehaviorPropertyName => nameof(NetworkBehavior);
+    public static string CurrencyDataLoadFailedPropertyName => nameof(CurrencyDataLoadFailed);
+    public static string CurrencyDataIsWeekOldPropertyName => nameof(CurrencyDataIsWeekOld);
+
+    public ViewMode Mode
     {
-        private ObservableCollection<Category> m_Categories;
-        private Common.ViewMode m_Mode;
-        private ObservableCollection<Unit> m_Units;
-        private string m_CurrencySymbol1;
-        private Unit m_Unit1;
-        private string m_Value1;
-        private string m_CurrencySymbol2;
-        private Unit m_Unit2;
-        private string m_Value2;
-        private ObservableCollection<SupplementaryResult> m_SupplementaryResults;
-        private bool m_Value1Active;
-        private bool m_Value2Active;
-        private string m_Value1AutomationName;
-        private string m_Value2AutomationName;
-        private string m_Unit1AutomationName;
-        private string m_Unit2AutomationName;
-        private Common.Automation.NarratorAnnouncement m_Announcement;
-        private bool m_IsDecimalEnabled;
-        private bool m_IsDropDownOpen;
-        private bool m_IsDropDownEnabled;
-        private bool m_IsCurrencyLoadingVisible;
-        private bool m_IsCurrencyCurrentCategory;
-        private string m_CurrencyRatioEquality;
-        private string m_CurrencyRatioEqualityAutomationName;
-        private string m_CurrencyTimestamp;
-        private Common.NetworkAccessBehavior m_NetworkBehavior;
-        private bool m_CurrencyDataLoadFailed;
-        private bool m_CurrencyDataIsWeekOld;
+        get => _mode;
+        set => SetMode(value);
+    }
 
-        private ICommand donotuse_CategoryChanged;
-        private ICommand donotuse_UnitChanged;
-        private ICommand donotuse_SwitchActive;
-        private ICommand donotuse_ButtonPressed;
-        private ICommand donotuse_CopyCommand;
-        private ICommand donotuse_PasteCommand;
+    public Category? CurrentCategory
+    {
+        get => _currentCategory;
+        set => SetCurrentCategory(value);
+    }
 
-        private Category m_CurrentCategory;
-        private bool m_isInputBlocked;
-        private ThreadPoolTimer m_supplementaryResultsTimer;
-        private bool m_resettingTimer;
-        private List<(string, UnitConversionManager.Unit)> m_cachedSuggestedValues;
-        private object m_cacheMutex = new object();
-        private DecimalFormatter m_decimalFormatter;
-        private CurrencyFormatter m_currencyFormatter;
-        private CurrencyFormatter m_currencyFormatter1;
-        private CurrencyFormatter m_currencyFormatter2;
-        private string m_valueFromUnlocalized;
-        private string m_valueToUnlocalized;
-        private bool m_relocalizeStringOnSwitch;
-        private string m_localizedValueFromFormat;
-        private string m_localizedValueFromDecimalFormat;
-        private string m_localizedValueToFormat;
-        private string m_localizedConversionResultFormat;
-        private string m_localizedInputUnitName;
-        private string m_localizedOutputUnitName;
-        private bool m_isValue1Updating;
-        private bool m_isValue2Updating;
-        private string m_lastAnnouncedFrom;
-        private string m_lastAnnouncedTo;
-        private string m_lastAnnouncedConversionResult;
-        private bool m_isCurrencyDataLoaded;
-        private ConversionParameter m_value1cp;
-        private char m_decimalSeparator;
-         
-        public event PropertyChangedEventHandler PropertyChanged;
+    public Unit? Unit1
+    {
+        get => _unit1;
+        set => SetUnit(ref _unit1, value, nameof(Unit1));
+    }
 
-        internal void RaisePropertyChanged(string p)
+    public Unit? Unit2
+    {
+        get => _unit2;
+        set => SetUnit(ref _unit2, value, nameof(Unit2));
+    }
+
+    public string Value1
+    {
+        get => _value1;
+        private set => SetProperty(ref _value1, value);
+    }
+
+    public string Value2
+    {
+        get => _value2;
+        private set => SetProperty(ref _value2, value);
+    }
+
+    public bool Value1Active
+    {
+        get => _value1Active;
+        set => SetValueActive(ConversionParameter.Source, value);
+    }
+
+    public bool Value2Active
+    {
+        get => _value2Active;
+        set => SetValueActive(ConversionParameter.Target, value);
+    }
+
+    public bool IsDecimalEnabled
+    {
+        get => _isDecimalEnabled;
+        private set => SetProperty(ref _isDecimalEnabled, value);
+    }
+
+    public bool IsDropDownOpen
+    {
+        get => _isDropDownOpen;
+        set => SetProperty(ref _isDropDownOpen, value);
+    }
+
+    public bool IsDropDownEnabled
+    {
+        get => _isDropDownEnabled;
+        private set => SetProperty(ref _isDropDownEnabled, value);
+    }
+
+    public bool IsCurrencyLoadingVisible
+    {
+        get => _isCurrencyLoadingVisible;
+        private set => SetProperty(ref _isCurrencyLoadingVisible, value);
+    }
+
+    public bool IsCurrencyCurrentCategory
+    {
+        get => _isCurrencyCurrentCategory;
+        private set => SetProperty(ref _isCurrencyCurrentCategory, value);
+    }
+
+    public bool CurrencyDataLoadFailed
+    {
+        get => _currencyDataLoadFailed;
+        private set => SetProperty(ref _currencyDataLoadFailed, value);
+    }
+
+    public bool CurrencyDataIsWeekOld
+    {
+        get => _currencyDataIsWeekOld;
+        private set => SetProperty(ref _currencyDataIsWeekOld, value);
+    }
+
+    public string CurrencySymbol1
+    {
+        get => _currencySymbol1;
+        private set => SetProperty(ref _currencySymbol1, value);
+    }
+
+    public string CurrencySymbol2
+    {
+        get => _currencySymbol2;
+        private set => SetProperty(ref _currencySymbol2, value);
+    }
+
+    public string CurrencyRatioEquality
+    {
+        get => _currencyRatioEquality;
+        private set => SetProperty(ref _currencyRatioEquality, value);
+    }
+
+    public string CurrencyRatioEqualityAutomationName
+    {
+        get => _currencyRatioEqualityAutomationName;
+        private set => SetProperty(ref _currencyRatioEqualityAutomationName, value);
+    }
+
+    public string CurrencyTimestamp
+    {
+        get => _currencyTimestamp;
+        private set => SetProperty(ref _currencyTimestamp, value);
+    }
+
+    public string Value1AutomationName
+    {
+        get => _value1AutomationName;
+        private set => SetProperty(ref _value1AutomationName, value);
+    }
+
+    public string Value2AutomationName
+    {
+        get => _value2AutomationName;
+        private set => SetProperty(ref _value2AutomationName, value);
+    }
+
+    public string Unit1AutomationName
+    {
+        get => _unit1AutomationName;
+        private set => SetProperty(ref _unit1AutomationName, value);
+    }
+
+    public string Unit2AutomationName
+    {
+        get => _unit2AutomationName;
+        private set => SetProperty(ref _unit2AutomationName, value);
+    }
+
+    public NetworkAccessBehavior NetworkBehavior
+    {
+        get => _networkBehavior;
+        private set => SetProperty(ref _networkBehavior, value);
+    }
+
+    public Common.Automation.NarratorAnnouncement? Announcement
+    {
+        get => _announcement;
+        private set => SetProperty(ref _announcement, value);
+    }
+
+    public bool HasSupplementaryResults => SupplementaryResults.Count > 0;
+
+    public bool HasCurrencySymbols =>
+        !string.IsNullOrEmpty(CurrencySymbol1) || !string.IsNullOrEmpty(CurrencySymbol2);
+
+    public bool CanNegate => CurrentCategory?.SupportsNegative == true;
+
+    public ICommand CategoryChanged { get; }
+    public ICommand UnitChanged { get; }
+    public ICommand SwitchActive { get; }
+    public ICommand ButtonPressed { get; }
+    public ICommand CopyCommand { get; }
+    public ICommand PasteCommand { get; }
+    public ICommand RefreshCurrencyCommand { get; }
+
+    private Unit? UnitFrom
+    {
+        get => _value1Parameter == ConversionParameter.Source ? Unit1 : Unit2;
+        set
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
-            OnPropertyChanged(p);
-        }
-
-        public ObservableCollection<Category> Categories
-        {
-            get { return m_Categories; }
-            private set
+            if (_value1Parameter == ConversionParameter.Source)
             {
-                if (m_Categories != value)
-                {
-                    m_Categories = value;
-                    RaisePropertyChanged(nameof(Categories));
-                }
+                Unit1 = value;
             }
-        }
-
-        public Common.ViewMode Mode
-        {
-            get { return m_Mode; }
-            set
+            else
             {
-                if (m_Mode != value)
-                {
-                    m_Mode = value;
-                    RaisePropertyChanged(nameof(Mode));
-                }
+                Unit2 = value;
             }
-        }
-
-        public ObservableCollection<Unit> Units
-        {
-            get { return m_Units; }
-            private set
-            {
-                if (m_Units != value)
-                {
-                    m_Units = value;
-                    RaisePropertyChanged(nameof(Units));
-                }
-            }
-        }
-
-        public string CurrencySymbol1
-        {
-            get { return m_CurrencySymbol1; }
-            set
-            {
-                if (m_CurrencySymbol1 != value)
-                {
-                    m_CurrencySymbol1 = value;
-                    RaisePropertyChanged(nameof(CurrencySymbol1));
-                }
-            }
-        }
-
-        public Unit Unit1
-        {
-            get { return m_Unit1; }
-            set
-            {
-                if (m_Unit1 != value)
-                {
-                    m_Unit1 = value;
-                    RaisePropertyChanged(nameof(Unit1));
-                }
-            }
-        }
-
-        public string Value1
-        {
-            get { return m_Value1; }
-            set
-            {
-                if (m_Value1 != value)
-                {
-                    m_Value1 = value;
-                    RaisePropertyChanged(nameof(Value1));
-                }
-            }
-        }
-
-        public string CurrencySymbol2
-        {
-            get { return m_CurrencySymbol2; }
-            set
-            {
-                if (m_CurrencySymbol2 != value)
-                {
-                    m_CurrencySymbol2 = value;
-                    RaisePropertyChanged(nameof(CurrencySymbol2));
-                }
-            }
-        }
-
-        public Unit Unit2
-        {
-            get { return m_Unit2; }
-            set
-            {
-                if (m_Unit2 != value)
-                {
-                    m_Unit2 = value;
-                    RaisePropertyChanged(nameof(Unit2));
-                }
-            }
-        }
-
-        public string Value2
-        {
-            get { return m_Value2; }
-            set
-            {
-                if (m_Value2 != value)
-                {
-                    m_Value2 = value;
-                    RaisePropertyChanged(nameof(Value2));
-                }
-            }
-        }
-
-        public ObservableCollection<SupplementaryResult> SupplementaryResults
-        {
-            get { return m_SupplementaryResults; }
-            private set
-            {
-                if (m_SupplementaryResults != value)
-                {
-                    m_SupplementaryResults = value;
-                    RaisePropertyChanged(nameof(SupplementaryResults));
-                }
-            }
-        }
-
-        public static string SupplementaryResultsPropertyName => nameof(SupplementaryResults);
-
-        public bool Value1Active
-        {
-            get { return m_Value1Active; }
-            set
-            {
-                if (m_Value1Active != value)
-                {
-                    m_Value1Active = value;
-                    RaisePropertyChanged(nameof(Value1Active));
-                }
-            }
-        }
-
-        public bool Value2Active
-        {
-            get { return m_Value2Active; }
-            set
-            {
-                if (m_Value2Active != value)
-                {
-                    m_Value2Active = value;
-                    RaisePropertyChanged(nameof(Value2Active));
-                }
-            }
-        }
-
-        public string Value1AutomationName
-        {
-            get { return m_Value1AutomationName; }
-            set
-            {
-                if (m_Value1AutomationName != value)
-                {
-                    m_Value1AutomationName = value;
-                    RaisePropertyChanged(nameof(Value1AutomationName));
-                }
-            }
-        }
-
-        public string Value2AutomationName
-        {
-            get { return m_Value2AutomationName; }
-            set
-            {
-                if (m_Value2AutomationName != value)
-                {
-                    m_Value2AutomationName = value;
-                    RaisePropertyChanged(nameof(Value2AutomationName));
-                }
-            }
-        }
-
-        public string Unit1AutomationName
-        {
-            get { return m_Unit1AutomationName; }
-            set
-            {
-                if (m_Unit1AutomationName != value)
-                {
-                    m_Unit1AutomationName = value;
-                    RaisePropertyChanged(nameof(Unit1AutomationName));
-                }
-            }
-        }
-
-        public string Unit2AutomationName
-        {
-            get { return m_Unit2AutomationName; }
-            set
-            {
-                if (m_Unit2AutomationName != value)
-                {
-                    m_Unit2AutomationName = value;
-                    RaisePropertyChanged(nameof(Unit2AutomationName));
-                }
-            }
-        }
-
-        public Common.Automation.NarratorAnnouncement Announcement
-        {
-            get { return m_Announcement; }
-            set
-            {
-                if (m_Announcement != value)
-                {
-                    m_Announcement = value;
-                    RaisePropertyChanged(nameof(Announcement));
-                }
-            }
-        }
-
-        public bool IsDecimalEnabled
-        {
-            get { return m_IsDecimalEnabled; }
-            set
-            {
-                if (m_IsDecimalEnabled != value)
-                {
-                    m_IsDecimalEnabled = value;
-                    RaisePropertyChanged(nameof(IsDecimalEnabled));
-                }
-            }
-        }
-
-        public bool IsDropDownOpen
-        {
-            get { return m_IsDropDownOpen; }
-            set
-            {
-                if (m_IsDropDownOpen != value)
-                {
-                    m_IsDropDownOpen = value;
-                    RaisePropertyChanged(nameof(IsDropDownOpen));
-                }
-            }
-        }
-
-        public bool IsDropDownEnabled
-        {
-            get { return m_IsDropDownEnabled; }
-            set
-            {
-                if (m_IsDropDownEnabled != value)
-                {
-                    m_IsDropDownEnabled = value;
-                    RaisePropertyChanged(nameof(IsDropDownEnabled));
-                }
-            }
-        }
-
-        public bool IsCurrencyLoadingVisible
-        {
-            get { return m_IsCurrencyLoadingVisible; }
-            set
-            {
-                if (m_IsCurrencyLoadingVisible != value)
-                {
-                    m_IsCurrencyLoadingVisible = value;
-                    RaisePropertyChanged(nameof(IsCurrencyLoadingVisible));
-                }
-            }
-        }
-
-        public static string IsCurrencyLoadingVisiblePropertyName => nameof(IsCurrencyLoadingVisible);
-
-        public bool IsCurrencyCurrentCategory
-        {
-            get { return m_IsCurrencyCurrentCategory; }
-            private set
-            {
-                if (m_IsCurrencyCurrentCategory != value)
-                {
-                    m_IsCurrencyCurrentCategory = value;
-                    RaisePropertyChanged(nameof(IsCurrencyCurrentCategory));
-                }
-            }
-        }
-
-        public static string IsCurrencyCurrentCategoryPropertyName => nameof(IsCurrencyCurrentCategory);
-
-        public string CurrencyRatioEquality
-        {
-            get { return m_CurrencyRatioEquality; }
-            set
-            {
-                if (m_CurrencyRatioEquality != value)
-                {
-                    m_CurrencyRatioEquality = value;
-                    RaisePropertyChanged(nameof(CurrencyRatioEquality));
-                }
-            }
-        }
-
-        public string CurrencyRatioEqualityAutomationName
-        {
-            get { return m_CurrencyRatioEqualityAutomationName; }
-            set
-            {
-                if (m_CurrencyRatioEqualityAutomationName != value)
-                {
-                    m_CurrencyRatioEqualityAutomationName = value;
-                    RaisePropertyChanged(nameof(CurrencyRatioEqualityAutomationName));
-                }
-            }
-        }
-
-        public string CurrencyTimestamp
-        {
-            get { return m_CurrencyTimestamp; }
-            set
-            {
-                if (m_CurrencyTimestamp != value)
-                {
-                    m_CurrencyTimestamp = value;
-                    RaisePropertyChanged(nameof(CurrencyTimestamp));
-                }
-            }
-        }
-
-        public Common.NetworkAccessBehavior NetworkBehavior
-        {
-            get { return m_NetworkBehavior; }
-            set
-            {
-                if (m_NetworkBehavior != value)
-                {
-                    m_NetworkBehavior = value;
-                    RaisePropertyChanged(nameof(NetworkBehavior));
-                }
-            }
-        }
-
-        public static string NetworkBehaviorPropertyName => nameof(NetworkBehavior);
-
-        public bool CurrencyDataLoadFailed
-        {
-            get { return m_CurrencyDataLoadFailed; }
-            set
-            {
-                if (m_CurrencyDataLoadFailed != value)
-                {
-                    m_CurrencyDataLoadFailed = value;
-                    RaisePropertyChanged(nameof(CurrencyDataLoadFailed));
-                }
-            }
-        }
-
-        public static string CurrencyDataLoadFailedPropertyName => nameof(CurrencyDataLoadFailed);
-
-        public bool CurrencyDataIsWeekOld
-        {
-            get { return m_CurrencyDataIsWeekOld; }
-            set
-            {
-                if (m_CurrencyDataIsWeekOld != value)
-                {
-                    m_CurrencyDataIsWeekOld = value;
-                    RaisePropertyChanged(nameof(CurrencyDataIsWeekOld));
-                }
-            }
-        }
-
-        public static string CurrencyDataIsWeekOldPropertyName => nameof(CurrencyDataIsWeekOld);
-
-        public Category CurrentCategory
-        {
-            get { return m_CurrentCategory; }
-            set
-            {
-                if (m_CurrentCategory == value)
-                {
-                    return;
-                }
-                m_CurrentCategory = value;
-                if (value != null)
-                {
-                    var currentCategory = value.GetModelCategory();
-                    IsCurrencyCurrentCategory = currentCategory.id == Common.NavCategoryStates.Serialize(Common.ViewMode.Currency);
-                }
-                RaisePropertyChanged(nameof(CurrentCategory));
-            }
-        }
-
-        public Visibility SupplementaryVisibility
-        {
-            get
-            {
-                return SupplementaryResults.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            }
-        }
-
-        public Visibility CurrencySymbolVisibility
-        {
-            get
-            {
-                return (string.IsNullOrEmpty(CurrencySymbol1) || string.IsNullOrEmpty(CurrencySymbol2)) ?
-                    Visibility.Collapsed : Visibility.Visible;
-            }
-        }
-
-        public ICommand CategoryChanged
-        {
-            get
-            {
-                if (donotuse_CategoryChanged == null)
-                {
-                    donotuse_CategoryChanged = new DelegateCommand((OnCategoryChanged));
-                }
-                return donotuse_CategoryChanged;
-            }
-        }
-
-        public ICommand UnitChanged
-        {
-            get
-            {
-                if (donotuse_UnitChanged == null)
-                {
-                    donotuse_UnitChanged = new DelegateCommand((OnUnitChanged));
-                }
-                return donotuse_UnitChanged;
-            }
-        }
-
-        public ICommand SwitchActive
-        {
-            get
-            {
-                if (donotuse_SwitchActive == null)
-                {
-                    donotuse_SwitchActive = new DelegateCommand((OnSwitchActive));
-                }
-                return donotuse_SwitchActive;
-            }
-        }
-
-        public ICommand ButtonPressed
-        {
-            get
-            {
-                if (donotuse_ButtonPressed == null)
-                {
-                    donotuse_ButtonPressed = new DelegateCommand((OnButtonPressed));
-                }
-                return donotuse_ButtonPressed;
-            }
-        }
-
-        public ICommand CopyCommand
-        {
-            get
-            {
-                if (donotuse_CopyCommand == null)
-                {
-                    donotuse_CopyCommand = new DelegateCommand((OnCopyCommand));
-                }
-                return donotuse_CopyCommand;
-            }
-        }
-
-        public ICommand PasteCommand
-        {
-            get
-            {
-                if (donotuse_PasteCommand == null)
-                {
-                    donotuse_PasteCommand = new DelegateCommand((OnPasteCommand));
-                }
-                return donotuse_PasteCommand;
-            }
-        }
-
-        private CurrencyFormatterParameter CurrencyFormatterParameterFrom
-        {
-            get
-            {
-                return m_value1cp == ConversionParameter.Source ? CurrencyFormatterParameter.ForValue1 : CurrencyFormatterParameter.ForValue2;
-            }
-        }
-
-        private CurrencyFormatterParameter CurrencyFormatterParameterTo
-        {
-            get
-            {
-                return m_value1cp == ConversionParameter.Target ? CurrencyFormatterParameter.ForValue1 : CurrencyFormatterParameter.ForValue2;
-            }
-        }
-
-        private CurrencyFormatter CurrencyFormatterFrom
-        {
-            get
-            {
-                return m_value1cp == ConversionParameter.Source ? m_currencyFormatter1 : m_currencyFormatter2;
-            }
-        }
-
-        private CurrencyFormatter CurrencyFormatterTo
-        {
-            get
-            {
-                return m_value1cp == ConversionParameter.Target ? m_currencyFormatter1 : m_currencyFormatter2;
-            }
-        }
-
-        private string ValueFrom
-        {
-            get { return m_value1cp == ConversionParameter.Source ? Value1 : Value2; }
-            set { if (m_value1cp == ConversionParameter.Source) Value1 = value; else Value2 = value; }
-        }
-
-        private Unit UnitFrom
-        {
-            get { return m_value1cp == ConversionParameter.Source ? Unit1 : Unit2; }
-            set { if (m_value1cp == ConversionParameter.Source) Unit1 = value; else Unit2 = value; }
-        }
-
-        private string ValueTo
-        {
-            get { return m_value1cp == ConversionParameter.Target ? Value1 : Value2; }
-            set { if (m_value1cp == ConversionParameter.Target) Value1 = value; else Value2 = value; }
-        }
-
-        private Unit UnitTo
-        {
-            get { return m_value1cp == ConversionParameter.Target ? Unit1 : Unit2; }
-            set { if (m_value1cp == ConversionParameter.Target) Unit1 = value; else Unit2 = value; }
-        }
-
-        private void SwitchConversionParameters()
-        {
-            m_value1cp = m_value1cp == ConversionParameter.Source ? ConversionParameter.Target : ConversionParameter.Source;
         }
     }
 
-    public partial class UnitConverterVMCallback : UnitConversionManager.IUnitConverterVMCallback
+    private Unit? UnitTo
     {
-        private UnitConverterViewModel m_viewModel;
-
-        public UnitConverterVMCallback(UnitConverterViewModel viewModel)
+        get => _value1Parameter == ConversionParameter.Target ? Unit1 : Unit2;
+        set
         {
-            m_viewModel = viewModel;
-        }
-
-        public void DisplayCallback(string from, string to)
-        {
-            m_viewModel.UpdateDisplay(from, to);
-        }
-
-        public void SuggestedValueCallback(List<(string, UnitConversionManager.Unit)> suggestedValues)
-        {
-            m_viewModel.UpdateSupplementaryResults(suggestedValues);
-        }
-
-        public void MaxDigitsReached()
-        {
-            m_viewModel.OnMaxDigitsReached();
+            if (_value1Parameter == ConversionParameter.Target)
+            {
+                Unit1 = value;
+            }
+            else
+            {
+                Unit2 = value;
+            }
         }
     }
 
-    public partial class ViewModelCurrencyCallback : UnitConversionManager.IViewModelCurrencyCallback
+    private string ValueFrom
     {
-        private UnitConverterViewModel m_viewModel;
-
-        public ViewModelCurrencyCallback(UnitConverterViewModel viewModel)
+        get => _value1Parameter == ConversionParameter.Source ? Value1 : Value2;
+        set
         {
-            m_viewModel = viewModel;
-        }
-
-        public void CurrencyDataLoadFinished(bool didLoad)
-        {
-            m_viewModel.OnCurrencyDataLoadFinished(didLoad);
-        }
-
-        public void CurrencySymbolsCallback(string symbol1, string symbol2)
-        {
-            string sym1 = symbol1;
-            string sym2 = symbol2;
-
-            bool value1Active = m_viewModel.Value1Active;
-            m_viewModel.CurrencySymbol1 = value1Active ? sym1 : sym2;
-            m_viewModel.CurrencySymbol2 = value1Active ? sym2 : sym1;
-        }
-
-        public void CurrencyRatiosCallback(string ratioEquality, string accRatioEquality)
-        {
-            m_viewModel.CurrencyRatioEquality = ratioEquality;
-            m_viewModel.CurrencyRatioEqualityAutomationName = accRatioEquality;
-        }
-
-        public void CurrencyTimestampCallback(string timestamp, bool isWeekOld)
-        {
-            m_viewModel.OnCurrencyTimestampUpdated(timestamp, isWeekOld);
-        }
-
-        public void NetworkBehaviorChanged(int newBehavior)
-        {
-            m_viewModel.OnNetworkBehaviorChanged((Common.NetworkAccessBehavior)newBehavior);
+            if (_value1Parameter == ConversionParameter.Source)
+            {
+                Value1 = value;
+            }
+            else
+            {
+                Value2 = value;
+            }
         }
     }
+
+    private string ValueTo
+    {
+        get => _value1Parameter == ConversionParameter.Target ? Value1 : Value2;
+        set
+        {
+            if (_value1Parameter == ConversionParameter.Target)
+            {
+                Value1 = value;
+            }
+            else
+            {
+                Value2 = value;
+            }
+        }
+    }
+}
+
+public sealed class UnitConverterVMCallback : IUnitConverterVMCallback
+{
+    private readonly UnitConverterViewModel _viewModel;
+
+    public UnitConverterVMCallback(UnitConverterViewModel viewModel) => _viewModel = viewModel;
+
+    public void DisplayCallback(string from, string toValue) =>
+        _viewModel.UpdateDisplay(from, toValue);
+
+    public void SuggestedValueCallback(IList<(string, Unit)> suggestedValues) =>
+        _viewModel.UpdateSupplementaryResults(suggestedValues);
+
+    public void MaxDigitsReached() => _viewModel.OnMaxDigitsReached();
+}
+
+public sealed class ViewModelCurrencyCallback : IViewModelCurrencyCallback
+{
+    private readonly UnitConverterViewModel _viewModel;
+
+    public ViewModelCurrencyCallback(UnitConverterViewModel viewModel) => _viewModel = viewModel;
+
+    public void CurrencyDataLoadFinished(bool didLoad) =>
+        _viewModel.OnCurrencyDataLoadFinished(didLoad);
+
+    public void CurrencySymbolsCallback(string fromSymbol, string toSymbol) =>
+        _viewModel.OnCurrencySymbolsUpdated(fromSymbol, toSymbol);
+
+    public void CurrencyRatiosCallback(string ratioEquality, string accRatioEquality) =>
+        _viewModel.OnCurrencyRatiosUpdated(ratioEquality, accRatioEquality);
+
+    public void CurrencyTimestampCallback(string timestamp, bool isWeekOldData) =>
+        _viewModel.OnCurrencyTimestampUpdated(timestamp, isWeekOldData);
+
+    public void NetworkBehaviorChanged(int newBehavior) =>
+        _viewModel.OnNetworkBehaviorChanged((NetworkAccessBehavior)newBehavior);
 }

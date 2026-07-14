@@ -1,0 +1,59 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ui="using:FluentAvalonia.UI.Controls">
+
+    <Design.PreviewWith>
+        <Border Padding="20">
+            <RefreshContainer>
+                <ListBox>
+                    <ListBoxItem Content="Hello" />
+                </ListBox>
+            </RefreshContainer>
+        </Border>
+    </Design.PreviewWith>
+
+    <ControlTheme x:Key="{x:Type RefreshContainer}"
+                TargetType="RefreshContainer">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid>
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Background="{TemplateBinding Background}"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                      CornerRadius="{TemplateBinding CornerRadius}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Content="{TemplateBinding Content}"
+                                      Padding="{TemplateBinding Padding}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}">
+                    </ContentPresenter>
+                    <Grid Name="PART_RefreshVisualizerPresenter"/>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+
+    <ControlTheme x:Key="{x:Type RefreshVisualizer}"
+                  TargetType="RefreshVisualizer">
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+        <Setter Property="Height" Value="100"/>
+        <Setter Property="Background"  Value="{DynamicResource RefreshVisualizerBackground}"/>
+        <Setter Property="Foreground" Value="{DynamicResource RefreshVisualizerForeground}"/>
+        <Setter Property="Content">
+            <Template>
+                <ui:FASymbolIcon Symbol="Refresh" FontSize="20" />
+            </Template>
+        </Setter>
+        
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid Name="PART_Root"
+                      MinHeight="80"
+                      Background="{TemplateBinding Background}" />
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+
+</ResourceDictionary>

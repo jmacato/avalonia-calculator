@@ -1,8 +1,8 @@
 namespace CalcManagerManaged.Resources;
 
-public static class DefaultCombinedCalcResource
+internal static class DefaultCombinedCalcResource
 {
-    public static Dictionary<string, string> StringResources = new()
+    public static Dictionary<string, string> StringResources { get; } = new()
     {
         {"sDecimal", "."},
         {"sThousand", ","},

@@ -3,8 +3,6 @@
 
 // #pragma  once
 
-using System.Runtime.InteropServices.WindowsRuntime;
-
 namespace CalculatorApp.ViewModel.Common;
 
 public enum NetworkAccessBehavior
@@ -19,5 +17,8 @@ public
 
 public partial class NetworkManager
 {
-    public event NetworkBehaviorChangedHandler NetworkBehaviorChanged;
+    public event NetworkBehaviorChangedHandler? NetworkBehaviorChanged;
+
+    protected void RaiseNetworkBehaviorChanged(NetworkAccessBehavior behavior) =>
+        NetworkBehaviorChanged?.Invoke(behavior);
 };

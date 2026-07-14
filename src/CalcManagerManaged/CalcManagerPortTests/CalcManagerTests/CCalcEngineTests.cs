@@ -3,7 +3,7 @@ using CalculationManager;
 
 namespace CalcEngineTests;
 
-public class CCalcEngineTests : IDisposable
+public sealed class CCalcEngineTests : IDisposable
 {
     private readonly CCalcEngine _calcEngine;
 
@@ -16,13 +16,14 @@ public class CCalcEngineTests : IDisposable
             false, // Respect Order of Operations
             false, // Set to Integer Mode
             resourceProvider,
-            null,
+            new CalculatorManagerDisplayTester(),
             history);
     }
 
     public void Dispose()
     {
         // No specific cleanup needed
+        GC.SuppressFinalize(this);
     }
 
     [Theory]
@@ -60,7 +61,7 @@ public class CCalcEngineTests : IDisposable
     [InlineData("0.1", 2)]
     public void InvalidBinaryNumbersTest(string input, uint radix)
     {
-        Assert.Equal(EngineStrings.IDS_ERR_UNK_CH, _calcEngine.IsNumberInvalid(input, 0, 0, radix));
+        Assert.Equal(EngineStrings.IdsErrUnkCh, _calcEngine.IsNumberInvalid(input, 0, 0, radix));
     }
 
     [Theory]
@@ -79,7 +80,7 @@ public class CCalcEngineTests : IDisposable
     [InlineData("0.7", 8)]
     public void InvalidOctalNumbersTest(string input, uint radix)
     {
-        Assert.Equal(EngineStrings.IDS_ERR_UNK_CH, _calcEngine.IsNumberInvalid(input, 0, 0, radix));
+        Assert.Equal(EngineStrings.IdsErrUnkCh, _calcEngine.IsNumberInvalid(input, 0, 0, radix));
     }
 
     [Theory]
@@ -99,7 +100,7 @@ public class CCalcEngineTests : IDisposable
     [InlineData("0.1", 16)]
     public void InvalidHexNumbersTest(string input, uint radix)
     {
-        Assert.Equal(EngineStrings.IDS_ERR_UNK_CH, _calcEngine.IsNumberInvalid(input, 0, 0, radix));
+        Assert.Equal(EngineStrings.IdsErrUnkCh, _calcEngine.IsNumberInvalid(input, 0, 0, radix));
     }
 
     [Fact]
@@ -107,7 +108,7 @@ public class CCalcEngineTests : IDisposable
     {
         string longExp = "1e12345";
         Assert.Equal(0, _calcEngine.IsNumberInvalid(longExp, 5, 100, 10)); // Max exp length = 5, should be valid
-        Assert.Equal(EngineStrings.IDS_ERR_INPUT_OVERFLOW,
+        Assert.Equal(EngineStrings.IdsErrInputOverflow,
             _calcEngine.IsNumberInvalid(longExp, 4, 100, 10)); // Max exp length = 4, should overflow
     }
 
@@ -122,7 +123,7 @@ public class CCalcEngineTests : IDisposable
     public void MantissaLengthTest(string input)
     {
         Assert.Equal(0, _calcEngine.IsNumberInvalid(input, 100, 5, 10)); // Max mantissa length = 5, should be valid
-        Assert.Equal(EngineStrings.IDS_ERR_INPUT_OVERFLOW,
+        Assert.Equal(EngineStrings.IdsErrInputOverflow,
             _calcEngine.IsNumberInvalid(input, 100, 4, 10)); // Max mantissa length = 4, should overflow
     }
 
@@ -157,7 +158,7 @@ public class CCalcEngineTests : IDisposable
     [InlineData("1-e2")]
     public void InvalidDecimalFormatTest(string input)
     {
-        Assert.Equal(EngineStrings.IDS_ERR_UNK_CH, _calcEngine.IsNumberInvalid(input, 100, 100, 10));
+        Assert.Equal(EngineStrings.IdsErrUnkCh, _calcEngine.IsNumberInvalid(input, 100, 100, 10));
     }
 
     [Theory]
@@ -173,7 +174,7 @@ public class CCalcEngineTests : IDisposable
     public void TestDigitGroupingStringToGroupingVector(string input, uint[] expected)
     {
         var expectedList = new List<uint>(expected);
-        Assert.Equal(expectedList, _calcEngine.DigitGroupingStringToGroupingVector(input));
+        Assert.Equal(expectedList, CCalcEngine.DigitGroupingStringToGroupingVector(input));
     }
 
     [Theory]
@@ -196,7 +197,7 @@ public class CCalcEngineTests : IDisposable
     public void TestGroupDigits(string delimiter, string groupingStr, string input, bool isNegative, string expected)
     {
         // Convert the grouping string to a List<uint>
-        var grouping = _calcEngine.DigitGroupingStringToGroupingVector(groupingStr);
+        var grouping = CCalcEngine.DigitGroupingStringToGroupingVector(groupingStr);
         var k = _calcEngine.GroupDigits(delimiter, grouping, input, isNegative);
 
         Assert.Equal(expected, k);

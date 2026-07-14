@@ -1,0 +1,127 @@
+<!--
+  Copyright (c) Microsoft Corporation. All rights reserved.
+  Licensed under the MIT License.
+
+  Direct Avalonia translations of BodyTextBlockMediumStyle,
+  MemoryHoverButtonStyle, ClearAllHistoryMemoryButtonStyle, and
+  HistoryMemoryItemContainerStyle from the original Calculator App.xaml.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    x:CompileBindings="True">
+  <ControlTheme x:Key="BodyTextBlockMediumStyle"
+                TargetType="TextBlock"
+                BasedOn="{StaticResource BodyTextBlockStyle}">
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="MemoryHoverButtonStyle"
+                TargetType="Button"
+                BasedOn="{StaticResource {x:Type Button}}">
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Width" Value="36" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="AutomationProperties.AccessibilityView" Value="Raw" />
+    <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="ClearAllHistoryMemoryButtonStyle" TargetType="Button">
+    <Setter Property="Width" Value="32" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="MinWidth" Value="16" />
+    <Setter Property="MinHeight" Value="16" />
+    <Setter Property="Margin" Value="0,8,8,8" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Bottom" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Background" Value="{DynamicResource SubtleFillColorTransparentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border x:Name="ContentPresenter"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}">
+          <ContentPresenter Padding="{TemplateBinding Padding}"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrushPointerOver}" />
+    </Style>
+    <Style Selector="^:pressed /template/ Border#ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrushPressed}" />
+      <Setter Property="Opacity" Value="0.8" />
+    </Style>
+    <Style Selector="^:disabled /template/ Border#ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorDisabledBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrushDisabled}" />
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="HistoryMemoryItemContainerStyle" TargetType="ListBoxItem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="MinWidth" Value="{DynamicResource ListViewItemMinWidth}" />
+    <Setter Property="MinHeight" Value="{DynamicResource ListViewItemMinHeight}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border x:Name="ContentBorder"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}">
+          <ContentPresenter x:Name="ContentPresenter"
+                            Margin="{TemplateBinding Padding}"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#ContentBorder">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="^:pressed /template/ Border#ContentBorder">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+      <Setter Property="Opacity" Value="0.8" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="HistoryItemContainerStyle"
+                TargetType="ListBoxItem"
+                BasedOn="{StaticResource HistoryMemoryItemContainerStyle}">
+    <Setter Property="Margin" Value="0,0,0,20" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="MemoryItemContainerStyle"
+                TargetType="ListBoxItem"
+                BasedOn="{StaticResource HistoryMemoryItemContainerStyle}">
+    <Setter Property="Margin" Value="0,0,0,8" />
+  </ControlTheme>
+</ResourceDictionary>

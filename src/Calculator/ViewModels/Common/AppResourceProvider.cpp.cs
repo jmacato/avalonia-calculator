@@ -4,17 +4,21 @@
 //  // #include  "pch.h"
 //  // #include  "AppResourceProvider.h"
 
-using Windows.ApplicationModel.Resources;
+using System.Globalization;
+using System.Resources;
+
 namespace CalculatorApp.ViewModel.Common;
+
 public partial class AppResourceProvider
 {
     public AppResourceProvider()
     {
-        m_stringResLoader = ResourceLoader.GetForViewIndependentUse();
-        m_cEngineStringResLoader = ResourceLoader.GetForViewIndependentUse("CEngineStrings");
+        var assembly = typeof(AppResourceProvider).Assembly;
+        m_stringResLoader = new ResourceManager("CalculatorApp.Resources.Resources", assembly);
+        m_cEngineStringResLoader = new ResourceManager("CalculatorApp.Resources.CEngineStrings", assembly);
     }
 
-    static AppResourceProvider s_instance = new AppResourceProvider();
+    private static readonly AppResourceProvider s_instance = new();
 
 
     public static AppResourceProvider GetInstance()
@@ -24,12 +28,11 @@ public partial class AppResourceProvider
 
     public string GetResourceString(string key)
     {
-        return m_stringResLoader.GetString(key);
+        return m_stringResLoader.GetString(key, CultureInfo.CurrentUICulture) ?? string.Empty;
     }
 
     public string GetCEngineString(string key)
     {
-        return m_cEngineStringResLoader.GetString(key);
+        return m_cEngineStringResLoader.GetString(key, CultureInfo.CurrentUICulture) ?? string.Empty;
     }
-
 }

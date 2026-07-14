@@ -1,69 +1,60 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using Avalonia.Automation;
+using Avalonia.Automation.Peers;
+using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using CalculatorApp.ViewModel;
 
-using System.Collections.Generic;
+namespace CalculatorApp.Controls;
 
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Automation;
-using Microsoft.UI.Xaml.Automation.Peers;
-using Microsoft.UI.Xaml.Controls;
-
-namespace CalculatorApp
+/// <summary>
+/// Direct Avalonia port of the original supplementary-results ItemsControl.
+/// Each result gets a text automation container with the localized complete
+/// value/unit name rather than exposing its visual fragments separately.
+/// </summary>
+public sealed class SupplementaryItemsControl : ItemsControl
 {
-    namespace Controls
+    protected override bool NeedsContainerOverride(object? item, int index, out object? recycleKey)
     {
-        public sealed class SupplementaryItemsControl : ItemsControl
+        bool needsContainer = item is not SupplementaryContentPresenter;
+        recycleKey = needsContainer ? nameof(SupplementaryContentPresenter) : null;
+        return needsContainer;
+    }
+
+    protected override Control CreateContainerForItemOverride(object? item, int index, object? recycleKey) =>
+        new SupplementaryContentPresenter();
+
+    protected override void PrepareContainerForItemOverride(Control container, object? item, int index)
+    {
+        base.PrepareContainerForItemOverride(container, item, index);
+
+        if (item is SupplementaryResult supplementaryResult)
         {
-            public SupplementaryItemsControl()
-            {
-            }
-
-            protected override DependencyObject GetContainerForItemOverride()
-            {
-                return new SupplementaryContentPresenter();
-            }
-
-            protected override void PrepareContainerForItemOverride(DependencyObject element, object item)
-            {
-                base.PrepareContainerForItemOverride(element, item);
-
-                if (item is SupplementaryResult supplementaryResult)
-                {
-                    AutomationProperties.SetName(element, supplementaryResult.GetLocalizedAutomationName());
-                }
-            }
-        }
-
-        public sealed class SupplementaryContentPresenter : ContentPresenter
-        {
-            public SupplementaryContentPresenter()
-            {
-            }
-
-            protected override AutomationPeer OnCreateAutomationPeer()
-            {
-                return new SupplementaryContentPresenterAP(this);
-            }
-        }
-
-        internal sealed class SupplementaryContentPresenterAP : FrameworkElementAutomationPeer
-        {
-            protected override AutomationControlType GetAutomationControlTypeCore()
-            {
-                return AutomationControlType.Text;
-            }
-
-            protected override IList<AutomationPeer> GetChildrenCore()
-            {
-                return null;
-            }
-
-            internal SupplementaryContentPresenterAP(SupplementaryContentPresenter owner)
-                : base(owner)
-            {
-            }
+            AutomationProperties.SetName(container, supplementaryResult.LocalizedAutomationName);
         }
     }
+}
+
+public sealed class SupplementaryContentPresenter : ContentPresenter
+{
+    public SupplementaryContentPresenter()
+    {
+        // WinUI clips a container arranged to an empty rectangle. Avalonia's
+        // ContentPresenter does not do so by default, so retain the original
+        // no-overflow semantics explicitly.
+        ClipToBounds = true;
+    }
+
+    protected override AutomationPeer OnCreateAutomationPeer() =>
+        new SupplementaryContentPresenterAutomationPeer(this);
+}
+
+internal sealed class SupplementaryContentPresenterAutomationPeer(SupplementaryContentPresenter owner)
+    : ControlAutomationPeer(owner)
+{
+    protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Text;
+
+    protected override IReadOnlyList<AutomationPeer> GetChildrenCore() => Array.Empty<AutomationPeer>();
 }

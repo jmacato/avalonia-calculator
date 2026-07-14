@@ -75,6 +75,28 @@
 
     public partial class LocalizationStringUtil
         {
+            public static string GetNarratorReadableToken(string rawToken)
+            {
+                if (rawToken == "-")
+                {
+                    string localizedMinus = AppResourceProvider.GetInstance().GetResourceString("minus");
+                    return string.IsNullOrEmpty(localizedMinus) ? rawToken : localizedMinus;
+                }
+
+                return rawToken;
+            }
+
+            public static string GetNarratorReadableString(string rawString)
+            {
+                var readable = new System.Text.StringBuilder(rawString.Length);
+                foreach (char character in rawString)
+                {
+                    readable.Append(GetNarratorReadableToken(character.ToString()));
+                }
+
+                return readable.ToString();
+            }
+
         public
             static string
                  GetLocalizedString(string  pMessage)

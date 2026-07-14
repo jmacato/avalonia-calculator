@@ -1,5 +1,4 @@
 using CalcEngine;
-using  CalcEngine;
 
 namespace CalcManagerPortTests.RatPakTests;
 
@@ -16,28 +15,31 @@ public class ComparisonAndEdgeCaseTests
     #region Comparison Tests
 
     [Fact]
-    public void ZerNum_ZeroNumber_ReturnsTrue()
+    public void ZerNumZeroNumberReturnsTrue()
     {
         var num = _ratPak.StringToNumber("0", 10, _precision);
+        Assert.NotNull(num);
 
-        Assert.True(_ratPak.zernum(num));
+        Assert.True(RatPak.zernum(num));
     }
 
     [Fact]
-    public void ZerNum_NonZeroNumber_ReturnsFalse()
+    public void ZerNumNonZeroNumberReturnsFalse()
     {
         var num = _ratPak.StringToNumber("0.000000001", 10, _precision);
+        Assert.NotNull(num);
 
-        Assert.False(_ratPak.zernum(num));
+        Assert.False(RatPak.zernum(num));
     }
 
     [Fact]
-    public void ZerRat_ZeroRational_ReturnsTrue()
+    public void ZerRatZeroRationalReturnsTrue()
     {
         var num = _ratPak.StringToNumber("0", 10, _precision);
-        var rat = _ratPak.numtorat(num, 10);
+        Assert.NotNull(num);
+        var rat = RatPak.numtorat(num, 10);
 
-        Assert.True(_ratPak.zerrat(rat));
+        Assert.True(RatPak.zerrat(rat));
     }
 
     [Theory]
@@ -51,12 +53,14 @@ public class ComparisonAndEdgeCaseTests
     [InlineData("0", "0", true)]
     [InlineData("1234567890", "1234567890", true)]
     [InlineData("0.1234567890", "0.1234567890", true)]
-    public void EquNum_VariousInputs_CorrectResult(string a, string b, bool expected)
+    public void EquNumVariousInputsCorrectResult(string a, string b, bool expected)
     {
         var numA = _ratPak.StringToNumber(a, 10, _precision);
+        Assert.NotNull(numA);
         var numB = _ratPak.StringToNumber(b, 10, _precision);
+        Assert.NotNull(numB);
 
-        Assert.Equal(expected, _ratPak.equnum(numA, numB));
+        Assert.Equal(expected, RatPak.equnum(numA, numB));
     }
 
     [Theory]
@@ -66,12 +70,15 @@ public class ComparisonAndEdgeCaseTests
     [InlineData("1.5", "3/2", true)]
     [InlineData("-0.5", "-1/2", true)]
     [InlineData("-3", "3", false)]
-    public void RatEqu_VariousInputs_CorrectResult(string a, string b, bool expected)
+    public void RatEquVariousInputsCorrectResult(string a, string b, bool expected)
     {
+        ArgumentNullException.ThrowIfNull(a);
+        ArgumentNullException.ThrowIfNull(b);
+
         var ratA = StringToRat(a);
         var ratB = StringToRat(b);
 
-        Assert.Equal(expected, _ratPak.rat_equ(ratA, ratB, _precision));
+        Assert.Equal(expected, _ratPak.RatEqu(ratA, ratB, _precision));
     }
 
     [Theory]
@@ -82,12 +89,15 @@ public class ComparisonAndEdgeCaseTests
     [InlineData("0.5", "0.3", true)]
     [InlineData("1/3", "1/4", true)]
     [InlineData("1/3", "-1/4", true)]
-    public void RatGt_VariousInputs_CorrectResult(string a, string b, bool expected)
+    public void RatGtVariousInputsCorrectResult(string a, string b, bool expected)
     {
+        ArgumentNullException.ThrowIfNull(a);
+        ArgumentNullException.ThrowIfNull(b);
+
         var ratA = StringToRat(a);
         var ratB = StringToRat(b);
 
-        Assert.Equal(expected, _ratPak.rat_gt(ratA, ratB, _precision));
+        Assert.Equal(expected, _ratPak.RatGt(ratA, ratB, _precision));
     }
 
     [Theory]
@@ -97,12 +107,15 @@ public class ComparisonAndEdgeCaseTests
     [InlineData("-3", "-5", false)]
     [InlineData("0.3", "0.5", true)]
     [InlineData("1/4", "1/3", true)]
-    public void RatLt_VariousInputs_CorrectResult(string a, string b, bool expected)
+    public void RatLtVariousInputsCorrectResult(string a, string b, bool expected)
     {
+        ArgumentNullException.ThrowIfNull(a);
+        ArgumentNullException.ThrowIfNull(b);
+
         var ratA = StringToRat(a);
         var ratB = StringToRat(b);
 
-        Assert.Equal(expected, _ratPak.rat_lt(ratA, ratB, _precision));
+        Assert.Equal(expected, _ratPak.RatLt(ratA, ratB, _precision));
     }
 
     #endregion
@@ -110,86 +123,96 @@ public class ComparisonAndEdgeCaseTests
     #region Edge Case Tests
 
     [Fact]
-    public void AddRat_VeryLargeNumbers_CorrectResult()
+    public void AddRatVeryLargeNumbersCorrectResult()
     {
         var num1 = _ratPak.StringToNumber("1.e+100", 10, _precision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("1.e+99", 10, _precision);
+        Assert.NotNull(num2);
 
-        var rat1 = _ratPak.numtorat(num1, 10);
-        var rat2 = _ratPak.numtorat(num2, 10);
+        var rat1 = RatPak.numtorat(num1, 10);
+        var rat2 = RatPak.numtorat(num2, 10);
 
         _ratPak.addrat(ref rat1, rat2, _precision);
 
-        var result = _ratPak.RatToString(ref rat1, RatPak.NumberFormat.Scientific, 10, _precision);
+        var result = _ratPak.RatToString(ref rat1, NumberFormat.Scientific, 10, _precision);
         Assert.Equal("1.1e+100", result);
     }
 
     [Fact]
-    public void AddRat_VerySmallNumbers_CorrectResult()
+    public void AddRatVerySmallNumbersCorrectResult()
     {
         var num1 = _ratPak.StringToNumber("1e-100", 10, _precision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("1e-100", 10, _precision);
+        Assert.NotNull(num2);
 
-        var rat1 = _ratPak.numtorat(num1, 10);
-        var rat2 = _ratPak.numtorat(num2, 10);
+        var rat1 = RatPak.numtorat(num1, 10);
+        var rat2 = RatPak.numtorat(num2, 10);
 
         _ratPak.addrat(ref rat1, rat2, _precision);
 
-        var result = _ratPak.RatToString(ref rat1, RatPak.NumberFormat.Scientific, 10, _precision);
+        var result = _ratPak.RatToString(ref rat1, NumberFormat.Scientific, 10, _precision);
         Assert.Equal("2.e-100", result);
     }
 
     [Fact]
-    public void MulRat_OverflowPrevention_HandlesLargeNumbers()
+    public void MulRatOverflowPreventionHandlesLargeNumbers()
     {
         var num1 = _ratPak.StringToNumber("1e50", 10, _precision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("1e50", 10, _precision);
+        Assert.NotNull(num2);
 
-        var rat1 = _ratPak.numtorat(num1, 10);
-        var rat2 = _ratPak.numtorat(num2, 10);
+        var rat1 = RatPak.numtorat(num1, 10);
+        var rat2 = RatPak.numtorat(num2, 10);
 
         _ratPak.mulrat(ref rat1, rat2, _precision);
 
-        var result = _ratPak.RatToString(ref rat1, RatPak.NumberFormat.Scientific, 10, _precision);
+        var result = _ratPak.RatToString(ref rat1, NumberFormat.Scientific, 10, _precision);
         Assert.Equal("1.e+100", result);
     }
 
     [Fact]
-    public void DivRat_VerySmallDenominator_HandlesCorrectly()
+    public void DivRatVerySmallDenominatorHandlesCorrectly()
     {
         var num1 = _ratPak.StringToNumber("1", 10, _precision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("1e-50", 10, _precision);
+        Assert.NotNull(num2);
 
-        var rat1 = _ratPak.numtorat(num1, 10);
-        var rat2 = _ratPak.numtorat(num2, 10);
+        var rat1 = RatPak.numtorat(num1, 10);
+        var rat2 = RatPak.numtorat(num2, 10);
 
         _ratPak.divrat(ref rat1, rat2, _precision);
 
-        var result = _ratPak.RatToString(ref rat1, RatPak.NumberFormat.Scientific, 10, _precision);
+        var result = _ratPak.RatToString(ref rat1, NumberFormat.Scientific, 10, _precision);
         Assert.Equal("1.e+50", result);
     }
 
     [Fact]
-    public void RatPowi32_PositivePower_CorrectResult()
+    public void RatPowi32PositivePowerCorrectResult()
     {
         var num = _ratPak.StringToNumber("2", 10, _precision);
-        var rat = _ratPak.numtorat(num, 10);
+        Assert.NotNull(num);
+        var rat = RatPak.numtorat(num, 10);
 
         _ratPak.ratpowi32(ref rat, 10, _precision);
 
-        var result = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("1024", result);
     }
 
     [Fact]
-    public void RatPowi32_NegativePower_CorrectResult()
+    public void RatPowi32NegativePowerCorrectResult()
     {
         var num = _ratPak.StringToNumber("2", 10, _precision);
-        var rat = _ratPak.numtorat(num, 10);
+        Assert.NotNull(num);
+        var rat = RatPak.numtorat(num, 10);
 
         _ratPak.ratpowi32(ref rat, -3, _precision);
 
-        var result = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("0.125", result);
     }
 
@@ -198,12 +221,13 @@ public class ComparisonAndEdgeCaseTests
     [InlineData("12", 8, "10")]
     [InlineData("A", 16, "10")]
     [InlineData("10", 10, "10")]
-    public void StringToRat_VariousBases_CorrectResults(string inputStr, uint radix, string base10Expected)
+    public void StringToRatVariousBasesCorrectResults(string inputStr, uint radix, string base10Expected)
     {
         var otherNum = _ratPak.StringToNumber(inputStr, radix, _precision);
-        var otherRat = _ratPak.numtorat(otherNum, radix);
+        Assert.NotNull(otherNum);
+        var otherRat = RatPak.numtorat(otherNum, radix);
 
-        Assert.Equal(base10Expected, _ratPak.RatToString(ref otherRat, RatPak.NumberFormat.Float, 10, _precision));
+        Assert.Equal(base10Expected, _ratPak.RatToString(ref otherRat, NumberFormat.FloatingPoint, 10, _precision));
     }
 
     #endregion
@@ -211,32 +235,35 @@ public class ComparisonAndEdgeCaseTests
     #region Precision Tests
 
     [Fact]
-    public void DivRat_HighPrecision_CorrectResult()
+    public void DivRatHighPrecisionCorrectResult()
     {
         var highPrecision = 100;
         var num1 = _ratPak.StringToNumber("1", 10, highPrecision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("3", 10, highPrecision);
+        Assert.NotNull(num2);
 
-        var rat1 = _ratPak.numtorat(num1, 10);
-        var rat2 = _ratPak.numtorat(num2, 10);
+        var rat1 = RatPak.numtorat(num1, 10);
+        var rat2 = RatPak.numtorat(num2, 10);
 
         _ratPak.divrat(ref rat1, rat2, highPrecision);
 
-        var result = _ratPak.RatToString(ref rat1, RatPak.NumberFormat.Float, 10, highPrecision);
+        var result = _ratPak.RatToString(ref rat1, NumberFormat.FloatingPoint, 10, highPrecision);
 
         // Verify high precision result
-        Assert.StartsWith("0.33333333333333333333333333333333333333333333333333", result);
+        Assert.StartsWith("0.33333333333333333333333333333333333333333333333333", result, StringComparison.Ordinal);
         Assert.True(result.Length >= 90); // Ensure we get a long representation
     }
 
     [Fact]
-    public void StringToNumber_LongDecimal_PreservesPrecision()
+    public void StringToNumberLongDecimalPreservesPrecision()
     {
         var longDecimal = "0.1234567890123456789012345678901234567890123456789012345678";
 
         var num = _ratPak.StringToNumber(longDecimal, 10, _precision);
+        Assert.NotNull(num);
 
-        var result = _ratPak.NumberToString(ref num, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.NumberToString(ref num, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(longDecimal, result);
     }
 
@@ -245,9 +272,10 @@ public class ComparisonAndEdgeCaseTests
     #region Constants Tests
 
     [Fact]
-    public void ConstantPi_HasCorrectValue()
+    public void ConstantPiHasCorrectValue()
     {
-        var piString = _ratPak.RatToString(ref _ratPak.pi, RatPak.NumberFormat.Float, 10, _precision);
+        var piRat = _ratPak.Pi;
+        var piString = _ratPak.RatToString(ref piRat, NumberFormat.FloatingPoint, 10, _precision);
 
         Assert.Equal(
             "3.141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117067982148086513282306647093844609550582231725359408128481117450284102701938521105559644622948954930381964428810975665933446128475648233786783165271201909145649",
@@ -255,17 +283,19 @@ public class ComparisonAndEdgeCaseTests
     }
 
     [Fact]
-    public void MathematicalConstants_AreInitialized()
+    public void MathematicalConstantsAreInitialized()
     {
-        Assert.NotNull(_ratPak.pi);
-        Assert.NotNull(_ratPak.two_pi);
-        Assert.NotNull(_ratPak.pi_over_two);
-        Assert.NotNull(_ratPak.rat_exp);
+        Assert.NotNull(_ratPak.Pi);
+        Assert.NotNull(_ratPak.TwoPi);
+        Assert.NotNull(_ratPak.PiOverTwo);
+        Assert.NotNull(_ratPak.RatExp);
 
         // Check the values of a few constants
-        var twoPiString = _ratPak.RatToString(ref _ratPak.two_pi, RatPak.NumberFormat.Float, 10, _precision);
+        var twoPiRat = _ratPak.TwoPi;
+        var twoPiString = _ratPak.RatToString(ref twoPiRat, NumberFormat.FloatingPoint, 10, _precision);
+        var piOverTwoRat = _ratPak.PiOverTwo;
         var piOverTwoString =
-            _ratPak.RatToString(ref _ratPak.pi_over_two, RatPak.NumberFormat.Float, 10, _precision);
+            _ratPak.RatToString(ref piOverTwoRat, NumberFormat.FloatingPoint, 10, _precision);
 
         Assert.Equal(
             "6.283185307179586476925286766559005768394338798750211641949889184615632812572417997256069650684234135964296173026564613294187689219101164463450718816256962234900568205403877042211119289245897909860763928857621951331866892256951296467573566330542403818291297",
@@ -279,17 +309,19 @@ public class ComparisonAndEdgeCaseTests
 
     #region Helper Methods
 
-    private RatPak.RAT StringToRat(string input)
+    private RAT StringToRat(string input)
     {
         // Handle fractions like "1/3"
-        if (input.Contains('/'))
+        if (input.Contains('/', StringComparison.Ordinal))
         {
             string[] parts = input.Split('/');
             var numNumerator = _ratPak.StringToNumber(parts[0], 10, _precision);
+            Assert.NotNull(numNumerator);
             var numDenominator = _ratPak.StringToNumber(parts[1], 10, _precision);
+            Assert.NotNull(numDenominator);
 
-            var result = _ratPak.numtorat(numNumerator, 10);
-            var denominator = _ratPak.numtorat(numDenominator, 10);
+            var result = RatPak.numtorat(numNumerator, 10);
+            var denominator = RatPak.numtorat(numDenominator, 10);
 
             _ratPak.divrat(ref result, denominator, _precision);
             return result;
@@ -297,7 +329,8 @@ public class ComparisonAndEdgeCaseTests
 
         // Handle regular numbers
         var num = _ratPak.StringToNumber(input, 10, _precision);
-        return _ratPak.numtorat(num, 10);
+        Assert.NotNull(num);
+        return RatPak.numtorat(num, 10);
     }
 
     #endregion

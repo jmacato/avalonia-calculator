@@ -3,9 +3,9 @@ namespace CalcManagerManaged.Interop;
 /// <summary>
 /// Number format
 /// </summary>
-public enum CalcNumberFormat
+internal enum CalcNumberFormat
 {
-    Float = 0,
+    FloatingPoint = 0,
     Scientific = 1,
     Engineering = 2
 }

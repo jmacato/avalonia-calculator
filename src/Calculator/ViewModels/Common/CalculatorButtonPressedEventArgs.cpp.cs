@@ -6,7 +6,7 @@ namespace CalculatorApp.ViewModel.Common;
 
 public partial class CalculatorButtonPressedEventArgs
 {
-    public static NumbersAndOperatorsEnum GetOperationFromCommandParameter(object commandParameter)
+    public static NumbersAndOperatorsEnum GetOperationFromCommandParameter(object? commandParameter)
     {
          if (commandParameter is CalculatorButtonPressedEventArgs eventArgs)
         {
@@ -19,16 +19,13 @@ public partial class CalculatorButtonPressedEventArgs
         return default;
     }
 
-    public static string GetAuditoryFeedbackFromCommandParameter(object commandParameter)
+    public static string? GetAuditoryFeedbackFromCommandParameter(object? commandParameter)
     {
         var eventArgs = (commandParameter as CalculatorButtonPressedEventArgs);
         if (eventArgs != null)
         {
             return eventArgs.AuditoryFeedback;
         }
-        else
-        {
-            return null;
-        }
+        return null;
     }
 }

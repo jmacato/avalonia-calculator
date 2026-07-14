@@ -8,6 +8,14 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="CalcManagerManagedTests" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="bin/$(Configuration)/$(TargetFramework)/libCalcManager.dylib"
+              Link="libCalcManager.dylib"
+              CopyToOutputDirectory="PreserveNewest"
+              Visible="false" />
     </ItemGroup>
 
     <!-- Build CMake project before building C# project -->

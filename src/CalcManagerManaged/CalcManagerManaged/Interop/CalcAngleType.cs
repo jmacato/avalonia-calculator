@@ -3,7 +3,7 @@ namespace CalcManagerManaged.Interop;
 /// <summary>
 /// Angle type for trigonometric functions
 /// </summary>
-public enum CalcAngleType
+internal enum CalcAngleType
 {
     Degrees = 0,
     Radians = 1,

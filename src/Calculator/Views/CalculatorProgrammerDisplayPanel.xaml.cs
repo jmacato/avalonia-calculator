@@ -1,101 +1,106 @@
-using CalculatorApp.Utils;
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
+using Avalonia.Controls;
+using Avalonia.Interactivity;
+using System.ComponentModel;
+using CalculatorApp.ViewModel;
 using CalculatorApp.ViewModel.Common;
 
-using System.Diagnostics;
-using System.Windows.Input;
+namespace CalculatorApp;
 
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-
-// The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
-
-namespace CalculatorApp
+public sealed partial class CalculatorProgrammerDisplayPanel : UserControl
 {
-    [Windows.Foundation.Metadata.WebHostHidden]
-    public sealed partial class CalculatorProgrammerDisplayPanel : UserControl
+    private bool _isErrorVisualState;
+
+    public CalculatorProgrammerDisplayPanel()
     {
-        public ICommand BitLengthButtonPressed
+        InitializeComponent();
+    }
+
+    public StandardCalculatorViewModel? Model => DataContext as StandardCalculatorViewModel;
+
+    public bool IsErrorVisualState
+    {
+        get => _isErrorVisualState;
+        set
         {
-            get
-            {
-                if (donotuse_BitLengthButtonPressed == null)
-                {
-                    donotuse_BitLengthButtonPressed = DelegateCommandUtils.MakeDelegateCommand(this,
-                        (that, param) =>
-                        {
-                            that.OnBitLengthButtonPressed(param);
-                        });
-                }
-                return donotuse_BitLengthButtonPressed;
-            }
+            _isErrorVisualState = value;
+            QwordButton.IsEnabled = !value;
+            DwordButton.IsEnabled = !value;
+            WordButton.IsEnabled = !value;
+            ByteButton.IsEnabled = !value;
+        }
+    }
+
+    private void OnBitLengthButtonPressed(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { CommandParameter: string buttonId } || Model is not { } model)
+        {
+            return;
         }
 
-        private ICommand donotuse_BitLengthButtonPressed;
+        QwordButton.IsVisible = false;
+        DwordButton.IsVisible = false;
+        WordButton.IsVisible = false;
+        ByteButton.IsVisible = false;
 
-        public ViewModel.StandardCalculatorViewModel Model
+        switch (buttonId)
         {
-            get
-            {
-                Debug.Assert(DataContext is ViewModel.StandardCalculatorViewModel, "static_cast result must NOT be null");
-                return DataContext as ViewModel.StandardCalculatorViewModel;
-            }
+            case "0":
+                model.ValueBitLength = BitLength.BitLengthDWord;
+                DwordButton.IsVisible = true;
+                DwordButton.Focus();
+                break;
+            case "1":
+                model.ValueBitLength = BitLength.BitLengthWord;
+                WordButton.IsVisible = true;
+                WordButton.Focus();
+                break;
+            case "2":
+                model.ValueBitLength = BitLength.BitLengthByte;
+                ByteButton.IsVisible = true;
+                ByteButton.Focus();
+                break;
+            case "3":
+                model.ValueBitLength = BitLength.BitLengthQWord;
+                QwordButton.IsVisible = true;
+                QwordButton.Focus();
+                break;
+        }
+    }
+
+    private void OnLoaded(object? sender, RoutedEventArgs e)
+    {
+        if (Model is not { } model)
+        {
+            return;
         }
 
-        public bool IsErrorVisualState
+        model.PropertyChanged -= OnModelPropertyChanged;
+        model.PropertyChanged += OnModelPropertyChanged;
+        UpdateInputMode(model.IsBitFlipChecked);
+    }
+
+    private void OnInputModeClicked(object? sender, RoutedEventArgs e)
+    {
+        if (Model is { } model)
         {
-            get => m_isErrorVisualState;
-
-            set
-            {
-                if (m_isErrorVisualState != value)
-                {
-                    m_isErrorVisualState = value;
-                    string newState = m_isErrorVisualState ? "ErrorLayout" : "NoErrorLayout";
-                    VisualStateManager.GoToState(this, newState, false);
-                }
-            }
+            model.IsBitFlipChecked = ReferenceEquals(sender, BitFlip);
         }
+    }
 
-        public CalculatorProgrammerDisplayPanel()
+    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == StandardCalculatorViewModel.IsBitFlipCheckedPropertyName && Model is { } model)
         {
-            m_isErrorVisualState = false;
-            InitializeComponent();
+            UpdateInputMode(model.IsBitFlipChecked);
         }
+    }
 
-        private void OnBitLengthButtonPressed(object parameter)
-        {
-            string buttonId = parameter.ToString();
-
-            QwordButton.Visibility = Visibility.Collapsed;
-            DwordButton.Visibility = Visibility.Collapsed;
-            WordButton.Visibility = Visibility.Collapsed;
-            ByteButton.Visibility = Visibility.Collapsed;
-            if (buttonId == "0")
-            {
-                Model.ValueBitLength = BitLength.BitLengthDWord;
-                DwordButton.Visibility = Visibility.Visible;
-                DwordButton.Focus(FocusState.Programmatic);
-            }
-            else if (buttonId == "1")
-            {
-                Model.ValueBitLength = BitLength.BitLengthWord;
-                WordButton.Visibility = Visibility.Visible;
-                WordButton.Focus(FocusState.Programmatic);
-            }
-            else if (buttonId == "2")
-            {
-                Model.ValueBitLength = BitLength.BitLengthByte;
-                ByteButton.Visibility = Visibility.Visible;
-                ByteButton.Focus(FocusState.Programmatic);
-            }
-            else if (buttonId == "3")
-            {
-                Model.ValueBitLength = BitLength.BitLengthQWord;
-                QwordButton.Visibility = Visibility.Visible;
-                QwordButton.Focus(FocusState.Programmatic);
-            }
-        }
-
-        private bool m_isErrorVisualState;
+    private void UpdateInputMode(bool bitFlip)
+    {
+        FullKeypad.IsChecked = !bitFlip;
+        BitFlip.IsChecked = bitFlip;
     }
 }

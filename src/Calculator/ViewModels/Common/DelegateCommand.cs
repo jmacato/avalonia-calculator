@@ -8,13 +8,13 @@ using System.Windows.Input;
 namespace CalculatorApp.ViewModel.Common
 {
 
-    public delegate void DelegateCommandHandler(object parameter);
+    public delegate void DelegateCommandHandler(object? parameter);
 
     // Static helper class to provide the MakeDelegateCommandHandler functionality
     public static class CommandHelpers
     {
         // Generic method to create a command handler with weak reference to the target
-        public static DelegateCommandHandler MakeDelegateCommandHandler<T>(T target, Action<T, object> function) where T : class
+        public static DelegateCommandHandler MakeDelegateCommandHandler<T>(T target, Action<T, object?> function) where T : class
         {
             WeakReference weakTarget = new WeakReference(target);
 
@@ -32,34 +32,26 @@ namespace CalculatorApp.ViewModel.Common
     public sealed class DelegateCommand : ICommand
     {
         private readonly DelegateCommandHandler _handler;
-        private event EventHandler _canExecuteChanged;
-
         public DelegateCommand(DelegateCommandHandler handler)
         {
             _handler = handler;
         }
 
         // ICommand implementation
-        bool ICommand.CanExecute(object parameter)
+        bool ICommand.CanExecute(object? parameter)
         {
             return true;
         }
 
-        void ICommand.Execute(object parameter)
+        void ICommand.Execute(object? parameter)
         {
-            _handler?.Invoke(parameter);
+            _handler(parameter);
         }
 
-        event EventHandler ICommand.CanExecuteChanged
+        event EventHandler? ICommand.CanExecuteChanged
         {
-            add
-            {
-                _canExecuteChanged += value;
-            }
-            remove
-            {
-                _canExecuteChanged -= value;
-            }
+            add { }
+            remove { }
         }
     }
 }

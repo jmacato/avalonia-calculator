@@ -6,7 +6,7 @@ using CalculationManager;
 namespace CalcEngineTests
 {
     // Mock implementation of IResourceProvider for testing
-    public class DefaultResourceProvider : IResourceProvider
+    internal sealed class DefaultResourceProvider : IResourceProvider
     {
         public string GetCEngineString(string id)
         {

@@ -1,96 +1,38 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using Windows.System;
+using Avalonia;
+using Avalonia.Controls.Primitives;
 using CalculatorApp.ViewModel.Common;
 
-using Microsoft.Windows.System;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Input;
+namespace CalculatorApp.Controls;
 
-namespace CalculatorApp
+public sealed class FlipButtons : ToggleButton
 {
-    namespace Controls
+    public static readonly StyledProperty<NumbersAndOperatorsEnum> ButtonIdProperty =
+        AvaloniaProperty.Register<FlipButtons, NumbersAndOperatorsEnum>(nameof(ButtonId));
+
+    public FlipButtons()
     {
-        public sealed class FlipButtons : ToggleButton
+        Content = "0";
+    }
+
+    public NumbersAndOperatorsEnum ButtonId
+    {
+        get => GetValue(ButtonIdProperty);
+        set => SetValue(ButtonIdProperty, value);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == ButtonIdProperty)
         {
-            public NumbersAndOperatorsEnum ButtonId
-            {
-                get => (NumbersAndOperatorsEnum)GetValue(ButtonIdProperty);
-                set => SetValue(ButtonIdProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for ButtonId.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty ButtonIdProperty =
-                DependencyProperty.Register(nameof(ButtonId), typeof(NumbersAndOperatorsEnum), typeof(FlipButtons), new PropertyMetadata(default(NumbersAndOperatorsEnum)));
-
-            public Microsoft.UI.Xaml.Media.Brush HoverBackground
-            {
-                get => (Microsoft.UI.Xaml.Media.Brush)GetValue(HoverBackgroundProperty);
-                set => SetValue(HoverBackgroundProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for HoverBackground.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty HoverBackgroundProperty =
-                DependencyProperty.Register(nameof(HoverBackground), typeof(Microsoft.UI.Xaml.Media.Brush), typeof(FlipButtons), new PropertyMetadata(default(Microsoft.UI.Xaml.Media.Brush)));
-
-            public Microsoft.UI.Xaml.Media.Brush HoverForeground
-            {
-                get => (Microsoft.UI.Xaml.Media.Brush)GetValue(HoverForegroundProperty);
-                set => SetValue(HoverForegroundProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for HoverForeground.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty HoverForegroundProperty =
-                DependencyProperty.Register(nameof(HoverForeground), typeof(Microsoft.UI.Xaml.Media.Brush), typeof(FlipButtons), new PropertyMetadata(default(Microsoft.UI.Xaml.Media.Brush)));
-
-            public Microsoft.UI.Xaml.Media.Brush PressBackground
-            {
-                get => (Microsoft.UI.Xaml.Media.Brush)GetValue(PressBackgroundProperty);
-                set => SetValue(PressBackgroundProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for PressBackground.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty PressBackgroundProperty =
-                DependencyProperty.Register(nameof(PressBackground), typeof(Microsoft.UI.Xaml.Media.Brush), typeof(FlipButtons), new PropertyMetadata(default(Microsoft.UI.Xaml.Media.Brush)));
-
-            public Microsoft.UI.Xaml.Media.Brush PressForeground
-            {
-                get => (Microsoft.UI.Xaml.Media.Brush)GetValue(PressForegroundProperty);
-                set => SetValue(PressForegroundProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for PressForeground.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty PressForegroundProperty =
-                DependencyProperty.Register(nameof(PressForeground), typeof(Microsoft.UI.Xaml.Media.Brush), typeof(FlipButtons), new PropertyMetadata(default(Microsoft.UI.Xaml.Media.Brush)));
-
-            protected override void OnKeyDown(KeyRoutedEventArgs e)
-            {
-                // Ignore the Enter key
-                if (e.Key == VirtualKey.Enter)
-                {
-                    return;
-                }
-
-                base.OnKeyDown(e);
-            }
-
-            protected override void OnKeyUp(KeyRoutedEventArgs e)
-            {
-                // Ignore the Enter key
-                if (e.Key == VirtualKey.Enter)
-                {
-                    return;
-                }
-
-                base.OnKeyUp(e);
-            }
-
-            private void OnButtonIdPropertyChanged(NumbersAndOperatorsEnum oldValue, NumbersAndOperatorsEnum newValue)
-            {
-                CommandParameter = newValue;
-            }
+            CommandParameter = change.GetNewValue<NumbersAndOperatorsEnum>();
+        }
+        else if (change.Property == IsCheckedProperty)
+        {
+            Content = change.GetNewValue<bool?>() == true ? "1" : "0";
         }
     }
 }

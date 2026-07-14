@@ -1,340 +1,117 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalculatorApp.ViewModel.Common;
-using CalculatorApp.ViewModel;
+using System.Collections.ObjectModel;
 using CalculatorApp.ViewModel.Common;
 using CommunityToolkit.Mvvm.ComponentModel;
-using System;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Windows.Input;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-using Windows.Globalization;
-using Windows.Storage;
-using Windows.UI.Core;
-using Windows.UI.ViewManagement;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Windowing;
 
-namespace CalculatorApp.ViewModel
+namespace CalculatorApp.ViewModel;
+
+/// <summary>
+/// Coordinates the selected calculator mode and the navigation categories.
+/// Child mode ViewModels are added back here as their original implementations
+/// are ported in place.
+/// </summary>
+public partial class ApplicationViewModel : ViewModelBase
 {
-    public partial class ApplicationViewModel : ViewModelBase
+    [ObservableProperty]
+    private StandardCalculatorViewModel? _calculatorViewModel;
+
+    [ObservableProperty]
+    private DateCalculatorViewModel? _dateCalcViewModel;
+
+    [ObservableProperty]
+    private UnitConverterViewModel? _converterViewModel;
+
+    [ObservableProperty]
+    private GraphingCalculatorViewModel? _graphingViewModel;
+
+    [ObservableProperty]
+    private ViewMode _previousMode = ViewMode.None;
+
+    [ObservableProperty]
+    private bool _isAlwaysOnTop;
+
+    [ObservableProperty]
+    private string _categoryName = string.Empty;
+
+    [ObservableProperty]
+    private bool _displayNormalAlwaysOnTopOption;
+
+    [ObservableProperty]
+    private ObservableCollection<NavCategoryGroup> _categories = new();
+
+    private ViewMode m_mode = ViewMode.None;
+
+    public ApplicationViewModel()
     {
+        Categories = NavCategoryStates.CreateMenuOptions();
+    }
 
-        [ObservableProperty]
-        private StandardCalculatorViewModel _calculatorViewModel;
-
-        [ObservableProperty]
-        private DateCalculatorViewModel _dateCalcViewModel;
-
-        [ObservableProperty]
-        private GraphingCalculatorViewModel _graphingCalcViewModel;
-
-
-        [ObservableProperty]
-        private UnitConverterViewModel _converterViewModel;
-
-
-        [ObservableProperty]
-        private CalculatorApp.ViewModel.Common.ViewMode _previousMode;
-
-        [ObservableProperty]
-
-        private bool _isAlwaysOnTop;
-
-        [ObservableProperty]
-        private string _categoryName;
-
-        [ObservableProperty]
-        private bool _displayNormalAlwaysOnTopOption;
-
-        [ObservableProperty]
-        public ObservableCollection<NavCategoryGroup> _categories;
-
-        private ICommand donotuse_CopyCommand;
-        public ICommand CopyCommand
+    public ViewMode Mode
+    {
+        get => m_mode;
+        set
         {
-            get
+            if (m_mode == value)
             {
-                if (donotuse_CopyCommand == null)
-                {
-                    donotuse_CopyCommand = new CalculatorApp.ViewModel.Common.DelegateCommand(
-                    CommandHelpers.MakeDelegateCommandHandler(this, (target, param) => target.OnCopyCommand(param))
-                        );
-                }
-                return donotuse_CopyCommand;
-            }
-        }
-
-        private ICommand donotuse_PasteCommand;
-        public ICommand PasteCommand
-        {
-            get
-            {
-                if (donotuse_PasteCommand == null)
-                {
-                    donotuse_PasteCommand = new CalculatorApp.ViewModel.Common.DelegateCommand(
-                    CommandHelpers.MakeDelegateCommandHandler(this, (target, param) => target.OnPasteCommand(param))
-                    );
-                }
-                return donotuse_PasteCommand;
-            }
-        }
-
-        public ViewMode Mode
-        {
-            get
-            {
-                return m_mode;
-            }
-            set
-            {
-                if (m_mode != value)
-                {
-                    PreviousMode = m_mode;
-                    m_mode = value;
-                    SetDisplayNormalAlwaysOnTopOption();
-                    OnModeChanged();
-                    OnPropertyChanged(nameof(Mode));
-                }
-            }
-        }
-
-        public Visibility ClearMemoryVisibility
-        {
-            get
-            {
-                return CalculatorApp.ViewModel.Common.NavCategory.IsCalculatorViewMode((ViewModel.Common.ViewMode)Mode) ? Visibility.Visible
-                                                                                      : Visibility.Collapsed;
-            }
-        }
-
-        public CalculatorApp.ViewModel.Snapshot.ApplicationSnapshot Snapshot
-        {
-            get
-            {
-                var snapshot = new CalculatorApp.ViewModel.Snapshot.ApplicationSnapshot();
-                snapshot.Mode = (int)(Mode);
-                if (CalculatorViewModel != null && m_mode == ViewMode.Standard)
-                {
-                    snapshot.StandardCalculator = CalculatorViewModel.Snapshot;
-                }
-                return snapshot;
-            }
-        }
-
-        public static string HeightLocalSettings { get; } = "calculatorAlwaysOnTopLastWidth";
-        public static string LaunchedLocalSettings { get; } = "calculatorAlwaysOnTopLaunched";
-        public static string WidthLocalSettings { get; } = "calculatorAlwaysOnTopLastWidth";
-
-        ViewMode m_mode;
-
-        public ApplicationViewModel()
-        {
-            _previousMode = (ViewMode.None);
-            m_mode = (ViewMode.None);
-            SetMenuCategories();
-        }
-
-        public void Initialize(ViewMode mode)
-        {
-            if (!NavCategoryStates.IsValidViewMode(mode) || !NavCategoryStates.IsViewModeEnabled(mode))
-            {
-                mode = ViewMode.Standard;
+                return;
             }
 
-            try
+            if (!NavCategoryStates.IsValidViewMode(value) || !NavCategoryStates.IsViewModeEnabled(value))
             {
-                Mode = mode;
+                value = ViewMode.Standard;
             }
-            catch (Exception e)
-            {
-                TraceLogger.GetInstance().LogError(mode, "ApplicationViewModel::Initialize", e.Message);
-                if (!TryRecoverFromNavigationModeFailure())
-                {
-                    // Could not navigate to standard mode either.
-                    // Throw the original exception so we have a good stack to debug.
-                    throw;
-                }
-            }
-        }
 
-        public void RestoreFromSnapshot(CalculatorApp.ViewModel.Snapshot.ApplicationSnapshot snapshot)
-        {
-            Mode = (ViewMode)(snapshot.Mode);
-            if (snapshot.StandardCalculator is null)
-            {
-                CalculatorViewModel.Snapshot = snapshot.StandardCalculator;
-            }
-        }
-
-        bool TryRecoverFromNavigationModeFailure()
-        {
-            // Here we are simply trying to recover from being unable to navigate to a mode.
-            // Try falling back to standard mode and if there are *any* exceptions, we should
-            // fail because something is seriously wrong.
-            try
-            {
-                Mode = ViewMode.Standard;
-                return true;
-            }
-            catch (Exception _)
-            {
-                return false;
-            }
-        }
-
-        void OnModeChanged()
-        {
-            Debug.Assert(NavCategoryStates.IsValidViewMode(m_mode));
+            PreviousMode = m_mode;
+            m_mode = value;
             if (NavCategory.IsCalculatorViewMode(m_mode))
             {
-                if (CalculatorViewModel is null)
-                {
-                    CalculatorViewModel = new  ();
-                }
-
+                CalculatorViewModel ??= new StandardCalculatorViewModel();
                 CalculatorViewModel.SetCalculatorType(m_mode);
-            }
-            else if (NavCategory.IsGraphingCalculatorViewMode(m_mode))
-            {
-                if (GraphingCalcViewModel is null)
-                {
-                    GraphingCalcViewModel = new  ();
-                }
             }
             else if (NavCategory.IsDateCalculatorViewMode(m_mode))
             {
-                if (DateCalcViewModel is null)
-                {
-                    DateCalcViewModel = new DateCalculatorViewModel();
-                }
+                DateCalcViewModel ??= new DateCalculatorViewModel();
             }
             else if (NavCategory.IsConverterViewMode(m_mode))
             {
-                if (ConverterViewModel is null)
-                {
-                    ConverterViewModel = new  ();
-                }
+                ConverterViewModel ??= new UnitConverterViewModel();
                 ConverterViewModel.Mode = m_mode;
             }
-
-            var resProvider = ViewModel.Common.AppResourceProvider.GetInstance();
-            CategoryName = resProvider.GetResourceString(NavCategoryStates.GetNameResourceKey(m_mode));
-
-            // Cast mode to an int in order to save it to app data.
-            // Save the changed mode, so that the new window launches in this mode.
-            // Don't save until after we have adjusted to the new mode, so we don't save a mode that fails to load.
-            ApplicationData.Current.LocalSettings.Values[nameof(Mode)] = NavCategoryStates.Serialize(m_mode);
-
-            // Log ModeChange event when not first launch, log WindowCreated on first launch
-            if (NavCategoryStates.IsValidViewMode((ViewModel.Common.ViewMode)PreviousMode))
+            else if (NavCategory.IsGraphingCalculatorViewMode(m_mode))
             {
-                TraceLogger.GetInstance().LogModeChange(m_mode);
-            }
-            else
-            {
-                // TODO Windows.UI.ViewManagement.ApplicationView is no longer supported. Use Microsoft.UI.Windowing.AppWindow instead. For more details see https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/windowing
-                // TraceLogger.GetInstance().LogWindowCreated(m_mode, ApplicationView.GetApplicationViewIdForWindow(AppWindow.Create()));
-                Microsoft.UI.Windowing.AppWindow.Create();
+                GraphingViewModel ??= new GraphingCalculatorViewModel();
             }
 
-            OnPropertyChanged(nameof(ClearMemoryVisibility));
-        }
-
-        void OnCopyCommand(Object parameter)
-        {
-            if (NavCategory.IsConverterViewMode(m_mode))
-            {
-                ConverterViewModel.OnCopyCommand(parameter);
-            }
-            else if (NavCategory.IsDateCalculatorViewMode(m_mode))
-            {
-                DateCalcViewModel.OnCopyCommand(parameter);
-            }
-            else if (NavCategory.IsCalculatorViewMode(m_mode))
-            {
-                CalculatorViewModel.OnCopyCommand(parameter);
-            }
-        }
-
-        void OnPasteCommand(Object parameter)
-        {
-            if (NavCategory.IsConverterViewMode(m_mode))
-            {
-                ConverterViewModel.OnPasteCommand(parameter);
-            }
-            else if (NavCategory.IsCalculatorViewMode(m_mode))
-            {
-                CalculatorViewModel.OnPasteCommand(parameter);
-            }
-        }
-
-        void SetMenuCategories()
-        {
-            // Use the Categories property instead of the backing variable
-            // because we want to take advantage of binding updates and
-            // property setter logic.
-            Categories = NavCategoryStates.CreateMenuOptions();
-        }
-
-        public void ToggleAlwaysOnTop(float width, float height)
-        {
-            HandleToggleAlwaysOnTop(width, height);
-        }
-
-        async void HandleToggleAlwaysOnTop(float width, float height)
-        {
-            // TODO Windows.UI.ViewManagement.ApplicationView is no longer supported. Use Microsoft.UI.Windowing.AppWindow instead. For more details see https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/windowing
-            if (ApplicationView.GetForCurrentView().ViewMode == ApplicationViewMode.CompactOverlay)
-            {
-                ApplicationDataContainer localSettings = ApplicationData.Current.LocalSettings;
-                localSettings.Values[WidthLocalSettings] = width;
-                localSettings.Values[HeightLocalSettings] = height;
-
-                bool success = await ApplicationView.GetForCurrentView().TryEnterViewModeAsync(ApplicationViewMode.Default);
-                CalculatorViewModel.HistoryVM.AreHistoryShortcutsEnabled = success;
-                CalculatorViewModel.IsAlwaysOnTop = !success;
-                IsAlwaysOnTop = !success;
-            }
-            else
-            {
-                ApplicationDataContainer localSettings = ApplicationData.Current.LocalSettings;
-                ViewModePreferences compactOptions = ViewModePreferences.CreateDefault(ApplicationViewMode.CompactOverlay);
-                if (!localSettings.Values.ContainsKey(LaunchedLocalSettings))
-                {
-                    compactOptions.CustomSize = new Size(320, 394);
-                    localSettings.Values[LaunchedLocalSettings] = true;
-                }
-                else
-                {
-                    if (localSettings.Values.TryGetValue(WidthLocalSettings, out var z_oldWidth) && z_oldWidth is float oldWidth &&
-                        localSettings.Values.TryGetValue(WidthLocalSettings, out var z_oldHeight) && z_oldHeight is float oldHeight)
-                    {
-                        compactOptions.CustomSize = new Size(oldWidth, oldHeight);
-                    }
-                    else
-                    {
-                        compactOptions.CustomSize = new Size(320, 394);
-                    }
-                }
-
-                bool success = await ApplicationView.GetForCurrentView().TryEnterViewModeAsync(ApplicationViewMode.CompactOverlay, compactOptions);
-                CalculatorViewModel.HistoryVM.AreHistoryShortcutsEnabled = !success;
-                CalculatorViewModel.IsAlwaysOnTop = success;
-                IsAlwaysOnTop = success;
-            }
+            CategoryName = AppResourceProvider.GetInstance()
+                .GetResourceString(NavCategoryStates.GetNameResourceKey(m_mode));
             SetDisplayNormalAlwaysOnTopOption();
+            OnPropertyChanged();
+        }
+    }
+
+    public void Initialize(ViewMode mode)
+    {
+        Mode = mode;
+    }
+
+    public void ToggleAlwaysOnTop(float width, float height)
+    {
+        _ = width;
+        _ = height;
+
+        IsAlwaysOnTop = !IsAlwaysOnTop;
+        if (MainWindow.CurrentInstance is { } window)
+        {
+            window.Topmost = IsAlwaysOnTop;
         }
 
-        void SetDisplayNormalAlwaysOnTopOption()
-        {
-            // TODO Windows.UI.ViewManagement.ApplicationView is no longer supported. Use Microsoft.UI.Windowing.AppWindow instead. For more details see https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/windowing
-           // DisplayNormalAlwaysOnTopOption =
-           //     m_mode == ViewMode.Standard && ApplicationView.GetForViewIndependentUse().IsViewModeSupported(ApplicationViewMode.CompactOverlay) && !IsAlwaysOnTop;
-        }
+        SetDisplayNormalAlwaysOnTopOption();
+    }
+
+    private void SetDisplayNormalAlwaysOnTopOption()
+    {
+        DisplayNormalAlwaysOnTopOption = m_mode == ViewMode.Standard && !IsAlwaysOnTop;
     }
 }

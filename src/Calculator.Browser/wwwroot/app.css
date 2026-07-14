@@ -1,0 +1,31 @@
+html,
+body,
+#out {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+
+.avalonia-splash {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f3f3;
+    color: #1f1f1f;
+    font: 500 1rem system-ui, sans-serif;
+    pointer-events: none;
+}
+
+@media (prefers-color-scheme: dark) {
+    .avalonia-splash {
+        background: #202020;
+        color: #ffffff;
+    }
+}
+
+.avalonia-splash.splash-close {
+    display: none;
+}

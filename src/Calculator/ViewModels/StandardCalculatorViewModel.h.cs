@@ -46,7 +46,7 @@ public partial class StandardCalculatorViewModel : INotifyPropertyChanged, ICalc
     const int ASCII_0 = 48;
 
 
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     private void RaisePropertyChanged(string propertyName)
     {
@@ -195,7 +195,7 @@ public partial class StandardCalculatorViewModel : INotifyPropertyChanged, ICalc
             m_SelectedExpressionLastData = value;
         }
     }
-    private string m_SelectedExpressionLastData;
+    private string m_SelectedExpressionLastData = string.Empty;
 
     // OBSERVABLE_NAMED_PROPERTY_R(bool, IsInError)
     public bool IsInError
@@ -360,7 +360,7 @@ public partial class StandardCalculatorViewModel : INotifyPropertyChanged, ICalc
             }
         }
     }
-    private string m_HexDisplayValue_AutomationName;
+    private string m_HexDisplayValue_AutomationName = string.Empty;
 
     // OBSERVABLE_PROPERTY_R(Platform.String, DecDisplayValue_AutomationName)
     public string DecDisplayValue_AutomationName
@@ -378,7 +378,7 @@ public partial class StandardCalculatorViewModel : INotifyPropertyChanged, ICalc
             }
         }
     }
-    private string m_DecDisplayValue_AutomationName;
+    private string m_DecDisplayValue_AutomationName = string.Empty;
 
     // OBSERVABLE_PROPERTY_R(Platform.String ^, OctDisplayValue_AutomationName)
     public string OctDisplayValue_AutomationName
@@ -396,7 +396,7 @@ public partial class StandardCalculatorViewModel : INotifyPropertyChanged, ICalc
             }
         }
     }
-    private string m_OctDisplayValue_AutomationName;
+    private string m_OctDisplayValue_AutomationName = string.Empty;
 
     // OBSERVABLE_PROPERTY_R(Platform.String ^, BinDisplayValue_AutomationName)
     public string BinDisplayValue_AutomationName
@@ -414,7 +414,7 @@ public partial class StandardCalculatorViewModel : INotifyPropertyChanged, ICalc
             }
         }
     }
-    private string m_BinDisplayValue_AutomationName;
+    private string m_BinDisplayValue_AutomationName = string.Empty;
 
     // OBSERVABLE_PROPERTY_R(bool, IsBinaryOperatorEnabled)
     public bool IsBinaryOperatorEnabled
@@ -595,7 +595,7 @@ public partial class StandardCalculatorViewModel : INotifyPropertyChanged, ICalc
             }
         }
     }
-    private string m_CalculationResultAutomationName;
+    private string m_CalculationResultAutomationName = string.Empty;
 
     // OBSERVABLE_PROPERTY_R(Platform.String ^, CalculationExpressionAutomationName)
     public string CalculationExpressionAutomationName
@@ -613,7 +613,7 @@ public partial class StandardCalculatorViewModel : INotifyPropertyChanged, ICalc
             }
         }
     }
-    private string m_CalculationExpressionAutomationName;
+    private string m_CalculationExpressionAutomationName = string.Empty;
 
     // OBSERVABLE_PROPERTY_R(bool, IsShiftProgrammerChecked)
     public bool IsShiftProgrammerChecked
@@ -724,7 +724,7 @@ public partial class StandardCalculatorViewModel : INotifyPropertyChanged, ICalc
     private bool m_IsInputEmpty;
 
     // OBSERVABLE_PROPERTY_R(CalculatorApp.ViewModel.Common.Automation.NarratorAnnouncement ^, Announcement)
-    public CalculatorApp.ViewModel.Common.Automation.NarratorAnnouncement Announcement
+    public CalculatorApp.ViewModel.Common.Automation.NarratorAnnouncement? Announcement
     {
         get
         {
@@ -739,7 +739,7 @@ public partial class StandardCalculatorViewModel : INotifyPropertyChanged, ICalc
             }
         }
     }
-    private CalculatorApp.ViewModel.Common.Automation.NarratorAnnouncement m_Announcement;
+    private CalculatorApp.ViewModel.Common.Automation.NarratorAnnouncement? m_Announcement;
 
     // OBSERVABLE_PROPERTY_R(uint, OpenParenthesisCount)
     public uint OpenParenthesisCount
@@ -764,101 +764,73 @@ public partial class StandardCalculatorViewModel : INotifyPropertyChanged, ICalc
     {
         get
         {
-            if (donotuse_CopyCommand == null)
-            {
-                donotuse_CopyCommand = new DelegateCommand(param => OnCopyCommand(param));
-            }
-            return donotuse_CopyCommand;
+            return donotuse_CopyCommand ??= new DelegateCommand(OnCopyCommand);
         }
     }
-    private ICommand donotuse_CopyCommand;
+    private ICommand? donotuse_CopyCommand;
 
     // COMMAND_FOR_METHOD(PasteCommand, StandardCalculatorViewModel.OnPasteCommand)
     public ICommand PasteCommand
     {
         get
         {
-            if (donotuse_PasteCommand == null)
-            {
-                donotuse_PasteCommand = new DelegateCommand(param => OnPasteCommand(param));
-            }
-            return donotuse_PasteCommand;
+            return donotuse_PasteCommand ??= new DelegateCommand(OnPasteCommand);
         }
     }
-    private ICommand donotuse_PasteCommand;
+    private ICommand? donotuse_PasteCommand;
 
     // COMMAND_FOR_METHOD(ButtonPressed, StandardCalculatorViewModel.OnButtonPressed)
     public ICommand ButtonPressed
     {
         get
         {
-            if (donotuse_ButtonPressed == null)
-            {
-                donotuse_ButtonPressed = new DelegateCommand(param => OnButtonPressed(param));
-            }
-            return donotuse_ButtonPressed;
+            return donotuse_ButtonPressed ??= new DelegateCommand(OnButtonPressed);
         }
     }
-    private ICommand donotuse_ButtonPressed;
+    private ICommand? donotuse_ButtonPressed;
 
     // COMMAND_FOR_METHOD(ClearMemoryCommand, StandardCalculatorViewModel.OnClearMemoryCommand)
     public ICommand ClearMemoryCommand
     {
         get
         {
-            if (donotuse_ClearMemoryCommand == null)
-            {
-                donotuse_ClearMemoryCommand = new DelegateCommand(param => OnClearMemoryCommand(param));
-            }
-            return donotuse_ClearMemoryCommand;
+            return donotuse_ClearMemoryCommand ??= new DelegateCommand(OnClearMemoryCommand);
         }
     }
-    private ICommand donotuse_ClearMemoryCommand;
+    private ICommand? donotuse_ClearMemoryCommand;
 
     // COMMAND_FOR_METHOD(MemoryItemPressed, StandardCalculatorViewModel.OnMemoryItemPressed)
     public ICommand MemoryItemPressed
     {
         get
         {
-            if (donotuse_MemoryItemPressed == null)
-            {
-                donotuse_MemoryItemPressed = new DelegateCommand(param => OnMemoryItemPressed(param));
-            }
-            return donotuse_MemoryItemPressed;
+            return donotuse_MemoryItemPressed ??= new DelegateCommand(OnMemoryItemPressed);
         }
     }
-    private ICommand donotuse_MemoryItemPressed;
+    private ICommand? donotuse_MemoryItemPressed;
 
     // COMMAND_FOR_METHOD(MemoryAdd, StandardCalculatorViewModel.OnMemoryAdd)
     public ICommand MemoryAdd
     {
         get
         {
-            if (donotuse_MemoryAdd == null)
-            {
-                donotuse_MemoryAdd = new DelegateCommand(param => OnMemoryAdd(param));
-            }
-            return donotuse_MemoryAdd;
+            return donotuse_MemoryAdd ??= new DelegateCommand(OnMemoryAdd);
         }
     }
-    private ICommand donotuse_MemoryAdd;
+    private ICommand? donotuse_MemoryAdd;
 
     // COMMAND_FOR_METHOD(MemorySubtract, StandardCalculatorViewModel.OnMemorySubtract)
     public ICommand MemorySubtract
     {
         get
         {
-            if (donotuse_MemorySubtract == null)
-            {
-                donotuse_MemorySubtract = new DelegateCommand(param => OnMemorySubtract(param));
-            }
-            return donotuse_MemorySubtract;
+            return donotuse_MemorySubtract ??= new DelegateCommand(OnMemorySubtract);
         }
     }
-    private ICommand donotuse_MemorySubtract;
+    private ICommand? donotuse_MemorySubtract;
 
     // event HideMemoryClickedHandler HideMemoryClicked;
-    public event HideMemoryClickedHandler HideMemoryClicked;
+    public event HideMemoryClickedHandler? HideMemoryClicked;
 
     // Custom property IsBitFlipChecked
     private bool m_isBitFlipChecked;
@@ -1126,27 +1098,26 @@ public partial class StandardCalculatorViewModel : INotifyPropertyChanged, ICalc
     CalculatorApp.ViewModel.Common.CalculatorDisplay m_calculatorDisplay = new ();
     CalculatorApp.ViewModel.Common.EngineResourceProvider m_resourceProvider = new ();
     CalculationManager.CalculatorManager m_standardCalculatorManager;
-    string m_expressionAutomationNameFormat;
-    string m_localizedCalculationResultAutomationFormat;
-    string m_localizedCalculationResultDecimalAutomationFormat;
-    string m_localizedHexaDecimalAutomationFormat;
-    string m_localizedDecimalAutomationFormat;
-    string m_localizedOctalAutomationFormat;
-    string m_localizedBinaryAutomationFormat;
-    string m_localizedMaxDigitsReachedAutomationFormat;
-    string m_localizedButtonPressFeedbackAutomationFormat;
-    string m_localizedMemorySavedAutomationFormat;
-    string m_localizedMemoryItemChangedAutomationFormat;
-    string m_localizedMemoryItemClearedAutomationFormat;
-    string m_localizedMemoryCleared;
-    string m_localizedOpenParenthesisCountChangedAutomationFormat;
-    string m_localizedNoRightParenthesisAddedFormat;
+    string m_expressionAutomationNameFormat = string.Empty;
+    string m_localizedCalculationResultAutomationFormat = string.Empty;
+    string m_localizedCalculationResultDecimalAutomationFormat = string.Empty;
+    string m_localizedHexaDecimalAutomationFormat = string.Empty;
+    string m_localizedDecimalAutomationFormat = string.Empty;
+    string m_localizedOctalAutomationFormat = string.Empty;
+    string m_localizedBinaryAutomationFormat = string.Empty;
+    string m_localizedMaxDigitsReachedAutomationFormat = string.Empty;
+    string m_localizedButtonPressFeedbackAutomationFormat = string.Empty;
+    string m_localizedMemorySavedAutomationFormat = string.Empty;
+    string m_localizedMemoryItemChangedAutomationFormat = string.Empty;
+    string m_localizedMemoryItemClearedAutomationFormat = string.Empty;
+    string m_localizedMemoryCleared = string.Empty;
+    string m_localizedOpenParenthesisCountChangedAutomationFormat = string.Empty;
+    string m_localizedNoRightParenthesisAddedFormat = string.Empty;
 
     bool m_isRtlLanguage;
-    bool m_operandUpdated;
     bool m_isLastOperationHistoryLoad;
-    string m_selectedExpressionLastData;
-    Common.DisplayExpressionToken m_selectedExpressionToken;
+    string m_selectedExpressionLastData = string.Empty;
+    Common.DisplayExpressionToken? m_selectedExpressionToken = null;
 
     //string   LocalizeDisplayValue( string  displayValue);
     //string   CalculateNarratorDisplayValue( string  displayValue,  string   localizedDisplayValue);
@@ -1157,14 +1128,14 @@ public partial class StandardCalculatorViewModel : INotifyPropertyChanged, ICalc
     //CalculationManager.Command ConvertToOperatorsEnum(CalculatorApp.ViewModel.Common.NumbersAndOperatorsEnum operation);
     //void DisableButtons(CalculationManager.CommandType selectedExpressionCommandType);
 
-    string m_feedbackForButtonPress;
+    string? m_feedbackForButtonPress;
     //void OnButtonPressed(object   parameter);
     //void OnClearMemoryCommand(object   parameter);
     //string AddPadding(string);
     //size_t LengthWithoutPadding(string);
 
-    List<(string, int)> m_tokens;
-    List<IExpressionCommand> m_commands;
+    List<(string, int)> m_tokens = new();
+    List<IExpressionCommand> m_commands = new();
 
     // Token types
     //bool IsUnaryOp(CalculationManager.Command command);

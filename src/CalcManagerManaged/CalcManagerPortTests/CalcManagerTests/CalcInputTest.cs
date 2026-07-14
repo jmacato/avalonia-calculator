@@ -20,7 +20,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void Clear_ShouldResetToZero()
+    public void ClearShouldResetToZero()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -44,7 +44,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryToggleSign_OnZero_ShouldNotCreateNegativeZero()
+    public void TryToggleSignOnZeroShouldNotCreateNegativeZero()
     {
         // Act
         bool result = m_calcInput.TryToggleSign(false, "999");
@@ -58,7 +58,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryToggleSign_WithExponent_ShouldToggleExponentSign()
+    public void TryToggleSignWithExponentShouldToggleExponentSign()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -84,7 +84,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryToggleSign_OnBase_ShouldToggleBaseSign()
+    public void TryToggleSignOnBaseShouldToggleBaseSign()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -108,7 +108,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryToggleSign_BaseInIntegerMode_ShouldToggleSign()
+    public void TryToggleSignBaseInIntegerModeShouldToggleSign()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -125,7 +125,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryToggleSign_Rollover_ShouldFailOnRollover()
+    public void TryToggleSignRolloverShouldFailOnRollover()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -149,7 +149,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryAddDigit_LeadingZeroes_ShouldBeIgnored()
+    public void TryAddDigitLeadingZeroesShouldBeIgnored()
     {
         // Act
         bool result1 = m_calcInput.TryAddDigit(0, 10, false, "999", 64, 32);
@@ -167,7 +167,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryAddDigit_MaxCount_ShouldRespectMaxDigitLimit()
+    public void TryAddDigitMaxCountShouldRespectMaxDigitLimit()
     {
         // Act - Base part
         bool result1 = m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -211,7 +211,7 @@ public class CalcInputTest
     [InlineData(9)]
     [InlineData(15)]
     [InlineData(24)]
-    public void TryAddDigit_VariousValues_ShouldAcceptValidDigits(uint digit)
+    public void TryAddDigitVariousValuesShouldAcceptValidDigits(uint digit)
     {
         // Act
         bool result = m_calcInput.TryAddDigit(digit, 10, false, "999", 64, 32);
@@ -224,7 +224,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryAddDigit_RolloverBaseCheck_ShouldFailForNonOctalDecimal()
+    public void TryAddDigitRolloverBaseCheckShouldFailForNonOctalDecimal()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -247,7 +247,7 @@ public class CalcInputTest
 
 
     [Fact]
-    public void TryAddDigit_RolloverOctalByte_ShouldCheckFirstDigit()
+    public void TryAddDigitRolloverOctalByteShouldCheckFirstDigit()
     {
         // Arrange & Act - First digit <= 3 should allow another digit
         m_calcInput.TryAddDigit(1, 8, true, "777", 64, 32);
@@ -269,7 +269,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryAddDigit_RolloverOctalWord_ShouldCheckFirstDigit()
+    public void TryAddDigitRolloverOctalWordShouldCheckFirstDigit()
     {
         // Arrange & Act - First digit == 1 should allow another digit
         m_calcInput.TryAddDigit(1, 8, true, "777", 64, 32);
@@ -291,7 +291,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryAddDigit_RolloverOctalDword_ShouldCheckFirstDigit()
+    public void TryAddDigitRolloverOctalDwordShouldCheckFirstDigit()
     {
         // Arrange & Act - First digit <= 3 should allow another digit
         m_calcInput.TryAddDigit(1, 8, true, "777", 64, 32);
@@ -313,7 +313,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryAddDigit_RolloverOctalQword_ShouldCheckFirstDigit()
+    public void TryAddDigitRolloverOctalQwordShouldCheckFirstDigit()
     {
         // Arrange & Act - First digit == 1 should allow another digit
         m_calcInput.TryAddDigit(1, 8, true, "777", 64, 32);
@@ -335,7 +335,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryAddDigit_RolloverDecimal_ShouldValidateAgainstMax()
+    public void TryAddDigitRolloverDecimalShouldValidateAgainstMax()
     {
         // Test 1: Cannot add digit if input size matches maxStr size
         m_calcInput.TryAddDigit(1, 10, true, "127", 64, 32);
@@ -378,7 +378,7 @@ public class CalcInputTest
 
 
     [Fact]
-    public void TryAddDecimalPt_Empty_ShouldAddDecimalToEmptyInput()
+    public void TryAddDecimalPtEmptyShouldAddDecimalToEmptyInput()
     {
         // Arrange & Assert pre-condition
         Assert.False(m_calcInput.HasDecimalPt());
@@ -396,7 +396,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryAddDecimalPoint_Twice_ShouldFailOnSecondAttempt()
+    public void TryAddDecimalPointTwiceShouldFailOnSecondAttempt()
     {
         // Arrange & Assert pre-condition
         Assert.False(m_calcInput.HasDecimalPt());
@@ -419,7 +419,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryAddDecimalPoint_WithExponent_ShouldFail()
+    public void TryAddDecimalPointWithExponentShouldFail()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -437,7 +437,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryBeginExponent_NoExponent_ShouldSucceed()
+    public void TryBeginExponentNoExponentShouldSucceed()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -454,7 +454,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void TryBeginExponent_WithExponent_ShouldFail()
+    public void TryBeginExponentWithExponentShouldFail()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -475,7 +475,7 @@ public class CalcInputTest
 
 
     [Fact]
-    public void Backspace_OnZero_ShouldRemainZero()
+    public void BackspaceOnZeroShouldRemainZero()
     {
         // Act
         m_calcInput.Backspace();
@@ -488,7 +488,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void Backspace_SingleChar_ShouldResetToZero()
+    public void BackspaceSingleCharShouldResetToZero()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -507,7 +507,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void Backspace_MultiChar_ShouldRemoveLastChar()
+    public void BackspaceMultiCharShouldRemoveLastChar()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -527,7 +527,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void Backspace_Decimal_ShouldRemoveDecimalPoint()
+    public void BackspaceDecimalShouldRemoveDecimalPoint()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -549,7 +549,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void Backspace_MultiCharDecimal_ShouldRemoveLastDigit()
+    public void BackspaceMultiCharDecimalShouldRemoveLastDigit()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -572,7 +572,7 @@ public class CalcInputTest
 
 
     [Fact]
-    public void Backspace_ZeroDecimalWithoutPrefixZeros_ShouldHandleLeadingZeroesCorrectly()
+    public void BackspaceZeroDecimalWithoutPrefixZerosShouldHandleLeadingZeroesCorrectly()
     {
         // Arrange
         m_calcInput.TryAddDigit(0, 10, false, "999", 64, 32);
@@ -593,7 +593,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void SetDecimalSymbol_ShouldChangeDisplayedDecimalSymbol()
+    public void SetDecimalSymbolShouldChangeDisplayedDecimalSymbol()
     {
         // Arrange
         m_calcInput.TryAddDecimalPt();
@@ -612,7 +612,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void ToString_Empty_ShouldReturnZero()
+    public void ToStringEmptyShouldReturnZero()
     {
         // Act & Assert
         Assert.Equal("0", m_calcInput.ToString(10));
@@ -622,7 +622,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void ToString_Negative_ShouldIncludeNegativeSign()
+    public void ToStringNegativeShouldIncludeNegativeSign()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);
@@ -636,7 +636,7 @@ public class CalcInputTest
     }
 
     [Fact]
-    public void ToRational_ShouldConvertCorrectly()
+    public void ToRationalShouldConvertCorrectly()
     {
         // Arrange
         m_calcInput.TryAddDigit(1, 10, false, "999", 64, 32);

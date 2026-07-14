@@ -1,157 +1,117 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-//
-// CalculatorScientificOperators.xaml.h
-// Declaration of the CalculatorScientificOperators class
-//
-
-using CalculatorApp.Common;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
 using CalculatorApp.ViewModel;
-using CalculatorApp.ViewModel.Common;
 
-using Microsoft.UI.Xaml;
+namespace CalculatorApp;
 
-namespace CalculatorApp
+public sealed partial class CalculatorScientificOperators : UserControl
 {
-    [Windows.Foundation.Metadata.WebHostHidden]
-    public sealed partial class CalculatorScientificOperators
+    private bool _isErrorVisualState;
+
+    public CalculatorScientificOperators()
     {
-        public CalculatorScientificOperators()
+        InitializeComponent();
+    }
+
+    public StandardCalculatorViewModel? Model => DataContext as StandardCalculatorViewModel;
+
+    public bool IsErrorVisualState
+    {
+        get => _isErrorVisualState;
+        set
         {
-            InitializeComponent();
-
-            ExpButton.SetValue(KeyboardShortcutManager.VirtualKeyProperty, MyVirtualKey.E);
-        }
-
-        public StandardCalculatorViewModel Model => (StandardCalculatorViewModel)this.DataContext;
-
-        public bool IsErrorVisualState
-        {
-            get => (bool)GetValue(IsErrorVisualStateProperty);
-            set => SetValue(IsErrorVisualStateProperty, value);
-        }
-
-        // Using a DependencyProperty as the backing store for IsErrorVisualState.  This enables animation, styling, binding, etc...
-        public static readonly DependencyProperty IsErrorVisualStateProperty =
-            DependencyProperty.Register(nameof(IsErrorVisualState), typeof(bool), typeof(CalculatorScientificOperators), new PropertyMetadata(false, (sender, args) =>
+            if (_isErrorVisualState == value)
             {
-                var self = (CalculatorScientificOperators)sender;
-                self.OnIsErrorVisualStatePropertyChanged((bool)args.OldValue, (bool)args.NewValue);
-            }));
-
-        public void OpenParenthesisButton_GotFocus(object sender, RoutedEventArgs e)
-        {
-            Model.SetOpenParenthesisCountNarratorAnnouncement();
-        }
-
-        public string ParenthesisCountToString(uint count)
-        {
-            return (count == 0) ? "" : count.ToString();
-        }
-
-        private void OnIsErrorVisualStatePropertyChanged(bool oldValue, bool newValue)
-        {
-            string newState = newValue ? "ErrorLayout" : "NoErrorLayout";
-            VisualStateManager.GoToState(this, newState, false);
-            NumberPad.IsErrorVisualState = newValue;
-        }
-
-        private void ShiftButton_Check(object sender, RoutedEventArgs e)
-        {
-            SetOperatorRowVisibility();
-        }
-
-        private void ShiftButton_Uncheck(object sender, RoutedEventArgs e)
-        {
-            ShiftButton.IsChecked = false;
-            SetOperatorRowVisibility();
-            ShiftButton.Focus(FocusState.Programmatic);
-        }
-
-        private void TrigFlyoutShift_Toggle(object sender, RoutedEventArgs e)
-        {
-            SetTrigRowVisibility();
-        }
-
-        private void TrigFlyoutHyp_Toggle(object sender, RoutedEventArgs e)
-        {
-            SetTrigRowVisibility();
-        }
-
-        private void FlyoutButton_Clicked(object sender, RoutedEventArgs e)
-        {
-            HypButton.IsChecked = false;
-            TrigShiftButton.IsChecked = false;
-            Trigflyout.Hide();
-            FuncFlyout.Hide();
-        }
-
-        private void ShiftButton_IsEnabledChanged(object sender, DependencyPropertyChangedEventArgs e)
-        {
-            SetOperatorRowVisibility();
-        }
-
-        private void SetOperatorRowVisibility()
-        {
-            Visibility rowVis, invRowVis;
-            if (ShiftButton.IsChecked.Value)
-            {
-                rowVis = Visibility.Collapsed;
-                invRowVis = Visibility.Visible;
-            }
-            else
-            {
-                rowVis = Visibility.Visible;
-                invRowVis = Visibility.Collapsed;
+                return;
             }
 
-            Row1.Visibility = rowVis;
-            InvRow1.Visibility = invRowVis;
+            _isErrorVisualState = value;
+            SetScientificControlsEnabled(!value);
+            NumberPad.IsErrorVisualState = value;
         }
+    }
 
-        private void SetTrigRowVisibility()
-        {
-            bool isShiftChecked = TrigShiftButton.IsChecked.Value;
-            bool isHypeChecked = HypButton.IsChecked.Value;
+    private void OpenParenthesisButton_GotFocus(object? sender, RoutedEventArgs e)
+    {
+        Model?.SetOpenParenthesisCountNarratorAnnouncement();
+    }
 
-            InverseHyperbolicTrigFunctions.Visibility = Visibility.Collapsed;
-            InverseTrigFunctions.Visibility = Visibility.Collapsed;
-            HyperbolicTrigFunctions.Visibility = Visibility.Collapsed;
-            TrigFunctions.Visibility = Visibility.Collapsed;
+    private void ShiftButton_Check(object? sender, RoutedEventArgs e)
+    {
+        SetOperatorRowVisibility();
+    }
 
-            if (isShiftChecked && isHypeChecked)
-            {
-                InverseHyperbolicTrigFunctions.Visibility = Visibility.Visible;
-            }
-            else if (isShiftChecked)
-            {
-                InverseTrigFunctions.Visibility = Visibility.Visible;
-            }
-            else if (isHypeChecked)
-            {
-                HyperbolicTrigFunctions.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                TrigFunctions.Visibility = Visibility.Visible;
-            }
-        }
+    private void ShiftButton_Uncheck(object? sender, RoutedEventArgs e)
+    {
+        ShiftButton.IsChecked = false;
+        SetOperatorRowVisibility();
+        ShiftButton.Focus();
+    }
 
-        private void ClearEntryButton_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (ClearEntryButton.Visibility == Visibility.Collapsed && ClearButton.Visibility == Visibility.Visible)
-            {
-                ClearButton.Focus(FocusState.Programmatic);
-            }
-        }
+    private void TrigFlyoutShift_Toggle(object? sender, RoutedEventArgs e)
+    {
+        SetTrigRowVisibility();
+    }
 
-        private void ClearButton_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (ClearEntryButton.Visibility == Visibility.Visible && ClearButton.Visibility == Visibility.Collapsed)
-            {
-                ClearEntryButton.Focus(FocusState.Programmatic);
-            }
-        }
+    private void TrigFlyoutHyp_Toggle(object? sender, RoutedEventArgs e)
+    {
+        SetTrigRowVisibility();
+    }
+
+    private void FlyoutButton_Clicked(object? sender, RoutedEventArgs e)
+    {
+        HypButton.IsChecked = false;
+        TrigShiftButton.IsChecked = false;
+        SetTrigRowVisibility();
+        TrigButton.FlyoutMenu?.Hide();
+        FuncButton.FlyoutMenu?.Hide();
+    }
+
+    private void SetOperatorRowVisibility()
+    {
+        bool inverse = ShiftButton.IsChecked == true;
+        Row1.IsVisible = !inverse;
+        InvRow1.IsVisible = inverse;
+    }
+
+    private void SetTrigRowVisibility()
+    {
+        bool inverse = TrigShiftButton.IsChecked == true;
+        bool hyperbolic = HypButton.IsChecked == true;
+        TrigFunctions.IsVisible = !inverse && !hyperbolic;
+        InverseTrigFunctions.IsVisible = inverse && !hyperbolic;
+        HyperbolicTrigFunctions.IsVisible = !inverse && hyperbolic;
+        InverseHyperbolicTrigFunctions.IsVisible = inverse && hyperbolic;
+    }
+
+    private void SetScientificControlsEnabled(bool enabled)
+    {
+        XPower2Button.IsEnabled = enabled;
+        XPower3Button.IsEnabled = enabled;
+        SquareRootButton.IsEnabled = enabled;
+        CubeRootButton.IsEnabled = enabled;
+        PowerButton.IsEnabled = enabled;
+        YSquareRootButton.IsEnabled = enabled;
+        PowerOf10Button.IsEnabled = enabled;
+        TwoPowerXButton.IsEnabled = enabled;
+        LogBase10Button.IsEnabled = enabled;
+        LogBaseY.IsEnabled = enabled;
+        LogBaseEButton.IsEnabled = enabled;
+        PowerOfEButton.IsEnabled = enabled;
+        InvertButton.IsEnabled = enabled;
+        AbsButton.IsEnabled = enabled;
+        ExpButton.IsEnabled = enabled;
+        ModButton.IsEnabled = enabled;
+        DivideButton.IsEnabled = enabled;
+        MultiplyButton.IsEnabled = enabled;
+        MinusButton.IsEnabled = enabled;
+        PlusButton.IsEnabled = enabled;
+        NegateButton.IsEnabled = enabled && (Model?.IsNegateEnabled ?? true);
+        ShiftButton.IsEnabled = enabled;
+        TrigButton.IsEnabled = enabled;
+        FuncButton.IsEnabled = enabled;
     }
 }

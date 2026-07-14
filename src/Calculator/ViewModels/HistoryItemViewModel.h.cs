@@ -2,14 +2,12 @@
 // Licensed under the MIT License.
 
 using System.Collections.Generic;
-
-#pragma once
+using CalcEngine;
 
 //#include  "CalcManager/ExpressionCommandInterface.h"
 
 namespace CalculatorApp.ViewModel
 {
-    [Microsoft.UI.Xaml.Data.Bindable]
     public partial class HistoryItemViewModel
     {
         // internal :
@@ -25,7 +23,7 @@ namespace CalculatorApp.ViewModel
             return m_spTokens;
         }
 
-       public  List<IExpressionCommand> GetCommands()
+       public List<IExpressionCommand> GetCommands()
         {
             return m_spCommands;
         }
@@ -38,6 +36,11 @@ namespace CalculatorApp.ViewModel
         public string Result { get { return m_result; } }
 
         public string AccResult { get { return m_accResult; } }
+
+        // Avalonia compiled bindings cannot invoke the original two-argument
+        // HistoryList.GetHistoryItemAutomationName x:Bind expression. This is
+        // the same original expression exposed as a bindable value.
+        public string AutomationName { get { return $"{m_accExpression} {m_accResult}"; } }
 
         // private : static string
         //             GetAccessibleExpressionFromTokens(

@@ -7,6 +7,7 @@
 
 using System;
 using System.Collections.Generic;
+using CalcEngine;
 using CalculatorApp.ViewModel.Common;
 
 
@@ -17,21 +18,21 @@ namespace CalculatorApp.ViewModel
         public HistoryItemViewModel(
             string expression,
             string result,
-            List<(string, int)> spTokens,
-            List<IExpressionCommand> spCommands)
+            IList<(string, int)> spTokens,
+            IList<IExpressionCommand> spCommands)
         {
             m_expression = (expression);
             m_result = (result);
-            m_spTokens = (spTokens);
-            m_spCommands = (spCommands);
+            m_spTokens = spTokens.ToList();
+            m_spCommands = spCommands.ToList();
             // updating accessibility names for expression and result
             m_accExpression = HistoryItemViewModel.GetAccessibleExpressionFromTokens(spTokens, m_expression);
-            m_accResult = LocalizationService.GetNarratorReadableString(m_result);
+            m_accResult = LocalizationStringUtil.GetNarratorReadableString(m_result);
         }
 
         static String
             GetAccessibleExpressionFromTokens(
-                List<(string, int)> spTokens,
+                IList<(string, int)> spTokens,
                 string fallbackExpression)
         {
             // updating accessibility names for expression and result
@@ -39,7 +40,7 @@ namespace CalculatorApp.ViewModel
 
             foreach (var tokenItem in spTokens)
             {
-                accExpression += LocalizationService.GetNarratorReadableToken((tokenItem.Item1));
+                accExpression += LocalizationStringUtil.GetNarratorReadableToken(tokenItem.Item1);
             }
 
             return accExpression;

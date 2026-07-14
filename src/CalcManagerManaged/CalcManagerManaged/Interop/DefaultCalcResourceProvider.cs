@@ -1,4 +1,3 @@
-using System.IO.Enumeration;
 using CalcManagerManaged.Resources;
 
 namespace CalcManagerManaged.Interop;
@@ -6,9 +5,9 @@ namespace CalcManagerManaged.Interop;
 /// <summary>
 /// Default implementation of ICalcResourceProvider
 /// </summary>
-public class DefaultCalcResourceProvider : ICalcResourceProvider
+internal sealed class DefaultCalcResourceProvider : ICalcResourceProvider
 {
-    private Dictionary<string, string> _resources;
+    private readonly Dictionary<string, string> _resources;
 
     public DefaultCalcResourceProvider()
     {
@@ -18,7 +17,7 @@ public class DefaultCalcResourceProvider : ICalcResourceProvider
 
     public string GetString(string resourceId)
     {
-        if (_resources.TryGetValue(resourceId, out string value))
+        if (_resources.TryGetValue(resourceId, out string? value))
         {
             return value;
         }

@@ -17,7 +17,6 @@ namespace CalculatorApp.ViewModel.Common
         Separator
     };
 
-    [Microsoft.UI.Xaml.Data.Bindable]
     public partial class DisplayExpressionToken : INotifyPropertyChanged
     {
         public DisplayExpressionToken(string token, int tokenPosition, bool fEditable, TokenType type)
@@ -39,7 +38,7 @@ namespace CalculatorApp.ViewModel.Common
         private string m_OriginalToken;
         private bool m_InEditMode;
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public string Token
         {

@@ -27,9 +27,6 @@ public partial class HistoryViewModel
 
     {
         m_calculatorManager = (calculatorManager);
-        m_localizedHistoryCleared = (null);
-        m_localizedHistorySlotCleared = (null);
-
         AreHistoryShortcutsEnabled = true;
 
         Items = new ObservableCollection<HistoryItemViewModel>();
@@ -58,16 +55,16 @@ public partial class HistoryViewModel
         {
             foreach (var ritr in historyListModel)//.rbegin(); ritr != historyListModel.rend(); ++ritr)
             {
-                string expression = (ritr).historyItemVector.expression;
-                string result = (ritr).historyItemVector.result;
+                string expression = ritr.HistoryItemVector.Expression;
+                string result = ritr.HistoryItemVector.Result;
                 localizer.LocalizeDisplayValue(ref expression);
                 localizer.LocalizeDisplayValue(ref result);
 
                 var item = new HistoryItemViewModel(
                    (expression),
                    (result),
-                    (ritr).historyItemVector.spTokens,
-                    (ritr).historyItemVector.spCommands);
+                    ritr.HistoryItemVector.SpTokens,
+                    ritr.HistoryItemVector.SpCommands);
                 historyListVM.Add(item);
             }
         }
@@ -80,24 +77,24 @@ public partial class HistoryViewModel
     {
         var newItem = m_calculatorManager.GetHistoryItem(addedItemIndex);
         LocalizationSettings localizer = LocalizationSettings.GetInstance();
-        string expression = newItem.historyItemVector.expression;
-        string result = newItem.historyItemVector.result;
+        string expression = newItem.HistoryItemVector.Expression;
+        string result = newItem.HistoryItemVector.Result;
         localizer.LocalizeDisplayValue(ref expression);
         localizer.LocalizeDisplayValue(ref result);
         var item = new HistoryItemViewModel(
             (expression),
             (result),
-            newItem.historyItemVector.spTokens,
-            newItem.historyItemVector.spCommands);
+            newItem.HistoryItemVector.SpTokens,
+            newItem.HistoryItemVector.SpCommands);
 
         // check if we have not hit the max items
-        if (Items.Count >= m_calculatorManager.MaxHistorySize())
+        if (Items.Count >= CalculationManager.CalculatorManager.MaxHistorySize())
         {
             // this means the item already exists
             Items.RemoveAt(Items.Count - 1);
         }
 
-        Debug.Assert(addedItemIndex <= m_calculatorManager.MaxHistorySize());
+        Debug.Assert(addedItemIndex <= CalculationManager.CalculatorManager.MaxHistorySize());
         Debug.Assert(addedItemIndex >= 0);
         Items.Insert(0, item);
         RaisePropertyChanged(HistoryResourceKeys.ItemsSizeKey);
@@ -113,7 +110,7 @@ public partial class HistoryViewModel
     {
         int index = Items.IndexOf(e);
         TraceLogger.GetInstance().LogHistoryItemLoad((ViewMode)m_currentMode, Items.Count, (int)(index));
-        HistoryItemClicked(e);
+        HistoryItemClicked?.Invoke(e);
     }
 
    public void DeleteItem(HistoryItemViewModel e)
@@ -135,13 +132,13 @@ public partial class HistoryViewModel
         HistoryAnnouncement = NarratorAnnouncement.GetHistorySlotClearedAnnouncement(announcement);
     }
 
-    void OnHideCommand(object e)
+    void OnHideCommand(object? e)
     {
         // added at VM layer so that the views do not have to individually raise events
-        HideHistoryClicked();
+        HideHistoryClicked?.Invoke();
     }
 
-    void OnClearCommand(object e)
+    void OnClearCommand(object? e)
     {
         if (AreHistoryShortcutsEnabled)
         {
@@ -153,7 +150,7 @@ public partial class HistoryViewModel
                 RaisePropertyChanged(HistoryResourceKeys.ItemsSizeKey);
             }
 
-            if (m_localizedHistoryCleared == null)
+            if (m_localizedHistoryCleared.Length == 0)
             {
                 m_localizedHistoryCleared = AppResourceProvider.GetInstance().GetResourceString(HistoryResourceKeys.HistoryCleared);
             }
@@ -163,6 +160,6 @@ public partial class HistoryViewModel
 
     public int GetMaxItemSize()
     {
-        return (int)(m_calculatorManager.MaxHistorySize());
+        return (int)CalculationManager.CalculatorManager.MaxHistorySize();
     }
 }

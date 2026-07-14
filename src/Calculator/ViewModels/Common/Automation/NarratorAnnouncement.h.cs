@@ -2,10 +2,23 @@
 // Licensed under the MIT License.
 
 
-using Microsoft.UI.Xaml.Automation.Peers;
-
 namespace CalculatorApp.ViewModel.Common.Automation
 {
+public enum AutomationNotificationKind
+{
+    Other,
+    ActionCompleted,
+    ItemAdded,
+    ItemRemoved
+}
+
+public enum AutomationNotificationProcessing
+{
+    MostRecent,
+    ImportantMostRecent,
+    CurrentThenMostRecent
+}
+
 public partial  class NarratorAnnouncement
     {
     //public:
@@ -26,8 +39,8 @@ public partial  class NarratorAnnouncement
         //}
 
         //static bool IsValid(NarratorAnnouncement announcement);
-          string m_announcement;
-       string m_activityId;
+        string m_announcement;
+        string m_activityId;
         AutomationNotificationKind m_kind;
         AutomationNotificationProcessing m_processing;
 

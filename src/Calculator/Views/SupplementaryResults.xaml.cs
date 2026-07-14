@@ -1,106 +1,120 @@
-using CalculatorApp.ViewModel;
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
 
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Globalization;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Templates;
+using Avalonia.Data.Converters;
+using Avalonia.Media;
+using CalculatorApp.Controls;
+using CalculatorApp.ViewModel;
 using UnitConversionManager;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 
-// The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
+namespace CalculatorApp;
 
-namespace CalculatorApp
+/// <summary>
+/// The original WinUI view selected a Segoe UI Symbol style by unit id. The
+/// portable view performs the same lookup, but each resource contains the
+/// exact extracted outline instead of relying on an installed Windows font.
+/// </summary>
+public sealed class DelighterUnitToVectorConverter : IValueConverter
 {
-    public sealed class DelighterUnitToStyleConverter : Microsoft.UI.Xaml.Data.IValueConverter
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        public DelighterUnitToStyleConverter()
+        if (value is not Unit { IsWhimsical: true } unit || Application.Current is not { } app)
         {
-            m_delighters = new Microsoft.UI.Xaml.ResourceDictionary
-            {
-                Source = new Uri(@"ms-appx:///Views/DelighterUnitStyles.xaml")
-            };
-        }
-
-        public object Convert(object value, Type targetType, object parameter, string language)
-        {
-            Unit unit = (Unit)value;
-            Debug.Assert(unit.isWhimsical);
-            if (!unit.isWhimsical)
-            {
-                return null;
-            }
-
-            string key = $"Unit_{unit.id}";
-            return (Style)m_delighters[key];
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, string language)
-        {
-            // We never use convert back, only one way binding supported
-            Debug.Assert(false);
             return null;
         }
 
-        private readonly Microsoft.UI.Xaml.ResourceDictionary m_delighters;
+        string key = $"Unit_{unit.Id}";
+        if (!app.TryGetResource(key, null, out object? resource) || resource is not DelighterVectorGlyph glyph)
+        {
+            return null;
+        }
+
+        return parameter switch
+        {
+            "Geometry" => glyph.Geometry,
+            "Width" => glyph.Width,
+            "Margin" => glyph.Margin,
+            _ => glyph
+        };
     }
 
-    public sealed class SupplementaryResultDataTemplateSelector : DataTemplateSelector
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>
+/// Compiled vector resource corresponding to one original Delighter TextBlock
+/// style. Width and margin preserve Segoe UI Symbol's advance and style data.
+/// </summary>
+public sealed class DelighterVectorGlyph
+{
+    public Geometry Geometry { get; set; } = new StreamGeometry();
+
+    public double Width { get; set; }
+
+    public Thickness Margin { get; set; }
+}
+
+/// <summary>
+/// Avalonia IDataTemplate equivalent of the original WinUI
+/// SupplementaryResultDataTemplateSelector.
+/// </summary>
+public sealed class SupplementaryResultDataTemplateSelector : IDataTemplate
+{
+    public IDataTemplate RegularTemplate { get; set; } = null!;
+
+    public IDataTemplate DelighterTemplate { get; set; } = null!;
+
+    public Control? Build(object? parameter)
     {
-        public SupplementaryResultDataTemplateSelector()
-        { }
-
-        public Microsoft.UI.Xaml.DataTemplate RegularTemplate { get; set; }
-
-        public Microsoft.UI.Xaml.DataTemplate DelighterTemplate { get; set; }
-
-        protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
-        {
-            SupplementaryResult result = (SupplementaryResult)item;
-            if (result.IsWhimsical())
-            {
-                return DelighterTemplate;
-            }
-            else
-            {
-                return RegularTemplate;
-            }
-        }
+        IDataTemplate template = parameter is SupplementaryResult result && result.IsWhimsical()
+            ? DelighterTemplate
+            : RegularTemplate;
+        return template.Build(parameter);
     }
 
-    public sealed class SupplementaryResultNoOverflowStackPanel : CalculatorApp.Controls.HorizontalNoOverflowStackPanel
+    public bool Match(object? data) => data is SupplementaryResult;
+}
+
+/// <summary>
+/// Preserves the original rule that the final whimsical comparison remains
+/// visible when the full horizontal result list does not fit.
+/// </summary>
+public sealed class SupplementaryResultNoOverflowStackPanel : HorizontalNoOverflowStackPanel
+{
+    protected override bool ShouldPrioritizeLastItem()
     {
-        protected override bool ShouldPrioritizeLastItem()
+        if (Children.Count == 0)
         {
-            if (Children.Count == 0)
-            {
-                return false;
-            }
-
-            if (!(Children[Children.Count - 1] is FrameworkElement lastChild))
-            {
-                return false;
-            }
-
-            return lastChild.DataContext is SupplementaryResult suppResult && suppResult.IsWhimsical();
+            return false;
         }
+
+        Control lastChild = Children[^1];
+        return (lastChild.DataContext as SupplementaryResult
+                ?? (lastChild as ContentPresenter)?.Content as SupplementaryResult)
+            ?.IsWhimsical() == true;
+    }
+}
+
+public sealed partial class SupplementaryResults : UserControl
+{
+    public static readonly StyledProperty<IEnumerable<SupplementaryResult>?> ResultsProperty =
+        AvaloniaProperty.Register<SupplementaryResults, IEnumerable<SupplementaryResult>?>(nameof(Results));
+
+    public SupplementaryResults()
+    {
+        InitializeComponent();
     }
 
-    [Windows.Foundation.Metadata.WebHostHidden]
-    public sealed partial class SupplementaryResults : UserControl
+    public IEnumerable<SupplementaryResult>? Results
     {
-        public SupplementaryResults()
-        {
-            InitializeComponent();
-        }
-
-        public IEnumerable<ViewModel.SupplementaryResult> Results
-        {
-            get => (IEnumerable<ViewModel.SupplementaryResult>)GetValue(ResultsProperty);
-            set => SetValue(ResultsProperty, value);
-        }
-
-        // Using a DependencyProperty as the backing store for Results.  This enables animation, styling, binding, etc...
-        public static readonly DependencyProperty ResultsProperty =
-            DependencyProperty.Register(nameof(Results), typeof(IEnumerable<ViewModel.SupplementaryResult>), typeof(SupplementaryResult), new PropertyMetadata(null));
+        get => GetValue(ResultsProperty);
+        set => SetValue(ResultsProperty, value);
     }
 }

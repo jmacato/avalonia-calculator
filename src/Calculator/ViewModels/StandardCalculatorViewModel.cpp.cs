@@ -18,13 +18,12 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Windows.UI.Core;
 using static CalcEngine.RatPak;
 using RawTokenCollection = System.Collections.Generic.List<(string, int)>;
-using Microsoft.UI.Windowing;
 
 
 namespace CalculatorApp.ViewModel;
@@ -78,7 +77,7 @@ public partial class StandardCalculatorViewModel
             if (commandType == CommandType.UnaryCommand)
             {
                 IUnaryCommand spCommand = (IUnaryCommand)(command);
-                List<int> unaryCommands = spCommand.GetCommands();
+                List<int> unaryCommands = spCommand.GetCommands().ToList();
 
                 foreach (int nUCode in unaryCommands)
                 {
@@ -101,14 +100,14 @@ public partial class StandardCalculatorViewModel
             if (commandType == CommandType.OperandCommand)
             {
                 IOpndCommand spCommand = (IOpndCommand)(command);
-                List<int> opndCommands = spCommand.GetCommands();
+                List<int> opndCommands = spCommand.GetCommands().ToList();
                 bool fNeedIDCSign = spCommand.IsNegative();
 
                 foreach (int nOCode in opndCommands)
                 {
                     commands.Add(nOCode);
 
-                    if (fNeedIDCSign && nOCode != CCommand.IDC_0)
+                    if (fNeedIDCSign && nOCode != CCommand.Idc0)
                     {
                         commands.Add((int)(CalculationManager.Command.CommandSIGN));
                         fNeedIDCSign = false;
@@ -165,21 +164,21 @@ public partial class StandardCalculatorViewModel
    ;
         m_isRtlLanguage = (false)
    ;
-        m_localizedMaxDigitsReachedAutomationFormat = (null)
+        m_localizedMaxDigitsReachedAutomationFormat = string.Empty
    ;
-        m_localizedButtonPressFeedbackAutomationFormat = (null)
+        m_localizedButtonPressFeedbackAutomationFormat = string.Empty
    ;
-        m_localizedMemorySavedAutomationFormat = (null)
+        m_localizedMemorySavedAutomationFormat = string.Empty
    ;
-        m_localizedMemoryItemChangedAutomationFormat = (null)
+        m_localizedMemoryItemChangedAutomationFormat = string.Empty
    ;
-        m_localizedMemoryItemClearedAutomationFormat = (null)
+        m_localizedMemoryItemClearedAutomationFormat = string.Empty
    ;
-        m_localizedMemoryCleared = (null)
+        m_localizedMemoryCleared = string.Empty
    ;
-        m_localizedOpenParenthesisCountChangedAutomationFormat = (null)
+        m_localizedOpenParenthesisCountChangedAutomationFormat = string.Empty
    ;
-        m_localizedNoRightParenthesisAddedFormat = (null)
+        m_localizedNoRightParenthesisAddedFormat = string.Empty
    ;
         m_TokenPosition = (-1)
    ;
@@ -208,11 +207,7 @@ public partial class StandardCalculatorViewModel
 
         m_decimalSeparator = LocalizationSettings.GetInstance().GetDecimalSeparator();
 
-        if (AppWindow.Create() != null)
-        {
-            // Must have a CoreWindow to access the resource context.
-            m_isRtlLanguage = LocalizationService.GetInstance().IsRtlLayout();
-        }
+        m_isRtlLanguage = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
 
         IsEditingEnabled = false;
         IsUnaryOperatorEnabled = true;
@@ -243,7 +238,7 @@ public partial class StandardCalculatorViewModel
         string automationFormat = m_localizedCalculationResultAutomationFormat;
 
         // The narrator doesn't read the decimalSeparator if it's the last character
-        if (Utilities.IsLastCharacterTarget(displayValue, m_decimalSeparator))
+        if (displayValue.Length > 0 && displayValue[^1] == m_decimalSeparator)
         {
             // remove the decimal separator, to avoid a long pause between words
             localizedValue = LocalizeDisplayValue(displayValue.Substring(0, displayValue.Length - 1));
@@ -383,14 +378,14 @@ public partial class StandardCalculatorViewModel
     }
 
     public void SetExpressionDisplay(
-            List<(string, int)> tokens,
-            List<IExpressionCommand> commands)
+            IList<(string, int)> tokens,
+            IList<IExpressionCommand> commands)
     {
-        m_tokens = tokens;
-        m_commands = commands;
+        m_tokens = tokens.ToList();
+        m_commands = commands.ToList();
         if (!IsEditingEnabled)
         {
-            SetTokens(ref tokens);
+            SetTokens(m_tokens);
         }
 
         CalculationExpressionAutomationName = GetCalculatorExpressionAutomationName();
@@ -413,7 +408,7 @@ public partial class StandardCalculatorViewModel
         m_isLastOperationHistoryLoad = true;
     }
 
-    void SetTokens(ref List<(string, int)> tokens)
+    void SetTokens(IList<(string, int)> tokens)
     {
         AreTokensUpdated = false;
 
@@ -482,13 +477,13 @@ public partial class StandardCalculatorViewModel
         string expression = "";
         foreach (var token in m_ExpressionTokens)
         {
-            expression += LocalizationService.GetNarratorReadableToken(token.Token);
+            expression += LocalizationStringUtil.GetNarratorReadableToken(token.Token);
         }
 
         return GetLocalizedStringFormat(m_expressionAutomationNameFormat, expression);
     }
 
-    public void SetMemorizedNumbers(List<string> newMemorizedNumbers)
+    public void SetMemorizedNumbers(IList<string> newMemorizedNumbers)
     {
         LocalizationSettings localizer = LocalizationSettings.GetInstance();
         if (newMemorizedNumbers.Count == 0) // Memory has been cleared
@@ -632,7 +627,6 @@ public partial class StandardCalculatorViewModel
             {
                 if (commandIndex == 0)
                 {
-                    temp = null;
                     return;
                 }
 
@@ -653,7 +647,6 @@ public partial class StandardCalculatorViewModel
                 length = m_selectedExpressionLastData.Length + 1;
                 if (length > 50)
                 {
-                    temp = null;
                     return;
                 }
                 for (; i < length; ++i)
@@ -683,14 +676,14 @@ public partial class StandardCalculatorViewModel
             || (cmdenum == Command.CommandEXP) || (cmdenum == Command.CommandFE) || (cmdenum == Command.ModeBasic) || (cmdenum == Command.ModeProgrammer)
             || (cmdenum == Command.ModeScientific) || (cmdenum == Command.CommandINV) || (cmdenum == Command.CommandCENTR) || (cmdenum == Command.CommandDEG)
             || (cmdenum == Command.CommandRAD) || (cmdenum == Command.CommandGRAD)
-            || ((cmdenum >= Command.CommandBINEDITSTART) && (cmdenum <= Command.CommandBINEDITEND)))
+            || ((cmdenum >= Command.CommandBINEDITSTART) && (cmdenum <= Command.BinEditEnd)))
         {
             return false;
         }
         return true;
     }
 
-    void OnButtonPressed(Object parameter)
+    void OnButtonPressed(object? parameter)
     {
         m_feedbackForButtonPress = CalculatorButtonPressedEventArgs.GetAuditoryFeedbackFromCommandParameter(parameter);
         NumbersAndOperatorsEnum numOpEnum = CalculatorButtonPressedEventArgs.GetOperationFromCommandParameter(parameter);
@@ -710,7 +703,7 @@ public partial class StandardCalculatorViewModel
             && numOpEnum != NumbersAndOperatorsEnum.IsProgrammerMode && numOpEnum != NumbersAndOperatorsEnum.FToE
             && (numOpEnum != NumbersAndOperatorsEnum.Degree) && (numOpEnum != NumbersAndOperatorsEnum.Radians) && (numOpEnum != NumbersAndOperatorsEnum.Grads))
         {
-            if (!m_KeyPressed)
+            if (!m_KeyPressed && m_selectedExpressionToken is not null)
             {
                 SaveEditedCommand(m_selectedExpressionToken.TokenPosition, cmdenum);
             }
@@ -780,11 +773,11 @@ public partial class StandardCalculatorViewModel
             case NumberBase.OctBase:
                 return RadixType.Octal;
             default:
-                return RadixType.Decimal;
+                return RadixType.Dec;
         }
     }
 
-    public void OnCopyCommand(Object parameter)
+    public void OnCopyCommand(object? parameter)
     {
         CopyPasteManager.CopyToClipboard(GetRawDisplayValue());
 
@@ -792,7 +785,7 @@ public partial class StandardCalculatorViewModel
         Announcement = NarratorAnnouncement.GetDisplayCopiedAnnouncement(announcement);
     }
 
-    public async void OnPasteCommand(Object parameter)
+    public async void OnPasteCommand(object? parameter)
     {
         var that = (this);
         ViewMode mode;
@@ -852,7 +845,6 @@ public partial class StandardCalculatorViewModel
         bool isFirstLegalChar = true;
         m_standardCalculatorManager.SendCommand(Command.CommandCENTR);
         bool sendNegate = false;
-        bool processedDigit = false;
         bool sentEquals = false;
         bool isPreviousOperator = false;
 
@@ -928,7 +920,6 @@ public partial class StandardCalculatorViewModel
                 case NumbersAndOperatorsEnum.Seven:
                 case NumbersAndOperatorsEnum.Eight:
                 case NumbersAndOperatorsEnum.Nine:
-                    processedDigit = true;
                     break;
 
                 case NumbersAndOperatorsEnum.Add:
@@ -990,7 +981,7 @@ public partial class StandardCalculatorViewModel
         }
     }
 
-    void OnClearMemoryCommand(Object parameter)
+    void OnClearMemoryCommand(object? parameter)
     {
         m_standardCalculatorManager.MemorizedNumberClearAll();
 
@@ -1168,19 +1159,19 @@ public partial class StandardCalculatorViewModel
         }
     }
 
-    public void OnMemoryItemPressed(Object memoryItemPosition)
+    public void OnMemoryItemPressed(object? memoryItemPosition)
     {
         if (MemorizedNumbers != null && MemorizedNumbers.Count > 0 && memoryItemPosition is int boxedPosition)
         {
             m_standardCalculatorManager.MemorizedNumberLoad(boxedPosition);
-            HideMemoryClicked();
+            HideMemoryClicked?.Invoke();
 
             var mode = IsStandard ? ViewMode.Standard : IsScientific ? ViewMode.Scientific : ViewMode.Programmer;
             TraceLogger.GetInstance().LogMemoryItemLoad(mode, MemorizedNumbers.Count, boxedPosition);
         }
     }
 
-    public void OnMemoryAdd(Object memoryItemPosition)
+    public void OnMemoryAdd(object? memoryItemPosition)
     {
         // M+ will add display to memorylist if memory list is empty.
 
@@ -1191,7 +1182,7 @@ public partial class StandardCalculatorViewModel
         }
     }
 
-    public void OnMemorySubtract(Object memoryItemPosition)
+    public void OnMemorySubtract(object? memoryItemPosition)
     {
         // M- will add negative of displayed number to memorylist if memory list is empty.
         if (MemorizedNumbers != null && memoryItemPosition is int boxedPosition)
@@ -1201,7 +1192,7 @@ public partial class StandardCalculatorViewModel
         }
     }
 
-    public void OnMemoryClear(Object memoryItemPosition)
+    public void OnMemoryClear(object? memoryItemPosition)
     {
         if (MemorizedNumbers != null && MemorizedNumbers.Count > 0 && memoryItemPosition is int boxedPosition)
         {
@@ -1342,7 +1333,7 @@ public partial class StandardCalculatorViewModel
         {
             AreHEXButtonsEnabled = false;
             CurrentRadixType = NumberBase.DecBase;
-            m_standardCalculatorManager.SetRadix(RadixType.Decimal);
+            m_standardCalculatorManager.SetRadix(RadixType.Dec);
         }
         else
         {
@@ -1389,8 +1380,6 @@ public partial class StandardCalculatorViewModel
 
     void SaveEditedCommand(int tokenPosition, Command command)
     {
-        var curCalcEngine = m_standardCalculatorManager.m_currentCalculatorEngine;
-
         bool handleOperand = false;
         string updatedToken = "";
 
@@ -1399,7 +1388,7 @@ public partial class StandardCalculatorViewModel
 
         if (IsUnaryOp(command) && command != Command.CommandSIGN)
         {
-            int angleCmd = (int)(m_standardCalculatorManager.GetCurrentDegreeMode());
+            int angleCmd = (int)m_standardCalculatorManager.CurrentDegreeMode;
             AngleType angleType = GetAngleTypeFromCommand((Command)(angleCmd));
 
             if (IsTrigOp(command))
@@ -1417,28 +1406,28 @@ public partial class StandardCalculatorViewModel
             switch (command)
             {
                 case Command.CommandASIN:
-                    updatedToken = curCalcEngine.OpCodeToUnaryString((int)(Command.CommandSIN), true, angleType);
+                    updatedToken = m_standardCalculatorManager.GetUnaryOperatorDisplayName((int)Command.CommandSIN, true, angleType);
                     break;
                 case Command.CommandACOS:
-                    updatedToken = curCalcEngine.OpCodeToUnaryString((int)(Command.CommandCOS), true, angleType);
+                    updatedToken = m_standardCalculatorManager.GetUnaryOperatorDisplayName((int)Command.CommandCOS, true, angleType);
                     break;
                 case Command.CommandATAN:
-                    updatedToken = curCalcEngine.OpCodeToUnaryString((int)(Command.CommandTAN), true, angleType);
+                    updatedToken = m_standardCalculatorManager.GetUnaryOperatorDisplayName((int)Command.CommandTAN, true, angleType);
                     break;
                 case Command.CommandASINH:
-                    updatedToken = curCalcEngine.OpCodeToUnaryString((int)(Command.CommandSINH), true, angleType);
+                    updatedToken = m_standardCalculatorManager.GetUnaryOperatorDisplayName((int)Command.CommandSINH, true, angleType);
                     break;
                 case Command.CommandACOSH:
-                    updatedToken = curCalcEngine.OpCodeToUnaryString((int)(Command.CommandCOSH), true, angleType);
+                    updatedToken = m_standardCalculatorManager.GetUnaryOperatorDisplayName((int)Command.CommandCOSH, true, angleType);
                     break;
                 case Command.CommandATANH:
-                    updatedToken = curCalcEngine.OpCodeToUnaryString((int)(Command.CommandTANH), true, angleType);
+                    updatedToken = m_standardCalculatorManager.GetUnaryOperatorDisplayName((int)Command.CommandTANH, true, angleType);
                     break;
                 case Command.CommandPOWE:
-                    updatedToken = curCalcEngine.OpCodeToUnaryString((int)(Command.CommandLN), true, angleType);
+                    updatedToken = m_standardCalculatorManager.GetUnaryOperatorDisplayName((int)Command.CommandLN, true, angleType);
                     break;
                 default:
-                    updatedToken = curCalcEngine.OpCodeToUnaryString((int)(command), false, angleType);
+                    updatedToken = m_standardCalculatorManager.GetUnaryOperatorDisplayName((int)command, false, angleType);
                     break;
             }
             if ((token.Item1.Length > 0) && (token.Item1[token.Item1.Length - 1] == '('))
@@ -1450,7 +1439,7 @@ public partial class StandardCalculatorViewModel
         {
             IBinaryCommand spBinaryCommand = (IBinaryCommand)(tokenCommand);
             spBinaryCommand.SetCommand((int)(command));
-            updatedToken = curCalcEngine.OpCodeToString((int)(command));
+            updatedToken = m_standardCalculatorManager.GetOperatorDisplayName((int)command);
         }
         else if (IsOpnd(command) || command == Command.CommandBACK)
         {
@@ -1497,7 +1486,7 @@ public partial class StandardCalculatorViewModel
     void Recalculate(bool fromHistory = false)
     {
         // Recalculate
-        Command currentDegreeMode = m_standardCalculatorManager.GetCurrentDegreeMode();
+        Command currentDegreeMode = m_standardCalculatorManager.CurrentDegreeMode;
         List<IExpressionCommand> savedCommands = new List<IExpressionCommand>(m_commands);
         List<int> currentCommands = GetCommandsFromExpressionCommands(m_commands);
 
@@ -1600,7 +1589,7 @@ public partial class StandardCalculatorViewModel
         }
 
         // Programmer mode, bit flipping
-        if (CalculationManager.Command.CommandBINEDITSTART <= command && command <= CalculationManager.Command.CommandBINEDITEND)
+        if (CalculationManager.Command.CommandBINEDITSTART <= command && command <= CalculationManager.Command.BinEditEnd)
         {
             return true;
         }
@@ -1740,7 +1729,7 @@ public partial class StandardCalculatorViewModel
                     else
                     {
                         num = (int)(p.Item1[i]) - ASCII_0;
-                        num += CCommand.IDC_0;
+                        num += CCommand.Idc0;
                         if (num == (int)(Command.CommandMPLUS))
                         {
                             continue;
@@ -1893,19 +1882,19 @@ public partial class StandardCalculatorViewModel
                     m_standardCalculatorManager.SetHistoryItems(snapshot.CalcManager.HistoryItems.ToUnderlying());
                 }
 
-                if (snapshot.ExpressionDisplay != null)
+                if (snapshot.ExpressionDisplay is { } expressionDisplay)
                 {
                     if (snapshot.DisplayCommands.Count == 0)
                     {
                         // use case: the current expression was evaluated before. load from history.
                         Debug.Assert(!snapshot.PrimaryDisplay.IsError);
                         RawTokenCollection rawTokens = new RawTokenCollection();
-                        foreach (var token in snapshot.ExpressionDisplay?.Tokens)
+                        foreach (var token in expressionDisplay.Tokens)
                         {
                             rawTokens.Add((token.OpCodeName, token.CommandIndex));
                         }
                         var tokens = new RawTokenCollection(rawTokens);
-                        var commands = new List<IExpressionCommand>((snapshot.ExpressionDisplay?.Commands.ToUnderlying()));
+                        var commands = new List<IExpressionCommand>(expressionDisplay.Commands.ToUnderlying());
                         SetHistoryExpressionDisplay(tokens, commands);
                         SetExpressionDisplay(tokens, commands);
                         SetPrimaryDisplay(snapshot.PrimaryDisplay.DisplayValue, false);

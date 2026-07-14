@@ -1,85 +1,74 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-//
-// HorizontalNoOverflowStackPanel.h
-// Declaration of the HorizontalNoOverflowStackPanel class
-//
+using Avalonia;
+using Avalonia.Automation;
+using Avalonia.Controls;
 
-using System;
+namespace CalculatorApp.Controls;
 
-using Windows.Foundation;
-using Microsoft.UI.Xaml.Automation;
-using Microsoft.UI.Xaml.Automation.Peers;
-using Microsoft.UI.Xaml.Controls;
-
-namespace CalculatorApp
+/// <summary>
+/// Direct Avalonia port of the original WinUI panel. Children are kept on one
+/// row; items that do not fit are arranged to zero width instead of wrapping.
+/// A derived panel may reserve space for the final item before arranging the
+/// intervening items.
+/// </summary>
+public class HorizontalNoOverflowStackPanel : Panel
 {
-    namespace Controls
+    protected override Size MeasureOverride(Size availableSize)
     {
-        public class HorizontalNoOverflowStackPanel : Panel
+        double maxHeight = 0;
+        double width = 0;
+
+        foreach (Control child in Children)
         {
-            // Prioritize the last item over all other items (except the first one)
-            internal HorizontalNoOverflowStackPanel()
-            { }
+            child.Measure(Size.Infinity);
+            maxHeight = Math.Max(maxHeight, child.DesiredSize.Height);
+            width += child.DesiredSize.Width;
+        }
 
-            protected override Size MeasureOverride(Size availableSize)
+        return new Size(
+            Math.Min(width, availableSize.Width),
+            Math.Min(availableSize.Height, maxHeight));
+    }
+
+    protected override Size ArrangeOverride(Size finalSize)
+    {
+        if (Children.Count == 0)
+        {
+            return finalSize;
+        }
+
+        double positionX = 0;
+        Control lastChild = Children[^1];
+        double lastChildWidth = Children.Count > 2 && ShouldPrioritizeLastItem()
+            ? lastChild.DesiredSize.Width
+            : 0;
+
+        foreach (Control item in Children)
+        {
+            double widthAvailable = finalSize.Width - positionX;
+            if (!ReferenceEquals(item, lastChild))
             {
-                float maxHeight = 0;
-                float width = 0;
-                foreach (var child in Children)
-                {
-                    child.Measure(new Size(float.PositiveInfinity, float.PositiveInfinity));
-                    maxHeight = (float)Math.Max(maxHeight, child.DesiredSize.Height);
-                    width += (float)child.DesiredSize.Width;
-                }
-                return new Size(Math.Min(width, availableSize.Width), Math.Min(availableSize.Height, maxHeight));
+                widthAvailable -= lastChildWidth;
             }
 
-            protected override Size ArrangeOverride(Size finalSize)
+            double itemWidth = item.DesiredSize.Width;
+            if (widthAvailable > 0 && itemWidth <= widthAvailable)
             {
-                if (Children.Count == 0)
-                {
-                    return finalSize;
-                }
-
-                float posX = 0;
-                var lastChild = Children[Children.Count - 1];
-                float lastChildWidth = 0;
-                if (Children.Count > 2 && ShouldPrioritizeLastItem())
-                {
-                    lastChildWidth = (float)lastChild.DesiredSize.Width;
-                }
-                foreach (var item in Children)
-                {
-                    var widthAvailable = finalSize.Width - posX;
-                    if (item != lastChild)
-                    {
-                        widthAvailable -= lastChildWidth;
-                    }
-                    float itemWidth = (float)item.DesiredSize.Width;
-                    if (widthAvailable > 0 && itemWidth <= widthAvailable)
-                    {
-                        // stack the items horizontally (left to right)
-                        item.Arrange(new Rect(posX, 0, itemWidth, finalSize.Height));
-                        AutomationProperties.SetAccessibilityView(item, AccessibilityView.Content);
-                        posX += (float)item.RenderSize.Width;
-                    }
-                    else
-                    {
-                        // Not display the item
-                        item.Arrange(new Rect(0, 0, 0, 0));
-                        AutomationProperties.SetAccessibilityView(item, AccessibilityView.Raw);
-                    }
-                }
-                return finalSize;
+                item.Arrange(new Rect(positionX, 0, itemWidth, finalSize.Height));
+                AutomationProperties.SetAccessibilityView(item, AccessibilityView.Content);
+                positionX += item.Bounds.Width;
             }
-
-            protected virtual bool ShouldPrioritizeLastItem()
+            else
             {
-                return false;
+                item.Arrange(default);
+                AutomationProperties.SetAccessibilityView(item, AccessibilityView.Raw);
             }
         }
-    }
-}
 
+        return finalSize;
+    }
+
+    protected virtual bool ShouldPrioritizeLastItem() => false;
+}

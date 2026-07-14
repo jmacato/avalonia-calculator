@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <MicroComGeneratorRuntimeNamespace>MicroCom.Runtime</MicroComGeneratorRuntimeNamespace>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <AssemblyName>FluentAvalonia</AssemblyName>
+    <RootNamespace>FluentAvalonia</RootNamespace>
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\*.*" />
+    <AvaloniaResource Include="Fonts\*.*" />
+    <!-- Avalonia.Controls.DataGrid 12.1 emits unavoidable trim/AOT warnings. Calculator
+         does not use DataGrid, so omit FluentAvalonia's optional DataGrid theme. -->
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\DataGrid\**\*.axaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Controls.ColorPicker" />
+    <PackageReference Include="Avalonia.Skia" />
+    <PackageReference Include="MicroCom.CodeGenerator.MSBuild" PrivateAssets="All" />
+    <PackageReference Include="MicroCom.Runtime" />
+    <MicroComIdl Include="$(MSBuildThisFileDirectory)Interop\WinRT\WinRT.idl"
+                 CSharpInteropPath="$(IntermediateOutputPath)WinRT.Generated.cs" />
+  </ItemGroup>
+</Project>

@@ -3,7 +3,7 @@ namespace CalcManagerManaged.Interop
     /// <summary>
     /// Calculator mode
     /// </summary>
-    public enum CalcMode
+    internal enum CalcMode
     {
         Standard = 0,
         Scientific = 1,

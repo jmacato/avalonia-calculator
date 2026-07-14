@@ -15,7 +15,5 @@
     //     EngineResourceProvider();
     //     virtual string GetCEngineString(string_view id) override;
 
-    // private:
-        Windows.ApplicationModel.Resources.ResourceLoader  m_resLoader;
     };
 }

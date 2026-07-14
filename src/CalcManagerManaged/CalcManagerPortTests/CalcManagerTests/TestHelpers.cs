@@ -1,0 +1,32 @@
+using UnitConversionManager;
+
+namespace CalcEngineTests;
+
+internal static class TestHelpers
+{
+    public static void SetUnitParams(Unit unit, int id, string name, string abbreviation, bool conversionSource,
+        bool conversionTarget, bool isWhimsical)
+    {
+        unit.Id = id;
+        unit.Name = name;
+        unit.Abbreviation = abbreviation;
+        unit.IsConversionSource = conversionSource;
+        unit.IsConversionTarget = conversionTarget;
+        unit.IsWhimsical = isWhimsical;
+    }
+
+    public static void SetCategoryParams(Category category, int id, string name, bool supportsNegative)
+    {
+        category.Id = id;
+        category.Name = name;
+        category.SupportsNegative = supportsNegative;
+    }
+
+    public static void SetConversionDataParams(ConversionData conversionData, double ratio, double offset,
+        bool offsetFirst)
+    {
+        conversionData.Ratio = ratio;
+        conversionData.Offset = offset;
+        conversionData.OffsetFirst = offsetFirst;
+    }
+}

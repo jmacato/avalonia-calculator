@@ -1,19 +1,19 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using Avalonia.Markup.Xaml;
 using CalculatorApp.ViewModel.Common;
-using Microsoft.UI.Xaml.Markup;
 
-namespace CalculatorApp.Utils
+namespace CalculatorApp.Utils;
+
+public sealed class ResourceString : MarkupExtension
 {
-    [MarkupExtensionReturnType(ReturnType = typeof(string))]
-    public sealed class ResourceString : MarkupExtension
-    {
-        public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 
-        protected override object ProvideValue()
-        {
-            return AppResourceProvider.GetInstance().GetResourceString(this.Name);
-        }
+    public override object ProvideValue(IServiceProvider serviceProvider)
+    {
+        // RESW property paths such as "Control/Content" become dotted RESX
+        // keys during the in-place resource conversion.
+        return AppResourceProvider.GetInstance().GetResourceString(Name.Replace('/', '.'));
     }
 }

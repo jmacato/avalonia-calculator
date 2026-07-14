@@ -1,104 +1,128 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Styling;
+using CalculatorApp.Controls;
 using CalculatorApp.ViewModel.Common;
-using CalculatorApp.ViewModel.Common;
 
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
+namespace CalculatorApp;
 
-// The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
-
-namespace CalculatorApp
+public sealed partial class NumberPad : UserControl
 {
-    public sealed partial class NumberPad : UserControl
+    public static readonly StyledProperty<ControlTheme?> ButtonStyleProperty =
+        AvaloniaProperty.Register<NumberPad, ControlTheme?>(nameof(ButtonStyle));
+
+    public static readonly StyledProperty<NumberBase> CurrentRadixTypeProperty =
+        AvaloniaProperty.Register<NumberPad, NumberBase>(nameof(CurrentRadixType), NumberBase.DecBase);
+
+    public static readonly StyledProperty<bool> IsDecimalEnabledProperty =
+        AvaloniaProperty.Register<NumberPad, bool>(nameof(IsDecimalEnabled), true);
+
+    private bool _isErrorVisualState;
+
+    public NumberPad()
     {
-        public NumberPad()
+        InitializeComponent();
+
+        LocalizationSettings localizationSettings = LocalizationSettings.GetInstance();
+        DecimalSeparatorButton.Content = localizationSettings.GetDecimalSeparator();
+        Num0Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('0');
+        Num1Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('1');
+        Num2Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('2');
+        Num3Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('3');
+        Num4Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('4');
+        Num5Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('5');
+        Num6Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('6');
+        Num7Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('7');
+        Num8Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('8');
+        Num9Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('9');
+    }
+
+    public ControlTheme? ButtonStyle
+    {
+        get => GetValue(ButtonStyleProperty);
+        set => SetValue(ButtonStyleProperty, value);
+    }
+
+    public NumberBase CurrentRadixType
+    {
+        get => GetValue(CurrentRadixTypeProperty);
+        set => SetValue(CurrentRadixTypeProperty, value);
+    }
+
+    public bool IsDecimalEnabled
+    {
+        get => GetValue(IsDecimalEnabledProperty);
+        set => SetValue(IsDecimalEnabledProperty, value);
+    }
+
+    public bool IsErrorVisualState
+    {
+        get => _isErrorVisualState;
+        set
         {
-            m_isErrorVisualState = false;
-            InitializeComponent();
-
-            var localizationSettings = LocalizationSettings.GetInstance();
-
-            DecimalSeparatorButton.Content = localizationSettings.GetDecimalSeparator();
-            Num0Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('0');
-            Num1Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('1');
-            Num2Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('2');
-            Num3Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('3');
-            Num4Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('4');
-            Num5Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('5');
-            Num6Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('6');
-            Num7Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('7');
-            Num8Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('8');
-            Num9Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('9');
-        }
-
-        public Microsoft.UI.Xaml.Style ButtonStyle
-        {
-            get => (Microsoft.UI.Xaml.Style)GetValue(ButtonStyleProperty);
-            set => SetValue(ButtonStyleProperty, value);
-        }
-
-        // Using a DependencyProperty as the backing store for ButtonStyle.  This enables animation, styling, binding, etc...
-        public static readonly DependencyProperty ButtonStyleProperty =
-            DependencyProperty.Register(nameof(ButtonStyle), typeof(Microsoft.UI.Xaml.Style), typeof(NumberPad), new PropertyMetadata(default(Microsoft.UI.Xaml.Style)));
-
-        public CalculatorApp.ViewModel.Common.NumberBase CurrentRadixType
-        {
-            get => (CalculatorApp.ViewModel.Common.NumberBase)GetValue(CurrentRadixTypeProperty);
-            set => SetValue(CurrentRadixTypeProperty, value);
-        }
-
-        // Using a DependencyProperty as the backing store for CurrentRadixType.  This enables animation, styling, binding, etc...
-        public static readonly DependencyProperty CurrentRadixTypeProperty =
-            DependencyProperty.Register(nameof(CurrentRadixType), typeof(CalculatorApp.ViewModel.Common.NumberBase), typeof(NumberPad), new PropertyMetadata(CalculatorApp.ViewModel.Common.NumberBase.DecBase, (sender, args) =>
+            if (_isErrorVisualState != value)
             {
-                var self = (NumberPad)sender;
-                self.OnCurrentRadixTypePropertyChanged((NumberBase)args.OldValue, (NumberBase)args.NewValue);
-            }));
-
-        public bool IsErrorVisualState
-        {
-            get => m_isErrorVisualState;
-            set
-            {
-                if (m_isErrorVisualState != value)
-                {
-                    m_isErrorVisualState = value;
-                    string newState = m_isErrorVisualState ? "ErrorLayout" : "NoErrorLayout";
-                    VisualStateManager.GoToState(this, newState, false);
-                }
+                _isErrorVisualState = value;
+                DecimalSeparatorButton.IsEnabled = !value && IsDecimalEnabled;
             }
         }
+    }
 
-        private void OnCurrentRadixTypePropertyChanged(NumberBase oldValue, NumberBase newValue)
+    public void SetButtonFontSize(double fontSize)
+    {
+        Num0Button.FontSize = fontSize;
+        Num1Button.FontSize = fontSize;
+        Num2Button.FontSize = fontSize;
+        Num3Button.FontSize = fontSize;
+        Num4Button.FontSize = fontSize;
+        Num5Button.FontSize = fontSize;
+        Num6Button.FontSize = fontSize;
+        Num7Button.FontSize = fontSize;
+        Num8Button.FontSize = fontSize;
+        Num9Button.FontSize = fontSize;
+        DecimalSeparatorButton.FontSize = fontSize;
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == CurrentRadixTypeProperty)
         {
-            Num0Button.IsEnabled = true;
-            Num1Button.IsEnabled = true;
-            Num2Button.IsEnabled = true;
-            Num3Button.IsEnabled = true;
-            Num4Button.IsEnabled = true;
-            Num5Button.IsEnabled = true;
-            Num6Button.IsEnabled = true;
-            Num7Button.IsEnabled = true;
-            Num8Button.IsEnabled = true;
-            Num9Button.IsEnabled = true;
+            UpdateRadixButtons(change.GetNewValue<NumberBase>());
+        }
+        else if (change.Property == IsDecimalEnabledProperty)
+        {
+            DecimalSeparatorButton.IsEnabled = change.GetNewValue<bool>() && !IsErrorVisualState;
+        }
+    }
 
-            if (newValue == NumberBase.BinBase)
-            {
-                Num2Button.IsEnabled = false;
-                Num3Button.IsEnabled = false;
-                Num4Button.IsEnabled = false;
-                Num5Button.IsEnabled = false;
-                Num6Button.IsEnabled = false;
-                Num7Button.IsEnabled = false;
-                Num8Button.IsEnabled = false;
-                Num9Button.IsEnabled = false;
-            }
-            else if (newValue == NumberBase.OctBase)
-            {
-                Num8Button.IsEnabled = false;
-                Num9Button.IsEnabled = false;
-            }
+    private void UpdateRadixButtons(NumberBase numberBase)
+    {
+        CalculatorButton[] buttons =
+        [
+            Num0Button, Num1Button, Num2Button, Num3Button, Num4Button,
+            Num5Button, Num6Button, Num7Button, Num8Button, Num9Button
+        ];
+
+        foreach (CalculatorButton button in buttons)
+        {
+            button.IsEnabled = true;
         }
 
-        private bool m_isErrorVisualState;
+        if (numberBase == NumberBase.BinBase)
+        {
+            for (int index = 2; index < buttons.Length; index++)
+            {
+                buttons[index].IsEnabled = false;
+            }
+        }
+        else if (numberBase == NumberBase.OctBase)
+        {
+            Num8Button.IsEnabled = false;
+            Num9Button.IsEnabled = false;
+        }
     }
 }

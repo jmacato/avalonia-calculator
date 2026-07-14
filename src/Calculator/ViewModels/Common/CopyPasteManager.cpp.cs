@@ -11,7 +11,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Windows.ApplicationModel.DataTransfer;
+using Avalonia.Controls;
+using Avalonia.Input.Platform;
+using CalculatorApp;
 
 namespace CalculatorApp.ViewModel.Common;
 
@@ -73,12 +75,15 @@ public partial class CopyPasteManager
 
     private static readonly Regex[] unitConverterPatterns = [new Regex(c_wspc + c_signedDecFloat + c_wspc)];
 
-    public static void CopyToClipboard(String stringToCopy)
+    private static IClipboard? Clipboard =>
+        App.RootView is { } root ? TopLevel.GetTopLevel(root)?.Clipboard : null;
+
+    public static void CopyToClipboard(string stringToCopy)
     {
-        // Copy the string to the clipboard
-        var dataPackage = new DataPackage();
-        dataPackage.SetText(stringToCopy);
-        Clipboard.SetContentWithOptions(dataPackage, null);
+        if (Clipboard is { } clipboard)
+        {
+            _ = clipboard.SetTextAsync(stringToCopy);
+        }
     }
 
     public static async Task<String> GetStringToPaste(ViewMode mode, CategoryGroupType modeType, NumberBase programmerNumberBase, BitLength bitLengthType)
@@ -104,8 +109,6 @@ public partial class CopyPasteManager
 
 
         // Retrieve the text in the clipboard
-        DataPackageView dataPackageView = Clipboard.GetContent();
-
         // TODO: Support all formats supported by ClipboardHasText
         // -- add support to avoid pasting of expressions like 12 34 (as of now we allow 1234)
         // -- add support to allow pasting for expressions like .2, -.2
@@ -113,8 +116,16 @@ public partial class CopyPasteManager
 
         try
         {
-            // Get text from clipboard
-            string pastedText = await dataPackageView.GetTextAsync();
+            if (Clipboard is not { } clipboard)
+            {
+                return string.Empty;
+            }
+
+            string? pastedText = await clipboard.TryGetTextAsync();
+            if (string.IsNullOrEmpty(pastedText))
+            {
+                return string.Empty;
+            }
 
             // Validate the pasted expression based on calculator mode
             return ValidatePasteExpression(pastedText, mode, modeType, programmerNumberBase, bitLengthType);
@@ -128,7 +139,9 @@ public partial class CopyPasteManager
 
     public static bool HasStringToPaste()
     {
-        return Clipboard.GetContent().Contains(StandardDataFormats.Text);
+        // Clipboard inspection is asynchronous on Avalonia. The paste operation
+        // performs the authoritative format/content check without blocking the UI.
+        return Clipboard is not null;
     }
 
     static String ValidatePasteExpression(String pastedText, ViewMode mode, NumberBase programmerNumberBase, BitLength bitLengthType)
@@ -510,7 +523,7 @@ public partial class CopyPasteManager
             return Convert.ToUInt64(operand, intBase);
 
         }
-        catch (Exception e)
+        catch (Exception)
         {
             // Do nothin.
         }

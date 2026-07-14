@@ -16,14 +16,7 @@ using System.Linq;
 using CalculatorApp;
 using CalculatorApp.ViewModel.Common;
 using CalculatorApp.ViewModel;
-using Windows.Foundation.Collections;
-using Windows.Foundation.Metadata;
-using Windows.Management.Policies;
-using Microsoft.Windows.System;
 using ViewModeType = CalculatorApp.ViewModel.Common.ViewMode;
-using UCM = UnitConversionManager;
-using System.Diagnostics;
-using Windows.System;
 
 
 namespace CalculatorApp.ViewModel.Common;
@@ -300,7 +293,7 @@ public partial class NavCategoryGroup
                     groupMode,
                     categoryInitializer.viewMode,
                     categoryInitializer.supportsNegative,
-                    categoryInitializer.viewMode != ViewMode.Graphing));
+                    NavCategoryStates.IsViewModeEnabled(categoryInitializer.viewMode)));
             }
         }
     }
@@ -315,7 +308,7 @@ public partial class NavCategoryStates
         CurrentUserId = userId;
     }
 
-    public static string CurrentUserId;
+    public static string CurrentUserId = string.Empty;
     public static ObservableCollection<NavCategoryGroup> CreateMenuOptions()
     {
         var menuOptions = new ObservableCollection<NavCategoryGroup>();
@@ -437,10 +430,10 @@ public partial class NavCategoryStates
         foreach (var navCat in NavCategory.s_categoryManifest)
         {
             if (navCat.viewMode == mode)
-                return navCat.nameResourceKey;
+                return navCat.nameResourceKey + "Text";
         }
 
-        return "Text";
+        return string.Empty;
 
         // const auto &citer = find_if(
         //     cbegin(s_categoryManifest),
@@ -454,7 +447,6 @@ public partial class NavCategoryStates
 
     public static CategoryGroupType GetGroupType(ViewMode mode)
     {
-        Debugger.Break();
         foreach (var navCat in NavCategory.s_categoryManifest)
         {
             if (navCat.viewMode == mode)
@@ -628,12 +620,8 @@ public partial class NavCategoryStates
 
     public static bool IsGraphingModeEnabled()
     {
-        var user = User.GetFromId(CurrentUserId);
-        if (user == null)
-        {
-            return true;
-        }
-
-        return NamedPolicy.GetPolicyFromPathForUser(user, "Education", "AllowGraphingCalculator").GetBoolean();
+        // The WinUI app consulted the Windows Education NamedPolicy here. That
+        // platform-only policy is intentionally not part of the Avalonia port.
+        return true;
     }
 }

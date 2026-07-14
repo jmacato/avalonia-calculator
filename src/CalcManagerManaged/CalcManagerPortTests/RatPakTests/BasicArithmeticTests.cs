@@ -1,5 +1,4 @@
 using CalcEngine;
-using  CalcEngine;
 
 namespace CalcManagerPortTests.RatPakTests;
 
@@ -16,30 +15,32 @@ public class BasicArithmeticTests
     #region Number Creation Tests
 
     [Fact]
-    public void CreateNumber_FromString_CreatesCorrectNumber()
+    public void CreateNumberFromStringCreatesCorrectNumber()
     {
         var num = _ratPak.StringToNumber("123456789", 10, _precision);
+        Assert.NotNull(num);
 
         Assert.NotNull(num);
-        Assert.Equal(1, num.sign); // Positive number
-        Assert.True(num.cdigit > 0); // Has digits
+        Assert.Equal(1, num.Sign); // Positive number
+        Assert.True(num.Cdigit > 0); // Has digits
 
         // Convert back to string to verify
-        var numStr = _ratPak.NumberToString(ref num, RatPak.NumberFormat.Float, 10, _precision);
+        var numStr = _ratPak.NumberToString(ref num, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("123456789", numStr);
     }
 
     [Fact]
-    public void CreateNumber_NegativeFromString_CreatesCorrectNumber()
+    public void CreateNumberNegativeFromStringCreatesCorrectNumber()
     {
         var num = _ratPak.StringToNumber("-987654321", 10, _precision);
+        Assert.NotNull(num);
 
         Assert.NotNull(num);
-        Assert.Equal(-1, num.sign); // Negative number
-        Assert.True(num.cdigit > 0); // Has digits
+        Assert.Equal(-1, num.Sign); // Negative number
+        Assert.True(num.Cdigit > 0); // Has digits
 
         // Convert back to string to verify
-        var numStr = _ratPak.NumberToString(ref num, RatPak.NumberFormat.Float, 10, _precision);
+        var numStr = _ratPak.NumberToString(ref num, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("-987654321", numStr);
     }
 
@@ -54,11 +55,12 @@ public class BasicArithmeticTests
     [InlineData("1e10", "10000000000")]
     [InlineData("1.234e5", "123400")]
     [InlineData("1.234e-5", "0.00001234")]
-    public void StringToNumber_VariousInputs_ParsesCorrectly(string input, string expected)
+    public void StringToNumberVariousInputsParsesCorrectly(string input, string expected)
     {
         var num = _ratPak.StringToNumber(input, 10, _precision);
+        Assert.NotNull(num);
 
-        var numStr = _ratPak.NumberToString(ref num, RatPak.NumberFormat.Float, 10, _precision);
+        var numStr = _ratPak.NumberToString(ref num, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(expected, numStr);
     }
 
@@ -67,41 +69,49 @@ public class BasicArithmeticTests
     #region Addition Tests
 
     [Fact]
-    public void AddNum_SimpleAddition_CorrectResult()
+    public void AddNumSimpleAdditionCorrectResult()
     {
         var num1 = _ratPak.StringToNumber("123", 10, _precision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("456", 10, _precision);
+        Assert.NotNull(num2);
 
-        _ratPak.addnum(ref num1, num2, 10);
+        RatPak.addnum(ref num1, num2, 10);
 
-        var result = _ratPak.NumberToString(ref num1, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.NumberToString(ref num1, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("579", result);
     }
 
     [Fact]
-    public void AddNum_NegativeNumbers_CorrectResult()
+    public void AddNumNegativeNumbersCorrectResult()
     {
         var num1 = _ratPak.StringToNumber("-123", 10, _precision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("456", 10, _precision);
+        Assert.NotNull(num2);
 
-        _ratPak.addnum(ref num1, num2, 10);
+        RatPak.addnum(ref num1, num2, 10);
 
-        var result = _ratPak.NumberToString(ref num1, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.NumberToString(ref num1, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("333", result);
     }
 
     [Fact]
-    public void AddRat_SimpleFractions_CorrectResult()
+    public void AddRatSimpleFractionsCorrectResult()
     {
         var num1 = _ratPak.StringToNumber("1", 10, _precision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("2", 10, _precision);
+        Assert.NotNull(num2);
         var num3 = _ratPak.StringToNumber("1", 10, _precision);
+        Assert.NotNull(num3);
         var num4 = _ratPak.StringToNumber("3", 10, _precision);
+        Assert.NotNull(num4);
 
-        var rat1 = _ratPak.numtorat(num1, 10); // 1
-        var rat2 = _ratPak.numtorat(num2, 10); // 2
-        var rat3 = _ratPak.numtorat(num3, 10); // 1
-        var rat4 = _ratPak.numtorat(num4, 10); // 3
+        var rat1 = RatPak.numtorat(num1, 10); // 1
+        var rat2 = RatPak.numtorat(num2, 10); // 2
+        var rat3 = RatPak.numtorat(num3, 10); // 1
+        var rat4 = RatPak.numtorat(num4, 10); // 3
 
         // Create 1/2
         _ratPak.divrat(ref rat1, rat2, _precision);
@@ -112,7 +122,7 @@ public class BasicArithmeticTests
         // 1/2 + 1/3
         _ratPak.addrat(ref rat1, rat3, _precision);
 
-        var result = _ratPak.RatToString(ref rat1, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref rat1, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("0.8333333333333333333333333333333333333333333333333333333333333333", result);
     }
 
@@ -122,14 +132,16 @@ public class BasicArithmeticTests
     [InlineData("-5", "5", "0")] // -5 + 5 = 0
     [InlineData("999", "1", "1000")] // 999 + 1 = 1000
     [InlineData("-10", "-20", "-30")] // -10 + -20 = -30
-    public void AddNum_VariousInputs_CorrectResults(string a, string b, string expected)
+    public void AddNumVariousInputsCorrectResults(string a, string b, string expected)
     {
         var numA = _ratPak.StringToNumber(a, 10, _precision);
+        Assert.NotNull(numA);
         var numB = _ratPak.StringToNumber(b, 10, _precision);
+        Assert.NotNull(numB);
 
-        _ratPak.addnum(ref numA, numB, 10);
+        RatPak.addnum(ref numA, numB, 10);
 
-        var result = _ratPak.NumberToString(ref numA, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.NumberToString(ref numA, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(expected, result);
     }
 
@@ -138,17 +150,21 @@ public class BasicArithmeticTests
     #region Subtraction Tests
 
     [Fact]
-    public void SubRat_SimpleFractions_CorrectResult()
+    public void SubRatSimpleFractionsCorrectResult()
     {
         var num1 = _ratPak.StringToNumber("3", 10, _precision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("4", 10, _precision);
+        Assert.NotNull(num2);
         var num3 = _ratPak.StringToNumber("1", 10, _precision);
+        Assert.NotNull(num3);
         var num4 = _ratPak.StringToNumber("5", 10, _precision);
+        Assert.NotNull(num4);
 
-        var rat1 = _ratPak.numtorat(num1, 10); // 3
-        var rat2 = _ratPak.numtorat(num2, 10); // 4
-        var rat3 = _ratPak.numtorat(num3, 10); // 1
-        var rat4 = _ratPak.numtorat(num4, 10); // 5
+        var rat1 = RatPak.numtorat(num1, 10); // 3
+        var rat2 = RatPak.numtorat(num2, 10); // 4
+        var rat3 = RatPak.numtorat(num3, 10); // 1
+        var rat4 = RatPak.numtorat(num4, 10); // 5
 
         // Create 3/4
         _ratPak.divrat(ref rat1, rat2, _precision);
@@ -158,7 +174,7 @@ public class BasicArithmeticTests
         // 3 / 4 - 1 / 5
         _ratPak.subrat(ref rat1, rat3, _precision);
 
-        var result = _ratPak.RatToString(ref rat1, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref rat1, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("0.55", result);
     }
 
@@ -167,14 +183,17 @@ public class BasicArithmeticTests
     [InlineData("10", "4.5", "5.5")]
     [InlineData("1", "2", "-1")]
     [InlineData("1.5", "0.5", "1")]
-    public void SubRat_VariousInputs_CorrectResults(string a, string b, string expected)
+    public void SubRatVariousInputsCorrectResults(string a, string b, string expected)
     {
+        ArgumentNullException.ThrowIfNull(a);
+        ArgumentNullException.ThrowIfNull(b);
+
         var ratA = StringToRat(a);
         var ratB = StringToRat(b);
 
         _ratPak.subrat(ref ratA, ratB, _precision);
 
-        var result = _ratPak.RatToString(ref ratA, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref ratA, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(expected, result);
     }
 
@@ -183,29 +202,35 @@ public class BasicArithmeticTests
     #region Multiplication Tests
 
     [Fact]
-    public void MulNum_SimpleMultiplication_CorrectResult()
+    public void MulNumSimpleMultiplicationCorrectResult()
     {
         var num1 = _ratPak.StringToNumber("123", 10, _precision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("456", 10, _precision);
+        Assert.NotNull(num2);
 
-        _ratPak.mulnum(ref num1, num2, 10);
+        RatPak.mulnum(ref num1, num2, 10);
 
-        var result = _ratPak.NumberToString(ref num1, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.NumberToString(ref num1, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("56088", result);
     }
 
     [Fact]
-    public void MulRat_FractionMultiplication_CorrectResult()
+    public void MulRatFractionMultiplicationCorrectResult()
     {
         var num1 = _ratPak.StringToNumber("2", 10, _precision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("3", 10, _precision);
+        Assert.NotNull(num2);
         var num3 = _ratPak.StringToNumber("3", 10, _precision);
+        Assert.NotNull(num3);
         var num4 = _ratPak.StringToNumber("7", 10, _precision);
+        Assert.NotNull(num4);
 
-        var rat1 = _ratPak.numtorat(num1, 10); // 2
-        var rat2 = _ratPak.numtorat(num2, 10); // 3
-        var rat3 = _ratPak.numtorat(num3, 10); // 3
-        var rat4 = _ratPak.numtorat(num4, 10); // 7
+        var rat1 = RatPak.numtorat(num1, 10); // 2
+        var rat2 = RatPak.numtorat(num2, 10); // 3
+        var rat3 = RatPak.numtorat(num3, 10); // 3
+        var rat4 = RatPak.numtorat(num4, 10); // 7
 
         // Create 2/3
         _ratPak.divrat(ref rat1, rat2, _precision);
@@ -215,7 +240,7 @@ public class BasicArithmeticTests
         // (2 / 3) * (3 / 7)
         _ratPak.mulrat(ref rat1, rat3, _precision);
 
-        var result = _ratPak.RatToString(ref rat1, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref rat1, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("0.2857142857142857142857142857142857142857142857142857142857142857", result);
     }
 
@@ -225,14 +250,17 @@ public class BasicArithmeticTests
     [InlineData("-5", "4", "-20")]
     [InlineData("-3", "-2", "6")]
     [InlineData("0.5", "0.5", "0.25")]
-    public void MulRat_VariousInputs_CorrectResults(string a, string b, string expected)
+    public void MulRatVariousInputsCorrectResults(string a, string b, string expected)
     {
+        ArgumentNullException.ThrowIfNull(a);
+        ArgumentNullException.ThrowIfNull(b);
+
         var ratA = StringToRat(a);
         var ratB = StringToRat(b);
 
         _ratPak.mulrat(ref ratA, ratB, _precision);
 
-        var result = _ratPak.RatToString(ref ratA, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref ratA, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(expected, result);
     }
 
@@ -241,29 +269,35 @@ public class BasicArithmeticTests
     #region Division Tests
 
     [Fact]
-    public void DivNum_SimpleDivision_CorrectResult()
+    public void DivNumSimpleDivisionCorrectResult()
     {
         var num1 = _ratPak.StringToNumber("100", 10, _precision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("4", 10, _precision);
+        Assert.NotNull(num2);
 
-        _ratPak.divnum(ref num1, num2, 10, _precision);
+        RatPak.divnum(ref num1, num2, 10, _precision);
 
-        var result = _ratPak.NumberToString(ref num1, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.NumberToString(ref num1, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("25", result);
     }
 
     [Fact]
-    public void DivRat_FractionDivision_CorrectResult()
+    public void DivRatFractionDivisionCorrectResult()
     {
         var num1 = _ratPak.StringToNumber("1", 10, _precision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("2", 10, _precision);
+        Assert.NotNull(num2);
         var num3 = _ratPak.StringToNumber("3", 10, _precision);
+        Assert.NotNull(num3);
         var num4 = _ratPak.StringToNumber("4", 10, _precision);
+        Assert.NotNull(num4);
 
-        var rat1 = _ratPak.numtorat(num1, 10); // 1
-        var rat2 = _ratPak.numtorat(num2, 10); // 2
-        var rat3 = _ratPak.numtorat(num3, 10); // 3
-        var rat4 = _ratPak.numtorat(num4, 10); // 4
+        var rat1 = RatPak.numtorat(num1, 10); // 1
+        var rat2 = RatPak.numtorat(num2, 10); // 2
+        var rat3 = RatPak.numtorat(num3, 10); // 3
+        var rat4 = RatPak.numtorat(num4, 10); // 4
 
         // Create 1/2
         _ratPak.divrat(ref rat1, rat2, _precision);
@@ -273,7 +307,7 @@ public class BasicArithmeticTests
         // (1 / 2) / (3 / 4)
         _ratPak.divrat(ref rat1, rat3, _precision);
 
-        var result = _ratPak.RatToString(ref rat1, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref rat1, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("0.6666666666666666666666666666666666666666666666666666666666666667", result);
     }
 
@@ -283,14 +317,17 @@ public class BasicArithmeticTests
     [InlineData("0", "5", "0")]
     [InlineData("-12", "4", "-3")]
     [InlineData("-8", "-2", "4")]
-    public void DivRat_VariousInputs_CorrectResults(string a, string b, string expected)
+    public void DivRatVariousInputsCorrectResults(string a, string b, string expected)
     {
+        ArgumentNullException.ThrowIfNull(a);
+        ArgumentNullException.ThrowIfNull(b);
+
         var ratA = StringToRat(a);
         var ratB = StringToRat(b);
 
         _ratPak.divrat(ref ratA, ratB, _precision);
 
-        var result = _ratPak.RatToString(ref ratA, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref ratA, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(expected, result);
     }
 
@@ -299,32 +336,36 @@ public class BasicArithmeticTests
     #region Remainder and Modulo Tests
 
     [Fact]
-    public void RemRat_SimpleRemainder_CorrectResult()
+    public void RemRatSimpleRemainderCorrectResult()
     {
         var num1 = _ratPak.StringToNumber("10", 10, _precision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("3", 10, _precision);
+        Assert.NotNull(num2);
 
-        var rat1 = _ratPak.numtorat(num1, 10); // 10
-        var rat2 = _ratPak.numtorat(num2, 10); // 3
+        var rat1 = RatPak.numtorat(num1, 10); // 10
+        var rat2 = RatPak.numtorat(num2, 10); // 3
 
-        _ratPak.remrat(ref rat1, rat2);
+        RatPak.remrat(ref rat1, rat2);
 
-        var result = _ratPak.RatToString(ref rat1, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref rat1, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("1", result);
     }
 
     [Fact]
-    public void ModRat_SimpleModulo_CorrectResult()
+    public void ModRatSimpleModuloCorrectResult()
     {
         var num1 = _ratPak.StringToNumber("-10", 10, _precision);
+        Assert.NotNull(num1);
         var num2 = _ratPak.StringToNumber("3", 10, _precision);
+        Assert.NotNull(num2);
 
-        var rat1 = _ratPak.numtorat(num1, 10); // -10
-        var rat2 = _ratPak.numtorat(num2, 10); // 3
+        var rat1 = RatPak.numtorat(num1, 10); // -10
+        var rat2 = RatPak.numtorat(num2, 10); // 3
 
         _ratPak.modrat(ref rat1, rat2);
 
-        var result = _ratPak.RatToString(ref rat1, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref rat1, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal("2", result); // In modular arithmetic, -10 mod 3 = 2
     }
 
@@ -334,14 +375,17 @@ public class BasicArithmeticTests
     [InlineData("7", "4", "3")] // 7 % 4 = 3
     [InlineData("-7", "4", "-3")] // -7 % 4 = -3 (reminder takes sign of dividend)
     [InlineData("7", "-4", "3")] // 7 % -4 = 3 (reminder takes sign of dividend)
-    public void RemRat_VariousInputs_CorrectResults(string a, string b, string expected)
+    public void RemRatVariousInputsCorrectResults(string a, string b, string expected)
     {
+        ArgumentNullException.ThrowIfNull(a);
+        ArgumentNullException.ThrowIfNull(b);
+
         var ratA = StringToRat(a);
         var ratB = StringToRat(b);
 
-        _ratPak.remrat(ref ratA, ratB);
+        RatPak.remrat(ref ratA, ratB);
 
-        var result = _ratPak.RatToString(ref ratA, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref ratA, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(expected, result);
     }
 
@@ -350,14 +394,17 @@ public class BasicArithmeticTests
     [InlineData("-10", "3", "2")] // -10 mod 3 = 2
     [InlineData("10", "-3", "-2")] // 10 mod -3 = -2
     [InlineData("-10", "-3", "-1")] // -10 mod -3 = -1
-    public void ModRat_VariousInputs_CorrectResults(string a, string b, string expected)
+    public void ModRatVariousInputsCorrectResults(string a, string b, string expected)
     {
+        ArgumentNullException.ThrowIfNull(a);
+        ArgumentNullException.ThrowIfNull(b);
+
         var ratA = StringToRat(a);
         var ratB = StringToRat(b);
 
         _ratPak.modrat(ref ratA, ratB);
 
-        var result = _ratPak.RatToString(ref ratA, RatPak.NumberFormat.Float, 10, _precision);
+        var result = _ratPak.RatToString(ref ratA, NumberFormat.FloatingPoint, 10, _precision);
         Assert.Equal(expected, result);
     }
 
@@ -365,17 +412,19 @@ public class BasicArithmeticTests
 
     #region Helper Methods
 
-    private RatPak.RAT StringToRat(string input)
+    private RAT StringToRat(string input)
     {
         // Handle fractions like "1/3"
-        if (input.Contains('/'))
+        if (input.Contains('/', StringComparison.Ordinal))
         {
             string[] parts = input.Split('/');
             var numNumerator = _ratPak.StringToNumber(parts[0], 10, _precision);
+            Assert.NotNull(numNumerator);
             var numDenominator = _ratPak.StringToNumber(parts[1], 10, _precision);
+            Assert.NotNull(numDenominator);
 
-            var result = _ratPak.numtorat(numNumerator, 10);
-            var denominator = _ratPak.numtorat(numDenominator, 10);
+            var result = RatPak.numtorat(numNumerator, 10);
+            var denominator = RatPak.numtorat(numDenominator, 10);
 
             _ratPak.divrat(ref result, denominator, _precision);
             return result;
@@ -383,7 +432,8 @@ public class BasicArithmeticTests
 
         // Handle regular numbers
         var num = _ratPak.StringToNumber(input, 10, _precision);
-        return _ratPak.numtorat(num, 10);
+        Assert.NotNull(num);
+        return RatPak.numtorat(num, 10);
     }
 
     #endregion

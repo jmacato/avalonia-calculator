@@ -3,7 +3,7 @@ namespace CalcManagerManaged.Interop;
 /// <summary>
 /// Interface for the resource provider
 /// </summary>
-public interface ICalcResourceProvider
+internal interface ICalcResourceProvider
 {
-    string GetString(string resourceId);
+    string? GetString(string resourceId);
 }

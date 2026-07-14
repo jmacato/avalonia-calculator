@@ -6,7 +6,7 @@ namespace CalcManagerManaged.Interop;
 /// Delegate for display callback
 /// </summary>
 [UnmanagedFunctionPointer(CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-public delegate void CalcDisplayCallback(
+internal delegate void CalcDisplayCallback(
     [MarshalAs(UnmanagedType.LPStr)] string displayString,
     [MarshalAs(UnmanagedType.Bool)] bool isError,
     IntPtr context);

@@ -72,7 +72,7 @@ namespace CalculatorApp.ViewModel.Snapshot
 
     public partial class CalcManagerSnapshot
     {
-        public List<CalcManagerHistoryItem> HistoryItems { get; set; } // optional
+        public List<CalcManagerHistoryItem>? HistoryItems { get; set; } // optional
 
         // CalcManagerSnapshot();
         //
@@ -116,7 +116,7 @@ namespace CalculatorApp.ViewModel.Snapshot
     public partial class ApplicationSnapshot
     {
         public int Mode { get; set; }
-        public StandardCalculatorSnapshot StandardCalculator { get; set; }
+        public StandardCalculatorSnapshot StandardCalculator { get; set; } = new();
     };
 
 

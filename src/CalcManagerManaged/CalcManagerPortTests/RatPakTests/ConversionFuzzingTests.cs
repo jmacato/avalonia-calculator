@@ -1,6 +1,5 @@
 using System.Globalization;
 using CalcEngine;
-using  CalcEngine;
 
 namespace CalcManagerPortTests.RatPakTests;
 
@@ -8,7 +7,7 @@ public class ConversionFuzzingTests
 {
     private readonly RatPak _ratPak;
     private readonly int _precision = 64;
-    private readonly Random _random;
+    private readonly DeterministicRandom _random;
 
     // Number of iterations for each fuzzing test
     private const int FuzzIterations = 100;
@@ -17,7 +16,7 @@ public class ConversionFuzzingTests
     {
         _ratPak = new RatPak(_precision);
         // Use non-deterministic seed for true randomness
-        _random = new Random(Guid.NewGuid().GetHashCode());
+        _random = new DeterministicRandom(Guid.NewGuid().GetHashCode());
     }
 
     #region Helper Methods
@@ -82,9 +81,9 @@ public class ConversionFuzzingTests
         {
             // Make sure first digit isn't 0 (unless it's the only digit)
             if (i == 0 && integerDigits > 1)
-                integerPart += _random.Next(1, 10).ToString();
+                integerPart += _random.Next(1, 10).ToString(CultureInfo.InvariantCulture);
             else
-                integerPart += _random.Next(0, 10).ToString();
+                integerPart += _random.Next(0, 10).ToString(CultureInfo.InvariantCulture);
         }
 
         var fractionPart = "";
@@ -92,12 +91,12 @@ public class ConversionFuzzingTests
         {
             for (var i = 0; i < fractionDigits; i++)
             {
-                fractionPart += _random.Next(0, 10).ToString();
+                fractionPart += _random.Next(0, 10).ToString(CultureInfo.InvariantCulture);
             }
 
             // Make sure last digit isn't 0 to avoid trailing zeros
-            if (fractionPart.EndsWith("0"))
-                fractionPart = fractionPart.Substring(0, fractionPart.Length - 1) + _random.Next(1, 10).ToString();
+            if (fractionPart.EndsWith('0'))
+                fractionPart = string.Concat(fractionPart.AsSpan(0, fractionPart.Length - 1), _random.Next(1, 10).ToString(CultureInfo.InvariantCulture));
         }
 
         var result = integerPart;
@@ -116,13 +115,13 @@ public class ConversionFuzzingTests
     private string GenerateRandomExponentString()
     {
         var value = _random.Next(-50, 51); // Exponents from -50 to 50
-        return value.ToString();
+        return value.ToString(CultureInfo.InvariantCulture);
     }
 
     /// <summary>
     /// Creates a random RAT value
     /// </summary>
-    private RatPak.RAT GenerateRandomRat()
+    private RAT GenerateRandomRat()
     {
         // Several ways to create a random RAT:
         // 1. From a random string
@@ -141,34 +140,38 @@ public class ConversionFuzzingTests
             case 1:
                 // From random int
                 var randomInt = GenerateRandomInt();
-                return _ratPak.i32torat(randomInt);
+                return RatPak.i32torat(randomInt);
 
             case 2:
                 // From numerator/denominator
                 var num = _ratPak.StringToNumber(GenerateRandomNumericString(false), 10, _precision);
+                Assert.NotNull(num);
                 // Make sure denominator is not zero
-                var den = _ratPak.StringToNumber(GenerateRandomNumericString(false).Replace("-", ""), 10, _precision);
-                if (_ratPak.zernum(den))
+                var den = _ratPak.StringToNumber(GenerateRandomNumericString(false).Replace("-", "", StringComparison.Ordinal), 10, _precision);
+                Assert.NotNull(den);
+                if (RatPak.zernum(den))
                 {
                     den = _ratPak.StringToNumber("1", 10, _precision);
+                    Assert.NotNull(den);
                 }
 
-                var rat = _ratPak.numtorat(num, 10);
-                _ratPak.divrat(ref rat, _ratPak.numtorat(den, 10), _precision);
+                var rat = RatPak.numtorat(num, 10);
+                _ratPak.divrat(ref rat, RatPak.numtorat(den, 10), _precision);
                 return rat;
         }
 
         // Default fallback - shouldn't happen
-        return _ratPak.i32torat(1);
+        return RatPak.i32torat(1);
     }
 
     /// <summary>
     /// Creates a RAT from a string - helper method
     /// </summary>
-    private RatPak.RAT StringToRat(string input)
+    private RAT StringToRat(string input)
     {
         var num = _ratPak.StringToNumber(input, 10, _precision);
-        return _ratPak.numtorat(num, 10);
+        Assert.NotNull(num);
+        return RatPak.numtorat(num, 10);
     }
 
     #endregion
@@ -176,24 +179,24 @@ public class ConversionFuzzingTests
     #region Fuzzing Tests for RAT to String Conversion
 
     [Fact]
-    public void FuzzTest_RatToString_RandomRats()
+    public void FuzzTestRatToStringRandomRats()
     {
         for (var i = 0; i < FuzzIterations; i++)
         {
             var rat = GenerateRandomRat();
-            var ratCopy = new RatPak.RAT();
-            _ratPak.duprat(ref ratCopy, rat);
-            var stringResult = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+            var ratCopy = new RAT();
+            RatPak.duprat(ref ratCopy, rat);
+            var stringResult = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
             var backToRat = StringToRat(stringResult);
             // We need to check if the conversion back produces approximately the same value
             // Use rattoi32 for integer part comparison or full string comparison for numbers with fractions
-            var originalAsString = _ratPak.RatToString(ref ratCopy, RatPak.NumberFormat.Float, 10, _precision);
-            var roundTripAsString = _ratPak.RatToString(ref backToRat, RatPak.NumberFormat.Float, 10, _precision);
+            var originalAsString = _ratPak.RatToString(ref ratCopy, NumberFormat.FloatingPoint, 10, _precision);
+            var roundTripAsString = _ratPak.RatToString(ref backToRat, NumberFormat.FloatingPoint, 10, _precision);
 
             // For some numbers, exact equality might not be possible due to floating point precision
             // So we either check for exact equality or that they start with the same few digits
             var isEqual = originalAsString == roundTripAsString;
-            if (!isEqual && originalAsString.Contains(".") && roundTripAsString.Contains("."))
+            if (!isEqual && originalAsString.Contains('.', StringComparison.Ordinal) && roundTripAsString.Contains('.', StringComparison.Ordinal))
             {
                 // For fractions, check that the first several digits match
                 var charsToCheck = Math.Min(
@@ -210,20 +213,20 @@ public class ConversionFuzzingTests
     }
 
     [Fact]
-    public void FuzzTest_RatToString_DifferentFormats()
+    public void FuzzTestRatToStringDifferentFormats()
     {
         var formats = new[]
         {
-            RatPak.NumberFormat.Float,
-            RatPak.NumberFormat.Scientific,
-            RatPak.NumberFormat.Engineering
+            NumberFormat.FloatingPoint,
+            NumberFormat.Scientific,
+            NumberFormat.Engineering
         };
 
         for (var i = 0; i < FuzzIterations; i++)
         {
             var rat = GenerateRandomRat();
-            var ratCopy = new RatPak.RAT();
-            _ratPak.duprat(ref ratCopy, rat);
+            var ratCopy = new RAT();
+            RatPak.duprat(ref ratCopy, rat);
 
             // Try all formats
             foreach (var format in formats)
@@ -237,7 +240,7 @@ public class ConversionFuzzingTests
 
                 // If it's a valid number, we should be able to parse it back
                 // But we need to handle scientific notation differently
-                if (format == RatPak.NumberFormat.Float)
+                if (format == NumberFormat.FloatingPoint)
                 {
                     // For float format, we can directly parse it back
                     var backToRat = StringToRat(stringResult);
@@ -249,8 +252,8 @@ public class ConversionFuzzingTests
                         6);
 
                     Assert.Equal(
-                        stringResult.Substring(0, charsToCompare),
-                        roundTripResult.Substring(0, charsToCompare));
+                        stringResult.AsSpan(0, charsToCompare),
+                        roundTripResult.AsSpan(0, charsToCompare));
                 }
             }
         }
@@ -261,14 +264,14 @@ public class ConversionFuzzingTests
     #region Fuzzing Tests for Int/Uint to RAT Conversion
 
     [Fact]
-    public void FuzzTest_I32torat_RandomIntegers()
+    public void FuzzTestI32toratRandomIntegers()
     {
         for (var i = 0; i < FuzzIterations; i++)
         {
 
             var randomInt = GenerateRandomInt();
 
-            var rat = _ratPak.i32torat(randomInt);
+            var rat = RatPak.i32torat(randomInt);
             var roundTrip = _ratPak.rattoi32(rat, 10, _precision);
 
             Assert.Equal(randomInt, roundTrip);
@@ -276,14 +279,14 @@ public class ConversionFuzzingTests
     }
 
     [Fact]
-    public void FuzzTest_Ui32torat_RandomUints()
+    public void FuzzTestUi32toratRandomUints()
     {
         for (var i = 0; i < FuzzIterations; i++)
         {
 
             var randomUint = GenerateRandomUint();
 
-            var rat = _ratPak.Ui32torat(randomUint);
+            var rat = RatPak.Ui32torat(randomUint);
             var roundTrip = _ratPak.rattoUi64(rat, 10, _precision);
 
             Assert.Equal(randomUint, roundTrip);
@@ -295,7 +298,7 @@ public class ConversionFuzzingTests
     #region Fuzzing Tests for StringToNumber and NumberToRat
 
     [Fact]
-    public void FuzzTest_StringToNumberToRat_RandomStrings()
+    public void FuzzTestStringToNumberToRatRandomStrings()
     {
         for (var i = 0; i < FuzzIterations; i++)
         {
@@ -303,8 +306,9 @@ public class ConversionFuzzingTests
             var randomString = GenerateRandomNumericString();
 
             var num = _ratPak.StringToNumber(randomString, 10, _precision);
-            var rat = _ratPak.numtorat(num, 10);
-            var resultString = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+            Assert.NotNull(num);
+            var rat = RatPak.numtorat(num, 10);
+            var resultString = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
             //For large numbers, we may get scientific notation,
             // so we need to convert both to decimal for comparison
             if (decimal.TryParse(randomString, out var originalValue) &&
@@ -338,19 +342,19 @@ public class ConversionFuzzingTests
                     5); // Compare at least first 5 characters
 
                 Assert.Equal(
-                    normalizedOriginal.Substring(0, charsToCompare),
-                    normalizedResult.Substring(0, charsToCompare));
+                    normalizedOriginal.AsSpan(0, charsToCompare),
+                    normalizedResult.AsSpan(0, charsToCompare));
             }
         }
     }
 
-    private string NormalizeNumericString(string input)
+    private static string NormalizeNumericString(string input)
     {
         // Remove leading zeros, +, etc.
         input = input.TrimStart('+', ' ', '0');
 
         // If we removed everything, it was zeros
-        if (string.IsNullOrEmpty(input) || input.StartsWith("."))
+        if (string.IsNullOrEmpty(input) || input.StartsWith('.'))
             return "0" + input;
 
         return input;
@@ -361,20 +365,20 @@ public class ConversionFuzzingTests
     #region Fuzzing Tests for RatToNumber
 
     [Fact]
-    public void FuzzTest_RatToNumber_RandomRats()
+    public void FuzzTestRatToNumberRandomRats()
     {
         for (var i = 0; i < FuzzIterations; i++)
         {
 
             var rat = GenerateRandomRat();
-            var ratCopy = new RatPak.RAT();
-            _ratPak.duprat(ref ratCopy, rat);
+            var ratCopy = new RAT();
+            RatPak.duprat(ref ratCopy, rat);
 
             var num = _ratPak.RatToNumber(rat, 10, _precision);
-            var backToRat = _ratPak.numtorat(num, 10);
+            var backToRat = RatPak.numtorat(num, 10);
             // The two rats should be approximately equal
-            var originalString = _ratPak.RatToString(ref ratCopy, RatPak.NumberFormat.Float, 10, _precision);
-            var resultString = _ratPak.RatToString(ref backToRat, RatPak.NumberFormat.Float, 10, _precision);
+            var originalString = _ratPak.RatToString(ref ratCopy, NumberFormat.FloatingPoint, 10, _precision);
+            var resultString = _ratPak.RatToString(ref backToRat, NumberFormat.FloatingPoint, 10, _precision);
 
             if (decimal.TryParse(originalString, out var originalValue) &&
                 decimal.TryParse(resultString, out var resultValue))
@@ -400,8 +404,8 @@ public class ConversionFuzzingTests
                     5);
 
                 Assert.Equal(
-                    originalString.Substring(0, charsToCompare),
-                    resultString.Substring(0, charsToCompare));
+                    originalString.AsSpan(0, charsToCompare),
+                    resultString.AsSpan(0, charsToCompare));
             }
         }
     }
@@ -411,7 +415,7 @@ public class ConversionFuzzingTests
     #region Fuzzing Tests for Flatrat
 
     [Fact]
-    public void FuzzTest_Flatrat_RandomRationals()
+    public void FuzzTestFlatratRandomRationals()
     {
         for (var i = 0; i < FuzzIterations; i++)
         {
@@ -423,18 +427,18 @@ public class ConversionFuzzingTests
             num *= commonFactor;
             den *= commonFactor;
 
-            var numNum = _ratPak.i32tonum(num, 10);
-            var denNum = _ratPak.i32tonum(den, 10);
+            var numNum = RatPak.i32tonum(num, 10);
+            var denNum = RatPak.i32tonum(den, 10);
 
-            var rat = _ratPak.numtorat(numNum, 10);
-            _ratPak.divrat(ref rat, _ratPak.numtorat(denNum, 10), _precision);
+            var rat = RatPak.numtorat(numNum, 10);
+            _ratPak.divrat(ref rat, RatPak.numtorat(denNum, 10), _precision);
 
             // Store the value before simplification
-            var beforeValue = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+            var beforeValue = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
             //Simplify the fraction
             _ratPak.flatrat(ref rat, 10, _precision);
             // The value should remain the same
-            var afterValue = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+            var afterValue = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
 
             if (decimal.TryParse(beforeValue, out var beforeDecimal) &&
                 decimal.TryParse(afterValue, out var afterDecimal))
@@ -454,8 +458,8 @@ public class ConversionFuzzingTests
                     6);
 
                 Assert.Equal(
-                    beforeValue.Substring(0, charsToCompare),
-                    afterValue.Substring(0, charsToCompare));
+                    beforeValue.AsSpan(0, charsToCompare),
+                    afterValue.AsSpan(0, charsToCompare));
             }
         }
     }
@@ -465,7 +469,7 @@ public class ConversionFuzzingTests
     #region Fuzzing Tests for StringToRat
 
     [Fact]
-    public void FuzzTest_StringToRat_RandomValues()
+    public void FuzzTestStringToRatRandomValues()
     {
         for (var i = 0; i < FuzzIterations; i++)
         {
@@ -476,6 +480,7 @@ public class ConversionFuzzingTests
             var exponent = GenerateRandomExponentString();
 
             var rat = _ratPak.StringToRat(mantissaIsNegative, mantissa, exponentIsNegative, exponent, 10, _precision);
+            Assert.NotNull(rat);
             //Build the expected result manually
             var expectedString = (mantissaIsNegative ? "-" : "") + mantissa;
 
@@ -486,7 +491,7 @@ public class ConversionFuzzingTests
             if (double.TryParse(fullExpectation, NumberStyles.Float, CultureInfo.InvariantCulture,
                     out var expectedValue))
             {
-                var result = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+                var result = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
 
                 if (double.TryParse(result, out var actualValue))
                 {
@@ -520,7 +525,7 @@ public class ConversionFuzzingTests
     #region Edge Case Tests
 
     [Fact]
-    public void FuzzTest_EdgeCases()
+    public void FuzzTestEdgeCases()
     {
         // Test array of edge case values to try
         var edgeCases = new[]
@@ -533,8 +538,8 @@ public class ConversionFuzzingTests
             "-1000000000000000000000000",
             "0.9999999999999999999999999",
             "1.0000000000000000000000001",
-            int.MaxValue.ToString(),
-            int.MinValue.ToString(),
+            int.MaxValue.ToString(CultureInfo.InvariantCulture),
+            int.MinValue.ToString(CultureInfo.InvariantCulture),
             "0.1",
             "0.3",
             "0.5",
@@ -547,8 +552,9 @@ public class ConversionFuzzingTests
         {
             // Test round-trip conversion
             var num = _ratPak.StringToNumber(edgeCase, 10, _precision);
-            var rat = _ratPak.numtorat(num, 10);
-            var result = _ratPak.RatToString(ref rat, RatPak.NumberFormat.Float, 10, _precision);
+            Assert.NotNull(num);
+            var rat = RatPak.numtorat(num, 10);
+            var result = _ratPak.RatToString(ref rat, NumberFormat.FloatingPoint, 10, _precision);
 
             // For comparison, we need to handle scientific notation
             // and different precisions
@@ -581,8 +587,8 @@ public class ConversionFuzzingTests
                 if (charsToCompare > 0)
                 {
                     Assert.Equal(
-                        normalizedOriginal.Substring(0, charsToCompare),
-                        normalizedResult.Substring(0, charsToCompare));
+                        normalizedOriginal.AsSpan(0, charsToCompare),
+                        normalizedResult.AsSpan(0, charsToCompare));
                 }
             }
         }

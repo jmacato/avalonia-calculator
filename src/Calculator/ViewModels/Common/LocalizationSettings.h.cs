@@ -20,8 +20,7 @@
             LocalizationSettings()
                 // Use DecimalFormatter as it respects the locale and the user setting
             {
-                Initialize(LocalizationService.GetInstance()
-                    .GetCurrentCultureInfo());  //LocalizationService.GetInstance().GetRegionalSettingsAwareDecimalFormatter());
+                Initialize(CultureInfo.CurrentCulture);
             }
 
             // This is only public for unit testing purposes.
@@ -29,7 +28,7 @@
             // {
             //     Initialize(formatter);
             // }
-            static LocalizationSettings localizationSettings = new   ();
+            private static readonly LocalizationSettings localizationSettings = new();
 
             // Provider of the singleton LocalizationSettings instance.
             public static LocalizationSettings GetInstance()
@@ -282,15 +281,15 @@
             }
              char  m_decimalSeparator;
              char  m_numberGroupSeparator;
-            string m_numberGrouping;
+            string m_numberGrouping = string.Empty;
             char[]  m_digitSymbols = new char[10] ;
             // Hexadecimal characters are not currently localized
             static char[] s_hexSymbols = [ 'A', 'B', 'C', 'D', 'E', 'F' ];
-            string m_listSeparator;
-            string  m_calendarIdentifier;
+            string m_listSeparator = string.Empty;
+            string m_calendarIdentifier = string.Empty;
             System.DayOfWeek m_firstDayOfWeek;
             int m_currencySymbolPrecedence;
-            string  m_resolvedName;
+            string m_resolvedName = string.Empty;
             int m_currencyTrailingDigits;
               const uint LocaleSettingBufferSize = 16;
         };

@@ -14,355 +14,350 @@
 *
 \****************************************************************************/
 
-// #pragma once
-//
-// #include <array>
-// #include <string>
-// #include <string_view>
-// #include <unordered_map>
+namespace CalcEngine;
 
 public static class EngineStrings
 {
-    public const int IDS_ERRORS_FIRST = 99;
+    public const int IdsErrorsFirst = 99;
 
-// This is the list of error strings corresponding to SCERR_DIVIDEZERO..
+    // This is the list of error strings corresponding to SCERR_DIVIDEZERO..
 
-    public const int IDS_DIVBYZERO = IDS_ERRORS_FIRST;
-    public const int IDS_DOMAIN = IDS_ERRORS_FIRST + 1;
-    public const int IDS_UNDEFINED = IDS_ERRORS_FIRST + 2;
-    public const int IDS_POS_INFINITY = IDS_ERRORS_FIRST + 3;
-    public const int IDS_NEG_INFINITY = IDS_ERRORS_FIRST + 4;
-    public const int IDS_NOMEM = IDS_ERRORS_FIRST + 6;
-    public const int IDS_TOOMANY = IDS_ERRORS_FIRST + 7;
-    public const int IDS_OVERFLOW = IDS_ERRORS_FIRST + 8;
-    public const int IDS_NORESULT = IDS_ERRORS_FIRST + 9;
-    public const int IDS_INSUFFICIENT_DATA = IDS_ERRORS_FIRST + 10;
+    public const int IdsDivbyzero = IdsErrorsFirst;
+    public const int IdsDomain = IdsErrorsFirst + 1;
+    public const int IdsUndefined = IdsErrorsFirst + 2;
+    public const int IdsPosInfinity = IdsErrorsFirst + 3;
+    public const int IdsNegInfinity = IdsErrorsFirst + 4;
+    public const int IdsNomem = IdsErrorsFirst + 6;
+    public const int IdsToomany = IdsErrorsFirst + 7;
+    public const int IdsOverflow = IdsErrorsFirst + 8;
+    public const int IdsNoresult = IdsErrorsFirst + 9;
+    public const int IdsInsufficientData = IdsErrorsFirst + 10;
 
-    public const int CSTRINGSENGMAX = IDS_INSUFFICIENT_DATA + 1;
+    public const int CSTRINGSENGMAX = IdsInsufficientData + 1;
 
-// Arithmetic expression evaluator error strings
-    public const int IDS_ERR_UNK_CH = CSTRINGSENGMAX + 1;
-    public const int IDS_ERR_UNK_FN = CSTRINGSENGMAX + 2;
-    public const int IDS_ERR_UNEX_NUM = CSTRINGSENGMAX + 3;
-    public const int IDS_ERR_UNEX_CH = CSTRINGSENGMAX + 4;
-    public const int IDS_ERR_UNEX_SZ = CSTRINGSENGMAX + 5;
-    public const int IDS_ERR_MISMATCH_CLOSE = CSTRINGSENGMAX + 6;
-    public const int IDS_ERR_UNEX_END = CSTRINGSENGMAX + 7;
-    public const int IDS_ERR_SG_INV_ERROR = CSTRINGSENGMAX + 8;
-    public const int IDS_ERR_INPUT_OVERFLOW = CSTRINGSENGMAX + 9;
-    public const int IDS_ERR_OUTPUT_OVERFLOW = CSTRINGSENGMAX + 10;
+    // Arithmetic expression evaluator error strings
+    public const int IdsErrUnkCh = CSTRINGSENGMAX + 1;
+    public const int IdsErrUnkFn = CSTRINGSENGMAX + 2;
+    public const int IdsErrUnexNum = CSTRINGSENGMAX + 3;
+    public const int IdsErrUnexCh = CSTRINGSENGMAX + 4;
+    public const int IdsErrUnexSz = CSTRINGSENGMAX + 5;
+    public const int IdsErrMismatchClose = CSTRINGSENGMAX + 6;
+    public const int IdsErrUnexEnd = CSTRINGSENGMAX + 7;
+    public const int IdsErrSgInvError = CSTRINGSENGMAX + 8;
+    public const int IdsErrInputOverflow = CSTRINGSENGMAX + 9;
+    public const int IdsErrOutputOverflow = CSTRINGSENGMAX + 10;
 
-// Resource keys for CEngineStrings.resw
-    public const string SIDS_PLUS_MINUS = "0";
-    public const string SIDS_CLEAR = "1";
-    public const string SIDS_CE = "2";
-    public const string SIDS_BACKSPACE = "3";
-    public const string SIDS_DECIMAL_SEPARATOR = "4";
-    public const string SIDS_EMPTY_STRING = "5";
-    public const string SIDS_AND = "6";
-    public const string SIDS_OR = "7";
-    public const string SIDS_XOR = "8";
-    public const string SIDS_LSH = "9";
-    public const string SIDS_RSH = "10";
-    public const string SIDS_DIVIDE = "11";
-    public const string SIDS_MULTIPLY = "12";
-    public const string SIDS_PLUS = "13";
-    public const string SIDS_MINUS = "14";
-    public const string SIDS_MOD = "15";
-    public const string SIDS_YROOT = "16";
-    public const string SIDS_POW_HAT = "17";
-    public const string SIDS_INT = "18";
-    public const string SIDS_ROL = "19";
-    public const string SIDS_ROR = "20";
-    public const string SIDS_NOT = "21";
-    public const string SIDS_SIN = "22";
-    public const string SIDS_COS = "23";
-    public const string SIDS_TAN = "24";
-    public const string SIDS_SINH = "25";
-    public const string SIDS_COSH = "26";
-    public const string SIDS_TANH = "27";
-    public const string SIDS_LN = "28";
-    public const string SIDS_LOG = "29";
-    public const string SIDS_SQRT = "30";
-    public const string SIDS_XPOW2 = "31";
-    public const string SIDS_XPOW3 = "32";
-    public const string SIDS_NFACTORIAL = "33";
-    public const string SIDS_RECIPROCAL = "34";
-    public const string SIDS_DMS = "35";
-    public const string SIDS_POWTEN = "37";
-    public const string SIDS_PERCENT = "38";
-    public const string SIDS_SCIENTIFIC_NOTATION = "39";
-    public const string SIDS_PI = "40";
-    public const string SIDS_EQUAL = "41";
-    public const string SIDS_MC = "42";
-    public const string SIDS_MR = "43";
-    public const string SIDS_MS = "44";
-    public const string SIDS_MPLUS = "45";
-    public const string SIDS_MMINUS = "46";
-    public const string SIDS_EXP = "47";
-    public const string SIDS_OPEN_PAREN = "48";
-    public const string SIDS_CLOSE_PAREN = "49";
-    public const string SIDS_0 = "50";
-    public const string SIDS_1 = "51";
-    public const string SIDS_2 = "52";
-    public const string SIDS_3 = "53";
-    public const string SIDS_4 = "54";
-    public const string SIDS_5 = "55";
-    public const string SIDS_6 = "56";
-    public const string SIDS_7 = "57";
-    public const string SIDS_8 = "58";
-    public const string SIDS_9 = "59";
-    public const string SIDS_A = "60";
-    public const string SIDS_B = "61";
-    public const string SIDS_C = "62";
-    public const string SIDS_D = "63";
-    public const string SIDS_E = "64";
-    public const string SIDS_F = "65";
-    public const string SIDS_FRAC = "66";
-    public const string SIDS_SIND = "67";
-    public const string SIDS_COSD = "68";
-    public const string SIDS_TAND = "69";
-    public const string SIDS_ASIND = "70";
-    public const string SIDS_ACOSD = "71";
-    public const string SIDS_ATAND = "72";
-    public const string SIDS_SINR = "73";
-    public const string SIDS_COSR = "74";
-    public const string SIDS_TANR = "75";
-    public const string SIDS_ASINR = "76";
-    public const string SIDS_ACOSR = "77";
-    public const string SIDS_ATANR = "78";
-    public const string SIDS_SING = "79";
-    public const string SIDS_COSG = "80";
-    public const string SIDS_TANG = "81";
-    public const string SIDS_ASING = "82";
-    public const string SIDS_ACOSG = "83";
-    public const string SIDS_ATANG = "84";
-    public const string SIDS_ASINH = "85";
-    public const string SIDS_ACOSH = "86";
-    public const string SIDS_ATANH = "87";
-    public const string SIDS_POWE = "88";
-    public const string SIDS_POWTEN2 = "89";
-    public const string SIDS_SQRT2 = "90";
-    public const string SIDS_SQR = "91";
-    public const string SIDS_CUBE = "92";
-    public const string SIDS_CUBERT = "93";
-    public const string SIDS_FACT = "94";
-    public const string SIDS_RECIPROC = "95";
-    public const string SIDS_DEGREES = "96";
-    public const string SIDS_NEGATE = "97";
-    public const string SIDS_RSH2 = "98";
-    public const string SIDS_DIVIDEBYZERO = "99";
-    public const string SIDS_DOMAIN = "100";
-    public const string SIDS_UNDEFINED = "101";
-    public const string SIDS_POS_INFINITY = "102";
-    public const string SIDS_NEG_INFINITY = "103";
-    public const string SIDS_ABORTED = "104";
-    public const string SIDS_NOMEM = "105";
-    public const string SIDS_TOOMANY = "106";
-    public const string SIDS_OVERFLOW = "107";
-    public const string SIDS_NORESULT = "108";
+    // Resource keys for CEngineStrings.resw
+    public const string SidsPlusMinus = "0";
+    public const string SidsClear = "1";
+    public const string SidsCe = "2";
+    public const string SidsBackspace = "3";
+    public const string SidsDecimalSeparator = "4";
+    public const string SidsEmptyString = "5";
+    public const string SidsAnd = "6";
+    public const string SidsOr = "7";
+    public const string SidsXor = "8";
+    public const string SidsLsh = "9";
+    public const string SidsRsh = "10";
+    public const string SidsDivide = "11";
+    public const string SidsMultiply = "12";
+    public const string SidsPlus = "13";
+    public const string SidsMinus = "14";
+    public const string SidsMod = "15";
+    public const string SidsYroot = "16";
+    public const string SidsPowHat = "17";
+    public const string SidsInt = "18";
+    public const string SidsRol = "19";
+    public const string SidsRor = "20";
+    public const string SidsNot = "21";
+    public const string SidsSin = "22";
+    public const string SidsCos = "23";
+    public const string SidsTan = "24";
+    public const string SidsSinh = "25";
+    public const string SidsCosh = "26";
+    public const string SidsTanh = "27";
+    public const string SidsLn = "28";
+    public const string SidsLog = "29";
+    public const string SidsSqrt = "30";
+    public const string SidsXpow2 = "31";
+    public const string SidsXpow3 = "32";
+    public const string SidsNfactorial = "33";
+    public const string SidsReciprocal = "34";
+    public const string SidsDms = "35";
+    public const string SidsPowten = "37";
+    public const string SidsPercent = "38";
+    public const string SidsScientificNotation = "39";
+    public const string SidsPi = "40";
+    public const string SidsEqual = "41";
+    public const string SidsMc = "42";
+    public const string SidsMr = "43";
+    public const string SidsMs = "44";
+    public const string SidsMplus = "45";
+    public const string SidsMminus = "46";
+    public const string SidsExp = "47";
+    public const string SidsOpenParen = "48";
+    public const string SidsCloseParen = "49";
+    public const string Sids0 = "50";
+    public const string Sids1 = "51";
+    public const string Sids2 = "52";
+    public const string Sids3 = "53";
+    public const string Sids4 = "54";
+    public const string Sids5 = "55";
+    public const string Sids6 = "56";
+    public const string Sids7 = "57";
+    public const string Sids8 = "58";
+    public const string Sids9 = "59";
+    public const string SidsA = "60";
+    public const string SidsB = "61";
+    public const string SidsC = "62";
+    public const string SidsD = "63";
+    public const string SidsE = "64";
+    public const string SidsF = "65";
+    public const string SidsFrac = "66";
+    public const string SidsSind = "67";
+    public const string SidsCosd = "68";
+    public const string SidsTand = "69";
+    public const string SidsAsind = "70";
+    public const string SidsAcosd = "71";
+    public const string SidsAtand = "72";
+    public const string SidsSinr = "73";
+    public const string SidsCosr = "74";
+    public const string SidsTanr = "75";
+    public const string SidsAsinr = "76";
+    public const string SidsAcosr = "77";
+    public const string SidsAtanr = "78";
+    public const string SidsSing = "79";
+    public const string SidsCosg = "80";
+    public const string SidsTang = "81";
+    public const string SidsAsing = "82";
+    public const string SidsAcosg = "83";
+    public const string SidsAtang = "84";
+    public const string SidsAsinh = "85";
+    public const string SidsAcosh = "86";
+    public const string SidsAtanh = "87";
+    public const string SidsPowe = "88";
+    public const string SidsPowten2 = "89";
+    public const string SidsSqrt2 = "90";
+    public const string SidsSqr = "91";
+    public const string SidsCube = "92";
+    public const string SidsCubert = "93";
+    public const string SidsFact = "94";
+    public const string SidsReciproc = "95";
+    public const string SidsDegrees = "96";
+    public const string SidsNegate = "97";
+    public const string SidsRsh2 = "98";
+    public const string SidsDividebyzero = "99";
+    public const string SidsDomain = "100";
+    public const string SidsUndefined = "101";
+    public const string SidsPosInfinity = "102";
+    public const string SidsNegInfinity = "103";
+    public const string SidsAborted = "104";
+    public const string SidsNomem = "105";
+    public const string SidsToomany = "106";
+    public const string SidsOverflow = "107";
+    public const string SidsNoresult = "108";
 
-    public const string SIDS_INSUFFICIENT_DATA = "109";
+    public const string SidsInsufficientData = "109";
 
-// 110 is skipped by CSTRINGSENGMAX
-    public const string SIDS_ERR_UNK_CH = "111";
-    public const string SIDS_ERR_UNK_FN = "112";
-    public const string SIDS_ERR_UNEX_NUM = "113";
-    public const string SIDS_ERR_UNEX_CH = "114";
-    public const string SIDS_ERR_UNEX_SZ = "115";
-    public const string SIDS_ERR_MISMATCH_CLOSE = "116";
-    public const string SIDS_ERR_UNEX_END = "117";
-    public const string SIDS_ERR_SG_INV_ERROR = "118";
-    public const string SIDS_ERR_INPUT_OVERFLOW = "119";
-    public const string SIDS_ERR_OUTPUT_OVERFLOW = "120";
-    public const string SIDS_SECD = "SecDeg";
-    public const string SIDS_SECR = "SecRad";
-    public const string SIDS_SECG = "SecGrad";
-    public const string SIDS_ASECD = "InverseSecDeg";
-    public const string SIDS_ASECR = "InverseSecRad";
-    public const string SIDS_ASECG = "InverseSecGrad";
-    public const string SIDS_CSCD = "CscDeg";
-    public const string SIDS_CSCR = "CscRad";
-    public const string SIDS_CSCG = "CscGrad";
-    public const string SIDS_ACSCD = "InverseCscDeg";
-    public const string SIDS_ACSCR = "InverseCscRad";
-    public const string SIDS_ACSCG = "InverseCscGrad";
-    public const string SIDS_COTD = "CotDeg";
-    public const string SIDS_COTR = "CotRad";
-    public const string SIDS_COTG = "CotGrad";
-    public const string SIDS_ACOTD = "InverseCotDeg";
-    public const string SIDS_ACOTR = "InverseCotRad";
-    public const string SIDS_ACOTG = "InverseCotGrad";
-    public const string SIDS_SECH = "Sech";
-    public const string SIDS_ASECH = "InverseSech";
-    public const string SIDS_CSCH = "Csch";
-    public const string SIDS_ACSCH = "InverseCsch";
-    public const string SIDS_COTH = "Coth";
-    public const string SIDS_ACOTH = "InverseCoth";
-    public const string SIDS_TWOPOWX = "TwoPowX";
-    public const string SIDS_LOGBASEY = "LogBaseY";
-    public const string SIDS_ABS = "Abs";
-    public const string SIDS_FLOOR = "Floor";
-    public const string SIDS_CEIL = "Ceil";
-    public const string SIDS_NAND = "Nand";
-    public const string SIDS_NOR = "Nor";
-    public const string SIDS_CUBEROOT = "CubeRoot";
-    public const string SIDS_PROGRAMMER_MOD = "ProgrammerMod";
+    // 110 is skipped by CSTRINGSENGMAX
+    public const string SidsErrUnkCh = "111";
+    public const string SidsErrUnkFn = "112";
+    public const string SidsErrUnexNum = "113";
+    public const string SidsErrUnexCh = "114";
+    public const string SidsErrUnexSz = "115";
+    public const string SidsErrMismatchClose = "116";
+    public const string SidsErrUnexEnd = "117";
+    public const string SidsErrSgInvError = "118";
+    public const string SidsErrInputOverflow = "119";
+    public const string SidsErrOutputOverflow = "120";
+    public const string SidsSecd = "SecDeg";
+    public const string SidsSecr = "SecRad";
+    public const string SidsSecg = "SecGrad";
+    public const string SidsAsecd = "InverseSecDeg";
+    public const string SidsAsecr = "InverseSecRad";
+    public const string SidsAsecg = "InverseSecGrad";
+    public const string SidsCscd = "CscDeg";
+    public const string SidsCscr = "CscRad";
+    public const string SidsCscg = "CscGrad";
+    public const string SidsAcscd = "InverseCscDeg";
+    public const string SidsAcscr = "InverseCscRad";
+    public const string SidsAcscg = "InverseCscGrad";
+    public const string SidsCotd = "CotDeg";
+    public const string SidsCotr = "CotRad";
+    public const string SidsCotg = "CotGrad";
+    public const string SidsAcotd = "InverseCotDeg";
+    public const string SidsAcotr = "InverseCotRad";
+    public const string SidsAcotg = "InverseCotGrad";
+    public const string SidsSech = "Sech";
+    public const string SidsAsech = "InverseSech";
+    public const string SidsCsch = "Csch";
+    public const string SidsAcsch = "InverseCsch";
+    public const string SidsCoth = "Coth";
+    public const string SidsAcoth = "InverseCoth";
+    public const string SidsTwopowx = "TwoPowX";
+    public const string SidsLogbasey = "LogBaseY";
+    public const string SidsAbs = "Abs";
+    public const string SidsFloor = "Floor";
+    public const string SidsCeil = "Ceil";
+    public const string SidsNand = "Nand";
+    public const string SidsNor = "Nor";
+    public const string SidsCuberoot = "CubeRoot";
+    public const string SidsProgrammerMod = "ProgrammerMod";
 
-// Include the resource key ID from above into this vector to load it into memory for the engine to use
+    // Include the resource key ID from above into this vector to load it into memory for the engine to use
     internal static string[] g_sids =
     {
-        SIDS_PLUS_MINUS,
-        SIDS_C,
-        SIDS_CE,
-        SIDS_BACKSPACE,
-        SIDS_DECIMAL_SEPARATOR,
-        SIDS_EMPTY_STRING,
-        SIDS_AND,
-        SIDS_OR,
-        SIDS_XOR,
-        SIDS_LSH,
-        SIDS_RSH,
-        SIDS_DIVIDE,
-        SIDS_MULTIPLY,
-        SIDS_PLUS,
-        SIDS_MINUS,
-        SIDS_MOD,
-        SIDS_YROOT,
-        SIDS_POW_HAT,
-        SIDS_INT,
-        SIDS_ROL,
-        SIDS_ROR,
-        SIDS_NOT,
-        SIDS_SIN,
-        SIDS_COS,
-        SIDS_TAN,
-        SIDS_SINH,
-        SIDS_COSH,
-        SIDS_TANH,
-        SIDS_LN,
-        SIDS_LOG,
-        SIDS_SQRT,
-        SIDS_XPOW2,
-        SIDS_XPOW3,
-        SIDS_NFACTORIAL,
-        SIDS_RECIPROCAL,
-        SIDS_DMS,
-        SIDS_POWTEN,
-        SIDS_PERCENT,
-        SIDS_SCIENTIFIC_NOTATION,
-        SIDS_PI,
-        SIDS_EQUAL,
-        SIDS_MC,
-        SIDS_MR,
-        SIDS_MS,
-        SIDS_MPLUS,
-        SIDS_MMINUS,
-        SIDS_EXP,
-        SIDS_OPEN_PAREN,
-        SIDS_CLOSE_PAREN,
-        SIDS_0,
-        SIDS_1,
-        SIDS_2,
-        SIDS_3,
-        SIDS_4,
-        SIDS_5,
-        SIDS_6,
-        SIDS_7,
-        SIDS_8,
-        SIDS_9,
-        SIDS_A,
-        SIDS_B,
-        SIDS_C,
-        SIDS_D,
-        SIDS_E,
-        SIDS_F,
-        SIDS_FRAC,
-        SIDS_SIND,
-        SIDS_COSD,
-        SIDS_TAND,
-        SIDS_ASIND,
-        SIDS_ACOSD,
-        SIDS_ATAND,
-        SIDS_SINR,
-        SIDS_COSR,
-        SIDS_TANR,
-        SIDS_ASINR,
-        SIDS_ACOSR,
-        SIDS_ATANR,
-        SIDS_SING,
-        SIDS_COSG,
-        SIDS_TANG,
-        SIDS_ASING,
-        SIDS_ACOSG,
-        SIDS_ATANG,
-        SIDS_ASINH,
-        SIDS_ACOSH,
-        SIDS_ATANH,
-        SIDS_POWE,
-        SIDS_POWTEN2,
-        SIDS_SQRT2,
-        SIDS_SQR,
-        SIDS_CUBE,
-        SIDS_CUBERT,
-        SIDS_FACT,
-        SIDS_RECIPROC,
-        SIDS_DEGREES,
-        SIDS_NEGATE,
-        SIDS_RSH,
-        SIDS_DIVIDEBYZERO,
-        SIDS_DOMAIN,
-        SIDS_UNDEFINED,
-        SIDS_POS_INFINITY,
-        SIDS_NEG_INFINITY,
-        SIDS_ABORTED,
-        SIDS_NOMEM,
-        SIDS_TOOMANY,
-        SIDS_OVERFLOW,
-        SIDS_NORESULT,
-        SIDS_INSUFFICIENT_DATA,
-        SIDS_ERR_UNK_CH,
-        SIDS_ERR_UNK_FN,
-        SIDS_ERR_UNEX_NUM,
-        SIDS_ERR_UNEX_CH,
-        SIDS_ERR_UNEX_SZ,
-        SIDS_ERR_MISMATCH_CLOSE,
-        SIDS_ERR_UNEX_END,
-        SIDS_ERR_SG_INV_ERROR,
-        SIDS_ERR_INPUT_OVERFLOW,
-        SIDS_ERR_OUTPUT_OVERFLOW,
-        SIDS_SECD,
-        SIDS_SECG,
-        SIDS_SECR,
-        SIDS_ASECD,
-        SIDS_ASECR,
-        SIDS_ASECG,
-        SIDS_CSCD,
-        SIDS_CSCR,
-        SIDS_CSCG,
-        SIDS_ACSCD,
-        SIDS_ACSCR,
-        SIDS_ACSCG,
-        SIDS_COTD,
-        SIDS_COTR,
-        SIDS_COTG,
-        SIDS_ACOTD,
-        SIDS_ACOTR,
-        SIDS_ACOTG,
-        SIDS_SECH,
-        SIDS_ASECH,
-        SIDS_CSCH,
-        SIDS_ACSCH,
-        SIDS_COTH,
-        SIDS_ACOTH,
-        SIDS_TWOPOWX,
-        SIDS_LOGBASEY,
-        SIDS_ABS,
-        SIDS_FLOOR,
-        SIDS_CEIL,
-        SIDS_NAND,
-        SIDS_NOR,
-        SIDS_CUBEROOT,
-        SIDS_PROGRAMMER_MOD,
+        SidsPlusMinus,
+        SidsC,
+        SidsCe,
+        SidsBackspace,
+        SidsDecimalSeparator,
+        SidsEmptyString,
+        SidsAnd,
+        SidsOr,
+        SidsXor,
+        SidsLsh,
+        SidsRsh,
+        SidsDivide,
+        SidsMultiply,
+        SidsPlus,
+        SidsMinus,
+        SidsMod,
+        SidsYroot,
+        SidsPowHat,
+        SidsInt,
+        SidsRol,
+        SidsRor,
+        SidsNot,
+        SidsSin,
+        SidsCos,
+        SidsTan,
+        SidsSinh,
+        SidsCosh,
+        SidsTanh,
+        SidsLn,
+        SidsLog,
+        SidsSqrt,
+        SidsXpow2,
+        SidsXpow3,
+        SidsNfactorial,
+        SidsReciprocal,
+        SidsDms,
+        SidsPowten,
+        SidsPercent,
+        SidsScientificNotation,
+        SidsPi,
+        SidsEqual,
+        SidsMc,
+        SidsMr,
+        SidsMs,
+        SidsMplus,
+        SidsMminus,
+        SidsExp,
+        SidsOpenParen,
+        SidsCloseParen,
+        Sids0,
+        Sids1,
+        Sids2,
+        Sids3,
+        Sids4,
+        Sids5,
+        Sids6,
+        Sids7,
+        Sids8,
+        Sids9,
+        SidsA,
+        SidsB,
+        SidsC,
+        SidsD,
+        SidsE,
+        SidsF,
+        SidsFrac,
+        SidsSind,
+        SidsCosd,
+        SidsTand,
+        SidsAsind,
+        SidsAcosd,
+        SidsAtand,
+        SidsSinr,
+        SidsCosr,
+        SidsTanr,
+        SidsAsinr,
+        SidsAcosr,
+        SidsAtanr,
+        SidsSing,
+        SidsCosg,
+        SidsTang,
+        SidsAsing,
+        SidsAcosg,
+        SidsAtang,
+        SidsAsinh,
+        SidsAcosh,
+        SidsAtanh,
+        SidsPowe,
+        SidsPowten2,
+        SidsSqrt2,
+        SidsSqr,
+        SidsCube,
+        SidsCubert,
+        SidsFact,
+        SidsReciproc,
+        SidsDegrees,
+        SidsNegate,
+        SidsRsh,
+        SidsDividebyzero,
+        SidsDomain,
+        SidsUndefined,
+        SidsPosInfinity,
+        SidsNegInfinity,
+        SidsAborted,
+        SidsNomem,
+        SidsToomany,
+        SidsOverflow,
+        SidsNoresult,
+        SidsInsufficientData,
+        SidsErrUnkCh,
+        SidsErrUnkFn,
+        SidsErrUnexNum,
+        SidsErrUnexCh,
+        SidsErrUnexSz,
+        SidsErrMismatchClose,
+        SidsErrUnexEnd,
+        SidsErrSgInvError,
+        SidsErrInputOverflow,
+        SidsErrOutputOverflow,
+        SidsSecd,
+        SidsSecg,
+        SidsSecr,
+        SidsAsecd,
+        SidsAsecr,
+        SidsAsecg,
+        SidsCscd,
+        SidsCscr,
+        SidsCscg,
+        SidsAcscd,
+        SidsAcscr,
+        SidsAcscg,
+        SidsCotd,
+        SidsCotr,
+        SidsCotg,
+        SidsAcotd,
+        SidsAcotr,
+        SidsAcotg,
+        SidsSech,
+        SidsAsech,
+        SidsCsch,
+        SidsAcsch,
+        SidsCoth,
+        SidsAcoth,
+        SidsTwopowx,
+        SidsLogbasey,
+        SidsAbs,
+        SidsFloor,
+        SidsCeil,
+        SidsNand,
+        SidsNor,
+        SidsCuberoot,
+        SidsProgrammerMod,
     };
 }

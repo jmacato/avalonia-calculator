@@ -3,6 +3,8 @@
 
 //  // #pragma  once
 
+using System.Resources;
+
 namespace CalculatorApp.ViewModel.Common
 {
     public partial class AppResourceProvider
@@ -14,8 +16,7 @@ namespace CalculatorApp.ViewModel.Common
 
     //private:
     //    AppResourceProvider();
-        Windows.ApplicationModel.Resources.ResourceLoader  m_stringResLoader;
-        Windows.ApplicationModel.Resources.ResourceLoader  m_cEngineStringResLoader;
+        private readonly ResourceManager m_stringResLoader;
+        private readonly ResourceManager m_cEngineStringResLoader;
     };
 }
-

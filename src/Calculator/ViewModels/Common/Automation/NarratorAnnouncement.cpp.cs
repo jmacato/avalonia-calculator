@@ -2,8 +2,6 @@
 // Licensed under the MIT License.
 
 
-using Microsoft.UI.Xaml.Automation.Peers;
-
 namespace CalculatorApp.ViewModel.Common.Automation
 {
     public static class CalculatorActivityIds
@@ -69,9 +67,9 @@ namespace CalculatorApp.ViewModel.Common.Automation
             get => m_processing;
         }
 
-        public static bool IsValid(NarratorAnnouncement announcement)
+        public static bool IsValid(NarratorAnnouncement? announcement)
         {
-            return announcement != null && announcement.Announcement != null && !string.IsNullOrEmpty(announcement.Announcement);
+            return announcement is not null && !string.IsNullOrEmpty(announcement.Announcement);
         }
 
         public static NarratorAnnouncement GetDisplayUpdatedAnnouncement(string announcement)

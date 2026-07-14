@@ -15,11 +15,11 @@ namespace CalculatorApp
         /// <summary>
         /// Model representation of a single item in the Memory list
         /// </summary>
-        [Microsoft.UI.Xaml.Data.Bindable] public partial class MemoryItemViewModel   :  INotifyPropertyChanged
+        public partial class MemoryItemViewModel : INotifyPropertyChanged
         {
             // Private fields expanded from OBSERVABLE_PROPERTY_RW macros
             private int m_Position;
-            private string m_Value;
+            private string m_Value = string.Empty;
 
             // Field from constructor
             private StandardCalculatorViewModel m_calcVM;
@@ -32,7 +32,7 @@ namespace CalculatorApp
             }
 
             // OBSERVABLE_OBJECT() expanded implementation
-            public event PropertyChangedEventHandler PropertyChanged;
+            public event PropertyChangedEventHandler? PropertyChanged;
 
             // Internal helper method from OBSERVABLE_OBJECT macro
             private void RaisePropertyChanged(string propertyName)

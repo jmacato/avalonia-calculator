@@ -3,8 +3,9 @@ namespace CalcManagerManaged.Interop;
 /// <summary>
 /// Calculator history item
 /// </summary>
-public class CalcHistoryItem
+internal sealed class CalcHistoryItem
 {
-    public string Expression { get; set; }
-    public string Result { get; set; }
+    public string Expression { get; set; } = string.Empty;
+
+    public string Result { get; set; } = string.Empty;
 }

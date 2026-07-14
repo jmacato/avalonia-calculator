@@ -73,8 +73,8 @@ namespace CalculatorApp.ViewModel.Common
         }
 
         public void SetExpressionDisplay(
-             List<(string, int)> tokens,
-    List<IExpressionCommand> commands)
+             IList<(string, int)> tokens,
+             IList<IExpressionCommand> commands)
         {
                         if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
             {
@@ -85,7 +85,7 @@ namespace CalculatorApp.ViewModel.Common
             }
         }
 
-        public void SetMemorizedNumbers(List<string> newMemorizedNumbers)
+        public void SetMemorizedNumbers(IList<string> newMemorizedNumbers)
         {
                         if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
             {

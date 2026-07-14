@@ -1,6 +1,6 @@
 namespace CalcEngineTests;
 
-public static class DefaultCombinedCalcResource
+internal static class DefaultCombinedCalcResource
 {
     public static Dictionary<string, string> StringResources = new()
     {

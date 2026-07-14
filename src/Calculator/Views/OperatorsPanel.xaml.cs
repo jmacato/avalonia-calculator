@@ -1,96 +1,68 @@
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
 
-// The User Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234236
+using Avalonia;
+using Avalonia.Controls;
+using CalculatorApp.ViewModel;
 
-namespace CalculatorApp
+namespace CalculatorApp;
+
+public sealed partial class OperatorsPanel : UserControl
 {
-    [Windows.Foundation.Metadata.WebHostHidden]
-    public sealed partial class OperatorsPanel : UserControl
+    public static readonly StyledProperty<bool> IsBitFlipCheckedProperty =
+        AvaloniaProperty.Register<OperatorsPanel, bool>(nameof(IsBitFlipChecked));
+
+    public static readonly StyledProperty<bool> IsErrorVisualStateProperty =
+        AvaloniaProperty.Register<OperatorsPanel, bool>(nameof(IsErrorVisualState));
+
+    public OperatorsPanel()
     {
-        public CalculatorApp.ViewModel.StandardCalculatorViewModel Model => (CalculatorApp.ViewModel.StandardCalculatorViewModel)DataContext;
+        InitializeComponent();
+        IsBitFlipCheckedProperty.Changed.AddClassHandler<OperatorsPanel>(
+            static (sender, args) => sender.OnIsBitFlipCheckedPropertyChanged(args.NewValue is true));
+        IsErrorVisualStateProperty.Changed.AddClassHandler<OperatorsPanel>(
+            static (sender, args) => sender.OnIsErrorVisualStatePropertyChanged(args.NewValue is true));
+    }
 
-        public OperatorsPanel()
+    public StandardCalculatorViewModel? Model => DataContext as StandardCalculatorViewModel;
+
+    public bool IsBitFlipChecked
+    {
+        get => GetValue(IsBitFlipCheckedProperty);
+        set => SetValue(IsBitFlipCheckedProperty, value);
+    }
+
+    public bool IsErrorVisualState
+    {
+        get => GetValue(IsErrorVisualStateProperty);
+        set => SetValue(IsErrorVisualStateProperty, value);
+    }
+
+    private void OnIsBitFlipCheckedPropertyChanged(bool newValue)
+    {
+        if (newValue)
         {
-            InitializeComponent();
+            EnsureProgrammerBitFlipPanel();
         }
+    }
 
-        public bool IsBitFlipChecked
-        {
-            get => (bool)GetValue(IsBitFlipCheckedProperty);
-            set => SetValue(IsBitFlipCheckedProperty, value);
-        }
+    private void OnIsErrorVisualStatePropertyChanged(bool newValue)
+    {
+        StandardOperators.IsErrorVisualState = newValue;
+        ScientificOperators.IsErrorVisualState = newValue;
+        ProgrammerRadixOperators.IsErrorVisualState = newValue;
+    }
 
-        // Using a DependencyProperty as the backing store for IsBitFlipChecked.  This enables animation, styling, binding, etc...
-        public static readonly DependencyProperty IsBitFlipCheckedProperty =
-            DependencyProperty.Register(nameof(IsBitFlipChecked), typeof(bool), typeof(OperatorsPanel), new PropertyMetadata(default(bool), (sender, args) =>
-            {
-                var self = (OperatorsPanel)sender;
-                self.OnIsBitFlipCheckedPropertyChanged((bool)args.OldValue, (bool)args.NewValue);
-            }));
+    public void EnsureScientificOps()
+    {
+    }
 
-        public bool IsErrorVisualState
-        {
-            get => (bool)GetValue(IsErrorVisualStateProperty);
-            set => SetValue(IsErrorVisualStateProperty, value);
-        }
+    public void EnsureProgrammerRadixOps()
+    {
+    }
 
-        // Using a DependencyProperty as the backing store for IsErrorVisualState.  This enables animation, styling, binding, etc...
-        public static readonly DependencyProperty IsErrorVisualStateProperty =
-            DependencyProperty.Register(nameof(IsErrorVisualState), typeof(bool), typeof(OperatorsPanel), new PropertyMetadata(default(bool), (sender, args) =>
-            {
-                var self = (OperatorsPanel)sender;
-                self.OnIsErrorVisualStatePropertyChanged((bool)args.OldValue, (bool)args.NewValue);
-            }));
-
-        private void OnIsBitFlipCheckedPropertyChanged(bool oldValue, bool newValue)
-        {
-            if (newValue)
-            {
-                EnsureProgrammerBitFlipPanel();
-            }
-        }
-
-        private void OnIsErrorVisualStatePropertyChanged(bool oldValue, bool newValue)
-        {
-            if (Model.IsStandard)
-            {
-                StandardOperators.IsErrorVisualState = newValue;
-            }
-            else if (Model.IsScientific)
-            {
-                ScientificOperators.IsErrorVisualState = newValue;
-            }
-            else if (Model.IsProgrammer)
-            {
-                ProgrammerRadixOperators.IsErrorVisualState = newValue;
-            }
-        }
-
-        public void EnsureScientificOps()
-        {
-            if (ScientificOperators == null)
-            {
-                FindName("ScientificOperators");
-            }
-        }
-
-        public void EnsureProgrammerRadixOps()
-        {
-            if (ProgrammerRadixOperators == null)
-            {
-                FindName("ProgrammerRadixOperators");
-            }
-
-            ProgrammerRadixOperators.checkDefaultBitShift();
-        }
-
-        private void EnsureProgrammerBitFlipPanel()
-        {
-            if (BitFlipPanel == null)
-            {
-                this.FindName("BitFlipPanel");
-            }
-        }
+    private void EnsureProgrammerBitFlipPanel()
+    {
+        BitFlipPanel.IsVisible = Model?.IsBinaryBitFlippingEnabled == true;
     }
 }

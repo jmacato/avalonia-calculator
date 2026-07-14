@@ -1,480 +1,455 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Diagnostics;
+using Avalonia;
+using Avalonia.Automation.Peers;
+using Avalonia.Controls;
+using Avalonia.Controls.Metadata;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Styling;
 using CalculatorApp.ViewModel.Common;
 
-using System;
-using System.Diagnostics;
+namespace CalculatorApp.Controls;
 
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Automation.Peers;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
+public delegate void SelectedEventHandler(object sender);
 
-namespace CalculatorApp
+/// <summary>
+/// Direct Avalonia port of the WinUI calculation-result control. The control
+/// grows and shrinks the result text within the original font-size limits and
+/// exposes the same explicit horizontal scrolling affordances when even the
+/// minimum-size result does not fit.
+/// </summary>
+[PseudoClasses(ActivePseudoClass, ErrorPseudoClass)]
+public sealed class CalculationResult : TemplatedControl
 {
-    namespace Controls
+    private const string ActivePseudoClass = ":active";
+    private const string ErrorPseudoClass = ":error";
+    private const double ScaleFactor = 0.357143;
+    private const double SmallHeightScaleFactor = 0;
+    private const double HeightCutoff = 100;
+    private const double IncrementOffset = 1;
+    private const double MaxFontIncrement = 5;
+    private const double WidthToFontScalar = 0.0556513;
+    private const double WidthToFontOffset = 3;
+    private const double WidthCutoff = 50;
+    private const double FontTolerance = 0.001;
+    private const double ScrollRatio = 0.7;
+    private const double ScrollButtonsApproximationRange = 4;
+
+    public static readonly StyledProperty<double> MinFontSizeProperty =
+        AvaloniaProperty.Register<CalculationResult, double>(nameof(MinFontSize));
+
+    public static readonly StyledProperty<double> MaxFontSizeProperty =
+        AvaloniaProperty.Register<CalculationResult, double>(nameof(MaxFontSize), 30);
+
+    public static readonly StyledProperty<Thickness> DisplayMarginProperty =
+        AvaloniaProperty.Register<CalculationResult, Thickness>(nameof(DisplayMargin));
+
+    public static readonly StyledProperty<bool> IsActiveProperty =
+        AvaloniaProperty.Register<CalculationResult, bool>(nameof(IsActive));
+
+    public static readonly StyledProperty<string> DisplayValueProperty =
+        AvaloniaProperty.Register<CalculationResult, string>(nameof(DisplayValue), string.Empty);
+
+    public static readonly StyledProperty<bool> IsInErrorProperty =
+        AvaloniaProperty.Register<CalculationResult, bool>(nameof(IsInError));
+
+    public static readonly StyledProperty<bool> IsOperatorCommandProperty =
+        AvaloniaProperty.Register<CalculationResult, bool>(nameof(IsOperatorCommand));
+
+    public static readonly StyledProperty<HorizontalAlignment> HorizontalContentAlignmentProperty =
+        AvaloniaProperty.Register<CalculationResult, HorizontalAlignment>(
+            nameof(HorizontalContentAlignment),
+            HorizontalAlignment.Right);
+
+    public static readonly StyledProperty<VerticalAlignment> VerticalContentAlignmentProperty =
+        AvaloniaProperty.Register<CalculationResult, VerticalAlignment>(
+            nameof(VerticalContentAlignment),
+            VerticalAlignment.Top);
+
+    private ScrollViewer? _textContainer;
+    private SelectableTextBlock? _textBlock;
+    private Button? _scrollLeft;
+    private Button? _scrollRight;
+    private bool _isScalingText;
+    private bool _haveCalculatedMax;
+
+    public CalculationResult()
     {
-        public delegate void SelectedEventHandler(object sender);
+        Focusable = true;
+    }
 
-        public sealed class CalculationResult : Control
+    public double MinFontSize
+    {
+        get => GetValue(MinFontSizeProperty);
+        set => SetValue(MinFontSizeProperty, value);
+    }
+
+    public double MaxFontSize
+    {
+        get => GetValue(MaxFontSizeProperty);
+        set => SetValue(MaxFontSizeProperty, value);
+    }
+
+    public Thickness DisplayMargin
+    {
+        get => GetValue(DisplayMarginProperty);
+        set => SetValue(DisplayMarginProperty, value);
+    }
+
+    public bool IsActive
+    {
+        get => GetValue(IsActiveProperty);
+        set => SetValue(IsActiveProperty, value);
+    }
+
+    public string DisplayValue
+    {
+        get => GetValue(DisplayValueProperty);
+        set => SetValue(DisplayValueProperty, value);
+    }
+
+    public bool IsInError
+    {
+        get => GetValue(IsInErrorProperty);
+        set => SetValue(IsInErrorProperty, value);
+    }
+
+    public bool IsOperatorCommand
+    {
+        get => GetValue(IsOperatorCommandProperty);
+        set => SetValue(IsOperatorCommandProperty, value);
+    }
+
+    public HorizontalAlignment HorizontalContentAlignment
+    {
+        get => GetValue(HorizontalContentAlignmentProperty);
+        set => SetValue(HorizontalContentAlignmentProperty, value);
+    }
+
+    public VerticalAlignment VerticalContentAlignment
+    {
+        get => GetValue(VerticalContentAlignmentProperty);
+        set => SetValue(VerticalContentAlignmentProperty, value);
+    }
+
+    public event SelectedEventHandler? Selected;
+
+    public void ProgrammaticSelect() => RaiseSelectedEvent();
+
+    public string GetRawDisplayValue() =>
+        LocalizationSettings.GetInstance().RemoveGroupSeparators(DisplayValue);
+
+    internal void UpdateTextState()
+    {
+        if (_textContainer is null || _textBlock is null)
         {
-            public CalculationResult()
-            {
-                m_isScalingText = false;
-                m_haveCalculatedMax = false;
-            }
+            return;
+        }
 
-            public double MinFontSize
-            {
-                get => (double)GetValue(MinFontSizeProperty);
-                set => SetValue(MinFontSizeProperty, value);
-            }
+        double containerSize = _textContainer.Viewport.Width > 0
+            ? _textContainer.Viewport.Width
+            : _textContainer.Bounds.Width;
+        string oldText = _textBlock.Text ?? string.Empty;
+        string newText = DisplayValue;
 
-            // Using a DependencyProperty as the backing store for MinFontSize.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty MinFontSizeProperty =
-                DependencyProperty.Register(nameof(MinFontSize), typeof(double), typeof(CalculationResult), new PropertyMetadata(0.0, (sender, args) =>
-                {
-                    var self = (CalculationResult)sender;
-                    self.OnMinFontSizePropertyChanged((double)args.OldValue, (double)args.NewValue);
-                }));
+        // Preserve the original iterative layout algorithm. A new value first
+        // resets to the requested maximum; subsequent layout passes converge
+        // on the largest font that fits the viewport.
+        if (!_isScalingText || oldText != newText)
+        {
+            _textBlock.Text = newText;
+            _textBlock.FontSize = Math.Clamp(FontSize, MinFontSize, MaxFontSize);
+            _textContainer.Padding = default;
+            _isScalingText = true;
+            _haveCalculatedMax = false;
+            _textBlock.InvalidateMeasure();
+            return;
+        }
 
-            public double MaxFontSize
-            {
-                get => (double)GetValue(MaxFontSizeProperty);
-                set => SetValue(MaxFontSizeProperty, value);
-            }
+        if (containerSize <= 0)
+        {
+            return;
+        }
 
-            // Using a DependencyProperty as the backing store for MaxFontSize.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty MaxFontSizeProperty =
-                DependencyProperty.Register(nameof(MaxFontSize), typeof(double), typeof(CalculationResult), new PropertyMetadata(30.0, (sender, args) =>
-                {
-                    var self = (CalculationResult)sender;
-                    self.OnMaxFontSizePropertyChanged((double)args.OldValue, (double)args.NewValue);
-                }));
+        double textWidth = _textBlock.Bounds.Width;
+        if (textWidth <= 0)
+        {
+            textWidth = _textBlock.DesiredSize.Width;
+        }
 
-            public Thickness DisplayMargin
-            {
-                get => (Thickness)GetValue(DisplayMarginProperty);
-                set => SetValue(DisplayMarginProperty, value);
-            }
+        double widthDiff = Math.Abs(textWidth - containerSize);
+        double fontSizeChange = IncrementOffset;
+        if (widthDiff > WidthCutoff)
+        {
+            fontSizeChange = Math.Min(
+                Math.Max(Math.Floor(WidthToFontScalar * widthDiff) - WidthToFontOffset, IncrementOffset),
+                MaxFontIncrement);
+        }
 
-            // Using a DependencyProperty as the backing store for DisplayMargin.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty DisplayMarginProperty =
-                DependencyProperty.Register(nameof(DisplayMargin), typeof(Thickness), typeof(CalculationResult), new PropertyMetadata(default(Thickness)));
+        if (textWidth < containerSize
+            && Math.Abs(_textBlock.FontSize - MaxFontSize) > FontTolerance
+            && !_haveCalculatedMax)
+        {
+            ModifyFontAndMargin(fontSizeChange);
+            _textBlock.InvalidateMeasure();
+            return;
+        }
 
-            public bool IsActive
-            {
-                get => (bool)GetValue(IsActiveProperty);
-                set => SetValue(IsActiveProperty, value);
-            }
+        if (fontSizeChange < 5)
+        {
+            _haveCalculatedMax = true;
+        }
 
-            // Using a DependencyProperty as the backing store for IsActive.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty IsActiveProperty =
-                DependencyProperty.Register(nameof(IsActive), typeof(bool), typeof(CalculationResult), new PropertyMetadata(default(bool), (sender, args) =>
-                {
-                    var self = (CalculationResult)sender;
-                    self.OnIsActivePropertyChanged((bool)args.OldValue, (bool)args.NewValue);
-                }));
+        if (textWidth >= containerSize
+            && Math.Abs(_textBlock.FontSize - MinFontSize) > FontTolerance)
+        {
+            ModifyFontAndMargin(-fontSizeChange);
+            _textBlock.InvalidateMeasure();
+            return;
+        }
 
-            public string DisplayValue
-            {
-                get => (string)GetValue(DisplayValueProperty);
-                set => SetValue(DisplayValueProperty, value);
-            }
+        Debug.Assert(_textBlock.FontSize >= MinFontSize && _textBlock.FontSize <= MaxFontSize);
+        _isScalingText = false;
+        ScrollTo(IsOperatorCommand ? 0 : MaximumHorizontalOffset);
+        UpdateScrollButtons();
+    }
 
-            // Using a DependencyProperty as the backing store for DisplayValue.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty DisplayValueProperty =
-                DependencyProperty.Register(nameof(DisplayValue), typeof(string), typeof(CalculationResult), new PropertyMetadata(string.Empty, (sender, args) =>
-                {
-                    var self = (CalculationResult)sender;
-                    self.OnDisplayValuePropertyChanged((string)args.OldValue, (string)args.NewValue);
-                }));
+    protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
+    {
+        UnregisterEventHandlers();
+        base.OnApplyTemplate(e);
 
-            public bool IsInError
-            {
-                get => (bool)GetValue(IsInErrorProperty);
-                set => SetValue(IsInErrorProperty, value);
-            }
+        _textContainer = e.NameScope.Find<ScrollViewer>("TextContainer");
+        _textBlock = e.NameScope.Find<SelectableTextBlock>("NormalOutput");
+        _scrollLeft = e.NameScope.Find<Button>("ScrollLeft");
+        _scrollRight = e.NameScope.Find<Button>("ScrollRight");
 
-            // Using a DependencyProperty as the backing store for IsInError.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty IsInErrorProperty =
-                DependencyProperty.Register(nameof(IsInError), typeof(bool), typeof(CalculationResult), new PropertyMetadata(default(bool), (sender, args) =>
-                {
-                    var self = (CalculationResult)sender;
-                    self.OnIsInErrorPropertyChanged((bool)args.OldValue, (bool)args.NewValue);
-                }));
+        if (_textContainer is not null)
+        {
+            _textContainer.SizeChanged += OnTextContainerSizeChanged;
+            _textContainer.ScrollChanged += OnTextContainerScrollChanged;
+            _textContainer.LayoutUpdated += OnTextContainerLayoutUpdated;
+        }
 
-            public bool IsOperatorCommand
-            {
-                get => (bool)GetValue(IsOperatorCommandProperty);
-                set => SetValue(IsOperatorCommandProperty, value);
-            }
+        if (_textBlock is not null)
+        {
+            _textBlock.SizeChanged += OnTextBlockSizeChanged;
+        }
 
-            // Using a DependencyProperty as the backing store for IsOperatorCommand.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty IsOperatorCommandProperty =
-                DependencyProperty.Register(nameof(IsOperatorCommand), typeof(bool), typeof(CalculationResult), new PropertyMetadata(false));
+        if (_scrollLeft is not null)
+        {
+            _scrollLeft.Click += OnScrollLeftClick;
+        }
 
-            public event SelectedEventHandler Selected;
+        if (_scrollRight is not null)
+        {
+            _scrollRight.Click += OnScrollRightClick;
+        }
 
-            public void ProgrammaticSelect()
-            {
-                RaiseSelectedEvent();
-            }
+        UpdateVisualState();
+        UpdateTextState();
+    }
 
-            internal void UpdateTextState()
-            {
-                if ((m_textContainer == null) || (m_textBlock == null))
-                {
-                    return;
-                }
-
-                var containerSize = m_textContainer.ActualWidth;
-                string oldText = m_textBlock.Text;
-                string newText = DisplayValue;
-
-                // Initiate the scaling operation
-                // UpdateLayout will keep calling us until we make it through the below 2 if-statements
-                if (!m_isScalingText || oldText != newText)
-                {
-                    m_textBlock.Text = newText;
-
-                    m_isScalingText = true;
-                    m_haveCalculatedMax = false;
-                    m_textBlock.InvalidateArrange();
-                    return;
-                }
-                if (containerSize > 0)
-                {
-                    double widthDiff = Math.Abs(m_textBlock.ActualWidth - containerSize);
-                    double fontSizeChange = INCREMENTOFFSET;
-
-                    if (widthDiff > WIDTHCUTOFF)
-                    {
-                        fontSizeChange = Math.Min(Math.Max(Math.Floor(WIDTHTOFONTSCALAR * widthDiff) - WIDTHTOFONTOFFSET, INCREMENTOFFSET), MAXFONTINCREMENT);
-                    }
-                    if (m_textBlock.ActualWidth < containerSize && Math.Abs(m_textBlock.FontSize - MaxFontSize) > FONTTOLERANCE && !m_haveCalculatedMax)
-                    {
-                        ModifyFontAndMargin(m_textBlock, fontSizeChange);
-                        m_textBlock.InvalidateArrange();
-                        return;
-                    }
-                    if (fontSizeChange < 5)
-                    {
-                        m_haveCalculatedMax = true;
-                    }
-                    if (m_textBlock.ActualWidth >= containerSize && Math.Abs(m_textBlock.FontSize - MinFontSize) > FONTTOLERANCE)
-                    {
-                        ModifyFontAndMargin(m_textBlock, -1 * fontSizeChange);
-                        m_textBlock.InvalidateArrange();
-                        return;
-                    }
-                    Debug.Assert(m_textBlock.FontSize >= MinFontSize && m_textBlock.FontSize <= MaxFontSize);
-                    m_isScalingText = false;
-                    if (IsOperatorCommand)
-                    {
-                        m_textContainer.ChangeView(0.0, null, null);
-                    }
-                    else
-                    {
-                        m_textContainer.ChangeView(m_textContainer.ExtentWidth - m_textContainer.ViewportWidth, null, null);
-                    }
-                }
-            }
-            public string GetRawDisplayValue()
-            {
-                return LocalizationSettings.GetInstance().RemoveGroupSeparators(DisplayValue);
-            }
-
-            protected override void OnKeyDown(KeyRoutedEventArgs e)
-            {
-                switch (e.Key)
-                {
-                    case Windows.System.VirtualKey.Left:
-                        this.ScrollLeft();
-                        break;
-                    case Windows.System.VirtualKey.Right:
-                        this.ScrollRight();
-                        break;
-                }
-            }
-
-            protected override void OnApplyTemplate()
-            {
-                if (m_textContainer != null)
-                {
-                    m_textContainer.LayoutUpdated -= OnTextContainerLayoutUpdated;
-                    m_textContainer.SizeChanged -= OnTextContainerSizeChanged;
-                    m_textContainer.ViewChanged -= OnTextContainerOnViewChanged;
-                }
-
-                if (m_textBlock != null)
-                {
-                    m_textBlock.SizeChanged -= OnTextBlockSizeChanged;
-                }
-
-                if (m_scrollLeft != null)
-                {
-                    m_scrollLeft.Click -= OnScrollLeftClick;
-                }
-
-                if (m_scrollRight != null)
-                {
-                    m_scrollRight.Click -= OnScrollRightClick;
-                }
-
-                m_textContainer = GetTemplateChild("TextContainer") as ScrollViewer;
-                if (m_textContainer != null)
-                {
-                    // We want to know when the size of the container changes so
-                    // we can rescale the textbox
-                    m_textContainer.SizeChanged += OnTextContainerSizeChanged;
-
-                    m_textContainer.ViewChanged += OnTextContainerOnViewChanged;
-
-                    m_textContainer.LayoutUpdated += OnTextContainerLayoutUpdated;
-
-                    m_textContainer.ChangeView(m_textContainer.ExtentWidth - m_textContainer.ViewportWidth, null, null);
-                    m_scrollLeft = GetTemplateChild("ScrollLeft") as HyperlinkButton;
-                    if (m_scrollLeft != null)
-                    {
-                        m_scrollLeft.Click += OnScrollLeftClick;
-                    }
-                    m_scrollRight = GetTemplateChild("ScrollRight") as HyperlinkButton;
-                    if (m_scrollRight != null)
-                    {
-                        m_scrollRight.Click += OnScrollRightClick;
-                    }
-                    m_textBlock = GetTemplateChild("NormalOutput") as TextBlock;
-                    if (m_textBlock != null)
-                    {
-                        m_textBlock.Visibility = Visibility.Visible;
-                        m_textBlock.SizeChanged += OnTextBlockSizeChanged;
-                    }
-                }
-                UpdateVisualState();
-                UpdateTextState();
-            }
-
-            protected override void OnTapped(TappedRoutedEventArgs e)
-            {
-                this.Focus(FocusState.Programmatic);
-                RaiseSelectedEvent();
-            }
-
-            protected override void OnRightTapped(RightTappedRoutedEventArgs e)
-            {
-                var requestedElement = e.OriginalSource;
-
-                if (requestedElement.Equals(m_textBlock))
-                {
-                    m_textBlock.Focus(FocusState.Programmatic);
-                }
-                else
-                {
-                    this.Focus(FocusState.Programmatic);
-                }
-            }
-
-            protected override AutomationPeer OnCreateAutomationPeer()
-            {
-                return new CalculationResultAutomationPeer(this);
-            }
-
-            private void OnIsActivePropertyChanged(bool oldValue, bool newValue)
-            {
-                UpdateVisualState();
-            }
-
-            private void OnDisplayValuePropertyChanged(string oldValue, string newValue)
-            {
-                UpdateTextState();
-            }
-
-            private void OnIsInErrorPropertyChanged(bool oldValue, bool newValue)
-            {
-                // We need to have a good template for this to work
-                if (m_textBlock == null)
-                {
-                    return;
-                }
-
-                if (newValue)
-                {
-                    // If there's an error message we need to override the normal display font
-                    // with the font appropriate for this language. This is because the error
-                    // message is localized and therefore can contain characters that are not
-                    // available in the normal font.
-                    // We use UIText as the font type because this is the most common font type to use
-                    m_textBlock.FontFamily = LocalizationService.GetInstance().GetLanguageFontFamilyForType(LanguageFontType.UIText);
-                }
-                else
-                {
-                    // The error result is no longer an error so we will restore the
-                    // value to FontFamily property to the value provided in the style
-                    // for the TextBlock in the template.
-                    m_textBlock.ClearValue(TextBlock.FontFamilyProperty);
-                }
-            }
-
-            private void OnMinFontSizePropertyChanged(double oldValue, double newValue)
-            {
-                UpdateTextState();
-            }
-
-            private void OnMaxFontSizePropertyChanged(double oldValue, double newValue)
-            {
-                UpdateTextState();
-            }
-
-            private void OnTextContainerSizeChanged(object sender, SizeChangedEventArgs e)
-            {
-                UpdateTextState();
-            }
-
-            private void OnTextBlockSizeChanged(object sender, SizeChangedEventArgs e)
-            {
-                UpdateScrollButtons();
-            }
-
-            private void OnTextContainerLayoutUpdated(object sender, object e)
-            {
-                if (m_isScalingText)
-                {
-                    UpdateTextState();
-                }
-            }
-
-            private void OnTextContainerOnViewChanged(object sender, ScrollViewerViewChangedEventArgs e)
-            {
-                UpdateScrollButtons();
-            }
-
-            private void UpdateVisualState()
-            {
-                VisualStateManager.GoToState(this, IsActive ? "Active" : "Normal", true);
-            }
-
-            private void OnScrollLeftClick(object sender, RoutedEventArgs e)
-            {
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Left:
                 ScrollLeft();
-            }
-
-            private void OnScrollRightClick(object sender, RoutedEventArgs e)
-            {
+                e.Handled = true;
+                break;
+            case Key.Right:
                 ScrollRight();
-            }
-
-            private void ModifyFontAndMargin(TextBlock textBox, double fontChange)
-            {
-                double cur = textBox.FontSize;
-                double scaleFactor = SCALEFACTOR;
-                if (m_textContainer.ActualHeight <= HEIGHTCUTOFF)
-                {
-                    scaleFactor = SMALLHEIGHTSCALEFACTOR;
-                }
-
-                double newFontSize = Math.Min(Math.Max(cur + fontChange, MinFontSize), MaxFontSize);
-                m_textContainer.Padding = new Thickness(0, 0, 0, scaleFactor * Math.Abs(cur - newFontSize));
-                textBox.FontSize = newFontSize;
-            }
-
-            private void UpdateScrollButtons()
-            {
-                if (m_textContainer == null)
-                {
-                    return;
-                }
-
-                bool shouldTryFocusScrollRight = false;
-                if (m_scrollLeft != null)
-                {
-                    var scrollLeftVisibility = m_textContainer.HorizontalOffset > SCROLL_BUTTONS_APPROXIMATION_RANGE ? Visibility.Visible : Visibility.Collapsed;
-
-                    if (scrollLeftVisibility == Visibility.Collapsed)
-                    {
-                        shouldTryFocusScrollRight = m_scrollLeft.Equals(FocusManager.GetFocusedElement());
-                    }
-
-                    m_scrollLeft.Visibility = scrollLeftVisibility;
-                }
-
-                if (m_scrollRight != null)
-                {
-                    var scrollRightVisibility =
-                        m_textContainer.HorizontalOffset + m_textContainer.ViewportWidth + SCROLL_BUTTONS_APPROXIMATION_RANGE < m_textContainer.ExtentWidth
-                            ? Visibility.Visible
-                            : Visibility.Collapsed;
-
-                    if (scrollRightVisibility == Visibility.Collapsed && m_scrollLeft != null && m_scrollLeft.Visibility == Visibility.Visible
-                        && m_scrollRight.Equals(FocusManager.GetFocusedElement()))
-                    {
-                        // ScrollRight had the focus and will be collapsed, ScrollLeft should get the focus
-                        m_scrollLeft.Focus(FocusState.Programmatic);
-                    }
-                    m_scrollRight.Visibility = scrollRightVisibility;
-
-                    if (shouldTryFocusScrollRight && scrollRightVisibility == Visibility.Visible)
-                    {
-                        m_scrollRight.Focus(FocusState.Programmatic);
-                    }
-                }
-            }
-
-            private void ScrollLeft()
-            {
-                if (m_textContainer == null)
-                {
-                    return;
-                }
-                if (m_textContainer.HorizontalOffset > 0)
-                {
-                    double offset = m_textContainer.HorizontalOffset - (SCROLL_RATIO * m_textContainer.ViewportWidth);
-                    m_textContainer.ChangeView(offset, null, null);
-                }
-            }
-
-            private void ScrollRight()
-            {
-                if (m_textContainer == null)
-                {
-                    return;
-                }
-
-                if (m_textContainer.HorizontalOffset < m_textContainer.ExtentWidth - m_textContainer.ViewportWidth)
-                {
-                    double offset = m_textContainer.HorizontalOffset + (SCROLL_RATIO * m_textContainer.ViewportWidth);
-                    m_textContainer.ChangeView(offset, null, null);
-                }
-            }
-
-            private void RaiseSelectedEvent()
-            {
-                Selected?.Invoke(this);
-            }
-
-            private const double SCALEFACTOR = 0.357143;
-            private const double SMALLHEIGHTSCALEFACTOR = 0;
-            private const double HEIGHTCUTOFF = 100;
-            private const double INCREMENTOFFSET = 1;
-            private const double MAXFONTINCREMENT = 5;
-            private const double WIDTHTOFONTSCALAR = 0.0556513;
-            private const double WIDTHTOFONTOFFSET = 3;
-            private const double WIDTHCUTOFF = 50;
-            private const double FONTTOLERANCE = 0.001;
-            private const double SCROLL_RATIO = 0.7;
-
-            // We need a safety margin to guarantee we correctly always show/hide ScrollLeft and ScrollRight buttons when necessary.
-            // In rare cases, ScrollViewer::HorizontalOffset is a little low by a few (sub)pixels when users scroll to one of the extremity
-            // and no events are launched when they scroll again in the same direction
-            private const double SCROLL_BUTTONS_APPROXIMATION_RANGE = 4;
-
-            private ScrollViewer m_textContainer;
-            private TextBlock m_textBlock;
-            private HyperlinkButton m_scrollLeft;
-            private HyperlinkButton m_scrollRight;
-            private bool m_isScalingText;
-            private bool m_haveCalculatedMax;
+                e.Handled = true;
+                break;
+            case Key.Space:
+                RaiseSelectedEvent();
+                e.Handled = true;
+                break;
+            default:
+                base.OnKeyDown(e);
+                break;
         }
     }
+
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.PointerUpdateKind
+            == PointerUpdateKind.RightButtonPressed)
+        {
+            Focus();
+        }
+
+        base.OnPointerPressed(e);
+    }
+
+    protected override void OnTapped(TappedEventArgs e)
+    {
+        Focus();
+        RaiseSelectedEvent();
+        base.OnTapped(e);
+    }
+
+    protected override AutomationPeer OnCreateAutomationPeer() =>
+        new CalculationResultAutomationPeer(this);
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+
+        if (change.Property == DisplayValueProperty
+            || change.Property == MinFontSizeProperty
+            || change.Property == MaxFontSizeProperty
+            || change.Property == FontSizeProperty)
+        {
+            UpdateTextState();
+        }
+        else if (change.Property == IsActiveProperty || change.Property == IsInErrorProperty)
+        {
+            UpdateVisualState();
+            UpdateTextState();
+        }
+    }
+
+    private double MaximumHorizontalOffset => _textContainer is null
+        ? 0
+        : Math.Max(0, _textContainer.Extent.Width - _textContainer.Viewport.Width);
+
+    private void UnregisterEventHandlers()
+    {
+        if (_textContainer is not null)
+        {
+            _textContainer.SizeChanged -= OnTextContainerSizeChanged;
+            _textContainer.ScrollChanged -= OnTextContainerScrollChanged;
+            _textContainer.LayoutUpdated -= OnTextContainerLayoutUpdated;
+        }
+
+        if (_textBlock is not null)
+        {
+            _textBlock.SizeChanged -= OnTextBlockSizeChanged;
+        }
+
+        if (_scrollLeft is not null)
+        {
+            _scrollLeft.Click -= OnScrollLeftClick;
+        }
+
+        if (_scrollRight is not null)
+        {
+            _scrollRight.Click -= OnScrollRightClick;
+        }
+    }
+
+    private void OnTextContainerSizeChanged(object? sender, SizeChangedEventArgs e) => UpdateTextState();
+
+    private void OnTextBlockSizeChanged(object? sender, SizeChangedEventArgs e) => UpdateScrollButtons();
+
+    private void OnTextContainerLayoutUpdated(object? sender, EventArgs e)
+    {
+        if (_isScalingText)
+        {
+            UpdateTextState();
+        }
+    }
+
+    private void OnTextContainerScrollChanged(object? sender, ScrollChangedEventArgs e) => UpdateScrollButtons();
+
+    private void OnScrollLeftClick(object? sender, RoutedEventArgs e) => ScrollLeft();
+
+    private void OnScrollRightClick(object? sender, RoutedEventArgs e) => ScrollRight();
+
+    private void UpdateVisualState()
+    {
+        PseudoClasses.Set(ActivePseudoClass, IsActive);
+        PseudoClasses.Set(ErrorPseudoClass, IsInError);
+        if (_textBlock is not null)
+        {
+            _textBlock.IsHitTestVisible = IsActive;
+            _textBlock.FontWeight = IsActive ? FontWeight.SemiBold : FontWeight.Light;
+        }
+    }
+
+    private void ModifyFontAndMargin(double fontChange)
+    {
+        if (_textContainer is null || _textBlock is null)
+        {
+            return;
+        }
+
+        double current = _textBlock.FontSize;
+        double scaleFactor = _textContainer.Bounds.Height <= HeightCutoff
+            ? SmallHeightScaleFactor
+            : ScaleFactor;
+        double newFontSize = Math.Clamp(current + fontChange, MinFontSize, MaxFontSize);
+        _textContainer.Padding = new Thickness(0, 0, 0, scaleFactor * Math.Abs(current - newFontSize));
+        _textBlock.FontSize = newFontSize;
+    }
+
+    private void UpdateScrollButtons()
+    {
+        if (_textContainer is null)
+        {
+            return;
+        }
+
+        bool showLeft = _textContainer.Offset.X > ScrollButtonsApproximationRange;
+        bool showRight = _textContainer.Offset.X
+            + _textContainer.Viewport.Width
+            + ScrollButtonsApproximationRange
+            < _textContainer.Extent.Width;
+
+        bool moveFocusRight = _scrollLeft is { IsFocused: true } && !showLeft;
+        if (_scrollLeft is not null)
+        {
+            _scrollLeft.IsVisible = showLeft;
+        }
+
+        if (_scrollRight is not null)
+        {
+            bool moveFocusLeft = _scrollRight.IsFocused && !showRight && showLeft;
+            _scrollRight.IsVisible = showRight;
+            if (moveFocusLeft)
+            {
+                _scrollLeft?.Focus();
+            }
+            else if (moveFocusRight && showRight)
+            {
+                _scrollRight.Focus();
+            }
+        }
+    }
+
+    private void ScrollLeft()
+    {
+        if (_textContainer is not null && _textContainer.Offset.X > 0)
+        {
+            ScrollTo(_textContainer.Offset.X - ScrollRatio * _textContainer.Viewport.Width);
+        }
+    }
+
+    private void ScrollRight()
+    {
+        if (_textContainer is not null && _textContainer.Offset.X < MaximumHorizontalOffset)
+        {
+            ScrollTo(_textContainer.Offset.X + ScrollRatio * _textContainer.Viewport.Width);
+        }
+    }
+
+    private void ScrollTo(double horizontalOffset)
+    {
+        if (_textContainer is not null)
+        {
+            _textContainer.Offset = new Vector(
+                Math.Clamp(horizontalOffset, 0, MaximumHorizontalOffset),
+                _textContainer.Offset.Y);
+        }
+    }
+
+    private void RaiseSelectedEvent() => Selected?.Invoke(this);
 }

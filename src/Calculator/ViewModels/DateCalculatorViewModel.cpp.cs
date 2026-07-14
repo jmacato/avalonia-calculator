@@ -1,13 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+using System.Globalization;
 using CalculatorApp.ViewModel.Common;
 using CalculatorApp.ViewModel.Common.DateCalculation;
-using Windows.Globalization;
 
 namespace CalculatorApp.ViewModel;
 
@@ -15,420 +11,163 @@ public partial class DateCalculatorViewModel
 {
     public DateCalculatorViewModel()
     {
+        LocalizationSettings localization = LocalizationSettings.GetInstance();
+        _dateCalcEngine = new DateCalculationEngine(localization.GetCalendarIdentifier());
+        _listSeparator = localization.GetListSeparatorWinRT() + " ";
+        _copyCommand = new DelegateCommand(OnCopyCommand);
 
+        DateTime today = DateTime.Today;
+        _fromDate = today;
+        _toDate = today;
+        _startDate = today;
+        _dateResult = today.Date;
 
-        m_IsDateDiffMode = (true)
-              ; m_IsAddMode = (true)
-              ; m_isOutOfBound = (false)
-              ; m_DaysOffset = (0)
-              ; m_MonthsOffset = (0)
-              ; m_YearsOffset = (0)
-              ; m_StrDateDiffResult = ("")
-              ; m_StrDateDiffResultAutomationName = ("")
-              ; m_StrDateDiffResultInDays = ("")
-              ; m_StrDateResult = ("")
-              ; m_StrDateResultAutomationName = ("");
-
-
-        ViewModel.Common.LocalizationSettings localizationSettings = ViewModel.Common.LocalizationSettings.GetInstance();
-
-        // Initialize Date Output format instances
-        InitializeDateOutputFormats(localizationSettings.GetCalendarIdentifier());
-
-        // Initialize Date Calc engine
-        m_dateCalcEngine = new Common.DateCalculation.DateCalculationEngine(localizationSettings.GetCalendarIdentifier());
-        // Initialize dates of DatePicker controls to today's date
-        var calendar = new Calendar();
-        // We force the timezone to UTC, in order to avoid being affected by Daylight Saving Time
-        // when we calculate the difference between 2 dates.
-        calendar.ChangeTimeZone("UTC");
-        var today = calendar.GetDateTime().Date;
-
-        // FromDate and ToDate should be clipped (adjusted to a consistent hour in UTC)
-        m_fromDate = m_toDate = ClipTime(today);
-
-        // StartDate should not be clipped
-        m_startDate = today;
-        m_dateResult = today;
-
-        // Initialize the list separator delimiter appended with a space at the end, e.g. ", "
-        // This will be used for date difference formatting: Y years, M months, W weeks, D days
-        m_listSeparator = localizationSettings.GetListSeparatorWinRT() + " ";
-
-        // Initialize the output results
-        UpdateDisplayResult();
-
-        m_offsetValues = new List<String>();
-        for (int i = 0; i <= c_maxOffsetValue; i++)
+        _offsetValues = new List<string>(MaxOffsetValue + 1);
+        for (int value = 0; value <= MaxOffsetValue; value++)
         {
-            string numberStr = ((i).ToString());
-            LocalizeDisplayValue(ref numberStr);
-            m_offsetValues.Add(numberStr);
-        }
-
-        var trueDayOfWeek = calendar.DayOfWeek;
-
-        DateTime clippedTime = ClipTime(today);
-        calendar.SetDateTime(clippedTime);
-        if (calendar.DayOfWeek != trueDayOfWeek)
-        {
-            calendar.SetDateTime(today);
+            _offsetValues.Add(GetLocalizedNumberString(value));
         }
 
         OnInputsChanged();
     }
 
-    void OnPropertyChanged(String prop)
+    private void OnInputsChanged()
     {
-        if (prop == nameof(StrDateDiffResult))
+        if (IsDateDiffMode)
         {
-            UpdateStrDateDiffResultAutomationName();
-        }
-        else if (prop == nameof(StrDateResult))
-        {
-            UpdateStrDateResultAutomationName();
-        }
-        else if (
-            prop != nameof(StrDateDiffResultAutomationName) && prop != nameof(StrDateDiffResultInDays) && prop != nameof(StrDateResultAutomationName)
-            && prop != nameof(IsDiffInDays))
-        {
-            OnInputsChanged();
-        }
-    }
-
-    void OnInputsChanged()
-    {
-        if (m_IsDateDiffMode)
-        {
-            DateTime clippedFromDate = ClipTime(FromDate);
-            DateTime clippedToDate = ClipTime(ToDate);
-
-            // Calculate difference between two dates
-            var dateDiff = m_dateCalcEngine.TryGetDateDifference(clippedFromDate, clippedToDate, m_daysOutputFormat);
-            if (dateDiff != null)
+            if (FromDate is null || ToDate is null)
             {
-                DateDiffResultInDays = dateDiff.GetValueOrDefault();
-                dateDiff = m_dateCalcEngine.TryGetDateDifference(clippedFromDate, clippedToDate, m_allDateUnitsOutputFormat);
-                if (dateDiff != null)
-                {
-                    DateDiffResult = dateDiff.GetValueOrDefault();
-                }
-                else
-                {
-                    // TryGetDateDifference wasn't able to calculate the difference in days/weeks/months/years, we will instead display the difference in days.
-                    DateDiffResult = DateDiffResultInDays;
-                }
+                return;
             }
-            else
-            {
-                DateDiffResult = DateDifference.Unknown;
-                DateDiffResultInDays = DateDifference.Unknown;
-            }
+
+            DateTime from = FromDate.Value.Date;
+            DateTime to = ToDate.Value.Date;
+            DateDifference? days = _dateCalcEngine.TryGetDateDifference(from, to, _daysOutputFormat);
+            DateDifference? allUnits = _dateCalcEngine.TryGetDateDifference(from, to, _allDateUnitsOutputFormat);
+            _dateDiffResultInDays = days ?? DateDifference.Unknown;
+            _dateDiffResult = allUnits ?? days ?? DateDifference.Unknown;
         }
         else
         {
-            DateDifference dateDiff = new DateDifference();
-            dateDiff.day = DaysOffset;
-            dateDiff.month = MonthsOffset;
-            dateDiff.year = YearsOffset;
-
-            DateTime? dateTimeResult;
-
-            if (m_IsAddMode)
+            if (StartDate is null)
             {
-                // Add number of Days, Months and Years to a Date
-                dateTimeResult = m_dateCalcEngine.AddDuration(StartDate, dateDiff);
+                return;
             }
-            else
-            {
-                // Subtract number of Days, Months and Years from a Date
-                dateTimeResult = m_dateCalcEngine.SubtractDuration(StartDate, dateDiff);
-            }
-            IsOutOfBound = dateTimeResult == null;
 
-            if (!m_isOutOfBound)
+            var duration = new DateDifference
             {
-                DateResult = dateTimeResult.Value;
+                year = YearsOffset,
+                month = MonthsOffset,
+                day = DaysOffset
+            };
+
+            DateTime? result = IsAddMode
+                ? _dateCalcEngine.AddDuration(StartDate.Value.Date, duration)
+                : _dateCalcEngine.SubtractDuration(StartDate.Value.Date, duration);
+            _isOutOfBound = result is null;
+            if (result is not null)
+            {
+                _dateResult = result.Value;
             }
         }
+
+        UpdateDisplayResult();
     }
 
-    void UpdateDisplayResult()
+    private void UpdateDisplayResult()
     {
-        if (m_IsDateDiffMode)
+        if (IsDateDiffMode)
         {
-            if (m_dateDiffResultInDays == DateDifference.Unknown)
+            if (_dateDiffResultInDays == DateDifference.Unknown)
             {
-                Debugger.Break();
                 IsDiffInDays = false;
-                StrDateDiffResultInDays = "";
-                StrDateDiffResult = Common.AppResourceProvider.GetInstance().GetResourceString("CalculationFailed");
+                StrDateDiffResultInDays = string.Empty;
+                StrDateDiffResult = AppResourceProvider.GetInstance().GetResourceString("CalculationFailed");
             }
-            else if (m_dateDiffResultInDays.day == 0)
-            {
-                // to and from dates the same
-                IsDiffInDays = true;
-                StrDateDiffResultInDays = "";
-                StrDateDiffResult = Common.AppResourceProvider.GetInstance().GetResourceString("Date_SameDates");
-            }
-            else if (m_dateDiffResult == DateDifference.Unknown || (m_dateDiffResult.year == 0 && m_dateDiffResult.month == 0 && m_dateDiffResult.week == 0))
+            else if (_dateDiffResultInDays.day == 0)
             {
                 IsDiffInDays = true;
-                StrDateDiffResultInDays = "";
-
-                // Display result in number of days
+                StrDateDiffResultInDays = string.Empty;
+                StrDateDiffResult = AppResourceProvider.GetInstance().GetResourceString("Date_SameDates");
+            }
+            else if (_dateDiffResult == DateDifference.Unknown
+                     || (_dateDiffResult.year == 0 && _dateDiffResult.month == 0 && _dateDiffResult.week == 0))
+            {
+                IsDiffInDays = true;
+                StrDateDiffResultInDays = string.Empty;
                 StrDateDiffResult = GetDateDiffStringInDays();
             }
             else
             {
                 IsDiffInDays = false;
-
-                // Display result in days, weeks, months and years
                 StrDateDiffResult = GetDateDiffString();
-
-                // Display result in number of days
                 StrDateDiffResultInDays = GetDateDiffStringInDays();
             }
+
+            OnPropertyChanged(nameof(HasSecondaryDifference));
+            return;
         }
-        else
-        {
-            if (m_isOutOfBound)
-            {
-                // Display Date out of bound message
-                StrDateResult = AppResourceProvider.GetInstance().GetResourceString("Date_OutOfBoundMessage");
-            }
-            else
-            {
-                // Display the resulting date in long format
-                StrDateResult = m_dateTimeFormatter.Format(DateResult);
-            }
-        }
+
+        StrDateResult = _isOutOfBound
+            ? AppResourceProvider.GetInstance().GetResourceString("Date_OutOfBoundMessage")
+            : _dateResult.ToString("D", CultureInfo.CurrentCulture);
     }
 
-    void UpdateStrDateDiffResultAutomationName()
+    private void UpdateStrDateDiffResultAutomationName()
     {
-        String automationFormat = AppResourceProvider.GetInstance().GetResourceString("Date_DifferenceResultAutomationName");
-        StrDateDiffResultAutomationName = ViewModel.Common.LocalizationStringUtil.GetLocalizedString(automationFormat, StrDateDiffResult);
+        string format = AppResourceProvider.GetInstance().GetResourceString("Date_DifferenceResultAutomationName");
+        StrDateDiffResultAutomationName = string.IsNullOrEmpty(format)
+            ? StrDateDiffResult
+            : LocalizationStringUtil.GetLocalizedString(format, StrDateDiffResult);
     }
 
-    void UpdateStrDateResultAutomationName()
+    private void UpdateStrDateResultAutomationName()
     {
-        String automationFormat = AppResourceProvider.GetInstance().GetResourceString("Date_ResultingDateAutomationName");
-        StrDateResultAutomationName = ViewModel.Common.LocalizationStringUtil.GetLocalizedString(automationFormat, StrDateResult);
+        string format = AppResourceProvider.GetInstance().GetResourceString("Date_ResultingDateAutomationName");
+        StrDateResultAutomationName = string.IsNullOrEmpty(format)
+            ? StrDateResult
+            : LocalizationStringUtil.GetLocalizedString(format, StrDateResult);
     }
 
-    void InitializeDateOutputFormats(String calendarIdentifier)
+    private string GetDateDiffString()
     {
-        // Format for Add/Subtract days
-        m_dateTimeFormatter = ViewModel.Common.LocalizationService.GetInstance().GetRegionalSettingsAwareDateTimeFormatter(
-            "longdate",
-            calendarIdentifier,
-            ClockIdentifiers.TwentyFourHour); // Clock Identifier is not used
-
-        // Format for Date Difference
-        m_allDateUnitsOutputFormat = DateUnit.Year | DateUnit.Month | DateUnit.Week | DateUnit.Day;
-        m_daysOutputFormat = DateUnit.Day;
+        var parts = new List<string>(4);
+        AddPart(parts, _dateDiffResult.year, "Date_Year", "Date_Years");
+        AddPart(parts, _dateDiffResult.month, "Date_Month", "Date_Months");
+        AddPart(parts, _dateDiffResult.week, "Date_Week", "Date_Weeks");
+        AddPart(parts, _dateDiffResult.day, "Date_Day", "Date_Days");
+        return string.Join(_listSeparator, parts);
     }
 
-    String GetDateDiffString()
+    private string GetDateDiffStringInDays()
     {
-        string result = "";
-        bool addDelimiter = false;
-        var resourceLoader = Common.AppResourceProvider.GetInstance();
-
-        var yearCount = m_dateDiffResult.year;
-        if (yearCount > 0)
-        {
-            result += GetLocalizedNumberString(yearCount);
-            result += ' ';
-
-            if (yearCount > 1)
-            {
-                result += resourceLoader.GetResourceString("Date_Years");
-            }
-            else
-            {
-                result += resourceLoader.GetResourceString("Date_Year");
-            }
-
-            // set the flags to add a delimiter whenever the next unit is added
-            addDelimiter = true;
-        }
-
-        var monthCount = m_dateDiffResult.month;
-        if (monthCount > 0)
-        {
-            if (addDelimiter)
-            {
-                result += m_listSeparator;
-            }
-            else
-            {
-                addDelimiter = true;
-            }
-
-            result += GetLocalizedNumberString(monthCount);
-            result += ' ';
-
-            if (monthCount > 1)
-            {
-                result += resourceLoader.GetResourceString("Date_Months");
-            }
-            else
-            {
-                result += resourceLoader.GetResourceString("Date_Month");
-            }
-        }
-
-        var weekCount = m_dateDiffResult.week;
-        if (weekCount > 0)
-        {
-            if (addDelimiter)
-            {
-                result += m_listSeparator;
-            }
-            else
-            {
-                addDelimiter = true;
-            }
-
-            result += GetLocalizedNumberString(weekCount);
-            result += ' ';
-
-            if (weekCount > 1)
-            {
-                result += resourceLoader.GetResourceString("Date_Weeks");
-            }
-            else
-            {
-                result += resourceLoader.GetResourceString("Date_Week");
-            }
-        }
-
-        var dayCount = m_dateDiffResult.day;
-        if (dayCount > 0)
-        {
-            if (addDelimiter)
-            {
-                result += m_listSeparator;
-            }
-            else
-            {
-                addDelimiter = true;
-            }
-
-            result += GetLocalizedNumberString(dayCount);
-            result += ' ';
-
-            if (dayCount > 1)
-            {
-                result += resourceLoader.GetResourceString("Date_Days");
-            }
-            else
-            {
-                result += resourceLoader.GetResourceString("Date_Day");
-            }
-        }
-
-        return (result);
+        int days = _dateDiffResultInDays.day;
+        string unit = AppResourceProvider.GetInstance()
+            .GetResourceString(days == 1 ? "Date_Day" : "Date_Days");
+        return $"{GetLocalizedNumberString(days)} {unit}";
     }
 
-    String GetDateDiffStringInDays()
+    private static void AddPart(List<string> parts, int value, string singularKey, string pluralKey)
     {
-        string result = GetLocalizedNumberString(m_dateDiffResultInDays.day);
-        result += ' ';
-
-        // Display the result as '1 day' or 'N days'
-        if (m_dateDiffResultInDays.day > 1)
-        {
-            result += ViewModel.Common.AppResourceProvider.GetInstance().GetResourceString("Date_Days");
-        }
-        else
-        {
-            result += ViewModel.Common.AppResourceProvider.GetInstance().GetResourceString("Date_Day");
-        }
-
-        return (result);
-    }
-
-    public void OnCopyCommand(object parameter)
-    {
-        if (m_IsDateDiffMode)
-        {
-            ViewModel.Common.CopyPasteManager.CopyToClipboard(m_StrDateDiffResult);
-        }
-        else
-        {
-            ViewModel.Common.CopyPasteManager.CopyToClipboard(m_StrDateResult);
-        }
-    }
-
-    String GetLocalizedNumberString(int value)
-    {
-        string numberStr = ((value.ToString()));
-        LocalizeDisplayValue(ref numberStr);
-        return (numberStr);
-    }
-
-
-    void LocalizeDisplayValue(ref string stringToLocalize)
-
-
-    {
-        if (ViewModel.Common.LocalizationSettings.GetInstance().IsDigitEnUsSetting())
+        if (value <= 0)
         {
             return;
-
-
-        }
-        char[] ret = stringToLocalize.ToCharArray();
-
-        for (int chI = 0; chI < ret.Length; chI++)
-        {
-            var ch = ret[chI];
-            if (ViewModel.Common.LocalizationSettings.GetInstance().IsEnUsDigit(ch))
-            {
-                ret[chI] = ViewModel.Common.LocalizationSettings.GetInstance().GetDigitSymbolFromEnUsDigit(ch);
-            }
         }
 
-        stringToLocalize = new string(ret);
+        string unit = AppResourceProvider.GetInstance().GetResourceString(value == 1 ? singularKey : pluralKey);
+        parts.Add($"{GetLocalizedNumberString(value)} {unit}");
     }
 
-    /// <summary>
-    /// Adjusts the given DateTime to 12AM of the same day
-    /// </summary>
-    /// <param name="dateTime">DateTime to clip</param>
-    /// <param name="adjustUsingLocalTime">Adjust the datetime using local time (by default adjust using UTC time)</param>
-    DateTime ClipTime(DateTime dateTime, bool adjustUsingLocalTime = false)
+    public void OnCopyCommand(object? parameter)
     {
-        DateTime referenceDateTime;
-        //if (adjustUsingLocalTime)
-        //{
-        //    long fileTime;
-        //    fileTime.dwLowDateTime = (DWORD)(dateTime.UniversalTime & 0xffffffff);
-        //    fileTime.dwHighDateTime = (DWORD)(dateTime.UniversalTime >> 32);
+        _ = parameter;
+        CopyPasteManager.CopyToClipboard(IsDateDiffMode ? StrDateDiffResult : StrDateResult);
+    }
 
-        //    FILETIME localFileTime;
-        //    FileTimeToLocalFileTime(&fileTime, &localFileTime);
-
-        //    referenceDateTime.UniversalTime = (DWORD)localFileTime.dwHighDateTime;
-        //    referenceDateTime.UniversalTime <<= 32;
-        //    referenceDateTime.UniversalTime |= (DWORD)localFileTime.dwLowDateTime;
-        //}
-        //else
-        //{
-        referenceDateTime = dateTime;
-        //}
-        var calendar = new Calendar();
-        calendar.ChangeTimeZone("UTC");
-        calendar.SetDateTime(referenceDateTime);
-        calendar.Period = calendar.FirstPeriodInThisDay;
-        calendar.Hour = calendar.FirstHourInThisPeriod;
-        calendar.Minute = 0;
-        calendar.Second = 0;
-        calendar.Nanosecond = 0;
-
-        return calendar.GetDateTime().Date;
+    private static string GetLocalizedNumberString(int value)
+    {
+        string result = value.ToString(CultureInfo.InvariantCulture);
+        LocalizationSettings.GetInstance().LocalizeDisplayValue(ref result);
+        return result;
     }
 }

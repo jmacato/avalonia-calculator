@@ -9,6 +9,11 @@ public static class NumberFormattingUtils
     /// TODO: Check this to be compatible with localization, especially the hardcoded '.' comparisons.
     public static void TrimTrailingZeros(ref string number)
     {
+        if (number is null)
+        {
+            throw new ArgumentNullException(nameof(number));
+        }
+
         // If no decimal point exists, return the original string
         if (!number.Contains('.'))
         {
@@ -19,7 +24,7 @@ public static class NumberFormattingUtils
         string result = number.TrimEnd('0');
 
         // If the result ends with a decimal point, remove it
-        if (result.EndsWith("."))
+        if (result.EndsWith(".", StringComparison.Ordinal))
         {
             result = result.Substring(0, result.Length - 1);
         }
@@ -32,6 +37,11 @@ public static class NumberFormattingUtils
     /// <param name="value">the number</param>
     public static uint GetNumberDigits(string value)
     {
+        if (value is null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
         TrimTrailingZeros(ref value);
         var numberSignificantDigits = (uint)(value.Length);
         if (value.Contains('.'))
@@ -62,12 +72,8 @@ public static class NumberFormattingUtils
     /// <param name="numSignificant">unsigned int number of significant digits to round to</param>
     public static string RoundSignificantDigits(double num, uint numSignificant)
     {
-        return num.ToString($"F{numSignificant}");
-        // stringstream out(stringstream::out);
-        // out << fixed;
-        // out.precision(numSignificant);
-        // out << num;
-        // return out.str();
+        return num.ToString($"F{numSignificant}", System.Globalization.CultureInfo.InvariantCulture);
+
     }
 
     /// <summary>

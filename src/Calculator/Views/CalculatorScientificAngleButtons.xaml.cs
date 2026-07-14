@@ -1,95 +1,69 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-//
-// CalculatorScientificAngleButtons.xaml.h
-// Declaration of the CalculatorScientificAngleButtons class
-//
-
-using CalculatorApp.Utils;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
 using CalculatorApp.ViewModel;
 using CalculatorApp.ViewModel.Common;
 
-using Microsoft.UI.Xaml;
+namespace CalculatorApp;
 
-namespace CalculatorApp
+public sealed partial class CalculatorScientificAngleButtons : UserControl
 {
-    [Windows.Foundation.Metadata.WebHostHidden]
-    public sealed partial class CalculatorScientificAngleButtons
+    private bool _isErrorVisualState;
+
+    public CalculatorScientificAngleButtons()
     {
-        public CalculatorScientificAngleButtons()
+        InitializeComponent();
+    }
+
+    public StandardCalculatorViewModel? Model => DataContext as StandardCalculatorViewModel;
+
+    public bool IsErrorVisualState
+    {
+        get => _isErrorVisualState;
+        set
         {
-            m_isErrorVisualState = false;
-            InitializeComponent();
+            _isErrorVisualState = value;
+            DegreeButton.IsEnabled = !value;
+            RadianButton.IsEnabled = !value;
+            GradsButton.IsEnabled = !value;
+            FtoeButton.IsEnabled = !value && (Model?.IsFToEEnabled ?? true);
+        }
+    }
+
+    private void OnAngleButtonPressed(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { CommandParameter: string buttonId } || Model is not { } model)
+        {
+            return;
         }
 
-        public StandardCalculatorViewModel Model => (StandardCalculatorViewModel)this.DataContext;
-
-        public System.Windows.Input.ICommand ButtonPressed
+        DegreeButton.IsVisible = false;
+        RadianButton.IsVisible = false;
+        GradsButton.IsVisible = false;
+        switch (buttonId)
         {
-            get
-            {
-                if (donotuse_ButtonPressed == null)
-                {
-                    donotuse_ButtonPressed = DelegateCommandUtils.MakeDelegateCommand(this,
-                        (that, param) =>
-                        {
-                            that.OnAngleButtonPressed(param);
-                        });
-                }
-                return donotuse_ButtonPressed;
-            }
+            case "0":
+                model.SwitchAngleType(NumbersAndOperatorsEnum.Radians);
+                RadianButton.IsVisible = true;
+                RadianButton.Focus();
+                break;
+            case "1":
+                model.SwitchAngleType(NumbersAndOperatorsEnum.Grads);
+                GradsButton.IsVisible = true;
+                GradsButton.Focus();
+                break;
+            case "2":
+                model.SwitchAngleType(NumbersAndOperatorsEnum.Degree);
+                DegreeButton.IsVisible = true;
+                DegreeButton.Focus();
+                break;
         }
-        private System.Windows.Input.ICommand donotuse_ButtonPressed;
+    }
 
-        public bool IsErrorVisualState
-        {
-            get => m_isErrorVisualState;
-            set
-            {
-                if (m_isErrorVisualState != value)
-                {
-                    m_isErrorVisualState = value;
-                    string newState = m_isErrorVisualState ? "ErrorFlyout" : "NoErrorFlyout";
-                    VisualStateManager.GoToState(this, newState, false);
-                }
-            }
-        }
-
-        private void OnAngleButtonPressed(object commandParameter)
-        {
-            string buttonId = (string)commandParameter;
-
-            DegreeButton.Visibility = Visibility.Collapsed;
-            RadianButton.Visibility = Visibility.Collapsed;
-            GradsButton.Visibility = Visibility.Collapsed;
-
-            if (buttonId == "0")
-            {
-                Model.SwitchAngleType(NumbersAndOperatorsEnum.Radians);
-                RadianButton.Visibility = Visibility.Visible;
-                RadianButton.Focus(FocusState.Programmatic);
-            }
-            else if (buttonId == "1")
-            {
-                Model.SwitchAngleType(NumbersAndOperatorsEnum.Grads);
-                GradsButton.Visibility = Visibility.Visible;
-                GradsButton.Focus(FocusState.Programmatic);
-            }
-            else if (buttonId == "2")
-            {
-                Model.SwitchAngleType(NumbersAndOperatorsEnum.Degree);
-                DegreeButton.Visibility = Visibility.Visible;
-                DegreeButton.Focus(FocusState.Programmatic);
-            }
-        }
-
-        private void FToEButton_Toggled(object sender, RoutedEventArgs e)
-        {
-            var viewModel = (StandardCalculatorViewModel)this.DataContext;
-            viewModel.FtoEButtonToggled();
-        }
-
-        private bool m_isErrorVisualState;
+    private void FToEButton_Toggled(object? sender, RoutedEventArgs e)
+    {
+        Model?.FtoEButtonToggled();
     }
 }

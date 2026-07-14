@@ -16,14 +16,14 @@ namespace CalculatorApp.ViewModel.Common
 
         // Interface Method Implementations
 
-        public List<CalcManager.Category> GetOrderedCategories()
+        public IList<CalcManager.Category> GetOrderedCategories()
         {
             return m_categoryList;
         }
 
-        public List<CalcManager.Unit> GetOrderedUnits(CalcManager.Category category)
+        public IList<CalcManager.Unit> GetOrderedUnits(CalcManager.Category category)
         {
-            return m_categoryIDToUnitsMap[category.id];
+            return m_categoryIDToUnitsMap[category.Id];
         }
 
         public Dictionary<CalcManager.Unit, CalcManager.ConversionData> LoadOrderedRatios(CalcManager.Unit unit)
@@ -40,7 +40,7 @@ namespace CalculatorApp.ViewModel.Common
 
             int currencyId = NavCategoryStates.Serialize(ViewMode.Currency);
 
-            return m_categoryList.Any(category => currencyId != category.id && target.id == category.id);
+            return m_categoryList.Any(category => currencyId != category.Id && target.Id == category.Id);
         }
 
         public void LoadData()
@@ -58,7 +58,7 @@ namespace CalculatorApp.ViewModel.Common
 
             foreach (CalcManager.Category objectCategory in m_categoryList)
             {
-                ViewMode categoryViewMode = NavCategoryStates.Deserialize(objectCategory.id);
+                ViewMode categoryViewMode = NavCategoryStates.Deserialize(objectCategory.Id);
 
                 Debug.Assert(NavCategory.IsConverterViewMode(categoryViewMode));
 
@@ -67,11 +67,11 @@ namespace CalculatorApp.ViewModel.Common
                     // Currency is an ordered category but we do not want to process it here
                     // because this function is not thread-safe and currency data is asynchronously
                     // loaded.
-                    m_categoryIDToUnitsMap.Add(objectCategory.id, new List<CalcManager.Unit>());
+                    m_categoryIDToUnitsMap.Add(objectCategory.Id, new List<CalcManager.Unit>());
                     continue;
                 }
 
-                if (!orderedUnitMap.TryGetValue(categoryViewMode, out List<OrderedUnit> orderedUnits))
+                if (!orderedUnitMap.TryGetValue(categoryViewMode, out List<OrderedUnit>? orderedUnits))
                 {
                     Debug.WriteLine($"Warning: No units found for category {categoryViewMode}");
                     orderedUnits = new List<OrderedUnit>();
@@ -85,29 +85,29 @@ namespace CalculatorApp.ViewModel.Common
                 foreach (OrderedUnit u in orderedUnits)
                 {
                     unitList.Add(u);
-                    idToUnit.Add(u.id, u);
+                    idToUnit.Add(u.Id, u);
                 }
 
                 // Save units per category
-                m_categoryIDToUnitsMap.Add(objectCategory.id, unitList);
+                m_categoryIDToUnitsMap.Add(objectCategory.Id, unitList);
 
                 // For each unit, populate the conversion data
                 foreach (CalcManager.Unit unit in unitList)
                 {
                     var conversions = new Dictionary<CalcManager.Unit, CalcManager.ConversionData>();
 
-                    if (!explicitConversionData.ContainsKey(unit.id))
+                    if (!explicitConversionData.ContainsKey(unit.Id))
                     {
                         // Get the associated units for a category id
-                        if (!categoryToUnitConversionDataMap.TryGetValue(categoryViewMode, out Dictionary<int, double> unitConversions))
+                        if (!categoryToUnitConversionDataMap.TryGetValue(categoryViewMode, out Dictionary<int, double>? unitConversions))
                         {
                             Debug.WriteLine($"Warning: No conversion data found for category {categoryViewMode}");
                             unitConversions = new Dictionary<int, double>();
                         }
 
-                        if (!unitConversions.TryGetValue(unit.id, out double unitFactor))
+                        if (!unitConversions.TryGetValue(unit.Id, out double unitFactor))
                         {
-                             Debug.WriteLine($"Warning: Unit factor not found for unit {unit.id} in category {categoryViewMode}");
+                             Debug.WriteLine($"Warning: Unit factor not found for unit {unit.Id} in category {categoryViewMode}");
                              continue;
                         }
 
@@ -123,24 +123,24 @@ namespace CalculatorApp.ViewModel.Common
                                 continue;
                             }
 
-                            var parsedData = new CalcManager.ConversionData { ratio = 1.0, offset = 0.0, offsetFirst = false };
+                            var parsedData = new CalcManager.ConversionData { Ratio = 1.0, Offset = 0.0, OffsetFirst = false };
                             Debug.Assert(conversionFactor > 0); // divide by zero assert
-                            parsedData.ratio = unitFactor / conversionFactor;
+                            parsedData.Ratio = unitFactor / conversionFactor;
                             conversions.Add(idToUnit[id], parsedData);
                         }
                     }
                     else
                     {
-                        Dictionary<int, CalcManager.ConversionData> unitConversions = explicitConversionData[unit.id];
+                        Dictionary<int, CalcManager.ConversionData> unitConversions = explicitConversionData[unit.Id];
                         foreach (var kvp in unitConversions)
                         {
-                             if (idToUnit.TryGetValue(kvp.Key, out OrderedUnit targetUnit))
+                             if (idToUnit.TryGetValue(kvp.Key, out OrderedUnit? targetUnit))
                              {
                                 conversions.Add(targetUnit, kvp.Value);
                              }
                              else
                              {
-                                Debug.WriteLine($"Warning: Target unit {kvp.Key} not found in idToUnit map for explicit conversion from {unit.id}");
+                                Debug.WriteLine($"Warning: Target unit {kvp.Key} not found in idToUnit map for explicit conversion from {unit.Id}");
                              }
                         }
                     }
@@ -592,7 +592,7 @@ namespace CalculatorApp.ViewModel.Common
             // Populate the hash map and return;
             foreach (UnitData unitdata in unitDataList)
             {
-                if (!categoryToUnitConversionMap.TryGetValue(unitdata.categoryId, out Dictionary<int, double> conversionData))
+                if (!categoryToUnitConversionMap.TryGetValue(unitdata.categoryId, out Dictionary<int, double>? conversionData))
                 {
                     conversionData = new Dictionary<int, double>();
                     categoryToUnitConversionMap.Add(unitdata.categoryId, conversionData);
@@ -622,7 +622,7 @@ namespace CalculatorApp.ViewModel.Common
             // Populate the hash map and return;
             foreach (ExplicitUnitConversionData data in conversionDataList)
             {
-                 if (!unitToUnitConversionList.TryGetValue((int)data.parentUnitId, out Dictionary<int, CalcManager.ConversionData> conversionData))
+                 if (!unitToUnitConversionList.TryGetValue((int)data.parentUnitId, out Dictionary<int, CalcManager.ConversionData>? conversionData))
                 {
                     conversionData = new Dictionary<int, CalcManager.ConversionData>();
                     unitToUnitConversionList.Add((int)data.parentUnitId, conversionData);

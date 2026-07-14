@@ -115,10 +115,9 @@ namespace CalculatorApp.ViewModel
             public string automationResourceKey;
         };
 
-        [Microsoft.UI.Xaml.Data.Bindable]
         public partial class NavCategory : INotifyPropertyChanged
         {
-            public event PropertyChangedEventHandler PropertyChanged;
+            public event PropertyChangedEventHandler? PropertyChanged;
 
             internal void RaisePropertyChanged(string p)
             {
@@ -218,11 +217,10 @@ namespace CalculatorApp.ViewModel
             string m_modeString;
         };
 
-        [Microsoft.UI.Xaml.Data.Bindable]
         public partial class NavCategoryGroup : INotifyPropertyChanged
         {
 
-            public event PropertyChangedEventHandler PropertyChanged;
+            public event PropertyChangedEventHandler? PropertyChanged;
 
             internal void RaisePropertyChanged(string propertyName)
             {

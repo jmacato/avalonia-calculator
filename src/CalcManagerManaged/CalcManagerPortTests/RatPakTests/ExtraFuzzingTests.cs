@@ -1,5 +1,5 @@
+using System.Globalization;
 using CalcEngine;
-using  CalcEngine;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel.Adapter;
 
 namespace CalcManagerPortTests.RatPakTests;
@@ -8,14 +8,14 @@ public class ExtraFuzzingTests
 {
     private readonly RatPak _ratPak;
     private readonly int _precision = 256; // Higher precision for fuzzing tests.
-    private readonly Random _random;
+    private readonly DeterministicRandom _random;
     private readonly int _seed;
 
     public ExtraFuzzingTests()
     {
         _ratPak = new RatPak(_precision);
         _seed = Guid.NewGuid().GetHashCode();
-        _random = new Random(_seed);
+        _random = new DeterministicRandom(_seed);
     }
 
     #region Randomization Helpers
@@ -33,7 +33,7 @@ public class ExtraFuzzingTests
 
         for (var i = 1; i < digits; i++)
         {
-            if (allowDecimals && i == (_random.Next(digits) + 1) && !result.Contains('.'))
+            if (allowDecimals && i == (_random.Next(digits) + 1) && !result.Contains('.', StringComparison.Ordinal))
             {
                 result += ".";
             }
@@ -62,12 +62,13 @@ public class ExtraFuzzingTests
         return result;
     }
 
-    private RatPak.RAT GenerateRandomRat(bool allowDecimals = true, bool allowExponents = true,
+    private RAT GenerateRandomRat(bool allowDecimals = true, bool allowExponents = true,
         bool allowNegatives = true, int maxDigits = 30)
     {
         var numStr = GenerateRandomNumber(maxDigits, allowDecimals, allowExponents, allowNegatives);
         var num = _ratPak.StringToNumber(numStr, 10, _precision);
-        return _ratPak.numtorat(num, 10);
+        Assert.NotNull(num);
+        return RatPak.numtorat(num, 10);
     }
 
     #endregion
@@ -75,7 +76,7 @@ public class ExtraFuzzingTests
     #region Arithmetic Operation Stability Tests
 
     [Fact]
-    public void FuzzAddRat_MultipleRandomNumbers_CompletesWithoutErrors()
+    public void FuzzAddRatMultipleRandomNumbersCompletesWithoutErrors()
     {
         var testCount = 10000;
 
@@ -88,13 +89,13 @@ public class ExtraFuzzingTests
 
             // Verify result is not null
             Assert.NotNull(rat1);
-            Assert.NotNull(rat1.pp);
-            Assert.NotNull(rat1.pq);
+            Assert.NotNull(rat1.Pp);
+            Assert.NotNull(rat1.Pq);
         }
     }
 
     [Fact]
-    public void FuzzMulRat_MultipleRandomNumbers_CompletesWithoutErrors()
+    public void FuzzMulRatMultipleRandomNumbersCompletesWithoutErrors()
     {
         var testCount = 10000;
 
@@ -107,13 +108,13 @@ public class ExtraFuzzingTests
 
             // Verify result is not null
             Assert.NotNull(rat1);
-            Assert.NotNull(rat1.pp);
-            Assert.NotNull(rat1.pq);
+            Assert.NotNull(rat1.Pp);
+            Assert.NotNull(rat1.Pq);
         }
     }
 
     [Fact]
-    public void FuzzDivRat_MultipleRandomNumbers_CompletesWithoutErrors()
+    public void FuzzDivRatMultipleRandomNumbersCompletesWithoutErrors()
     {
         var testCount = 10000;
 
@@ -123,7 +124,7 @@ public class ExtraFuzzingTests
             var rat2 = GenerateRandomRat();
 
             // Skip if divisor is zero
-            if (_ratPak.zerrat(rat2))
+            if (RatPak.zerrat(rat2))
             {
                 i--;
                 continue;
@@ -134,13 +135,13 @@ public class ExtraFuzzingTests
 
             // Verify result is not null
             Assert.NotNull(rat1);
-            Assert.NotNull(rat1.pp);
-            Assert.NotNull(rat1.pq);
+            Assert.NotNull(rat1.Pp);
+            Assert.NotNull(rat1.Pq);
         }
     }
 
     [Fact]
-    public void FuzzPowRat_MultipleRandomNumbers_CompletesWithoutErrors()
+    public void FuzzPowRatMultipleRandomNumbersCompletesWithoutErrors()
     {
         var testCount = 50;
 
@@ -148,13 +149,13 @@ public class ExtraFuzzingTests
         {
             // Use smaller numbers for base to avoid excessive computation and dont allow negative bases.
             var baseRat = GenerateRandomRat(false, false, false, 5);
-            var baseRatStr = _ratPak.RatToString(ref baseRat, RatPak.NumberFormat.Scientific, 10, _precision);
+            var baseRatStr = _ratPak.RatToString(ref baseRat, NumberFormat.Scientific, 10, _precision);
 
             // Just to avoid a zero base.
-            _ratPak.addrat(ref baseRat, _ratPak.rat_one, _precision);
+            _ratPak.addrat(ref baseRat, _ratPak.RatOne, _precision);
 
             // Keep exponents relatively small to avoid excessive computation
-            var expStr = _random.Next(-10, 11).ToString();
+            var expStr = _random.Next(-10, 11).ToString(CultureInfo.InvariantCulture);
             if (_random.Next(2) == 0)
             {
                 // Sometimes use fractional exponents
@@ -162,7 +163,8 @@ public class ExtraFuzzingTests
             }
 
             var expNum = _ratPak.StringToNumber(expStr, 10, _precision);
-            var expRat = _ratPak.numtorat(expNum, 10);
+            Assert.NotNull(expNum);
+            var expRat = RatPak.numtorat(expNum, 10);
 
             try
             {
@@ -171,8 +173,8 @@ public class ExtraFuzzingTests
 
                 // Verify result is not null
                 Assert.NotNull(baseRat);
-                Assert.NotNull(baseRat.pp);
-                Assert.NotNull(baseRat.pq);
+                Assert.NotNull(baseRat.Pp);
+                Assert.NotNull(baseRat.Pq);
             }
             catch (CalcErrException e)
             {
@@ -186,7 +188,7 @@ public class ExtraFuzzingTests
     #region Parsing and Formatting Fuzz Tests
 
     [Fact]
-    public void FuzzStringToNumber_RandomStrings_HandlesValidInputs()
+    public void FuzzStringToNumberRandomStringsHandlesValidInputs()
     {
         var testCount = 10000;
 
@@ -195,24 +197,25 @@ public class ExtraFuzzingTests
             var numStr = GenerateRandomNumber();
 
             var num = _ratPak.StringToNumber(numStr, 10, _precision);
+            Assert.NotNull(num);
 
             Assert.NotNull(num);
 
             // Convert back to string and verify it's not empty
-            var result = _ratPak.NumberToString(ref num, RatPak.NumberFormat.Float, 10, _precision);
+            var result = _ratPak.NumberToString(ref num, NumberFormat.FloatingPoint, 10, _precision);
             Assert.False(string.IsNullOrEmpty(result));
         }
     }
 
     [Fact]
-    public void FuzzNumberToString_RandomNumbers_HandlesAllFormats()
+    public void FuzzNumberToStringRandomNumbersHandlesAllFormats()
     {
         var testCount = 10000;
         var formats = new[]
         {
-            RatPak.NumberFormat.Float,
-            RatPak.NumberFormat.Scientific,
-            RatPak.NumberFormat.Engineering
+            NumberFormat.FloatingPoint,
+            NumberFormat.Scientific,
+            NumberFormat.Engineering
         };
 
         for (var i = 0; i < testCount; i++)
@@ -235,7 +238,7 @@ public class ExtraFuzzingTests
     #region Consistency Tests
 
     [Fact]
-    public void ConsistencyTest_Addition_IsCommutative()
+    public void ConsistencyTestAdditionIsCommutative()
     {
         var testCount = 10000;
 
@@ -250,18 +253,18 @@ public class ExtraFuzzingTests
 
             // A + B
             _ratPak.addrat(ref ratA, ratBOriginal, _precision);
-            var result1 = _ratPak.RatToString(ref ratA, RatPak.NumberFormat.Scientific, 10, _precision);
+            var result1 = _ratPak.RatToString(ref ratA, NumberFormat.Scientific, 10, _precision);
 
             // B + A
             _ratPak.addrat(ref ratB, ratAOriginal, _precision);
-            var result2 = _ratPak.RatToString(ref ratB, RatPak.NumberFormat.Scientific, 10, _precision);
+            var result2 = _ratPak.RatToString(ref ratB, NumberFormat.Scientific, 10, _precision);
 
             Assert.Equal(result1, result2); // Addition should be commutative
         }
     }
 
     [Fact]
-    public void ConsistencyTest_Multiplication_IsCommutative()
+    public void ConsistencyTestMultiplicationIsCommutative()
     {
         var testCount = 10000;
 
@@ -276,18 +279,18 @@ public class ExtraFuzzingTests
 
             // A * B
             _ratPak.mulrat(ref ratA, ratBOriginal, _precision);
-            var result1 = _ratPak.RatToString(ref ratA, RatPak.NumberFormat.Scientific, 10, _precision);
+            var result1 = _ratPak.RatToString(ref ratA, NumberFormat.Scientific, 10, _precision);
 
             // B * A
             _ratPak.mulrat(ref ratB, ratAOriginal, _precision);
-            var result2 = _ratPak.RatToString(ref ratB, RatPak.NumberFormat.Scientific, 10, _precision);
+            var result2 = _ratPak.RatToString(ref ratB, NumberFormat.Scientific, 10, _precision);
 
             Assert.Equal(result1, result2); // Multiplication should be commutative
         }
     }
 
     [Fact]
-    public void ConsistencyTest_AdditionAndSubtraction_AreInverses()
+    public void ConsistencyTestAdditionAndSubtractionAreInverses()
     {
         var testCount = 1000;
 
@@ -306,16 +309,16 @@ public class ExtraFuzzingTests
             _ratPak.subrat(ref ratA, ratB, _precision);
 
             // Get results as strings for comparison
-            var resultA = _ratPak.RatToString(ref ratA, RatPak.NumberFormat.Scientific, 10, _precision);
+            var resultA = _ratPak.RatToString(ref ratA, NumberFormat.Scientific, 10, _precision);
             var resultAOriginal =
-                _ratPak.RatToString(ref ratAOriginal, RatPak.NumberFormat.Scientific, 10, _precision);
+                _ratPak.RatToString(ref ratAOriginal, NumberFormat.Scientific, 10, _precision);
 
             Assert.Equal(resultAOriginal, resultA); // Adding and then subtracting should return the original
         }
     }
 
     [Fact]
-    public void ConsistencyTest_MultiplicationAndDivision_AreInverses()
+    public void ConsistencyTestMultiplicationAndDivisionAreInverses()
     {
         var testCount = 10000;
 
@@ -325,7 +328,7 @@ public class ExtraFuzzingTests
             var ratB = GenerateRandomRat();
 
             // Skip if B is zero
-            if (_ratPak.zerrat(ratB))
+            if (RatPak.zerrat(ratB))
             {
                 i--;
                 continue;
@@ -341,36 +344,39 @@ public class ExtraFuzzingTests
             _ratPak.divrat(ref ratA, ratB, _precision);
 
             // Get results as strings for comparison
-            var resultA = _ratPak.RatToString(ref ratA, RatPak.NumberFormat.Scientific, 10, _precision);
+            var resultA = _ratPak.RatToString(ref ratA, NumberFormat.Scientific, 10, _precision);
             var resultAOriginal =
-                _ratPak.RatToString(ref ratAOriginal, RatPak.NumberFormat.Scientific, 10, _precision);
+                _ratPak.RatToString(ref ratAOriginal, NumberFormat.Scientific, 10, _precision);
 
             Assert.Equal(resultAOriginal, resultA);
         }
     }
 
     [Fact]
-    public void ConsistencyTest_PowerAndRoot_AreInverses()
+    public void ConsistencyTestPowerAndRootAreInverses()
     {
         var testCount = 20; // Less tests due to complexity
 
         for (var i = 0; i < testCount; i++)
         {
             // Use positive numbers for simpler testing
-            var baseStr = _random.Next(1, Int32.MaxValue).ToString();
+            var baseStr = _random.Next(1, Int32.MaxValue).ToString(CultureInfo.InvariantCulture);
             var baseNum = _ratPak.StringToNumber(baseStr, 10, _precision);
-            var baseRat = _ratPak.numtorat(baseNum, 10);
+            Assert.NotNull(baseNum);
+            var baseRat = RatPak.numtorat(baseNum, 10);
 
             // Create a copy
             var baseRatOriginal = CopyRat(baseRat);
 
             // Create power value (2 for square/sqrt)
             var powerNum = _ratPak.StringToNumber("2", 10, _precision);
-            var powerRat = _ratPak.numtorat(powerNum, 10);
+            Assert.NotNull(powerNum);
+            var powerRat = RatPak.numtorat(powerNum, 10);
 
             // Create inverse power (0.5 for sqrt)
             var invPowerNum = _ratPak.StringToNumber("0.5", 10, _precision);
-            var invPowerRat = _ratPak.numtorat(invPowerNum, 10);
+            Assert.NotNull(invPowerNum);
+            var invPowerRat = RatPak.numtorat(invPowerNum, 10);
 
             // A ^ 2
             _ratPak.powrat(ref baseRat, powerRat, 10, _precision);
@@ -379,8 +385,8 @@ public class ExtraFuzzingTests
             _ratPak.powrat(ref baseRat, invPowerRat, 10, _precision);
 
             // Get results as strings for comparison
-            var resultA = _ratPak.RatToString(ref baseRat, RatPak.NumberFormat.Float, 10, _precision);
-            var resultAOriginal = _ratPak.RatToString(ref baseRatOriginal, RatPak.NumberFormat.Float, 10, _precision);
+            var resultA = _ratPak.RatToString(ref baseRat, NumberFormat.FloatingPoint, 10, _precision);
+            var resultAOriginal = _ratPak.RatToString(ref baseRatOriginal, NumberFormat.FloatingPoint, 10, _precision);
 
             Assert.Equal(
                 resultAOriginal,
@@ -389,23 +395,25 @@ public class ExtraFuzzingTests
     }
 
     [Fact]
-    public void ConsistencyTest_PowerAndRoot_AreInverses_Use_RootRat_Stub()
+    public void ConsistencyTestPowerAndRootAreInversesUseRootRatStub()
     {
         var testCount = 20; // Less tests due to complexity
 
         for (var i = 0; i < testCount; i++)
         {
             // Use positive numbers for simpler testing
-            var baseStr = _random.Next(1, Int32.MaxValue).ToString();
+            var baseStr = _random.Next(1, Int32.MaxValue).ToString(CultureInfo.InvariantCulture);
             var baseNum = _ratPak.StringToNumber(baseStr, 10, _precision);
-            var baseRat = _ratPak.numtorat(baseNum, 10);
+            Assert.NotNull(baseNum);
+            var baseRat = RatPak.numtorat(baseNum, 10);
 
             // Create a copy
             var baseRatOriginal = CopyRat(baseRat);
 
             // Create power value (2 for square/sqrt)
             var powerNum = _ratPak.StringToNumber("2", 10, _precision);
-            var powerRat = _ratPak.numtorat(powerNum, 10);
+            Assert.NotNull(powerNum);
+            var powerRat = RatPak.numtorat(powerNum, 10);
 
             // A ^ 2
             _ratPak.powrat(ref baseRat, powerRat, 10, _precision);
@@ -414,8 +422,8 @@ public class ExtraFuzzingTests
             _ratPak.rootrat(ref baseRat, powerRat, 10, _precision);
 
             // Get results as strings for comparison
-            var resultA = _ratPak.RatToString(ref baseRat, RatPak.NumberFormat.Float, 10, _precision);
-            var resultAOriginal = _ratPak.RatToString(ref baseRatOriginal, RatPak.NumberFormat.Float, 10, _precision);
+            var resultA = _ratPak.RatToString(ref baseRat, NumberFormat.FloatingPoint, 10, _precision);
+            var resultAOriginal = _ratPak.RatToString(ref baseRatOriginal, NumberFormat.FloatingPoint, 10, _precision);
             // use StartsWith since we might have precision differences
             Assert.Equal(
                 resultAOriginal,
@@ -428,13 +436,13 @@ public class ExtraFuzzingTests
     #region Memory Management Tests
 
     [Fact]
-    public void MemoryTest_RepeatedOperations_DoesNotLeak()
+    public void MemoryTestRepeatedOperationsDoesNotLeak()
     {
         // This test performs many operations and checks that destroy methods work properly
         // We can't directly test for memory leaks in a unit test, but this ensures the code path is exercised
 
         var testCount = 1000;
-        List<RatPak.RAT> rats = new List<RatPak.RAT>();
+        List<RAT> rats = new List<RAT>();
         // Create many RATs
         for (var i = 0; i < testCount; i++)
         {
@@ -447,7 +455,7 @@ public class ExtraFuzzingTests
             var result = CopyRat(rats[i]);
 
             // Skip division by zero
-            if (!_ratPak.zerrat(rats[i + 1]))
+            if (!RatPak.zerrat(rats[i + 1]))
             {
                 _ratPak.addrat(ref result, rats[i + 1], _precision);
                 _ratPak.mulrat(ref result, rats[i + 1], _precision);
@@ -455,14 +463,14 @@ public class ExtraFuzzingTests
             }
 
             // Explicitly destroy the temporary RAT
-            _ratPak.destroyrat(ref result);
+            RatPak.destroyrat(ref result);
         }
 
         // Destroy all created RATs
         foreach (var rat in rats)
         {
             var temp = rat; // Create a copy to avoid modifying the list
-            _ratPak.destroyrat(ref temp);
+            RatPak.destroyrat(ref temp);
         }
 
         // No assertion needed - just make sure we don't crash
@@ -472,10 +480,10 @@ public class ExtraFuzzingTests
 
     #region Helper Methods
 
-    private RatPak.RAT CopyRat(RatPak.RAT original)
+    private static RAT CopyRat(RAT original)
     {
-        var result = _ratPak.createrat();
-        _ratPak.duprat(ref result, original);
+        var result = RatPak.createrat();
+        RatPak.duprat(ref result, original);
         return result;
     }
 

@@ -2,12 +2,25 @@ namespace CalcEngine;
 
 public class CalcErrException : Exception
 {
-    public override string Message { get; }
     internal CalcErr err { get; }
 
-    public CalcErrException(CalcErr _err)
+    public CalcErrException(CalcErr err)
+        : base($"CalcError {Enum.GetName(typeof(CalcErr), err)}")
     {
-        err = _err;
-        Message = $"CalcError {Enum.GetName(typeof(CalcErr),err)}";
+        this.err = err;
+    }
+
+    public CalcErrException()
+    {
+    }
+
+    public CalcErrException(string message)
+        : base(message)
+    {
+    }
+
+    public CalcErrException(string message, Exception innerException)
+        : base(message, innerException)
+    {
     }
 }

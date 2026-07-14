@@ -111,7 +111,7 @@ namespace CalculatorApp.ViewModel.Snapshot
                 case CalculationManager.CommandType.UnaryCommand:
                 {
                     var cmd = (IUnaryCommand)(exprCmd);
-                    return new UnaryCommand(cmd.GetCommands());
+                    return new UnaryCommand(cmd.GetCommands().ToList());
                 }
                 case CalculationManager.CommandType.BinaryCommand:
                 {
@@ -122,7 +122,7 @@ namespace CalculatorApp.ViewModel.Snapshot
                 {
                     var cmd = (IOpndCommand)(exprCmd);
                     return new OperandCommand(cmd.IsNegative(), cmd.IsDecimalPresent(), cmd.IsSciFmt(),
-                        cmd.GetCommands());
+                        cmd.GetCommands().ToList());
                 }
                 case CalculationManager.CommandType.Parentheses:
                 {
@@ -186,18 +186,15 @@ namespace CalculatorApp.ViewModel.Snapshot
             List<HISTORYITEM> result = new();
             foreach (CalcManagerHistoryItem item in items)
             {
-                HISTORYITEMVECTOR nativeItem;
-                nativeItem.spTokens =
-                    new List<(string, int)>(); // std.make_shared<std.vector<std.pair<std.wstring, int>>>();
+                var tokens = new List<(string, int)>();
                 foreach (CalcManagerToken token in item.Tokens)
                 {
-                    nativeItem.spTokens.Add((token.OpCodeName, token.CommandIndex));
+                    tokens.Add((token.OpCodeName, token.CommandIndex));
                 }
 
-                nativeItem.spCommands = new List<IExpressionCommand>(item.Commands.ToUnderlying());
-                nativeItem.expression = item.Expression;
-                nativeItem.result = item.Result;
-                var spItem = new HISTORYITEM() { historyItemVector = nativeItem };
+                var commands = new List<IExpressionCommand>(item.Commands.ToUnderlying());
+                var nativeItem = new HISTORYITEMVECTOR(tokens, commands, item.Expression, item.Result);
+                var spItem = new HISTORYITEM { HistoryItemVector = nativeItem };
 
                 //std.make_shared<CalculationManager.>(CalculationManager.HISTORYITEM{ std.move(nativeItem) });
                 result.Add(spItem); //.push_back(std.move(std.move(spItem)));
@@ -236,21 +233,19 @@ namespace CalculatorApp.ViewModel.Snapshot
         public CalcManagerHistoryItem(CalculationManager.HISTORYITEM item)
         {
             Tokens = new List<CalcManagerToken>();
-            Debug.Assert(item.historyItemVector.spTokens != null, "spTokens shall not be null.");
-            foreach (var (opCode, cmdIdx) in item.historyItemVector.spTokens)
+            foreach (var (opCode, cmdIdx) in item.HistoryItemVector.SpTokens)
             {
                 Tokens.Add(new CalcManagerToken((opCode), cmdIdx));
             }
 
             Commands = new List<ICalcManagerIExprCommand>();
-            Debug.Assert(item.historyItemVector.spCommands != null, "spCommands shall not be null.");
-            foreach (var cmd in item.historyItemVector.spCommands)
+            foreach (var cmd in item.HistoryItemVector.SpCommands)
             {
                 Commands.Add((cmd.CreateExprCommand()));
             }
 
-            Expression = item.historyItemVector.expression;
-            Result = item.historyItemVector.result;
+            Expression = item.HistoryItemVector.Expression;
+            Result = item.HistoryItemVector.Result;
         }
     }
 

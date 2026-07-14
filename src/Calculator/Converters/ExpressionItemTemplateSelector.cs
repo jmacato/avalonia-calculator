@@ -1,48 +1,37 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using CalculatorApp.ViewModel.Common;
 
-using System;
+namespace CalculatorApp.Converters;
 
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-
-namespace CalculatorApp
+/// <summary>
+/// Direct IDataTemplate port of the original expression-token selector.
+/// </summary>
+public sealed class ExpressionItemTemplateSelector : IDataTemplate
 {
-    namespace Converters
+    public IDataTemplate OperatorTemplate { get; set; } = null!;
+
+    public IDataTemplate OperandTemplate { get; set; } = null!;
+
+    public IDataTemplate SeparatorTemplate { get; set; } = null!;
+
+    public Control? Build(object? parameter)
     {
-        [Microsoft.UI.Xaml.Data.Bindable]
-        public sealed class ExpressionItemTemplateSelector : DataTemplateSelector
-        {
-            protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
+        IDataTemplate template = parameter is DisplayExpressionToken token
+            ? token.Type switch
             {
-                if (item is DisplayExpressionToken token)
-                {
-                    CalculatorApp.ViewModel.Common.TokenType type = token.Type;
-
-                    switch (type)
-                    {
-                        case TokenType.Operator:
-                            return OperatorTemplate;
-                        case TokenType.Operand:
-                            return OperandTemplate;
-                        case TokenType.Separator:
-                            return SeparatorTemplate;
-                        default:
-                            throw new Exception("Invalid token type");
-                    }
-                }
-
-                return SeparatorTemplate;
+                TokenType.Operator => OperatorTemplate,
+                TokenType.Operand => OperandTemplate,
+                TokenType.Separator => SeparatorTemplate,
+                _ => throw new InvalidOperationException("Invalid expression token type.")
             }
+            : SeparatorTemplate;
 
-            public Microsoft.UI.Xaml.DataTemplate OperatorTemplate { get; set; }
-
-            public Microsoft.UI.Xaml.DataTemplate OperandTemplate { get; set; }
-
-            public Microsoft.UI.Xaml.DataTemplate SeparatorTemplate { get; set; }
-        }
+        return template.Build(parameter);
     }
-}
 
+    public bool Match(object? data) => data is DisplayExpressionToken;
+}

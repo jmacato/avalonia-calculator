@@ -3,10 +3,10 @@ using CalcManagerManaged.Interop;
 
 namespace CalcManagerInteropTests;
 
-public class CalculatorManagerTests : IDisposable
+public sealed class CalculatorManagerTests : IDisposable
 {
     private readonly CalcEngineWrapper _calculator;
-    private string _currentDisplay;
+    private string _currentDisplay = "";
     private string _currentExpression = "";
     private bool _isError;
 
@@ -110,407 +110,408 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void StandardMode_NumericInput_DisplaysCorrectly()
+    public void StandardModeNumericInputDisplaysCorrectly()
     {
         Command[] commands =
         [
-            Command.Command1, Command.Command2, Command.Command3, Command.CommandPNT,
-            Command.Command4, Command.Command5, Command.Command6, Command.CommandNULL
+            Command.Num1, Command.Num2, Command.Num3, Command.Pnt,
+            Command.Num4, Command.Num5, Command.Num6, Command.None
         ];
         TestCommand(commands, "123.456", "");
     }
 
     [Fact]
-    public void StandardMode_Addition_DisplaysCorrectly()
+    public void StandardModeAdditionDisplaysCorrectly()
     {
-        Command[] commands = [Command.CommandADD, Command.CommandNULL];
+        Command[] commands = [Command.Add, Command.None];
         TestCommand(commands, "0", "0 + ");
     }
 
     [Fact]
-    public void StandardMode_SquareRoot_DisplaysCorrectly()
+    public void StandardModeSquareRootDisplaysCorrectly()
     {
-        Command[] commands = [Command.CommandSQRT, Command.CommandNULL];
+        Command[] commands = [Command.Sqrt, Command.None];
         TestCommand(commands, "0", "\x221A(0)");
     }
 
     [Fact]
-    public void StandardMode_AdditionAndEquals_DisplaysCorrectly()
+    public void StandardModeAdditionAndEqualsDisplaysCorrectly()
     {
         Command[] commands =
         [
-            Command.Command2, Command.CommandADD, Command.Command3, Command.CommandEQU,
-            Command.Command4, Command.CommandEQU, Command.CommandNULL
+            Command.Num2, Command.Add, Command.Num3, Command.Equ,
+            Command.Num4, Command.Equ, Command.None
         ];
         TestCommand(commands, "7", "4 + 3=");
     }
 
     [Fact]
-    public void StandardMode_NumberEquals_DisplaysCorrectly()
+    public void StandardModeNumberEqualsDisplaysCorrectly()
     {
-        Command[] commands = [Command.Command4, Command.CommandEQU, Command.CommandNULL];
+        Command[] commands = [Command.Num4, Command.Equ, Command.None];
         TestCommand(commands, "4", "4=");
     }
 
     [Fact]
-    public void StandardMode_MultipleSquareRoots_DisplaysCorrectly()
+    public void StandardModeMultipleSquareRootsDisplaysCorrectly()
     {
         Command[] commands =
         [
-            Command.Command2, Command.Command5, Command.Command6, Command.CommandSQRT,
-            Command.CommandSQRT, Command.CommandSQRT, Command.CommandNULL
+            Command.Num2, Command.Num5, Command.Num6, Command.Sqrt,
+            Command.Sqrt, Command.Sqrt, Command.None
         ];
         TestCommand(commands, "2", "\x221A(\x221A(\x221A(256)))");
     }
 
     [Fact]
-    public void StandardMode_SubtractionMultiplication_DisplaysCorrectly()
+    public void StandardModeSubtractionMultiplicationDisplaysCorrectly()
     {
         Command[] commands =
         [
-            Command.Command3, Command.CommandSUB, Command.Command6, Command.CommandEQU,
-            Command.CommandMUL, Command.Command3, Command.CommandEQU, Command.CommandNULL
+            Command.Num3, Command.Sub, Command.Num6, Command.Equ,
+            Command.Mul, Command.Num3, Command.Equ, Command.None
         ];
         TestCommand(commands, "-9", "-3 \x00D7 3=");
     }
 
     [Fact]
-    public void StandardMode_MultiplicationSubtraction_DisplaysCorrectly()
+    public void StandardModeMultiplicationSubtractionDisplaysCorrectly()
     {
         Command[] commands =
         [
-            Command.Command9, Command.CommandMUL, Command.Command6, Command.CommandSUB,
-            Command.CommandCENTR, Command.Command8, Command.CommandEQU, Command.CommandNULL
+            Command.Num9, Command.Mul, Command.Num6, Command.Sub,
+            Command.Centr, Command.Num8, Command.Equ, Command.None
         ];
         TestCommand(commands, "46", "54 - 8=");
     }
 
     [Fact]
-    public void StandardMode_PercentOperation_DisplaysCorrectly()
+    public void StandardModePercentOperationDisplaysCorrectly()
     {
         Command[] commands =
         [
-            Command.Command6, Command.CommandMUL, Command.Command6, Command.CommandPERCENT,
-            Command.CommandEQU, Command.CommandNULL
+            Command.Num6, Command.Mul, Command.Num6, Command.Percent,
+            Command.Equ, Command.None
         ];
         TestCommand(commands, "0.36", "6 \x00D7 0.06=");
     }
 
     [Fact]
-    public void StandardMode_AdditionWithPercent_DisplaysCorrectly()
+    public void StandardModeAdditionWithPercentDisplaysCorrectly()
     {
         Command[] commands =
         [
-            Command.Command5, Command.Command0, Command.CommandADD, Command.Command2,
-            Command.Command0, Command.CommandPERCENT, Command.CommandEQU, Command.CommandNULL
+            Command.Num5, Command.Num0, Command.Add, Command.Num2,
+            Command.Num0, Command.Percent, Command.Equ, Command.None
         ];
         TestCommand(commands, "60", "50 + 10=");
     }
 
     [Fact]
-    public void StandardMode_AdditionEquals_DisplaysCorrectly()
+    public void StandardModeAdditionEqualsDisplaysCorrectly()
     {
-        Command[] commands = [Command.Command4, Command.CommandADD, Command.CommandEQU, Command.CommandNULL];
+        Command[] commands = [Command.Num4, Command.Add, Command.Equ, Command.None];
         TestCommand(commands, "8", "4 + 4=");
     }
 
     [Fact]
-    public void StandardMode_OperatorOverride_DisplaysCorrectly()
+    public void StandardModeOperatorOverrideDisplaysCorrectly()
     {
         Command[] commands =
-            [Command.Command5, Command.CommandADD, Command.CommandMUL, Command.Command3, Command.CommandNULL];
+            [Command.Num5, Command.Add, Command.Mul, Command.Num3, Command.None];
         TestCommand(commands, "3", "5 \x00D7 ");
     }
 
     [Fact]
-    public void StandardMode_Overflow_DisplaysError()
+    public void StandardModeOverflowDisplaysError()
     {
         Command[] commands =
         [
-            Command.Command1, Command.CommandEXP, Command.CommandSIGN, Command.Command9, Command.Command9,
-            Command.Command9, Command.Command9, Command.CommandDIV, Command.Command1, Command.Command0,
-            Command.CommandEQU, Command.CommandNULL
+            Command.Num1, Command.Exp, Command.Sign, Command.Num9, Command.Num9,
+            Command.Num9, Command.Num9, Command.Div, Command.Num1, Command.Num0,
+            Command.Equ, Command.None
         ];
         TestCommand(commands, "Overflow", "1.e-9999 \x00F7 ");
     }
 
     [Fact]
-    public void StandardMode_DivideByZero_DisplaysError()
+    public void StandardModeDivideByZeroDisplaysError()
     {
         Command[] commands =
-            [Command.Command1, Command.CommandDIV, Command.Command0, Command.CommandEQU, Command.CommandNULL];
+            [Command.Num1, Command.Div, Command.Num0, Command.Equ, Command.None];
         TestCommand(commands, "Cannot divide by zero", "1 \x00F7 ");
     }
 
     [Fact]
-    public void StandardMode_ZeroDividedByZero_DisplaysUndefined()
+    public void StandardModeZeroDividedByZeroDisplaysUndefined()
     {
         Command[] commands =
-            [Command.Command0, Command.CommandDIV, Command.Command0, Command.CommandEQU, Command.CommandNULL];
+            [Command.Num0, Command.Div, Command.Num0, Command.Equ, Command.None];
         TestCommand(commands, "Result is undefined", "0 \x00F7 ");
     }
 
     [Fact]
-    public void StandardMode_BackspaceOperations_WorksCorrectly()
+    public void StandardModeBackspaceOperationsWorksCorrectly()
     {
         Command[] commands =
         [
-            Command.Command1, Command.Command2, Command.Command3, Command.CommandBACK,
-            Command.CommandBACK, Command.CommandNULL
+            Command.Num1, Command.Num2, Command.Num3, Command.Back,
+            Command.Back, Command.None
         ];
         TestCommand(commands, "1", "");
     }
 
     [Fact]
-    public void StandardMode_AllBackspaces_ClearsInput()
+    public void StandardModeAllBackspacesClearsInput()
     {
         Command[] commands =
         [
-            Command.Command1, Command.Command2, Command.Command3, Command.CommandBACK,
-            Command.CommandBACK, Command.CommandBACK, Command.CommandNULL
+            Command.Num1, Command.Num2, Command.Num3, Command.Back,
+            Command.Back, Command.Back, Command.None
         ];
         TestCommand(commands, "0", "");
     }
 
     [Fact]
-    public void ScientificMode_NumericInput_DisplaysCorrectly()
+    public void ScientificModeNumericInputDisplaysCorrectly()
     {
         Command[] commands =
         [
-            Command.Command1, Command.Command2, Command.Command3, Command.CommandPNT,
-            Command.Command4, Command.Command5, Command.Command6, Command.CommandNULL
+            Command.Num1, Command.Num2, Command.Num3, Command.Pnt,
+            Command.Num4, Command.Num5, Command.Num6, Command.None
         ];
         TestCommand(commands, "123.456", "");
     }
 
     [Fact]
-    public void ScientificMode_Addition_DisplaysCorrectly()
+    public void ScientificModeAdditionDisplaysCorrectly()
     {
-        Command[] commands = [Command.CommandADD, Command.CommandNULL];
+        Command[] commands = [Command.Add, Command.None];
         TestCommand(commands, "0", "0 + ");
     }
 
     [Fact]
-    public void ScientificMode_SquareRoot_DisplaysCorrectly()
+    public void ScientificModeSquareRootDisplaysCorrectly()
     {
-        Command[] commands = [Command.CommandSQRT, Command.CommandNULL];
+        Command[] commands = [Command.Sqrt, Command.None];
         TestCommand(commands, "0", "\x221A(0)");
     }
 
     [Fact]
-    public void ScientificMode_PrecedenceHandling_DisplaysCorrectly()
+    public void ScientificModePrecedenceHandlingDisplaysCorrectly()
     {
         Command[] commands =
         [
-            Command.Command1, Command.CommandADD, Command.Command0, Command.CommandMUL,
-            Command.Command2, Command.CommandEQU, Command.CommandNULL
+            Command.Num1, Command.Add, Command.Num0, Command.Mul,
+            Command.Num2, Command.Equ, Command.None
         ];
         TestCommand(commands, "1", "1 + 0 \x00D7 2=", true, true);
     }
 
     [Fact]
-    public void ScientificMode_Square_WorksCorrectly()
+    public void ScientificModeSquareWorksCorrectly()
     {
-        Command[] commands = [Command.Command1, Command.Command2, Command.CommandSQR, Command.CommandNULL];
+        Command[] commands = [Command.Num1, Command.Num2, Command.Sqr, Command.None];
         TestCommand(commands, "144", "sqr(12)", true, true);
     }
 
     [Fact]
-    public void ScientificMode_Factorial_WorksCorrectly()
+    public void ScientificModeFactorialWorksCorrectly()
     {
-        Command[] commands = [Command.Command5, Command.CommandFAC, Command.CommandNULL];
+        Command[] commands = [Command.Num5, Command.Fac, Command.None];
         TestCommand(commands, "120", "fact(5)");
     }
 
     [Fact]
-    public void ScientificMode_Power_WorksCorrectly()
+    public void ScientificModePowerWorksCorrectly()
     {
         Command[] commands =
-            [Command.Command5, Command.CommandPWR, Command.Command2, Command.CommandADD, Command.CommandNULL];
+            [Command.Num5, Command.Pwr, Command.Num2, Command.Add, Command.None];
         TestCommand(commands, "25", "5 ^ 2 + ", true, true);
     }
 
     [Fact]
-    public void ScientificMode_Root_WorksCorrectly()
+    public void ScientificModeRootWorksCorrectly()
     {
         Command[] commands =
-            [Command.Command8, Command.CommandROOT, Command.Command3, Command.CommandMUL, Command.CommandNULL];
+            [Command.Num8, Command.Root, Command.Num3, Command.Mul, Command.None];
         TestCommand(commands, "2", "8 yroot 3 \x00D7 ", true, true);
     }
 
     [Fact]
-    public void ScientificMode_Cube_WorksCorrectly()
+    public void ScientificModeCubeWorksCorrectly()
     {
-        Command[] commands = [Command.Command8, Command.CommandCUB, Command.CommandNULL];
+        Command[] commands = [Command.Num8, Command.Cub, Command.None];
         TestCommand(commands, "512", "cube(8)", true, true);
     }
 
     [Fact]
-    public void ScientificMode_CubeRoot_WorksCorrectly()
+    public void ScientificModeCubeRootWorksCorrectly()
     {
-        Command[] commands = [Command.Command8, Command.CommandCUB, Command.CommandCUBEROOT, Command.CommandNULL];
+        Command[] commands = [Command.Num8, Command.Cub, Command.CubeRoot, Command.None];
         TestCommand(commands, "8", "cuberoot(cube(8))", true, true);
     }
 
     [Fact]
-    public void ScientificMode_Logarithm_WorksCorrectly()
+    public void ScientificModeLogarithmWorksCorrectly()
     {
-        Command[] commands = [Command.Command1, Command.Command0, Command.CommandLOG, Command.CommandNULL];
+        Command[] commands = [Command.Num1, Command.Num0, Command.Log, Command.None];
         TestCommand(commands, "1", "log(10)");
     }
 
     [Fact]
-    public void ScientificMode_PowerOf10_WorksCorrectly()
+    public void ScientificModePowerOf10WorksCorrectly()
     {
-        Command[] commands = [Command.Command5, Command.CommandPOW10, Command.CommandNULL];
+        Command[] commands = [Command.Num5, Command.Pow10, Command.None];
         TestCommand(commands, "100,000", "10^(5)");
     }
 
     [Fact]
-    public void ScientificMode_NaturalLogarithm_WorksCorrectly()
+    public void ScientificModeNaturalLogarithmWorksCorrectly()
     {
-        Command[] commands = [Command.Command1, Command.Command0, Command.CommandLN, Command.CommandNULL];
+        Command[] commands = [Command.Num1, Command.Num0, Command.NumLN, Command.None];
         TestCommand(commands, "2.3025850929940456840179914546844", "ln(10)", true, true);
     }
 
     [Fact]
-    public void ScientificMode_Sine_WorksCorrectly()
+    public void ScientificModeSineWorksCorrectly()
     {
-        Command[] commands = [Command.Command1, Command.CommandSIN, Command.CommandNULL];
+        Command[] commands = [Command.Num1, Command.Sin, Command.None];
         TestCommand(commands, "0.01745240643728351281941897851632", "sin\x2080(1)", true, true);
     }
 
     [Fact]
-    public void ScientificMode_Cosine_WorksCorrectly()
+    public void ScientificModeCosineWorksCorrectly()
     {
-        Command[] commands = [Command.Command1, Command.CommandCOS, Command.CommandNULL];
+        Command[] commands = [Command.Num1, Command.Cos, Command.None];
         TestCommand(commands, "0.99984769515639123915701155881391", "cos\x2080(1)", true, true);
     }
 
     [Fact]
-    public void ScientificMode_Tangent_WorksCorrectly()
+    public void ScientificModeTangentWorksCorrectly()
     {
-        Command[] commands = [Command.Command1, Command.CommandTAN, Command.CommandNULL];
+        Command[] commands = [Command.Num1, Command.Tan, Command.None];
         TestCommand(commands, "0.01745506492821758576512889521973", "tan\x2080(1)", true, true);
     }
 
     [Fact]
-    public void ScientificMode_ArcSine_WorksCorrectly()
+    public void ScientificModeArcSineWorksCorrectly()
     {
-        Command[] commands = [Command.Command1, Command.CommandASIN, Command.CommandNULL];
+        Command[] commands = [Command.Num1, Command.Asin, Command.None];
         TestCommand(commands, "90", "sin\x2080\x207B\x00B9(1)", true, true);
     }
 
     [Fact]
-    public void ScientificMode_ArcCosine_WorksCorrectly()
+    public void ScientificModeArcCosineWorksCorrectly()
     {
-        Command[] commands = [Command.Command1, Command.CommandACOS, Command.CommandNULL];
+        Command[] commands = [Command.Num1, Command.Acos, Command.None];
         TestCommand(commands, "0", "cos\x2080\x207B\x00B9(1)", true, true);
     }
 
     [Fact]
-    public void ScientificMode_ArcTangent_WorksCorrectly()
+    public void ScientificModeArcTangentWorksCorrectly()
     {
-        Command[] commands = [Command.Command1, Command.CommandATAN, Command.CommandNULL];
+        Command[] commands = [Command.Num1, Command.Atan, Command.None];
         TestCommand(commands, "45", "tan\x2080\x207B\x00B9(1)", true, true);
     }
 
     [Fact]
-    public void ScientificMode_Secant_WorksCorrectly()
+    public void ScientificModeSecantWorksCorrectly()
     {
-        Command[] commands = [Command.Command1, Command.CommandSEC, Command.CommandNULL];
+        Command[] commands = [Command.Num1, Command.Sec, Command.None];
         TestCommand(commands, "1.0001523280439076654284264342126", "sec\x2080(1)", true, true);
     }
 
     [Fact]
-    public void ScientificMode_Cosecant_WorksCorrectly()
+    public void ScientificModeCosecantWorksCorrectly()
     {
-        Command[] commands = [Command.Command1, Command.CommandCSC, Command.CommandNULL];
+        Command[] commands = [Command.Num1, Command.Csc, Command.None];
         TestCommand(commands, "57.298688498550183476612683735174", "csc\x2080(1)", true, true);
     }
 
     [Fact]
-    public void ScientificMode_Cotangent_WorksCorrectly()
+    public void ScientificModeCotangentWorksCorrectly()
     {
-        Command[] commands = [Command.Command1, Command.CommandCOT, Command.CommandNULL];
+        Command[] commands = [Command.Num1, Command.Cot, Command.None];
         TestCommand(commands, "57.289961630759424687278147537113", "cot\x2080(1)", true, true);
     }
 
     [Fact]
-    public void ScientificMode_PowerOfE_WorksCorrectly()
+    public void ScientificModePowerOfEWorksCorrectly()
     {
-        Command[] commands = [Command.Command2, Command.CommandPOWE, Command.CommandNULL];
+        Command[] commands = [Command.Num2, Command.PowE, Command.None];
         TestCommand(commands, "7.389056098930650227230427460575", "e^(2)", true, true);
     }
 
     [Fact]
-    public void ScientificMode_PowerOfTwo_WorksCorrectly()
+    public void ScientificModePowerOfTwoWorksCorrectly()
     {
-        Command[] commands = [Command.Command8, Command.CommandPOW2, Command.CommandNULL];
+        Command[] commands = [Command.Num8, Command.Pow2, Command.None];
         TestCommand(commands, "256", "2^(8)", true, true);
     }
 
     [Fact]
-    public void ScientificMode_PracticalFractionOperation_WorksCorrectly()
+    public void ScientificModePracticalFractionOperationWorksCorrectly()
     {
         Command[] commands =
         [
-            Command.Command8, Command.CommandPWR, Command.CommandOPENP, Command.Command2,
-            Command.CommandDIV, Command.Command3, Command.CommandCLOSEP, Command.CommandSUB,
-            Command.Command4, Command.CommandADD, Command.CommandNULL
+            Command.Num8, Command.Pwr, Command.OpenP, Command.Num2,
+            Command.Div, Command.Num3, Command.CloseP, Command.Sub,
+            Command.Num4, Command.Add, Command.None
         ];
         TestCommand(commands, "0", "8 ^ (2 \x00F7 3) - 4 + ", true, true);
     }
 
     [Fact]
-    public void ScientificMode_FloorFunction_WorksCorrectly()
+    public void ScientificModeFloorFunctionWorksCorrectly()
     {
         Command[] commands =
-            [Command.Command3, Command.CommandPNT, Command.Command8, Command.CommandFloor, Command.CommandNULL];
+            [Command.Num3, Command.Pnt, Command.Num8, Command.Floor, Command.None];
         TestCommand(commands, "3", "floor(3.8)");
     }
 
     [Fact]
-    public void ScientificMode_CeilingFunction_WorksCorrectly()
+    public void ScientificModeCeilingFunctionWorksCorrectly()
     {
         Command[] commands =
-            [Command.Command3, Command.CommandPNT, Command.Command8, Command.CommandCeil, Command.CommandNULL];
+            [Command.Num3, Command.Pnt, Command.Num8, Command.Ceil, Command.None];
         TestCommand(commands, "4", "ceil(3.8)");
     }
 
     [Fact]
-    public void ScientificMode_LogarithmBaseY_WorksCorrectly()
+    public void ScientificModeLogarithmBaseYWorksCorrectly()
     {
         Command[] commands =
-            [Command.Command5, Command.CommandLogBaseY, Command.Command3, Command.CommandADD, Command.CommandNULL];
+            [Command.Num5, Command.LogBaseY, Command.Num3, Command.Add, Command.None];
         TestCommand(commands, "1.4649735207179271671970404076786", "5 log base 3 + ", true, true);
     }
 
     private int _maxDigitsCalledCount;
     private int _binaryOperatorReceivedCount;
-    private List<string> _memorizedNumbers;
+    private List<string>? _memorizedNumbers;
 
     public CalculatorManagerTests()
     {
         // Setup calculator with event handlers
         _calculator = new CalcEngineWrapper(new DefaultCalcResourceProvider());
-        _calculator.DisplayChanged += (display, isError) =>
+        _calculator.DisplayChanged += (sender, e) =>
         {
-            _currentDisplay = display;
-            _isError = isError;
+            _currentDisplay = e.DisplayText;
+            _isError = e.IsError;
         };
-        _calculator.ExpressionDisplayChanged += (tokens) =>
+        _calculator.ExpressionDisplayChanged += (sender, e) =>
         {
-            _currentExpression = string.Join("", tokens.ConvertAll(t => t.Text));
+            _currentExpression = string.Join("", e.Tokens.Select(t => t.Text));
         };
-        _calculator.MaxDigitsReached += () => { _maxDigitsCalledCount++; };
-        _calculator.BinaryOperatorReceived += () => { _binaryOperatorReceivedCount++; };
-        _calculator.MemorizedNumbersChanged += (numbers) => { _memorizedNumbers = new List<string>(numbers); };
+        _calculator.MaxDigitsReached += (sender, e) => { _maxDigitsCalledCount++; };
+        _calculator.BinaryOperatorReceived += (sender, e) => { _binaryOperatorReceivedCount++; };
+        _calculator.MemorizedNumbersChanged += (sender, e) => { _memorizedNumbers = new List<string>(e.MemorizedNumbers); };
     }
 
     public void Dispose()
     {
         _calculator.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     // Helper method to execute commands and check the result
@@ -541,7 +542,7 @@ public class CalculatorManagerTests : IDisposable
         // Execute each command
         foreach (var command in commands)
         {
-            if (command == Command.CommandNULL)
+            if (command == Command.None)
                 break;
 
             _calculator.SendCommand((int)command);
@@ -558,49 +559,49 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void ScientificMode_ParenthesisHandling_WorksCorrectly()
+    public void ScientificModeParenthesisHandlingWorksCorrectly()
     {
         Command[] commands1 =
         [
-            Command.Command1, Command.CommandADD, Command.CommandOPENP, Command.CommandADD,
-            Command.Command3, Command.CommandCLOSEP, Command.CommandNULL
+            Command.Num1, Command.Add, Command.OpenP, Command.Add,
+            Command.Num3, Command.CloseP, Command.None
         ];
         TestCommand(commands1, "3", "1 + (0 + 3)", true, true);
 
         Command[] commands2 =
         [
-            Command.CommandOPENP, Command.CommandOPENP, Command.Command1, Command.Command2,
-            Command.CommandCLOSEP, Command.CommandNULL
+            Command.OpenP, Command.OpenP, Command.Num1, Command.Num2,
+            Command.CloseP, Command.None
         ];
         TestCommand(commands2, "12", "((12)", true, true);
 
         Command[] commands3 =
         [
-            Command.Command1, Command.Command2, Command.CommandCLOSEP,
-            Command.CommandCLOSEP, Command.CommandOPENP, Command.CommandNULL
+            Command.Num1, Command.Num2, Command.CloseP,
+            Command.CloseP, Command.OpenP, Command.None
         ];
         TestCommand(commands3, "12", "12 \x00D7 (", true, true);
 
         Command[] commands4 =
         [
-            Command.Command2, Command.CommandOPENP, Command.Command2, Command.CommandCLOSEP,
-            Command.CommandADD, Command.CommandNULL
+            Command.Num2, Command.OpenP, Command.Num2, Command.CloseP,
+            Command.Add, Command.None
         ];
         TestCommand(commands4, "4", "2 \x00D7 (2) + ", true, true);
 
         Command[] commands5 =
         [
-            Command.Command2, Command.CommandOPENP, Command.Command2, Command.CommandCLOSEP,
-            Command.CommandADD, Command.CommandEQU, Command.CommandNULL
+            Command.Num2, Command.OpenP, Command.Num2, Command.CloseP,
+            Command.Add, Command.Equ, Command.None
         ];
         TestCommand(commands5, "8", "2 \x00D7 (2) + 4=", true, true);
     }
 
     [Fact]
-    public void ErrorHandling_DivideByZero_DisplaysError()
+    public void ErrorHandlingDivideByZeroDisplaysError()
     {
         Command[] commands1 =
-            [Command.Command1, Command.CommandDIV, Command.Command0, Command.CommandEQU, Command.CommandNULL];
+            [Command.Num1, Command.Div, Command.Num0, Command.Equ, Command.None];
         TestCommand(commands1, "Cannot divide by zero", "1 \x00F7 ", true, true);
         Assert.True(_isError);
 
@@ -612,9 +613,9 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void ErrorHandling_InvalidInput_DisplaysError()
+    public void ErrorHandlingInvalidInputDisplaysError()
     {
-        Command[] commands2 = [Command.Command2, Command.CommandSIGN, Command.CommandLOG, Command.CommandNULL];
+        Command[] commands2 = [Command.Num2, Command.Sign, Command.Log, Command.None];
         TestCommand(commands2, "Invalid input", "log(-2)", true, true);
         Assert.True(_isError);
 
@@ -626,10 +627,10 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void ErrorHandling_UndefinedResult_DisplaysError()
+    public void ErrorHandlingUndefinedResultDisplaysError()
     {
         Command[] commands3 =
-            [Command.Command0, Command.CommandDIV, Command.Command0, Command.CommandEQU, Command.CommandNULL];
+            [Command.Num0, Command.Div, Command.Num0, Command.Equ, Command.None];
         TestCommand(commands3, "Result is undefined", "0 \x00F7 ", true, true);
         Assert.True(_isError);
 
@@ -641,16 +642,16 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void ErrorHandling_DivideByZero_SetsErrorState()
+    public void ErrorHandlingDivideByZeroSetsErrorState()
     {
         // Test that division by zero sets the error state
         _calculator.Reset();
 
         // Set up with numerator
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.CommandDIV);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Div);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Equ);
 
         // Verify error state and message
         Assert.True(_calculator.IsInError());
@@ -659,16 +660,16 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void ErrorHandling_NegativeLogarithm_SetsErrorState()
+    public void ErrorHandlingNegativeLogarithmSetsErrorState()
     {
         // Test that log of negative number sets the error state
         _calculator.Reset();
         _calculator.SetMode(CalcMode.Scientific);
 
         // Set up with negative number
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.CommandSIGN);
-        _calculator.SendCommand((int)Command.CommandLOG);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Sign);
+        _calculator.SendCommand((int)Command.Log);
 
         // Verify error state and message
         Assert.True(_calculator.IsInError());
@@ -677,16 +678,16 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void ErrorHandling_ZeroDivideByZero_SetsErrorState()
+    public void ErrorHandlingZeroDivideByZeroSetsErrorState()
     {
         // Test that zero divided by zero sets the error state
         _calculator.Reset();
 
         // Set up with zero numerator
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.CommandDIV);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Div);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Equ);
 
         // Verify error state and message
         Assert.True(_calculator.IsInError());
@@ -695,7 +696,7 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void ErrorHandling_Overflow_SetsErrorState()
+    public void ErrorHandlingOverflowSetsErrorState()
     {
         _calculator.Reset();
         _calculator.SetMode(CalcMode.Scientific);
@@ -703,8 +704,8 @@ public class CalculatorManagerTests : IDisposable
         // Enter very large number and factorial it
         Command[] commands =
         [
-            Command.Command9, Command.Command0, Command.Command0, Command.CommandEXP,
-            Command.Command9, Command.Command0, Command.CommandFAC, Command.CommandNULL
+            Command.Num9, Command.Num0, Command.Num0, Command.Exp,
+            Command.Num9, Command.Num0, Command.Fac, Command.None
         ];
 
         // Don't check the exact expression since formatting may differ between platforms
@@ -716,15 +717,15 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void ErrorHandling_ResetClearsError()
+    public void ErrorHandlingResetClearsError()
     {
         _calculator.Reset();
 
         // Create an error state
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.CommandDIV);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Div);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Equ);
 
         // Verify error state
         Assert.True(_calculator.IsInError());
@@ -738,16 +739,16 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void ErrorHandling_ErrorState_ConsistentWithDisplay()
+    public void ErrorHandlingErrorStateConsistentWithDisplay()
     {
         _calculator.Reset();
         _isError = false;
 
         // Set up division by zero
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.CommandDIV);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Div);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Equ);
 
         // Verify the display shows the correct error message
         Assert.Equal("Cannot divide by zero", _currentDisplay);
@@ -760,15 +761,15 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void ErrorHandling_ErrorState_PreventsNewOperations()
+    public void ErrorHandlingErrorStatePreventsNewOperations()
     {
         _calculator.Reset();
 
         // Set up division by zero to create error state
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.CommandDIV);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Div);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Equ);
 
         // Verify error state
         Assert.True(_calculator.IsInError());
@@ -776,7 +777,7 @@ public class CalculatorManagerTests : IDisposable
 
         // Try to enter new number - shouldn't change the display
         string displayBeforeNewInput = _currentDisplay;
-        _calculator.SendCommand((int)Command.Command5);
+        _calculator.SendCommand((int)Command.Num5);
 
         // Display should still show error
         Assert.Equal(displayBeforeNewInput, _currentDisplay);
@@ -787,20 +788,20 @@ public class CalculatorManagerTests : IDisposable
         Assert.False(_calculator.IsInError());
 
         // Now we should be able to enter new input
-        _calculator.SendCommand((int)Command.Command5);
+        _calculator.SendCommand((int)Command.Num5);
         Assert.Equal("5", _currentDisplay);
     }
 
     [Fact]
-    public void ErrorHandling_SpecificErrors_ShowCorrectMessages()
+    public void ErrorHandlingSpecificErrorsShowCorrectMessages()
     {
         // Test different error types show appropriate messages
 
         // 1. Division by zero
         Command[] divByZeroCommands =
         [
-            Command.Command1, Command.CommandDIV, Command.Command0,
-            Command.CommandEQU, Command.CommandNULL
+            Command.Num1, Command.Div, Command.Num0,
+            Command.Equ, Command.None
         ];
         TestCommand(divByZeroCommands, "Cannot divide by zero", "1 \x00F7 ");
         Assert.True(_calculator.IsInError());
@@ -809,7 +810,7 @@ public class CalculatorManagerTests : IDisposable
         // 2. Domain error (log of negative number)
         Command[] domainErrorCommands =
         [
-            Command.Command2, Command.CommandSIGN, Command.CommandLOG, Command.CommandNULL
+            Command.Num2, Command.Sign, Command.Log, Command.None
         ];
         TestCommand(domainErrorCommands, "Invalid input", "log(-2)");
         Assert.True(_calculator.IsInError());
@@ -818,15 +819,15 @@ public class CalculatorManagerTests : IDisposable
         // 3. Undefined (0/0)
         Command[] undefinedCommands =
         [
-            Command.Command0, Command.CommandDIV, Command.Command0,
-            Command.CommandEQU, Command.CommandNULL
+            Command.Num0, Command.Div, Command.Num0,
+            Command.Equ, Command.None
         ];
         TestCommand(undefinedCommands, "Result is undefined", "0 \x00F7 ");
         Assert.True(_calculator.IsInError());
     }
 
     [Fact]
-    public void ErrorHandling_NegativeSqrt_ShowsDomainError()
+    public void ErrorHandlingNegativeSqrtShowsDomainError()
     {
         _calculator.Reset();
         _calculator.SetMode(CalcMode.Scientific);
@@ -834,7 +835,7 @@ public class CalculatorManagerTests : IDisposable
         // Try to take square root of negative number - domain error
         Command[] negativeCommand =
         [
-            Command.Command2, Command.CommandSIGN, Command.CommandSQRT, Command.CommandNULL
+            Command.Num2, Command.Sign, Command.Sqrt, Command.None
         ];
 
         // Should show invalid input for sqrt of negative number
@@ -845,31 +846,31 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void ErrorHandling_ErrorClearingBehavior()
+    public void ErrorHandlingErrorClearingBehavior()
     {
         _calculator.Reset();
 
         // Create an error state
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.CommandDIV);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Div);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Equ);
 
         // Verify error state
         Assert.True(_calculator.IsInError());
         Assert.Equal("Cannot divide by zero", _currentDisplay);
 
         // Clear should reset error state
-        _calculator.SendCommand((int)Command.CommandCLEAR);
+        _calculator.SendCommand((int)Command.Clear);
 
         // After clear, not in error state
         Assert.False(_calculator.IsInError());
 
         // Can perform new calculations
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.CommandADD);
-        _calculator.SendCommand((int)Command.Command7);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Add);
+        _calculator.SendCommand((int)Command.Num7);
+        _calculator.SendCommand((int)Command.Equ);
 
         // New calculation works
         Assert.Equal("12", _currentDisplay);
@@ -877,107 +878,107 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void ScientificMode_RadiansMode_TrigFunctions_WorkCorrectly()
+    public void ScientificModeRadiansModeTrigFunctionsWorkCorrectly()
     {
-        Command[] commands1 = [Command.CommandRAD, Command.CommandPI, Command.CommandSIN, Command.CommandNULL];
+        Command[] commands1 = [Command.Rad, Command.NumPI, Command.Sin, Command.None];
         TestCommand(commands1, "0", "N/A", true, true);
 
-        Command[] commands2 = [Command.CommandRAD, Command.CommandPI, Command.CommandCOS, Command.CommandNULL];
+        Command[] commands2 = [Command.Rad, Command.NumPI, Command.Cos, Command.None];
         TestCommand(commands2, "-1", "N/A", true, true);
 
-        Command[] commands3 = [Command.CommandRAD, Command.CommandPI, Command.CommandTAN, Command.CommandNULL];
+        Command[] commands3 = [Command.Rad, Command.NumPI, Command.Tan, Command.None];
         TestCommand(commands3, "0", "N/A", true, true);
     }
 
     [Fact]
-    public void ScientificMode_GradiansMode_TrigFunctions_WorkCorrectly()
+    public void ScientificModeGradiansModeTrigFunctionsWorkCorrectly()
     {
         Command[] commands4 =
         [
-            Command.CommandGRAD, Command.Command4, Command.Command0, Command.Command0,
-            Command.CommandSIN, Command.CommandNULL
+            Command.Grad, Command.Num4, Command.Num0, Command.Num0,
+            Command.Sin, Command.None
         ];
         TestCommand(commands4, "0", "N/A", true, true);
 
         Command[] commands5 =
         [
-            Command.CommandGRAD, Command.Command4, Command.Command0, Command.Command0,
-            Command.CommandCOS, Command.CommandNULL
+            Command.Grad, Command.Num4, Command.Num0, Command.Num0,
+            Command.Cos, Command.None
         ];
         TestCommand(commands5, "1", "N/A", true, true);
 
         Command[] commands6 =
         [
-            Command.CommandGRAD, Command.Command4, Command.Command0, Command.Command0,
-            Command.CommandTAN, Command.CommandNULL
+            Command.Grad, Command.Num4, Command.Num0, Command.Num0,
+            Command.Tan, Command.None
         ];
         TestCommand(commands6, "0", "N/A", true, true);
     }
 
     [Fact]
-    public void ModeChanges_PreservesState_Correctly()
+    public void ModeChangesPreservesStateCorrectly()
     {
-        Command[] commands1 = [Command.Command1, Command.Command2, Command.Command3, Command.CommandNULL];
+        Command[] commands1 = [Command.Num1, Command.Num2, Command.Num3, Command.None];
         TestCommand(commands1, "123", "");
 
-        Command[] commands2 = [Command.ModeScientific, Command.CommandNULL];
+        Command[] commands2 = [Command.ModeScientific, Command.None];
         TestCommand(commands2, "0", "");
 
-        Command[] commands3 = [Command.Command1, Command.Command2, Command.Command3, Command.CommandNULL];
+        Command[] commands3 = [Command.Num1, Command.Num2, Command.Num3, Command.None];
         TestCommand(commands3, "123", "");
 
-        Command[] commands4 = [Command.ModeProgrammer, Command.CommandNULL];
+        Command[] commands4 = [Command.ModeProgrammer, Command.None];
         TestCommand(commands4, "0", "");
 
-        Command[] commands5 = [Command.Command1, Command.Command2, Command.Command3, Command.CommandNULL];
+        Command[] commands5 = [Command.Num1, Command.Num2, Command.Num3, Command.None];
         TestCommand(commands5, "123", "");
 
-        Command[] commands6 = [Command.ModeScientific, Command.CommandNULL];
+        Command[] commands6 = [Command.ModeScientific, Command.None];
         TestCommand(commands6, "0", "");
 
-        Command[] commands7 = [Command.Command6, Command.Command7, Command.CommandADD, Command.CommandNULL];
+        Command[] commands7 = [Command.Num6, Command.Num7, Command.Add, Command.None];
         TestCommand(commands7, "67", "67 + ");
 
-        Command[] commands8 = [Command.ModeBasic, Command.CommandNULL];
+        Command[] commands8 = [Command.ModeBasic, Command.None];
         TestCommand(commands8, "0", "");
     }
 
     [Fact]
-    public void ProgrammerMode_BitwiseOperations_WorkCorrectly()
+    public void ProgrammerModeBitwiseOperationsWorkCorrectly()
     {
         _calculator.SetMode(CalcMode.Programmer);
 
         Command[] commands1 =
         [
-            Command.ModeProgrammer, Command.Command5, Command.Command3, Command.CommandNand,
-            Command.Command8, Command.Command3, Command.CommandAnd, Command.CommandNULL
+            Command.ModeProgrammer, Command.Num5, Command.Num3, Command.Nand,
+            Command.Num8, Command.Num3, Command.And, Command.None
         ];
         TestCommand(commands1, "-18", "53 NAND 83 AND ");
 
         Command[] commands2 =
         [
-            Command.ModeProgrammer, Command.Command5, Command.Command3, Command.CommandNor,
-            Command.Command8, Command.Command3, Command.CommandAnd, Command.CommandNULL
+            Command.ModeProgrammer, Command.Num5, Command.Num3, Command.Nor,
+            Command.Num8, Command.Num3, Command.And, Command.None
         ];
         TestCommand(commands2, "-120", "53 NOR 83 AND ");
 
         Command[] commands3 =
         [
-            Command.ModeProgrammer, Command.Command5, Command.CommandLSHF, Command.Command1,
-            Command.CommandAnd, Command.CommandNULL
+            Command.ModeProgrammer, Command.Num5, Command.Lshf, Command.Num1,
+            Command.And, Command.None
         ];
         TestCommand(commands3, "10", "5 Lsh 1 AND ");
 
         Command[] commands5 =
         [
-            Command.ModeProgrammer, Command.Command5, Command.CommandRSHFL, Command.Command1,
-            Command.CommandAnd, Command.CommandNULL
+            Command.ModeProgrammer, Command.Num5, Command.Rshfl, Command.Num1,
+            Command.And, Command.None
         ];
         TestCommand(commands5, "2", "5 Rsh 1 AND ");
     }
 
     [Fact]
-    public void ProgrammerMode_RadixTypes_HexadecimalMode_WorksCorrectly()
+    public void ProgrammerModeRadixTypesHexadecimalModeWorksCorrectly()
     {
         // Set up calculator in programmer mode with hex radix
         _calculator.Reset();
@@ -985,20 +986,20 @@ public class CalculatorManagerTests : IDisposable
         _calculator.SetRadix(CalcRadixType.Hex);
 
         // Test basic input in hex mode
-        _calculator.SendCommand((int)Command.CommandA);
-        _calculator.SendCommand((int)Command.CommandB);
-        _calculator.SendCommand((int)Command.CommandC);
-        _calculator.SendCommand((int)Command.CommandD);
+        _calculator.SendCommand((int)Command.NumA);
+        _calculator.SendCommand((int)Command.NumB);
+        _calculator.SendCommand((int)Command.NumC);
+        _calculator.SendCommand((int)Command.NumD);
 
         Assert.Equal("ABCD", _currentDisplay);
 
         // Test addition in hex mode
-        _calculator.SendCommand((int)Command.CommandADD);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.Command3);
-        _calculator.SendCommand((int)Command.CommandF);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Add);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Num3);
+        _calculator.SendCommand((int)Command.NumF);
+        _calculator.SendCommand((int)Command.Equ);
 
         Assert.Equal("BE0C", _currentDisplay);
 
@@ -1007,64 +1008,64 @@ public class CalculatorManagerTests : IDisposable
         _calculator.SetMode(CalcMode.Programmer);
         _calculator.SetRadix(CalcRadixType.Hex);
 
-        _calculator.SendCommand((int)Command.CommandF);
-        _calculator.SendCommand((int)Command.CommandF);
-        _calculator.SendCommand((int)Command.CommandF);
-        _calculator.SendCommand((int)Command.CommandF);
-        _calculator.SendCommand((int)Command.CommandAnd);
-        _calculator.SendCommand((int)Command.CommandA);
-        _calculator.SendCommand((int)Command.CommandA);
-        _calculator.SendCommand((int)Command.CommandA);
-        _calculator.SendCommand((int)Command.CommandA);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.NumF);
+        _calculator.SendCommand((int)Command.NumF);
+        _calculator.SendCommand((int)Command.NumF);
+        _calculator.SendCommand((int)Command.NumF);
+        _calculator.SendCommand((int)Command.And);
+        _calculator.SendCommand((int)Command.NumA);
+        _calculator.SendCommand((int)Command.NumA);
+        _calculator.SendCommand((int)Command.NumA);
+        _calculator.SendCommand((int)Command.NumA);
+        _calculator.SendCommand((int)Command.Equ);
 
         Assert.Equal("AAAA", _currentDisplay);
     }
 
     [Fact]
-    public void ProgrammerMode_RadixTypes_DecimalMode_WorksCorrectly()
+    public void ProgrammerModeRadixTypesDecimalModeWorksCorrectly()
     {
         // Set up calculator in programmer mode with decimal radix
         _calculator.Reset();
         _calculator.SetMode(CalcMode.Programmer);
-        _calculator.SetRadix(CalcRadixType.Decimal);
+        _calculator.SetRadix(CalcRadixType.Dec);
 
         // Test basic input in decimal mode
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.Command3);
-        _calculator.SendCommand((int)Command.Command4);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Num3);
+        _calculator.SendCommand((int)Command.Num4);
 
         Assert.Equal("1,234", _currentDisplay);
 
         // Test addition in decimal mode
-        _calculator.SendCommand((int)Command.CommandADD);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.Command6);
-        _calculator.SendCommand((int)Command.Command7);
-        _calculator.SendCommand((int)Command.Command8);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Add);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Num6);
+        _calculator.SendCommand((int)Command.Num7);
+        _calculator.SendCommand((int)Command.Num8);
+        _calculator.SendCommand((int)Command.Equ);
 
         Assert.Equal("6,912", _currentDisplay);
 
         // Test OR operation in decimal mode
         _calculator.Reset();
         _calculator.SetMode(CalcMode.Programmer);
-        _calculator.SetRadix(CalcRadixType.Decimal);
+        _calculator.SetRadix(CalcRadixType.Dec);
 
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.CommandOR);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.NumOR);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Equ);
 
         Assert.Equal("111", _currentDisplay);
     }
 
     [Fact]
-    public void ProgrammerMode_RadixTypes_OctalMode_WorksCorrectly()
+    public void ProgrammerModeRadixTypesOctalModeWorksCorrectly()
     {
         // Set up calculator in programmer mode with octal radix
         _calculator.Reset();
@@ -1072,19 +1073,19 @@ public class CalculatorManagerTests : IDisposable
         _calculator.SetRadix(CalcRadixType.Octal);
 
         // Test basic input in octal mode
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.Command3);
-        _calculator.SendCommand((int)Command.Command4);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Num3);
+        _calculator.SendCommand((int)Command.Num4);
 
         Assert.Equal("1 234", _currentDisplay);
 
         // Test addition in octal mode
-        _calculator.SendCommand((int)Command.CommandADD);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.Command6);
-        _calculator.SendCommand((int)Command.Command7);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Add);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Num6);
+        _calculator.SendCommand((int)Command.Num7);
+        _calculator.SendCommand((int)Command.Equ);
 
         Assert.Equal("2 023", _currentDisplay);
 
@@ -1093,20 +1094,20 @@ public class CalculatorManagerTests : IDisposable
         _calculator.SetMode(CalcMode.Programmer);
         _calculator.SetRadix(CalcRadixType.Octal);
 
-        _calculator.SendCommand((int)Command.Command7);
-        _calculator.SendCommand((int)Command.Command7);
-        _calculator.SendCommand((int)Command.Command7);
-        _calculator.SendCommand((int)Command.CommandXor);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Num7);
+        _calculator.SendCommand((int)Command.Num7);
+        _calculator.SendCommand((int)Command.Num7);
+        _calculator.SendCommand((int)Command.Xor);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Equ);
 
         Assert.Equal("222", _currentDisplay);
     }
 
     [Fact]
-    public void ProgrammerMode_RadixTypes_BinaryMode_WorksCorrectly()
+    public void ProgrammerModeRadixTypesBinaryModeWorksCorrectly()
     {
         // Set up calculator in programmer mode with binary radix
         _calculator.Reset();
@@ -1114,20 +1115,20 @@ public class CalculatorManagerTests : IDisposable
         _calculator.SetRadix(CalcRadixType.Binary);
 
         // Test basic input in binary mode
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
 
         Assert.Equal("1010", _currentDisplay);
 
         // Test addition in binary mode
-        _calculator.SendCommand((int)Command.CommandADD);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Add);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Equ);
 
         Assert.Equal("1 0111", _currentDisplay);
 
@@ -1136,59 +1137,59 @@ public class CalculatorManagerTests : IDisposable
         _calculator.SetMode(CalcMode.Programmer);
         _calculator.SetRadix(CalcRadixType.Binary);
 
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.CommandNot);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Not);
 
         // NOT 1010 in 64-bit binary would be a very long string of 1s and 0s,
         // so we're just checking that the display has changed
         Assert.NotEqual("1010", _currentDisplay);
-        Assert.Contains("1", _currentDisplay);
+        Assert.Contains("1", _currentDisplay, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ProgrammerMode_Division_WorksCorrectly()
+    public void ProgrammerModeDivisionWorksCorrectly()
     {
         _calculator.SetMode(CalcMode.Programmer);
 
-        Command[] commands11 = { Command.ModeProgrammer, Command.CommandDec, Command.Command4, Command.Command2, Command.Command9,   Command.Command4,
-                                Command.Command9,       Command.Command6,   Command.Command7, Command.Command2, Command.Command9,   Command.Command6,
-                                Command.CommandDIV,     Command.Command2,   Command.Command5, Command.Command5, Command.CommandEQU, Command.CommandNULL };
+        Command[] commands11 = { Command.ModeProgrammer, Command.Dec, Command.Num4, Command.Num2, Command.Num9,   Command.Num4,
+                                Command.Num9,       Command.Num6,   Command.Num7, Command.Num2, Command.Num9,   Command.Num6,
+                                Command.Div,     Command.Num2,   Command.Num5, Command.Num5, Command.Equ, Command.None };
         TestCommand(commands11, "16,843,009", "4294967296 \x00F7 255=");
 
         Command[] commands12 = {
-            Command.ModeProgrammer, Command.CommandDec, Command.Command4, Command.Command2, Command.Command9,   Command.Command4,
-            Command.Command9,       Command.Command6,   Command.Command7, Command.Command3, Command.Command0,   Command.Command3,
-            Command.CommandDIV,     Command.Command2,   Command.Command5, Command.Command5, Command.CommandEQU, Command.CommandNULL
+            Command.ModeProgrammer, Command.Dec, Command.Num4, Command.Num2, Command.Num9,   Command.Num4,
+            Command.Num9,       Command.Num6,   Command.Num7, Command.Num3, Command.Num0,   Command.Num3,
+            Command.Div,     Command.Num2,   Command.Num5, Command.Num5, Command.Equ, Command.None
         };
         TestCommand(commands12, "16,843,009", "4294967303 \x00F7 255=");
 
         Command[] commands13 = {
-            Command.ModeProgrammer, Command.CommandDec, Command.Command1, Command.Command0, Command.Command0, Command.Command0,
-            Command.Command0, Command.Command0, Command.Command0, Command.Command0, Command.Command0, Command.Command0, Command.CommandDIV,
-            Command.Command6, Command.Command4, Command.Command4, Command.Command8, Command.Command7, Command.CommandEQU, Command.CommandNULL
+            Command.ModeProgrammer, Command.Dec, Command.Num1, Command.Num0, Command.Num0, Command.Num0,
+            Command.Num0, Command.Num0, Command.Num0, Command.Num0, Command.Num0, Command.Num0, Command.Div,
+            Command.Num6, Command.Num4, Command.Num4, Command.Num8, Command.Num7, Command.Equ, Command.None
         };
         TestCommand(commands13, "15,507", "1000000000 \x00F7 64487=");
 
-        Command[] commands14 = { Command.ModeProgrammer, Command.CommandDec, Command.Command1,   Command.Command0,   Command.Command0,
-                                 Command.Command0,       Command.Command0,   Command.Command0,   Command.Command0,   Command.Command0,
-                                 Command.Command0,       Command.Command0,   Command.CommandDIV, Command.Command6,   Command.Command4,
-                                 Command.Command4,       Command.Command8,   Command.Command8,   Command.CommandEQU, Command.CommandNULL };
+        Command[] commands14 = { Command.ModeProgrammer, Command.Dec, Command.Num1,   Command.Num0,   Command.Num0,
+                                 Command.Num0,       Command.Num0,   Command.Num0,   Command.Num0,   Command.Num0,
+                                 Command.Num0,       Command.Num0,   Command.Div, Command.Num6,   Command.Num4,
+                                 Command.Num4,       Command.Num8,   Command.Num8,   Command.Equ, Command.None };
         TestCommand(commands14, "15,506", "1000000000 \x00F7 64488=");
     }
 
     [Fact]
-    public void ProgrammerMode_RadixTypes_ConversionBetweenRadices_WorksCorrectly()
+    public void ProgrammerModeRadixTypesConversionBetweenRadicesWorksCorrectly()
     {
         // Start with decimal mode and enter a value
         _calculator.Reset();
         _calculator.SetMode(CalcMode.Programmer);
-        _calculator.SetRadix(CalcRadixType.Decimal);
+        _calculator.SetRadix(CalcRadixType.Dec);
 
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
 
         Assert.Equal("10", _currentDisplay);
 
@@ -1205,55 +1206,55 @@ public class CalculatorManagerTests : IDisposable
         Assert.Equal("12", _currentDisplay);
 
         // Return to decimal to verify
-        _calculator.SetRadix(CalcRadixType.Decimal);
+        _calculator.SetRadix(CalcRadixType.Dec);
         Assert.Equal("10", _currentDisplay);
     }
 
 
     [Fact]
-    public void ProgrammerMode_Rotation_WorksCorrectly()
+    public void ProgrammerModeRotationWorksCorrectly()
     {
         _calculator.SetMode(CalcMode.Programmer);
 
-        Command[] commands7 = [Command.ModeProgrammer, Command.Command1, Command.CommandROL, Command.CommandNULL];
+        Command[] commands7 = [Command.ModeProgrammer, Command.Num1, Command.Rol, Command.None];
         TestCommand(commands7, "2", "RoL(1)");
 
-        Command[] commands9 = [Command.ModeProgrammer, Command.Command1, Command.CommandRORC, Command.CommandNULL];
+        Command[] commands9 = [Command.ModeProgrammer, Command.Num1, Command.Rorc, Command.None];
         TestCommand(commands9, "0", "RoR(1)");
 
         Command[] commands10 =
         [
-            Command.ModeProgrammer, Command.Command1, Command.CommandRORC, Command.CommandRORC,
-            Command.CommandNULL
+            Command.ModeProgrammer, Command.Num1, Command.Rorc, Command.Rorc,
+            Command.None
         ];
         TestCommand(commands10, "-9,223,372,036,854,775,808", "RoR(RoR(1))");
     }
 
     [Fact]
-    public void ProgrammerMode_DigitGrouping_DecimalMode_WorksCorrectly()
+    public void ProgrammerModeDigitGroupingDecimalModeWorksCorrectly()
     {
         // Set up calculator in programmer mode with decimal radix
         _calculator.Reset();
         _calculator.SetMode(CalcMode.Programmer);
-        _calculator.SetRadix(CalcRadixType.Decimal);
+        _calculator.SetRadix(CalcRadixType.Dec);
 
         // Enter a number large enough to trigger digit grouping
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.Command3);
-        _calculator.SendCommand((int)Command.Command4);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.Command6);
-        _calculator.SendCommand((int)Command.Command7);
-        _calculator.SendCommand((int)Command.Command8);
-        _calculator.SendCommand((int)Command.Command9);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Num3);
+        _calculator.SendCommand((int)Command.Num4);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Num6);
+        _calculator.SendCommand((int)Command.Num7);
+        _calculator.SendCommand((int)Command.Num8);
+        _calculator.SendCommand((int)Command.Num9);
 
         // Verify digit grouping applied (commas every 3 digits for decimal)
         Assert.Equal("123,456,789", _currentDisplay);
     }
 
     [Fact]
-    public void ProgrammerMode_DigitGrouping_HexMode_WorksCorrectly()
+    public void ProgrammerModeDigitGroupingHexModeWorksCorrectly()
     {
         // Set up calculator in programmer mode with hex radix
         _calculator.Reset();
@@ -1261,22 +1262,22 @@ public class CalculatorManagerTests : IDisposable
         _calculator.SetRadix(CalcRadixType.Hex);
 
         // Enter a number large enough to trigger digit grouping
-        _calculator.SendCommand((int)Command.CommandA);
-        _calculator.SendCommand((int)Command.CommandB);
-        _calculator.SendCommand((int)Command.CommandC);
-        _calculator.SendCommand((int)Command.CommandD);
-        _calculator.SendCommand((int)Command.CommandE);
-        _calculator.SendCommand((int)Command.CommandF);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.Command3);
+        _calculator.SendCommand((int)Command.NumA);
+        _calculator.SendCommand((int)Command.NumB);
+        _calculator.SendCommand((int)Command.NumC);
+        _calculator.SendCommand((int)Command.NumD);
+        _calculator.SendCommand((int)Command.NumE);
+        _calculator.SendCommand((int)Command.NumF);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Num3);
 
         // Verify digit grouping applied (spaces every 4 digits for hex)
         Assert.Equal("A BCDE F123", _currentDisplay);
     }
 
     [Fact]
-    public void ProgrammerMode_DigitGrouping_BinaryMode_WorksCorrectly()
+    public void ProgrammerModeDigitGroupingBinaryModeWorksCorrectly()
     {
         // Set up calculator in programmer mode with binary radix
         _calculator.Reset();
@@ -1284,25 +1285,25 @@ public class CalculatorManagerTests : IDisposable
         _calculator.SetRadix(CalcRadixType.Binary);
 
         // Enter a binary number large enough to trigger digit grouping
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
 
         // Verify digit grouping applied (spaces every 4 digits for binary)
         Assert.Equal("1010 1010 1010", _currentDisplay);
     }
 
     [Fact]
-    public void ProgrammerMode_DigitGrouping_OctalMode_WorksCorrectly()
+    public void ProgrammerModeDigitGroupingOctalModeWorksCorrectly()
     {
         // Set up calculator in programmer mode with octal radix
         _calculator.Reset();
@@ -1310,149 +1311,149 @@ public class CalculatorManagerTests : IDisposable
         _calculator.SetRadix(CalcRadixType.Octal);
 
         // Enter a number large enough to trigger digit grouping
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.Command3);
-        _calculator.SendCommand((int)Command.Command4);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.Command6);
-        _calculator.SendCommand((int)Command.Command7);
-        _calculator.SendCommand((int)Command.Command0);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Num3);
+        _calculator.SendCommand((int)Command.Num4);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Num6);
+        _calculator.SendCommand((int)Command.Num7);
+        _calculator.SendCommand((int)Command.Num0);
 
         // Verify digit grouping applied (spaces every 3 digits for octal)
         Assert.Equal("12 345 670", _currentDisplay);
     }
 
     [Fact]
-    public void StandardMode_DigitGrouping_WorksCorrectly()
+    public void StandardModeDigitGroupingWorksCorrectly()
     {
         // Test digit grouping in standard mode (should use locale-specific grouping)
         _calculator.Reset();
         _calculator.SetMode(CalcMode.Standard);
 
         // Enter a large number
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.Command3);
-        _calculator.SendCommand((int)Command.Command4);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.Command6);
-        _calculator.SendCommand((int)Command.Command7);
-        _calculator.SendCommand((int)Command.Command8);
-        _calculator.SendCommand((int)Command.Command9);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Num3);
+        _calculator.SendCommand((int)Command.Num4);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Num6);
+        _calculator.SendCommand((int)Command.Num7);
+        _calculator.SendCommand((int)Command.Num8);
+        _calculator.SendCommand((int)Command.Num9);
 
         // Verify digit grouping is applied (commas every 3 digits)
         Assert.Equal("123,456,789", _currentDisplay);
     }
 
     [Fact]
-    public void StandardMode_DigitGrouping_WithDecimalPoint_WorksCorrectly()
+    public void StandardModeDigitGroupingWithDecimalPointWorksCorrectly()
     {
         // Test digit grouping with decimal point in standard mode
         _calculator.Reset();
         _calculator.SetMode(CalcMode.Standard);
 
         // Enter a large number with decimal point
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.Command3);
-        _calculator.SendCommand((int)Command.Command4);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.CommandPNT);
-        _calculator.SendCommand((int)Command.Command6);
-        _calculator.SendCommand((int)Command.Command7);
-        _calculator.SendCommand((int)Command.Command8);
-        _calculator.SendCommand((int)Command.Command9);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Num3);
+        _calculator.SendCommand((int)Command.Num4);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Pnt);
+        _calculator.SendCommand((int)Command.Num6);
+        _calculator.SendCommand((int)Command.Num7);
+        _calculator.SendCommand((int)Command.Num8);
+        _calculator.SendCommand((int)Command.Num9);
 
         // Verify digit grouping is applied before decimal but not after
         Assert.Equal("12,345.6789", _currentDisplay);
     }
 
     [Fact]
-    public void ScientificMode_DigitGrouping_WorksCorrectly()
+    public void ScientificModeDigitGroupingWorksCorrectly()
     {
         // Test digit grouping in scientific mode
         _calculator.Reset();
         _calculator.SetMode(CalcMode.Scientific);
 
         // Enter a large number
-        _calculator.SendCommand((int)Command.Command9);
-        _calculator.SendCommand((int)Command.Command8);
-        _calculator.SendCommand((int)Command.Command7);
-        _calculator.SendCommand((int)Command.Command6);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.Command4);
-        _calculator.SendCommand((int)Command.Command3);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.Command1);
+        _calculator.SendCommand((int)Command.Num9);
+        _calculator.SendCommand((int)Command.Num8);
+        _calculator.SendCommand((int)Command.Num7);
+        _calculator.SendCommand((int)Command.Num6);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Num4);
+        _calculator.SendCommand((int)Command.Num3);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Num1);
 
         // Verify digit grouping is applied
         Assert.Equal("987,654,321", _currentDisplay);
     }
 
     [Fact]
-    public void DigitGrouping_ResultOfCalculation_WorksCorrectly()
+    public void DigitGroupingResultOfCalculationWorksCorrectly()
     {
         // Test that the result of a calculation shows proper digit grouping
         _calculator.Reset();
         _calculator.SetMode(CalcMode.Standard);
 
         // Perform calculation that results in a large number
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.Command3);
-        _calculator.SendCommand((int)Command.Command4);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.CommandMUL);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Num3);
+        _calculator.SendCommand((int)Command.Num4);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Mul);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Equ);
 
         // Verify digit grouping is applied to the result
         Assert.Equal("1,234,500", _currentDisplay);
     }
 
     [Fact]
-    public void DigitGrouping_NegativeNumbers_WorksCorrectly()
+    public void DigitGroupingNegativeNumbersWorksCorrectly()
     {
         // Test digit grouping with negative numbers
         _calculator.Reset();
         _calculator.SetMode(CalcMode.Standard);
 
         // Enter a large negative number
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.Command3);
-        _calculator.SendCommand((int)Command.Command4);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.Command6);
-        _calculator.SendCommand((int)Command.CommandSIGN);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Num3);
+        _calculator.SendCommand((int)Command.Num4);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Num6);
+        _calculator.SendCommand((int)Command.Sign);
 
         // Verify digit grouping is applied to negative number
         Assert.Equal("-123,456", _currentDisplay);
     }
 
     [Fact]
-    public void MemoryFeatures_BasicOperations_WorkCorrectly()
+    public void MemoryFeaturesBasicOperationsWorkCorrectly()
     {
         // Test storing a value in memory
         _calculator.Reset();
-        _calculator.SendCommand((int)Command.Command1);
+        _calculator.SendCommand((int)Command.Num1);
         _calculator.MemorizeNumber();
-        _calculator.SendCommand((int)Command.CommandCLEAR);
+        _calculator.SendCommand((int)Command.Clear);
         _calculator.MemorizedNumberLoad(0);
 
         Assert.Equal("1", _currentDisplay);
 
         // Test storing multiple values
         _calculator.Reset();
-        _calculator.SendCommand((int)Command.Command1);
+        _calculator.SendCommand((int)Command.Num1);
         _calculator.MemorizeNumber();
-        _calculator.SendCommand((int)Command.CommandCLEAR);
-        _calculator.SendCommand((int)Command.Command2);
+        _calculator.SendCommand((int)Command.Clear);
+        _calculator.SendCommand((int)Command.Num2);
         _calculator.MemorizeNumber();
-        _calculator.SendCommand((int)Command.CommandCLEAR);
+        _calculator.SendCommand((int)Command.Clear);
 
         _calculator.MemorizedNumberLoad(1);
         Assert.Equal("1", _currentDisplay);
@@ -1462,18 +1463,18 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void MemoryFeatures_MemorizeComplexExpressions_WorkCorrectly()
+    public void MemoryFeaturesMemorizeComplexExpressionsWorkCorrectly()
     {
         _calculator.Reset();
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.CommandSIGN);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Sign);
         _calculator.MemorizeNumber();
-        _calculator.SendCommand((int)Command.CommandADD);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Add);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Equ);
         _calculator.MemorizeNumber();
-        _calculator.SendCommand((int)Command.CommandMUL);
-        _calculator.SendCommand((int)Command.Command2);
+        _calculator.SendCommand((int)Command.Mul);
+        _calculator.SendCommand((int)Command.Num2);
         _calculator.MemorizeNumber();
 
         Assert.NotNull(_memorizedNumbers);
@@ -1484,24 +1485,24 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void MemoryFeatures_MemoryAddSubtract_WorkCorrectly()
+    public void MemoryFeaturesMemoryAddSubtractWorkCorrectly()
     {
         // Setup memory with initial values
         _calculator.Reset();
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.CommandSIGN);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Sign);
         _calculator.MemorizeNumber();
-        _calculator.SendCommand((int)Command.CommandADD);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Add);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Equ);
         _calculator.MemorizeNumber();
-        _calculator.SendCommand((int)Command.CommandMUL);
-        _calculator.SendCommand((int)Command.Command2);
+        _calculator.SendCommand((int)Command.Mul);
+        _calculator.SendCommand((int)Command.Num2);
         _calculator.MemorizeNumber();
 
         // Adding to memory
-        _calculator.SendCommand((int)Command.CommandCLEAR);
-        _calculator.SendCommand((int)Command.Command2);
+        _calculator.SendCommand((int)Command.Clear);
+        _calculator.SendCommand((int)Command.Num2);
         _calculator.MemorizedNumberAdd(0);
         _calculator.MemorizedNumberAdd(1);
         _calculator.MemorizedNumberAdd(2);
@@ -1513,10 +1514,10 @@ public class CalculatorManagerTests : IDisposable
         Assert.Equal("1", _memorizedNumbers[2]);
 
         // Subtracting from memory
-        _calculator.SendCommand((int)Command.CommandCLEAR);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.CommandPNT);
-        _calculator.SendCommand((int)Command.Command5);
+        _calculator.SendCommand((int)Command.Clear);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Pnt);
+        _calculator.SendCommand((int)Command.Num5);
 
         _calculator.MemorizedNumberSubtract(0);
         _calculator.MemorizedNumberSubtract(1);
@@ -1530,15 +1531,15 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void GetDisplayCommandsSnapshot_WorksCorrectly()
+    public void GetDisplayCommandsSnapshotWorksCorrectly()
     {
         // Test with a simple expression: 2 + 3 (without equals)
         // The snapshot will be empty if we add the equals sign because it completes the calculation
         // and clears the expression history
         _calculator.Reset();
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.CommandADD);
-        _calculator.SendCommand((int)Command.Command3);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Add);
+        _calculator.SendCommand((int)Command.Num3);
 
         // Get the snapshot before pressing equals
         var commands = _calculator.GetDisplayCommandsSnapshot();
@@ -1552,7 +1553,7 @@ public class CalculatorManagerTests : IDisposable
         Assert.Equal("2 + 3", fullExpression);
 
         // Now test with equals - this should complete the expression and clear the commands
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Equ);
         var emptyCommands = _calculator.GetDisplayCommandsSnapshot();
         Assert.Empty(emptyCommands);
 
@@ -1563,13 +1564,13 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void GetDisplayCommandsSnapshot_MultipleOperations()
+    public void GetDisplayCommandsSnapshotMultipleOperations()
     {
         // Test with a simpler expression: 3 - 2
         _calculator.Reset();
-        _calculator.SendCommand((int)Command.Command3);
-        _calculator.SendCommand((int)Command.CommandSUB);
-        _calculator.SendCommand((int)Command.Command2);
+        _calculator.SendCommand((int)Command.Num3);
+        _calculator.SendCommand((int)Command.Sub);
+        _calculator.SendCommand((int)Command.Num2);
 
         var commands = _calculator.GetDisplayCommandsSnapshot();
 
@@ -1581,17 +1582,17 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void GetDisplayCommandsSnapshot_ParenthesisHandling()
+    public void GetDisplayCommandsSnapshotParenthesisHandling()
     {
         // Test with parenthesis: (2 + 3) * 4
         _calculator.Reset();
-        _calculator.SendCommand((int)Command.CommandOPENP);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.CommandADD);
-        _calculator.SendCommand((int)Command.Command3);
-        _calculator.SendCommand((int)Command.CommandCLOSEP);
-        _calculator.SendCommand((int)Command.CommandMUL);
-        _calculator.SendCommand((int)Command.Command4);
+        _calculator.SendCommand((int)Command.OpenP);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Add);
+        _calculator.SendCommand((int)Command.Num3);
+        _calculator.SendCommand((int)Command.CloseP);
+        _calculator.SendCommand((int)Command.Mul);
+        _calculator.SendCommand((int)Command.Num4);
 
         var commands = _calculator.GetDisplayCommandsSnapshot();
 
@@ -1600,81 +1601,81 @@ public class CalculatorManagerTests : IDisposable
 
         // Combine all tokens and check that the expression contains the expected elements
         string fullExpression = string.Join("", commands.Select(c => c.Token));
-        Assert.Contains("(", fullExpression);
-        Assert.Contains("2", fullExpression);
-        Assert.Contains("3", fullExpression);
-        Assert.Contains(")", fullExpression);
-        Assert.Contains("4", fullExpression);
+        Assert.Contains("(", fullExpression, StringComparison.Ordinal);
+        Assert.Contains("2", fullExpression, StringComparison.Ordinal);
+        Assert.Contains("3", fullExpression, StringComparison.Ordinal);
+        Assert.Contains(")", fullExpression, StringComparison.Ordinal);
+        Assert.Contains("4", fullExpression, StringComparison.Ordinal);
 
         // Check for operators
-        bool hasAdd = fullExpression.Contains("+");
-        bool hasMul = fullExpression.Contains("×");
+        bool hasAdd = fullExpression.Contains('+', StringComparison.Ordinal);
+        bool hasMul = fullExpression.Contains('×', StringComparison.Ordinal);
         Assert.True(hasAdd, "Expression should contain addition operator");
         Assert.True(hasMul, "Expression should contain multiplication operator");
     }
 
     [Fact]
-    public void GetDisplayCommandsSnapshot_UpdatesWithNewInput()
+    public void GetDisplayCommandsSnapshotUpdatesWithNewInput()
     {
         // Test that snapshot updates when new input is added
         _calculator.Reset();
 
         // Enter 2
-        _calculator.SendCommand((int)Command.Command2);
+        _calculator.SendCommand((int)Command.Num2);
         var commands1 = _calculator.GetDisplayCommandsSnapshot();
         Assert.Single(commands1);
-        Assert.Contains(commands1, cmd => cmd.Token.Contains("2"));
+        Assert.Contains(commands1, cmd => cmd.Token.Contains('2', StringComparison.Ordinal));
 
         // Add +
-        _calculator.SendCommand((int)Command.CommandADD);
+        _calculator.SendCommand((int)Command.Add);
         var commands2 = _calculator.GetDisplayCommandsSnapshot();
         Assert.True(commands2.Count == 2);
-        Assert.Contains(commands2, cmd => cmd.Token.Contains("+"));
+        Assert.Contains(commands2, cmd => cmd.Token.Contains('+', StringComparison.Ordinal));
 
         // Add 3
-        _calculator.SendCommand((int)Command.Command3);
+        _calculator.SendCommand((int)Command.Num3);
         var commands3 = _calculator.GetDisplayCommandsSnapshot();
         Assert.True(commands3.Count == 3);
-        Assert.Contains(commands3, cmd => cmd.Token.Contains("3"));
+        Assert.Contains(commands3, cmd => cmd.Token.Contains('3', StringComparison.Ordinal));
     }
 
     [Fact]
-    public void GetDisplayCommandsSnapshot_HandlesBackspace()
+    public void GetDisplayCommandsSnapshotHandlesBackspace()
     {
         // Test that snapshot updates correctly when backspace is used
         _calculator.Reset();
 
         // Enter 2 + 3
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.CommandADD);
-        _calculator.SendCommand((int)Command.Command3);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Add);
+        _calculator.SendCommand((int)Command.Num3);
 
         var commandsBefore = _calculator.GetDisplayCommandsSnapshot();
-        Assert.Contains(commandsBefore, cmd => cmd.Token.Contains("3"));
+        Assert.Contains(commandsBefore, cmd => cmd.Token.Contains('3', StringComparison.Ordinal));
 
         // Backspace to remove the 3
-        _calculator.SendCommand((int)Command.CommandBACK);
+        _calculator.SendCommand((int)Command.Back);
         var commandsAfter = _calculator.GetDisplayCommandsSnapshot();
 
         // The snapshot should still contain 2 and + but not 3
-        Assert.Contains(commandsAfter, cmd => cmd.Token.Contains("2"));
-        Assert.Contains(commandsAfter, cmd => cmd.Token.Contains("+"));
-        Assert.DoesNotContain(commandsAfter, cmd => cmd.Token.Contains("3"));
+        Assert.Contains(commandsAfter, cmd => cmd.Token.Contains('2', StringComparison.Ordinal));
+        Assert.Contains(commandsAfter, cmd => cmd.Token.Contains('+', StringComparison.Ordinal));
+        Assert.DoesNotContain(commandsAfter, cmd => cmd.Token.Contains('3', StringComparison.Ordinal));
     }
 
     [Fact]
-    public void GetDisplayCommandsSnapshot_RetainsCommandTypeInformation()
+    public void GetDisplayCommandsSnapshotRetainsCommandTypeInformation()
     {
         // This test verifies that the GetDisplayCommandsSnapshot API returns correctly classified command types
         // (not just raw text) which is critical for state restoration
         _calculator.Reset();
 
         // Enter a simple expression with different command types
-        _calculator.SendCommand((int)Command.CommandOPENP); // Parenthesis type
-        _calculator.SendCommand((int)Command.Command2); // Operand type
-        _calculator.SendCommand((int)Command.CommandADD); // Binary operation type
-        _calculator.SendCommand((int)Command.Command3); // Operand type
-        _calculator.SendCommand((int)Command.CommandCLOSEP); // Parenthesis type
+        _calculator.SendCommand((int)Command.OpenP); // Parenthesis type
+        _calculator.SendCommand((int)Command.Num2); // Operand type
+        _calculator.SendCommand((int)Command.Add); // Binary operation type
+        _calculator.SendCommand((int)Command.Num3); // Operand type
+        _calculator.SendCommand((int)Command.CloseP); // Parenthesis type
 
         // Get the snapshot
         var commands = _calculator.GetDisplayCommandsSnapshot();
@@ -1698,25 +1699,25 @@ public class CalculatorManagerTests : IDisposable
         Assert.Equal(1, commands[2].CommandType);
 
         // Looking at token contents as well
-        Assert.Contains("(", commands[0].Token);
-        Assert.Contains("2", commands[1].Token);
-        Assert.Contains("+", commands[2].Token);
-        Assert.Contains("3", commands[3].Token);
-        Assert.Contains(")", commands[4].Token);
+        Assert.Contains("(", commands[0].Token, StringComparison.Ordinal);
+        Assert.Contains("2", commands[1].Token, StringComparison.Ordinal);
+        Assert.Contains("+", commands[2].Token, StringComparison.Ordinal);
+        Assert.Contains("3", commands[3].Token, StringComparison.Ordinal);
+        Assert.Contains(")", commands[4].Token, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void GetDisplayCommandsSnapshot_CanCaptureAndRestoreState()
+    public void GetDisplayCommandsSnapshotCanCaptureAndRestoreState()
     {
         // This test demonstrates how the API captures state for snapshot/restore
         // which is how the UWP app uses the functionality for suspend/resume
         _calculator.Reset();
 
         // Enter an in-progress calculation
-        _calculator.SendCommand((int)Command.Command4);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.CommandADD);
-        _calculator.SendCommand((int)Command.Command6);
+        _calculator.SendCommand((int)Command.Num4);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Add);
+        _calculator.SendCommand((int)Command.Num6);
 
         // Take a snapshot of the current state
         var commandsSnapshot = _calculator.GetDisplayCommandsSnapshot();
@@ -1733,7 +1734,7 @@ public class CalculatorManagerTests : IDisposable
         Assert.Equal("45 + 6", fullExpression);
 
         // Now complete the calculation
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Equ);
         Assert.Equal("51", _currentDisplay);
 
         // After equals, the snapshot should be empty since the calculation is complete
@@ -1746,7 +1747,7 @@ public class CalculatorManagerTests : IDisposable
     }
 
     [Fact]
-    public void MaxDigitsReached_StandardInput_TriggersNotification()
+    public void MaxDigitsReachedStandardInputTriggersNotification()
     {
         _calculator.Reset();
         _maxDigitsCalledCount = 0;
@@ -1754,45 +1755,45 @@ public class CalculatorManagerTests : IDisposable
         // Add digits until reaching max
         for (int i = 0; i < 16; i++)
         {
-            _calculator.SendCommand((int)Command.Command1);
+            _calculator.SendCommand((int)Command.Num1);
         }
 
         // Try to add one more - should trigger MaxDigitsReached
-        _calculator.SendCommand((int)Command.Command2);
+        _calculator.SendCommand((int)Command.Num2);
 
         Assert.Equal(1, _maxDigitsCalledCount);
         // The display should still show just the initial digits
-        Assert.Equal(16, _currentDisplay.Replace(",", "").Length);
+        Assert.Equal(16, _currentDisplay.Replace(",", "", StringComparison.Ordinal).Length);
     }
 
     [Fact]
-    public void MaxDigitsReached_LeadingDecimal_TriggersNotification()
+    public void MaxDigitsReachedLeadingDecimalTriggersNotification()
     {
         _calculator.Reset();
         _maxDigitsCalledCount = 0;
 
         // Add decimal point
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.CommandPNT);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Pnt);
 
         // Add digits until reaching max
         for (int i = 0; i < 16; i++)
         {
-            _calculator.SendCommand((int)Command.Command1);
+            _calculator.SendCommand((int)Command.Num1);
         }
 
         // Try to add one more - should trigger MaxDigitsReached
-        _calculator.SendCommand((int)Command.Command2);
+        _calculator.SendCommand((int)Command.Num2);
 
         Assert.True(_maxDigitsCalledCount > 0);
 
 
         // The display should show "0." plus the digits
-        Assert.Equal(16, _currentDisplay.Replace("0.", "").Length);
+        Assert.Equal(16, _currentDisplay.Replace("0.", "", StringComparison.Ordinal).Length);
     }
 
     [Fact]
-    public void MaxDigitsReached_TrailingDecimal_TriggersNotification()
+    public void MaxDigitsReachedTrailingDecimalTriggersNotification()
     {
         _calculator.Reset();
         _maxDigitsCalledCount = 0;
@@ -1800,108 +1801,108 @@ public class CalculatorManagerTests : IDisposable
         // Add some digits
         for (int i = 0; i < 12; i++)
         {
-            _calculator.SendCommand((int)Command.Command1);
+            _calculator.SendCommand((int)Command.Num1);
         }
 
         // Add decimal point and more digits
-        _calculator.SendCommand((int)Command.CommandPNT);
+        _calculator.SendCommand((int)Command.Pnt);
         for (int i = 0; i < 4; i++)
         {
-            _calculator.SendCommand((int)Command.Command1);
+            _calculator.SendCommand((int)Command.Num1);
         }
 
         // Try to add one more - should trigger MaxDigitsReached
-        _calculator.SendCommand((int)Command.Command2);
+        _calculator.SendCommand((int)Command.Num2);
 
         Assert.Equal(1, _maxDigitsCalledCount);
         Assert.Equal("111,111,111,111.1111", _currentDisplay);
     }
 
     [Fact]
-    public void BinaryOperatorReceived_SingleOperator_TriggersNotification()
+    public void BinaryOperatorReceivedSingleOperatorTriggersNotification()
     {
         _calculator.Reset();
         _binaryOperatorReceivedCount = 0;
 
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.CommandADD);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Add);
 
         Assert.Equal(1, _binaryOperatorReceivedCount);
         Assert.Equal("1", _currentDisplay);
     }
 
     [Fact]
-    public void BinaryOperatorReceived_MultipleOperators_TriggersNotification()
+    public void BinaryOperatorReceivedMultipleOperatorsTriggersNotification()
     {
         _calculator.Reset();
         _binaryOperatorReceivedCount = 0;
 
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.CommandADD);
-        _calculator.SendCommand((int)Command.CommandSUB);
-        _calculator.SendCommand((int)Command.CommandMUL);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Add);
+        _calculator.SendCommand((int)Command.Sub);
+        _calculator.SendCommand((int)Command.Mul);
 
         Assert.Equal(3, _binaryOperatorReceivedCount);
         Assert.Equal("1", _currentDisplay);
     }
 
     [Fact]
-    public void BinaryOperatorReceived_ComplexExpression_TriggersNotification()
+    public void BinaryOperatorReceivedComplexExpressionTriggersNotification()
     {
         _calculator.Reset();
         _binaryOperatorReceivedCount = 0;
 
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.CommandADD);
-        _calculator.SendCommand((int)Command.Command2);
-        _calculator.SendCommand((int)Command.CommandMUL);
-        _calculator.SendCommand((int)Command.Command1);
-        _calculator.SendCommand((int)Command.Command0);
-        _calculator.SendCommand((int)Command.CommandSUB);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.CommandDIV);
-        _calculator.SendCommand((int)Command.Command5);
-        _calculator.SendCommand((int)Command.CommandEQU);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Add);
+        _calculator.SendCommand((int)Command.Num2);
+        _calculator.SendCommand((int)Command.Mul);
+        _calculator.SendCommand((int)Command.Num1);
+        _calculator.SendCommand((int)Command.Num0);
+        _calculator.SendCommand((int)Command.Sub);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Div);
+        _calculator.SendCommand((int)Command.Num5);
+        _calculator.SendCommand((int)Command.Equ);
 
         Assert.Equal(4, _binaryOperatorReceivedCount);
         Assert.Equal("5", _currentDisplay);
     }
 
     [Fact]
-    public void StandardMode_OrderOfOperations_WorksCorrectly()
+    public void StandardModeOrderOfOperationsWorksCorrectly()
     {
-        Command[] commands1 = [Command.Command1, Command.CommandREC, Command.CommandNULL];
+        Command[] commands1 = [Command.Num1, Command.Rec, Command.None];
         TestCommand(commands1, "1", "1/(1)");
 
-        Command[] commands2 = [Command.Command4, Command.CommandSQRT, Command.CommandNULL];
+        Command[] commands2 = [Command.Num4, Command.Sqrt, Command.None];
         TestCommand(commands2, "2", "\x221A(4)");
 
         Command[] commands3 =
-            [Command.Command1, Command.CommandADD, Command.Command4, Command.CommandSQRT, Command.CommandNULL];
+            [Command.Num1, Command.Add, Command.Num4, Command.Sqrt, Command.None];
         TestCommand(commands3, "2", "1 + \x221A(4)");
 
         Command[] commands4 =
         [
-            Command.Command1, Command.CommandADD, Command.Command4, Command.CommandSQRT, Command.CommandSUB,
-            Command.CommandNULL
+            Command.Num1, Command.Add, Command.Num4, Command.Sqrt, Command.Sub,
+            Command.None
         ];
         TestCommand(commands4, "3", "3 - ");
 
         Command[] commands5 =
-            [Command.Command2, Command.CommandMUL, Command.Command4, Command.CommandREC, Command.CommandNULL];
+            [Command.Num2, Command.Mul, Command.Num4, Command.Rec, Command.None];
         TestCommand(commands5, "0.25", "2 \x00D7 1/(4)");
 
         Command[] commands6 =
-            [Command.Command5, Command.CommandDIV, Command.Command6, Command.CommandPERCENT, Command.CommandNULL];
+            [Command.Num5, Command.Div, Command.Num6, Command.Percent, Command.None];
         TestCommand(commands6, "0.06", "5 \x00F7 0.06");
 
-        Command[] commands7 = [Command.Command4, Command.CommandSQRT, Command.CommandSUB, Command.CommandNULL];
+        Command[] commands7 = [Command.Num4, Command.Sqrt, Command.Sub, Command.None];
         TestCommand(commands7, "2", "\x221A(4) - ");
 
-        Command[] commands8 = [Command.Command7, Command.CommandSQR, Command.CommandDIV, Command.CommandNULL];
+        Command[] commands8 = [Command.Num7, Command.Sqr, Command.Div, Command.None];
         TestCommand(commands8, "49", "sqr(7) \x00F7 ");
 
-        Command[] commands9 = [Command.Command8, Command.CommandSQR, Command.CommandSQRT, Command.CommandNULL];
+        Command[] commands9 = [Command.Num8, Command.Sqr, Command.Sqrt, Command.None];
         TestCommand(commands9, "8", "\x221A(sqr(8))");
     }
 }

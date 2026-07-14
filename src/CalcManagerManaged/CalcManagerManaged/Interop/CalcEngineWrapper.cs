@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -6,7 +7,7 @@ namespace CalcManagerManaged.Interop;
 /// <summary>
 /// Wrapper for the Calculator Engine C API
 /// </summary>
-public class CalcEngineWrapper : IDisposable
+internal sealed class CalcEngineWrapper : IDisposable
 {
     // Opaque handle types
     private IntPtr _calcManager;
@@ -22,27 +23,27 @@ public class CalcEngineWrapper : IDisposable
     private ICalcResourceProvider _resourceProvider;
 
     // Add new callback delegates
-    private NativeMethods.CalcSetIsInErrorCallback _isInErrorCallback;
-    private NativeMethods.CalcSetExpressionDisplayCallback _expressionDisplayCallback;
-    private NativeMethods.CalcSetParenthesisNumberCallback _parenthesisCallback;
-    private NativeMethods.CalcOnNoRightParenAddedCallback _noRightParenCallback;
-    private NativeMethods.CalcMaxDigitsReachedCallback _maxDigitsCallback;
-    private NativeMethods.CalcBinaryOperatorReceivedCallback _binaryOpCallback;
-    private NativeMethods.CalcSetMemorizedNumbersCallback _memorizedNumbersCallback;
-    private NativeMethods.CalcMemoryItemChangedCallback _memoryItemChangedCallback;
-    private NativeMethods.CalcInputChangedCallback _inputChangedCallback;
+    private CalcSetIsInErrorCallback _isInErrorCallback;
+    private CalcSetExpressionDisplayCallback _expressionDisplayCallback;
+    private CalcSetParenthesisNumberCallback _parenthesisCallback;
+    private CalcOnNoRightParenAddedCallback _noRightParenCallback;
+    private CalcMaxDigitsReachedCallback _maxDigitsCallback;
+    private CalcBinaryOperatorReceivedCallback _binaryOpCallback;
+    private CalcSetMemorizedNumbersCallback _memorizedNumbersCallback;
+    private CalcMemoryItemChangedCallback _memoryItemChangedCallback;
+    private CalcInputChangedCallback _inputChangedCallback;
 
     // Add new events
-    public event Action<bool> IsInErrorChanged;
-    public event Action MaxDigitsReached;
-    public event Action BinaryOperatorReceived;
-    public event Action<uint> ParenthesisNumberChanged;
-    public event Action NoRightParenAdded;
-    public event Action<string[]> MemorizedNumbersChanged;
-    public event Action<uint> MemoryItemChanged;
-    public event Action InputChanged;
+    public event EventHandler<IsInErrorChangedEventArgs>? IsInErrorChanged;
+    public event EventHandler? MaxDigitsReached;
+    public event EventHandler? BinaryOperatorReceived;
+    public event EventHandler<ParenthesisNumberChangedEventArgs>? ParenthesisNumberChanged;
+    public event EventHandler? NoRightParenAdded;
+    public event EventHandler<MemorizedNumbersChangedEventArgs>? MemorizedNumbersChanged;
+    public event EventHandler<MemoryItemChangedEventArgs>? MemoryItemChanged;
+    public event EventHandler? InputChanged;
 
-    public event Action<List<(string Text, int Type)>> ExpressionDisplayChanged;
+    public event EventHandler<ExpressionDisplayChangedEventArgs>? ExpressionDisplayChanged;
 
     public CalcEngineWrapper(ICalcResourceProvider resourceProvider)
     {
@@ -69,7 +70,7 @@ public class CalcEngineWrapper : IDisposable
         IntPtr context = GCHandle.ToIntPtr(_contextHandle);
 
         // Create calculator manager with all callbacks
-        _calcManager = NativeMethods.Calc_CreateManager(
+        _calcManager = NativeMethods.CalcCreateManager(
             _displayCallback,
             _historyCallback,
             _resourceCallback,
@@ -93,13 +94,14 @@ public class CalcEngineWrapper : IDisposable
     // Implement callback handlers
     private void OnIsInErrorChanged(bool isError, IntPtr context)
     {
-        IsInErrorChanged?.Invoke(isError);
+        IsInErrorChanged?.Invoke(this, new IsInErrorChangedEventArgs(isError));
     }
 
     // Implement the callback handler with UTF-8 strings
-    private void OnExpressionDisplayChanged(NativeMethods.ExpressionToken[] tokens, int tokenCount, IntPtr context)
+    private void OnExpressionDisplayChanged(ExpressionToken[] tokens, int tokenCount, IntPtr context)
     {
-        if (tokens == null || tokenCount <= 0 || ExpressionDisplayChanged == null)
+        EventHandler<ExpressionDisplayChangedEventArgs>? handler = ExpressionDisplayChanged;
+        if (tokens == null || tokenCount <= 0 || handler == null)
             return;
 
         // Console.WriteLine($"Expression tokens ({tokenCount}):");
@@ -107,98 +109,91 @@ public class CalcEngineWrapper : IDisposable
 
         for (int i = 0; i < tokenCount; i++)
         {
-            string text = tokens[i].Text != IntPtr.Zero ? Marshal.PtrToStringAnsi(tokens[i].Text) : "";
+            string text = tokens[i].Text != IntPtr.Zero ? Marshal.PtrToStringAnsi(tokens[i].Text) ?? "" : "";
             int type = tokens[i].Type;
 
             // Console.WriteLine($"  Token {i}: '{text}' (Type: {type})");
             tokenList.Add((text, type));
         }
 
-        ExpressionDisplayChanged?.Invoke(tokenList);
+        handler.Invoke(this, new ExpressionDisplayChangedEventArgs(tokenList));
     }
 
     private void OnParenthesisNumberChanged(uint count, IntPtr context)
     {
-        ParenthesisNumberChanged?.Invoke(count);
+        ParenthesisNumberChanged?.Invoke(this, new ParenthesisNumberChangedEventArgs(count));
     }
 
     private void OnNoRightParenAdded(IntPtr context)
     {
-        NoRightParenAdded?.Invoke();
+        NoRightParenAdded?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnMaxDigitsReached(IntPtr context)
     {
-        MaxDigitsReached?.Invoke();
+        MaxDigitsReached?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnBinaryOperatorReceived(IntPtr context)
     {
-        BinaryOperatorReceived?.Invoke();
+        BinaryOperatorReceived?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnMemorizedNumbersChanged(IntPtr numbers, int count, IntPtr context)
     {
-        if (count <= 0 || MemorizedNumbersChanged == null)
+        EventHandler<MemorizedNumbersChangedEventArgs>? handler = MemorizedNumbersChanged;
+        if (count <= 0 || handler == null)
             return;
 
-        try
+        string[] result = new string[count];
+        for (int i = 0; i < count; i++)
         {
-            string[] result = new string[count];
-            for (int i = 0; i < count; i++)
+            IntPtr strPtr = Marshal.ReadIntPtr(numbers, i * IntPtr.Size);
+            if (strPtr != IntPtr.Zero)
             {
-                IntPtr strPtr = Marshal.ReadIntPtr(numbers, i * IntPtr.Size);
-                if (strPtr != IntPtr.Zero)
+                // Use UTF8 explicitly for string conversion
+                int length = 0;
+                while (Marshal.ReadByte(strPtr, length) != 0)
                 {
-                    // Use UTF8 explicitly for string conversion
-                    int length = 0;
-                    while (Marshal.ReadByte(strPtr, length) != 0)
-                    {
-                        length++;
-                    }
+                    length++;
+                }
 
-                    if (length > 0)
-                    {
-                        byte[] buffer = new byte[length];
-                        Marshal.Copy(strPtr, buffer, 0, length);
-                        result[i] = Encoding.UTF8.GetString(buffer);
-                    }
-                    else
-                    {
-                        result[i] = string.Empty;
-                    }
-
-                    // Free the string allocated by C++
-                    NativeMethods.Calc_FreeString(strPtr);
+                if (length > 0)
+                {
+                    byte[] buffer = new byte[length];
+                    Marshal.Copy(strPtr, buffer, 0, length);
+                    result[i] = Encoding.UTF8.GetString(buffer);
                 }
                 else
                 {
                     result[i] = string.Empty;
                 }
-            }
 
-            MemorizedNumbersChanged?.Invoke(result);
+                // Free the string allocated by C++
+                NativeMethods.CalcFreeString(strPtr);
+            }
+            else
+            {
+                result[i] = string.Empty;
+            }
         }
-        catch (Exception ex)
-        {
-            // Add logging if available
-            Console.WriteLine($"Error in OnMemorizedNumbersChanged: {ex.Message}");
-        }
+
+        handler.Invoke(this, new MemorizedNumbersChangedEventArgs(result));
     }
 
     private void OnMemoryItemChanged(uint indexOfMemory, IntPtr context)
     {
-        MemoryItemChanged?.Invoke(indexOfMemory);
+        MemoryItemChanged?.Invoke(this, new MemoryItemChangedEventArgs(indexOfMemory));
     }
 
     private void OnInputChanged(IntPtr context)
     {
-        InputChanged?.Invoke();
+        InputChanged?.Invoke(this, EventArgs.Empty);
     }
 
     // Event handlers
-    public event Action<string, bool> DisplayChanged;
-    public event Action<uint> HistoryItemAdded;
+    public event EventHandler<DisplayChangedEventArgs>? DisplayChanged;
+    public event EventHandler<HistoryItemAddedEventArgs>? HistoryItemAdded;
 
     /// <summary>
     /// Finalizer
@@ -220,13 +215,13 @@ public class CalcEngineWrapper : IDisposable
     /// <summary>
     /// Dispose implementation
     /// </summary>
-    protected virtual void Dispose(bool disposing)
+    private void Dispose(bool disposing)
     {
         if (!_disposed)
         {
             if (_calcManager != IntPtr.Zero)
             {
-                NativeMethods.Calc_DestroyManager(_calcManager);
+                NativeMethods.CalcDestroyManager(_calcManager);
                 _calcManager = IntPtr.Zero;
             }
 
@@ -244,7 +239,7 @@ public class CalcEngineWrapper : IDisposable
     /// </summary>
     private void OnDisplayChanged(string displayString, bool isError, IntPtr context)
     {
-        DisplayChanged?.Invoke(displayString, isError);
+        DisplayChanged?.Invoke(this, new DisplayChangedEventArgs(displayString, isError));
     }
 
     /// <summary>
@@ -252,7 +247,7 @@ public class CalcEngineWrapper : IDisposable
     /// </summary>
     private void OnHistoryItemAdded(uint addedItemIndex, IntPtr context)
     {
-        HistoryItemAdded?.Invoke(addedItemIndex);
+        HistoryItemAdded?.Invoke(this, new HistoryItemAddedEventArgs(addedItemIndex));
     }
 
     /// <summary>
@@ -260,47 +255,42 @@ public class CalcEngineWrapper : IDisposable
     /// </summary>
     private IntPtr OnGetResource(string resourceId, IntPtr context)
     {
-        try
+        // Get the appropriate instance from the context
+        GCHandle handle = GCHandle.FromIntPtr(context);
+        if (handle.Target is not CalcEngineWrapper instance)
         {
-            // Get the appropriate instance from the context
-            GCHandle handle = GCHandle.FromIntPtr(context);
-            var instance = (CalcEngineWrapper)handle.Target;
-
-            // Get the string from the resource provider
-            string resourceValue = instance._resourceProvider.GetString(resourceId);
-            if (resourceValue == null)
-            {
-                return IntPtr.Zero;
-            }
-
-            // Convert the string to UTF-8 encoding
-            byte[] utf8Bytes = Encoding.UTF8.GetBytes(resourceValue + '\0'); // Include null terminator
-
-            // Allocate unmanaged memory for the string
-            IntPtr nativeStr = Marshal.AllocHGlobal(utf8Bytes.Length);
-
-            // Copy the UTF-8 bytes to the unmanaged memory
-            Marshal.Copy(utf8Bytes, 0, nativeStr, utf8Bytes.Length);
-
-            return nativeStr;
-        }
-        catch
-        {
-            // Return null on any error
             return IntPtr.Zero;
         }
+
+        // Get the string from the resource provider
+        string? resourceValue = instance._resourceProvider.GetString(resourceId);
+        if (resourceValue == null)
+        {
+            return IntPtr.Zero;
+        }
+
+        // Convert the string to UTF-8 encoding
+        byte[] utf8Bytes = Encoding.UTF8.GetBytes(resourceValue + '\0'); // Include null terminator
+
+        // Allocate unmanaged memory for the string
+        IntPtr nativeStr = Marshal.AllocHGlobal(utf8Bytes.Length);
+
+        // Copy the UTF-8 bytes to the unmanaged memory
+        Marshal.Copy(utf8Bytes, 0, nativeStr, utf8Bytes.Length);
+
+        return nativeStr;
     }
 
     /// <summary>
     /// Handles error codes from native methods and throws appropriate exceptions
     /// </summary>
-    private void HandleError(CalcError errorCode, string operation)
+    private static void HandleError(CalcError errorCode, string operation)
     {
         if (errorCode == CalcError.Success)
             return;
-            
+
         string message;
-        
+
         switch (errorCode)
         {
             case CalcError.DivideByZero:
@@ -337,7 +327,7 @@ public class CalcEngineWrapper : IDisposable
                 message = $"Error: {errorCode}";
                 break;
         }
-        
+
         throw new InvalidOperationException($"{operation}: {message}");
     }
 
@@ -348,7 +338,7 @@ public class CalcEngineWrapper : IDisposable
     {
         CheckDisposed();
 
-        CalcError result = NativeMethods.Calc_SendCommand(_calcManager, commandId);
+        CalcError result = NativeMethods.CalcSendCommand(_calcManager, commandId);
         if (result != CalcError.Success)
         {
             HandleError(result, "Failed to send command");
@@ -362,7 +352,7 @@ public class CalcEngineWrapper : IDisposable
     {
         CheckDisposed();
 
-        CalcError result = NativeMethods.Calc_SetMode(_calcManager, mode);
+        CalcError result = NativeMethods.CalcSetMode(_calcManager, mode);
         if (result != CalcError.Success)
         {
             HandleError(result, "Failed to set mode");
@@ -376,7 +366,7 @@ public class CalcEngineWrapper : IDisposable
     {
         CheckDisposed();
 
-        CalcError result = NativeMethods.Calc_Reset(_calcManager, clearMemory);
+        CalcError result = NativeMethods.CalcReset(_calcManager, clearMemory);
         if (result != CalcError.Success)
         {
             HandleError(result, "Failed to reset");
@@ -390,7 +380,7 @@ public class CalcEngineWrapper : IDisposable
     {
         CheckDisposed();
 
-        CalcError result = NativeMethods.Calc_SetRadix(_calcManager, radixType);
+        CalcError result = NativeMethods.CalcSetRadix(_calcManager, radixType);
         if (result != CalcError.Success)
         {
             HandleError(result, "Failed to set radix");
@@ -404,7 +394,7 @@ public class CalcEngineWrapper : IDisposable
     {
         CheckDisposed();
 
-        CalcError result = NativeMethods.Calc_SetPrecision(_calcManager, precision);
+        CalcError result = NativeMethods.CalcSetPrecision(_calcManager, precision);
         if (result != CalcError.Success)
         {
             HandleError(result, "Failed to set precision");
@@ -418,7 +408,7 @@ public class CalcEngineWrapper : IDisposable
     {
         CheckDisposed();
 
-        IntPtr stringPtr = NativeMethods.Calc_GetDisplayString(_calcManager);
+        IntPtr stringPtr = NativeMethods.CalcGetDisplayString(_calcManager);
         if (stringPtr == IntPtr.Zero)
         {
             // If the C API returns null, it's likely an error state or empty display
@@ -448,7 +438,7 @@ public class CalcEngineWrapper : IDisposable
         }
         finally
         {
-            NativeMethods.Calc_FreeString(stringPtr);
+            NativeMethods.CalcFreeString(stringPtr);
         }
     }
 
@@ -460,7 +450,7 @@ public class CalcEngineWrapper : IDisposable
         CheckDisposed();
 
         bool isError = false;
-        CalcError result = NativeMethods.Calc_IsInError(_calcManager, ref isError);
+        CalcError result = NativeMethods.CalcIsInError(_calcManager, ref isError);
 
         if (result != CalcError.Success)
         {
@@ -478,7 +468,7 @@ public class CalcEngineWrapper : IDisposable
         CheckDisposed();
 
         bool isEmpty = false;
-        CalcError result = NativeMethods.Calc_IsInputEmpty(_calcManager, ref isEmpty);
+        CalcError result = NativeMethods.CalcIsInputEmpty(_calcManager, ref isEmpty);
 
         if (result != CalcError.Success)
         {
@@ -495,7 +485,7 @@ public class CalcEngineWrapper : IDisposable
     {
         CheckDisposed();
 
-        IntPtr historyItemsHandle = NativeMethods.Calc_GetHistoryItems(_calcManager, mode);
+        IntPtr historyItemsHandle = NativeMethods.CalcGetHistoryItems(_calcManager, mode);
         if (historyItemsHandle == IntPtr.Zero)
         {
             return Array.Empty<CalcHistoryItem>();
@@ -504,7 +494,7 @@ public class CalcEngineWrapper : IDisposable
         try
         {
             uint count = 0;
-            CalcError errorCode = NativeMethods.Calc_GetHistoryItemCount(historyItemsHandle, ref count);
+            CalcError errorCode = NativeMethods.CalcGetHistoryItemCount(historyItemsHandle, ref count);
 
             if (errorCode != CalcError.Success)
             {
@@ -515,7 +505,7 @@ public class CalcEngineWrapper : IDisposable
 
             for (uint i = 0; i < count; i++)
             {
-                IntPtr historyItemHandle = NativeMethods.Calc_GetHistoryItem(historyItemsHandle, i);
+                IntPtr historyItemHandle = NativeMethods.CalcGetHistoryItem(historyItemsHandle, i);
                 if (historyItemHandle == IntPtr.Zero)
                 {
                     throw new InvalidOperationException($"Failed to get history item at index {i}");
@@ -523,10 +513,10 @@ public class CalcEngineWrapper : IDisposable
 
                 try
                 {
-                    string expression = null;
-                    string result = null;
+                    string expression;
+                    string result;
 
-                    IntPtr expressionPtr = NativeMethods.Calc_GetHistoryItemExpression(historyItemHandle);
+                    IntPtr expressionPtr = NativeMethods.CalcGetHistoryItemExpression(historyItemHandle);
                     if (expressionPtr == IntPtr.Zero)
                     {
                         throw new InvalidOperationException("Failed to get history item expression");
@@ -534,14 +524,14 @@ public class CalcEngineWrapper : IDisposable
 
                     try
                     {
-                        expression = Marshal.PtrToStringAnsi(expressionPtr);
+                        expression = Marshal.PtrToStringAnsi(expressionPtr) ?? string.Empty;
                     }
                     finally
                     {
-                        NativeMethods.Calc_FreeString(expressionPtr);
+                        NativeMethods.CalcFreeString(expressionPtr);
                     }
 
-                    IntPtr resultPtr = NativeMethods.Calc_GetHistoryItemResult(historyItemHandle);
+                    IntPtr resultPtr = NativeMethods.CalcGetHistoryItemResult(historyItemHandle);
                     if (resultPtr == IntPtr.Zero)
                     {
                         throw new InvalidOperationException("Failed to get history item result");
@@ -549,11 +539,11 @@ public class CalcEngineWrapper : IDisposable
 
                     try
                     {
-                        result = Marshal.PtrToStringAnsi(resultPtr);
+                        result = Marshal.PtrToStringAnsi(resultPtr) ?? string.Empty;
                     }
                     finally
                     {
-                        NativeMethods.Calc_FreeString(resultPtr);
+                        NativeMethods.CalcFreeString(resultPtr);
                     }
 
                     items[i] = new CalcHistoryItem
@@ -572,7 +562,7 @@ public class CalcEngineWrapper : IDisposable
         }
         finally
         {
-            NativeMethods.Calc_ReleaseHistoryItems(historyItemsHandle);
+            NativeMethods.CalcReleaseHistoryItems(historyItemsHandle);
         }
     }
 
@@ -583,7 +573,7 @@ public class CalcEngineWrapper : IDisposable
     {
         CheckDisposed();
 
-        CalcError result = NativeMethods.Calc_ClearHistory(_calcManager);
+        CalcError result = NativeMethods.CalcClearHistory(_calcManager);
         if (result != CalcError.Success)
         {
             HandleError(result, "Failed to clear history");
@@ -595,10 +585,7 @@ public class CalcEngineWrapper : IDisposable
     /// </summary>
     private void CheckDisposed()
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(GetType().Name);
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
     }
 
 
@@ -609,7 +596,7 @@ public class CalcEngineWrapper : IDisposable
     {
         CheckDisposed();
 
-        CalcError result = NativeMethods.Calc_MemorizeNumber(_calcManager);
+        CalcError result = NativeMethods.CalcMemorizeNumber(_calcManager);
         if (result != CalcError.Success)
         {
             HandleError(result, "Failed to memorize number");
@@ -623,7 +610,7 @@ public class CalcEngineWrapper : IDisposable
     {
         CheckDisposed();
 
-        CalcError result = NativeMethods.Calc_MemorizedNumberLoad(_calcManager, memoryIndex);
+        CalcError result = NativeMethods.CalcMemorizedNumberLoad(_calcManager, memoryIndex);
         if (result != CalcError.Success)
         {
             HandleError(result, "Failed to load from memory");
@@ -637,7 +624,7 @@ public class CalcEngineWrapper : IDisposable
     {
         CheckDisposed();
 
-        CalcError result = NativeMethods.Calc_MemorizedNumberAdd(_calcManager, memoryIndex);
+        CalcError result = NativeMethods.CalcMemorizedNumberAdd(_calcManager, memoryIndex);
         if (result != CalcError.Success)
         {
             HandleError(result, "Failed to add to memory");
@@ -651,7 +638,7 @@ public class CalcEngineWrapper : IDisposable
     {
         CheckDisposed();
 
-        CalcError result = NativeMethods.Calc_MemorizedNumberSubtract(_calcManager, memoryIndex);
+        CalcError result = NativeMethods.CalcMemorizedNumberSubtract(_calcManager, memoryIndex);
         if (result != CalcError.Success)
         {
             HandleError(result, "Failed to subtract from memory");
@@ -665,7 +652,7 @@ public class CalcEngineWrapper : IDisposable
     {
         CheckDisposed();
 
-        CalcError result = NativeMethods.Calc_MemorizedNumberClear(_calcManager, memoryIndex);
+        CalcError result = NativeMethods.CalcMemorizedNumberClear(_calcManager, memoryIndex);
         if (result != CalcError.Success)
         {
             HandleError(result, "Failed to clear memory slot");
@@ -679,7 +666,7 @@ public class CalcEngineWrapper : IDisposable
     {
         CheckDisposed();
 
-        CalcError result = NativeMethods.Calc_MemorizedNumberClearAll(_calcManager);
+        CalcError result = NativeMethods.CalcMemorizedNumberClearAll(_calcManager);
         if (result != CalcError.Success)
         {
             HandleError(result, "Failed to clear all memory");
@@ -696,7 +683,7 @@ public class CalcEngineWrapper : IDisposable
         uint count = 0;
         IntPtr[] bufferPtrs = new IntPtr[100]; // Assume maximum 100 memory slots
 
-        CalcError result = NativeMethods.Calc_GetMemorizedNumbers(
+        CalcError result = NativeMethods.CalcGetMemorizedNumbers(
             _calcManager,
             ref count,
             bufferPtrs,
@@ -723,7 +710,7 @@ public class CalcEngineWrapper : IDisposable
                 Marshal.Copy(bufferPtrs[i], buffer, 0, length);
                 memorizedNumbers[i] = Encoding.UTF8.GetString(buffer);
 
-                NativeMethods.Calc_FreeString(bufferPtrs[i]);
+                NativeMethods.CalcFreeString(bufferPtrs[i]);
             }
             else
             {
@@ -733,81 +720,59 @@ public class CalcEngineWrapper : IDisposable
 
         return memorizedNumbers;
     }
-    
-    /// <summary>
-    /// Represents a command from the expression history
-    /// </summary>
-    public class ExpressionCommand
-    {
-        /// <summary>
-        /// Command type (0=Unary, 1=Binary, 2=Operand, 3=Parenthesis)
-        /// </summary>
-        public int CommandType { get; }
-        
-        /// <summary>
-        /// The token text representation
-        /// </summary>
-        public string Token { get; }
-        
-        internal ExpressionCommand(int commandType, string token)
-        {
-            CommandType = commandType;
-            Token = token;
-        }
-    }
-    
+
     /// <summary>
     /// Gets a snapshot of the current display commands
     /// </summary>
-    public List<ExpressionCommand> GetDisplayCommandsSnapshot()
+    public ReadOnlyCollection<ExpressionCommand> GetDisplayCommandsSnapshot()
     {
         CheckDisposed();
-        
-        IntPtr snapshotHandle = NativeMethods.Calc_GetDisplayCommandsSnapshot(_calcManager);
+
+        IntPtr snapshotHandle = NativeMethods.CalcGetDisplayCommandsSnapshot(_calcManager);
         if (snapshotHandle == IntPtr.Zero)
         {
-            return new List<ExpressionCommand>();
+            return new ReadOnlyCollection<ExpressionCommand>(new List<ExpressionCommand>());
         }
-        
+
         try
         {
             uint count = 0;
-            CalcError result = NativeMethods.Calc_GetCommandSnapshotSize(snapshotHandle, ref count);
-            
+            CalcError result = NativeMethods.CalcGetCommandSnapshotSize(snapshotHandle, ref count);
+
             if (result != CalcError.Success)
             {
                 HandleError(result, "Failed to get command snapshot size");
             }
-            
+
             var commands = new List<ExpressionCommand>((int)count);
-            
+
             for (uint i = 0; i < count; i++)
             {
-                var command = new NativeMethods.ExpressionCommand();
-                result = NativeMethods.Calc_GetCommandFromSnapshot(snapshotHandle, i, ref command);
-                
+                var command = new NativeExpressionCommand();
+                result = NativeMethods.CalcGetCommandFromSnapshot(snapshotHandle, i, ref command);
+
                 if (result != CalcError.Success)
                 {
                     HandleError(result, "Failed to get command from snapshot");
                 }
-                
+
                 string token = string.Empty;
                 if (command.Token != IntPtr.Zero)
                 {
                     // Get the string from the pointer
-                    token = Marshal.PtrToStringAnsi(command.Token);
+                    token = Marshal.PtrToStringAnsi(command.Token) ?? string.Empty;
                     // Free the string allocated by C++
-                    NativeMethods.Calc_FreeString(command.Token);
+                    NativeMethods.CalcFreeString(command.Token);
                 }
-                
+
                 commands.Add(new ExpressionCommand(command.CommandType, token));
             }
-            
-            return commands;
+
+            return new ReadOnlyCollection<ExpressionCommand>(commands);
         }
         finally
         {
-            NativeMethods.Calc_ReleaseCommandSnapshot(snapshotHandle);
+            NativeMethods.CalcReleaseCommandSnapshot(snapshotHandle);
         }
     }
 }

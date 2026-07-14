@@ -1,66 +1,180 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
-    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <RootNamespace>Calculator</RootNamespace>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Platforms>x86;x64;ARM64</Platforms>
-    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
-    <PublishProfile>win-$(Platform).pubxml</PublishProfile>
-    <UseWinUI>true</UseWinUI>
-    <EnableMsixTooling>true</EnableMsixTooling>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>CalculatorApp</RootNamespace>
+    <AssemblyName>Calculator</AssemblyName>
+    <ApplicationTitle>Calculator</ApplicationTitle>
+    <Product>Calculator</Product>
+    <Authors>jmacato</Authors>
+    <Company>jmacato</Company>
+    <Version>1.0.0</Version>
+    <ApplicationVersion>1.0.0</ApplicationVersion>
+    <ApplicationId>io.github.jmacato.calculator</ApplicationId>
+    <NeutralLanguage>en-US</NeutralLanguage>
+
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
+
     <Nullable>enable</Nullable>
-	  <LangVersion>latest</LangVersion>
-	  <!--<DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION;DISABLE_XAML_GENERATED_BINDING_DEBUG_OUTPUT</DefineConstants>-->
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <EnableDefaultAvaloniaItems>false</EnableDefaultAvaloniaItems>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <!-- Port the original source tree incrementally. Add files here only after their
+       existing implementation has been translated away from WinUI/WinRT. -->
   <ItemGroup>
-    <Content Include="Assets\SplashScreen.scale-200.png" />
-    <Content Include="Assets\LockScreenLogo.scale-200.png" />
-    <Content Include="Assets\Square150x150Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
-    <Content Include="Assets\StoreLogo.png" />
-    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <Compile Include="App.xaml.cs" />
+    <Compile Include="Controls\CalculationResult.cs" />
+    <Compile Include="Controls\CalculationResultAutomationPeer.cs" />
+    <Compile Include="Controls\CalculatorButton.cs" />
+    <Compile Include="Controls\FlipButtons.cs" />
+    <Compile Include="Controls\HorizontalNoOverflowStackPanel.cs" />
+    <Compile Include="Controls\OperatorPanelButton.cs" />
+    <Compile Include="Controls\OperatorPanelListView.cs" />
+    <Compile Include="Controls\OverflowTextBlock.cs" />
+    <Compile Include="Controls\OverflowTextBlockAutomationPeer.cs" />
+    <Compile Include="Controls\RadixButton.cs" />
+    <Compile Include="Controls\SwipeControl.cs" />
+    <Compile Include="Controls\SwipeItem.cs" />
+    <Compile Include="Controls\SwipeItemInvokedEventArgs.cs" />
+    <Compile Include="Controls\SwipeItems.cs" />
+    <Compile Include="Controls\SupplementaryItemsControl.cs" />
+    <Compile Include="MainWindow.xaml.cs" />
+    <Compile Include="Views\Calculator.xaml.cs" />
+    <Compile Include="Views\CalculatorStandardOperators.xaml.cs" />
+    <Compile Include="Views\CalculatorScientificOperators.xaml.cs" />
+    <Compile Include="Views\CalculatorScientificAngleButtons.xaml.cs" />
+    <Compile Include="Views\CalculatorProgrammerDisplayPanel.xaml.cs" />
+    <Compile Include="Views\CalculatorProgrammerBitFlipPanel.xaml.cs" />
+    <Compile Include="Views\CalculatorProgrammerOperators.xaml.cs" />
+    <Compile Include="Views\CalculatorProgrammerRadixOperators.xaml.cs" />
+    <Compile Include="Views\DateCalculator.xaml.cs" />
+    <Compile Include="Views\UnitConverter.xaml.cs" />
+    <Compile Include="Views\Settings.xaml.cs" />
+    <Compile Include="Views\GraphingCalculator\GraphingCalculator.xaml.cs" />
+    <Compile Include="Views\GraphingCalculator\EquationInputArea.xaml.cs" />
+    <Compile Include="Views\GraphingCalculator\GraphingNumPad.xaml.cs" />
+    <Compile Include="Views\GraphingCalculator\GraphingSettings.xaml.cs" />
+    <Compile Include="Views\GraphingCalculator\EquationStylePanelControl.xaml.cs" />
+    <Compile Include="Views\GraphingCalculator\KeyGraphFeaturesPanel.xaml.cs" />
+    <Compile Include="Views\HistoryList.xaml.cs" />
+    <Compile Include="Views\Memory.xaml.cs" />
+    <Compile Include="Views\MemoryListItem.xaml.cs" />
+    <Compile Include="Views\NumberPad.xaml.cs" />
+    <Compile Include="Views\OperatorsPanel.xaml.cs" />
+    <Compile Include="Views\SupplementaryResults.xaml.cs" />
+    <Compile Include="Views\TitleBar.xaml.cs" />
+    <Compile Include="Views\MainPage.xaml.cs" />
+    <Compile Include="Selectors\NavViewMenuItemTemplateSelector.cs" />
+    <Compile Include="Converters\ExpressionItemTemplateSelector.cs" />
+    <Compile Include="Utils\ResourceString.cs" />
+    <Compile Include="ViewModels\ApplicationViewModel.cs" />
+    <Compile Include="ViewModels\StandardCalculatorViewModel.h.cs" />
+    <Compile Include="ViewModels\StandardCalculatorViewModel.cpp.cs" />
+    <Compile Include="ViewModels\DateCalculatorViewModel.h.cs" />
+    <Compile Include="ViewModels\DateCalculatorViewModel.cpp.cs" />
+    <Compile Include="ViewModels\UnitConverterViewModel.h.cs" />
+    <Compile Include="ViewModels\UnitConverterViewModel.cpp.cs" />
+    <Compile Include="ViewModels\GraphingCalculator\GraphingCalculatorViewModel.cpp.h.cs" />
+    <Compile Include="ViewModels\GraphingCalculator\GraphingCalculatorViewModel.cpp.cs" />
+    <Compile Include="ViewModels\HistoryViewModel.h.cs" />
+    <Compile Include="ViewModels\HistoryViewModel.cpp.cs" />
+    <Compile Include="ViewModels\HistoryItemViewModel.h.cs" />
+    <Compile Include="ViewModels\HistoryItemViewModel.cpp.cs" />
+    <Compile Include="ViewModels\MemoryItemViewModel.h.cs" />
+    <Compile Include="ViewModels\MemoryItemViewModel.cpp.cs" />
+    <Compile Include="ViewModels\Snapshots.h.cs" />
+    <Compile Include="ViewModels\Snapshots.cpp.cs" />
+    <Compile Include="ViewModels\Common\AppResourceProvider.h.cs" />
+    <Compile Include="ViewModels\Common\AppResourceProvider.cpp.cs" />
+    <Compile Include="ViewModels\Common\Automation\NarratorAnnouncement.h.cs" />
+    <Compile Include="ViewModels\Common\Automation\NarratorAnnouncement.cpp.cs" />
+    <Compile Include="ViewModels\Common\Automation\NarratorNotifier.h.cs" />
+    <Compile Include="ViewModels\Common\Automation\NarratorNotifier.cpp.cs" />
+    <Compile Include="ViewModels\Common\BitLength.h.cs" />
+    <Compile Include="ViewModels\Common\CalculatorButtonPressedEventArgs.h.cs" />
+    <Compile Include="ViewModels\Common\CalculatorButtonPressedEventArgs.cpp.cs" />
+    <Compile Include="ViewModels\Common\CalculatorButtonUser.h.cs" />
+    <Compile Include="ViewModels\Common\CalculatorDisplay.h.cs" />
+    <Compile Include="ViewModels\Common\CalculatorDisplay.cpp.cs" />
+    <Compile Include="ViewModels\Common\CopyPasteManager.h.cs" />
+    <Compile Include="ViewModels\Common\CopyPasteManager.cpp.cs" />
+    <Compile Include="ViewModels\Common\DateCalculator.h.cs" />
+    <Compile Include="ViewModels\Common\DateCalculator.cpp.cs" />
+    <Compile Include="ViewModels\Common\DelegateCommand.cs" />
+    <Compile Include="ViewModels\Common\DisplayExpressionToken.h.cs" />
+    <Compile Include="ViewModels\Common\EngineResourceProvider.h.cs" />
+    <Compile Include="ViewModels\Common\EngineResourceProvider.cpp.cs" />
+    <Compile Include="ViewModels\Common\LocalizationSettings.h.cs" />
+    <Compile Include="ViewModels\Common\LocalizationStringUtil.h.cs" />
+    <Compile Include="ViewModels\Common\MyVirtualKey.h.cs" />
+    <Compile Include="ViewModels\Common\NetworkManager.h.cs" />
+    <Compile Include="ViewModels\Common\NavCategory.h.cs" />
+    <Compile Include="ViewModels\Common\NavCategory.cpp.cs" />
+    <Compile Include="ViewModels\Common\NumberBase.h.cs" />
+    <Compile Include="ViewModels\Common\TraceLogger.h.cs" />
+    <Compile Include="ViewModels\Common\TraceLogger.cpp.cs" />
+    <Compile Include="ViewModels\Common\ViewModelBase.cs" />
+    <Compile Include="ViewModels\DataLoaders\UnitConverterDataConstants.h.cs" />
+    <Compile Include="ViewModels\DataLoaders\UnitConverterDataLoader.cpp.h.cs" />
+    <Compile Include="ViewModels\DataLoaders\UnitConverterDataLoader.cpp.cs" />
+    <Compile Include="ViewModels\DataLoaders\CurrencyHttpClient.cpp.h.cs" />
+    <Compile Include="ViewModels\DataLoaders\CurrencyHttpClient.cpp.cs" />
+    <Compile Include="ViewModels\DataLoaders\CurrencyDataLoader.cpp.h.cs" />
+    <Compile Include="ViewModels\DataLoaders\CurrencyDataLoader.cpp.cs" />
+    <AvaloniaXaml Remove="**\*.axaml" />
+    <AvaloniaXaml Remove="**\*.xaml" />
+    <AvaloniaXaml Include="App.xaml" />
+    <AvaloniaXaml Include="MainWindow.xaml" />
+    <AvaloniaXaml Include="Views\Calculator.xaml" />
+    <AvaloniaXaml Include="Views\CalculatorStandardOperators.xaml" />
+    <AvaloniaXaml Include="Views\CalculatorScientificOperators.xaml" />
+    <AvaloniaXaml Include="Views\CalculatorScientificAngleButtons.xaml" />
+    <AvaloniaXaml Include="Views\CalculatorProgrammerDisplayPanel.xaml" />
+    <AvaloniaXaml Include="Views\CalculatorProgrammerBitFlipPanel.xaml" />
+    <AvaloniaXaml Include="Views\CalculatorProgrammerOperators.xaml" />
+    <AvaloniaXaml Include="Views\CalculatorProgrammerRadixOperators.xaml" />
+    <AvaloniaXaml Include="Views\DateCalculator.xaml" />
+    <AvaloniaXaml Include="Views\UnitConverter.xaml" />
+    <AvaloniaXaml Include="Views\Settings.xaml" />
+    <AvaloniaXaml Include="Views\GraphingCalculator\GraphingCalculator.xaml" />
+    <AvaloniaXaml Include="Views\GraphingCalculator\EquationInputArea.xaml" />
+    <AvaloniaXaml Include="Views\GraphingCalculator\GraphingNumPad.xaml" />
+    <AvaloniaXaml Include="Views\GraphingCalculator\GraphingSettings.xaml" />
+    <AvaloniaXaml Include="Views\GraphingCalculator\EquationStylePanelControl.xaml" />
+    <AvaloniaXaml Include="Views\GraphingCalculator\KeyGraphFeaturesPanel.xaml" />
+    <AvaloniaXaml Include="Views\HistoryList.xaml" />
+    <AvaloniaXaml Include="Views\Memory.xaml" />
+    <AvaloniaXaml Include="Views\MemoryListItem.xaml" />
+    <AvaloniaXaml Include="Views\NumberPad.xaml" />
+    <AvaloniaXaml Include="Views\OperatorsPanel.xaml" />
+    <AvaloniaXaml Include="Views\SupplementaryResults.xaml" />
+    <AvaloniaXaml Include="Views\TitleBar.xaml" />
+    <AvaloniaXaml Include="Views\DelighterUnitStyles.xaml" />
+    <AvaloniaXaml Include="Controls\SwipeControlStyles.xaml" />
+    <AvaloniaXaml Include="Controls\HistoryMemoryStyles.xaml" />
+    <AvaloniaXaml Include="Views\MainPage.xaml" />
+    <AvaloniaResource Include="Assets\Fonts\Hind2\**\*.ttf" />
+    <AvaloniaResource Include="Assets\CalculatorIcons.ttf" />
+    <AvaloniaResource Include="Assets\CalculatorAppList.targetsize-20.png" />
+    <EmbeddedResource Include="Resources\*.resx" />
   </ItemGroup>
 
   <ItemGroup>
-    <Manifest Include="$(ApplicationManifest)" />
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Serilog" />
   </ItemGroup>
 
-  <!--
-    Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
-    Tools extension to be activated for this project even if the Windows App SDK Nuget
-    package has not yet been restored.
-  -->
-  <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
-    <ProjectCapability Include="Msix" />
-  </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.250129-preview2" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250310001" />
+    <ProjectReference Include="..\CalcManagerManaged\CalcManagerPort\CalcManagerPort.csproj"
+                      GlobalPropertiesToRemove="PublishAot;PublishTrimmed;SelfContained;RuntimeIdentifier" />
+    <ProjectReference Include="Vendor\FluentAvalonia\FluentAvalonia.csproj" />
+    <ProjectReference Include="Vendor\Avalonia.Labs.Lottie\Avalonia.Labs.Lottie.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="ViewModels\Staging\" />
-  </ItemGroup>
-
-  <!--
-    Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
-    Explorer "Package and Publish" context menu entry to be enabled for this project even if
-    the Windows App SDK Nuget package has not yet been restored.
-  -->
-  <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
-    <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
-  </PropertyGroup>
-
-  <!-- Publish Properties -->
-  <PropertyGroup>
-    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
-    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
-    <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
-    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
-  </PropertyGroup>
 </Project>
