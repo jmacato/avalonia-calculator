@@ -1,256 +1,426 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
 
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using Windows.Foundation.Collections;
-using Windows.UI;
+using System.Globalization;
+using Avalonia.Media;
+using CalculatorApp.ViewModel.Common;
 using GraphControl;
 
-namespace CalculatorApp.ViewModel
+namespace CalculatorApp.ViewModel;
+
+public sealed class GridDisplayItems : ViewModelBase
 {
-    public partial class GridDisplayItems : INotifyPropertyChanged
+    private string _expression = string.Empty;
+    private string _direction = string.Empty;
+
+    public string Expression
     {
-        public event PropertyChangedEventHandler PropertyChanged;
+        get => _expression;
+        set => SetProperty(ref _expression, value ?? string.Empty);
+    }
 
-        //public GridDisplayItems();
+    public string Direction
+    {
+        get => _direction;
+        set => SetProperty(ref _direction, value ?? string.Empty);
+    }
+}
 
-        private string m_Expression;
-        public string Expression
+public sealed class KeyGraphFeaturesItem : ViewModelBase
+{
+    public string Title { get; init; } = string.Empty;
+
+    public ObservableCollection<string> DisplayItems { get; } = [];
+
+    public ObservableCollection<GridDisplayItems> GridItems { get; } = [];
+
+    public bool IsText { get; set; }
+}
+
+public sealed partial class EquationViewModel : ViewModelBase
+{
+    [Flags]
+    private enum KeyGraphFeatureFlag
+    {
+        Domain = 1,
+        Range = 2,
+        Parity = 4,
+        Periodicity = 8,
+        Zeros = 16,
+        YIntercept = 32,
+        Minima = 64,
+        Maxima = 128,
+        InflectionPoints = 256,
+        VerticalAsymptotes = 512,
+        HorizontalAsymptotes = 1024,
+        ObliqueAsymptotes = 2048,
+        MonotoneIntervals = 4096
+    }
+
+    private bool _isLastItemInList;
+    private int _functionLabelIndex;
+    private int _lineColorIndex;
+    private string _mathExpression = string.Empty;
+    private KeyGraphFeaturesInfo? _analysis;
+    private string _analysisErrorString = string.Empty;
+    private bool _analysisErrorVisible;
+
+    public EquationViewModel(Equation equation, int functionLabelIndex, Color color, int colorIndex)
+    {
+        GraphEquation = equation ?? throw new ArgumentNullException(nameof(equation));
+        _functionLabelIndex = functionLabelIndex;
+        _lineColorIndex = colorIndex;
+        GraphEquation.LineColor = color;
+        GraphEquation.PropertyChanged += OnGraphEquationPropertyChanged;
+    }
+
+    public Equation GraphEquation { get; }
+
+    public int FunctionLabelIndex
+    {
+        get => _functionLabelIndex;
+        set
         {
-            get { return m_Expression; }
-            set
+            if (SetProperty(ref _functionLabelIndex, value))
             {
-                if (m_Expression != value)
-                {
-                    m_Expression = value;
-                    RaisePropertyChanged(nameof(Expression));
-                }
+                OnPropertyChanged(nameof(FunctionLabelText));
             }
-        }
-
-        private string m_Direction;
-        public string Direction
-        {
-            get { return m_Direction; }
-            set
-            {
-                if (m_Direction != value)
-                {
-                    m_Direction = value;
-                    RaisePropertyChanged(nameof(Direction));
-                }
-            }
-        }
-
-
-        internal void RaisePropertyChanged(string p)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
         }
     }
 
-    public partial class KeyGraphFeaturesItem : INotifyPropertyChanged
+    public string FunctionLabelText => FunctionLabelIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    public bool IsLastItemInList
     {
-        public event PropertyChangedEventHandler PropertyChanged;
+        get => _isLastItemInList;
+        set => SetProperty(ref _isLastItemInList, value);
+    }
 
-        //public KeyGraphFeaturesItem();
+    public int LineColorIndex
+    {
+        get => _lineColorIndex;
+        set => SetProperty(ref _lineColorIndex, value);
+    }
 
-        private string m_Title;
-        public string Title
+    public string Expression
+    {
+        get => GraphEquation.Expression;
+        set => GraphEquation.Expression = value ?? string.Empty;
+    }
+
+    public string AnalysisExpression
+    {
+        get
         {
-            get { return m_Title; }
-            set
-            {
-                if (m_Title != value)
-                {
-                    m_Title = value;
-                    RaisePropertyChanged(nameof(Title));
-                }
-            }
-        }
-
-        private ObservableCollection<string> m_DisplayItems;
-        public ObservableCollection<string> DisplayItems
-        {
-            get { return m_DisplayItems; }
-            set
-            {
-                if (m_DisplayItems != value)
-                {
-                    m_DisplayItems = value;
-                    RaisePropertyChanged(nameof(DisplayItems));
-                }
-            }
-        }
-
-        private ObservableCollection<GridDisplayItems> m_GridItems;
-        public ObservableCollection<GridDisplayItems> GridItems
-        {
-            get { return m_GridItems; }
-            set
-            {
-                if (m_GridItems != value)
-                {
-                    m_GridItems = value;
-                    RaisePropertyChanged(nameof(GridItems));
-                }
-            }
-        }
-
-        private bool m_IsText;
-        public bool IsText
-        {
-            get { return m_IsText; }
-            set
-            {
-                if (m_IsText != value)
-                {
-                    m_IsText = value;
-                    RaisePropertyChanged(nameof(IsText));
-                }
-            }
-        }
-
-
-        internal void RaisePropertyChanged(string p)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
+            string expression = Expression.Trim();
+            return expression.Length == 0 || expression.IndexOfAny(['=', '<', '>', '≤', '≥', '≠']) >= 0
+                ? expression
+                : $"y = {expression}";
         }
     }
 
-    public partial class EquationViewModel : INotifyPropertyChanged
+    public string MathExpression
     {
-        public event PropertyChangedEventHandler PropertyChanged;
+        get => _mathExpression;
+        set => SetProperty(ref _mathExpression, value ?? string.Empty);
+    }
 
-        //public EquationViewModel(GraphControl.Equation equation, int functionLabelIndex, Color color, int colorIndex);
+    public Color LineColor
+    {
+        get => GraphEquation.LineColor;
+        set => GraphEquation.LineColor = value;
+    }
 
-        private Equation m_GraphEquation;
-        public Equation GraphEquation
+    public IBrush LineBrush => new SolidColorBrush(LineColor);
+
+    public bool IsLineEnabled
+    {
+        get => GraphEquation.IsLineEnabled;
+        set => GraphEquation.IsLineEnabled = value;
+    }
+
+    public bool IsLineDisabled => !IsLineEnabled;
+
+    public bool IsSelected
+    {
+        get => GraphEquation.IsSelected;
+        set => GraphEquation.IsSelected = value;
+    }
+
+    public EquationLineStyle EquationStyle
+    {
+        get => GraphEquation.EquationStyle;
+        set => GraphEquation.EquationStyle = value;
+    }
+
+    public bool HasGraphError => GraphEquation.HasGraphError;
+
+    public string GraphErrorText => HasGraphError
+        ? EquationErrorText(GraphEquation.GraphErrorType, GraphEquation.GraphErrorCode)
+        : string.Empty;
+
+    public KeyGraphFeaturesInfo? Analysis
+    {
+        get => _analysis;
+        private set => SetProperty(ref _analysis, value);
+    }
+
+    public ObservableCollection<KeyGraphFeaturesItem> KeyGraphFeaturesItems { get; } = [];
+
+    public string AnalysisErrorString
+    {
+        get => _analysisErrorString;
+        private set => SetProperty(ref _analysisErrorString, value ?? string.Empty);
+    }
+
+    public bool AnalysisErrorVisible
+    {
+        get => _analysisErrorVisible;
+        private set
         {
-            get { return m_GraphEquation; }
-            private set { m_GraphEquation = value; }
+            if (SetProperty(ref _analysisErrorVisible, value))
+            {
+                OnPropertyChanged(nameof(AnalysisItemsVisible));
+            }
+        }
+    }
+
+    public bool AnalysisItemsVisible => !AnalysisErrorVisible;
+
+    public void PopulateKeyGraphFeatures(KeyGraphFeaturesInfo info)
+    {
+        Analysis = info;
+        KeyGraphFeaturesItems.Clear();
+        if (info.AnalysisError != AnalysisErrorType.NoError)
+        {
+            string resourceName = info.AnalysisError switch
+            {
+                AnalysisErrorType.AnalysisCouldNotBePerformed => "KGFAnalysisCouldNotBePerformed",
+                AnalysisErrorType.AnalysisNotSupported => "KGFAnalysisNotSupported",
+                AnalysisErrorType.VariableIsNotX => "KGFVariableIsNotX",
+                _ => "KGFAnalysisCouldNotBePerformed"
+            };
+            AnalysisErrorString = AppResourceProvider.GetInstance().GetResourceString(resourceName);
+            AnalysisErrorVisible = true;
+            return;
         }
 
-        private int m_FunctionLabelIndex;
-        public int FunctionLabelIndex
+        AnalysisErrorString = string.Empty;
+        AnalysisErrorVisible = false;
+        AddTextFeature(Resource("Domain"), info.Domain, Resource("KGFDomainNone"));
+        AddTextFeature(Resource("Range"), info.Range, Resource("KGFRangeNone"));
+        AddTextFeature(Resource("XIntercept"), info.Data.Zeros, Resource("KGFXInterceptNone"));
+        AddTextFeature(Resource("YIntercept"), info.Data.YIntercept, Resource("KGFYInterceptNone"));
+        AddListFeature(Resource("Minima"), info.Minima, Resource("KGFMinimaNone"));
+        AddListFeature(Resource("Maxima"), info.Maxima, Resource("KGFMaximaNone"));
+        AddListFeature(
+            Resource("InflectionPoints"),
+            info.Data.InflectionPoints,
+            Resource("KGFInflectionPointsNone"));
+        AddListFeature(
+            Resource("VerticalAsymptotes"),
+            info.Data.VerticalAsymptotes,
+            Resource("KGFVerticalAsymptotesNone"));
+        AddListFeature(
+            Resource("HorizontalAsymptotes"),
+            info.Data.HorizontalAsymptotes,
+            Resource("KGFHorizontalAsymptotesNone"));
+        AddListFeature(
+            Resource("ObliqueAsymptotes"),
+            info.Data.ObliqueAsymptotes,
+            Resource("KGFObliqueAsymptotesNone"));
+        AddParityFeature(info);
+        AddPeriodicityFeature(info);
+        AddMonotonicityFeature(info);
+        AddTooComplexFeature(info);
+    }
+
+    public static string EquationErrorText(int errorType, int errorCode)
+    {
+        AppResourceProvider resources = AppResourceProvider.GetInstance();
+        string resourceName = (errorType, errorCode) switch
         {
-            get { return m_FunctionLabelIndex; }
-            set
+            (0, 2) => "Overflow",
+            (0, 3) => "RequireRadiansMode",
+            (0, 4) => "TooComplexToSolve",
+            (0, -101) => "OutOfDomain",
+            (0, -503) => "GE_NotSupported",
+            (1, _) => "InvalidEquationSyntax",
+            _ => "GeneralError"
+        };
+        return resources.GetResourceString(resourceName);
+    }
+
+    private static string Resource(string name) =>
+        AppResourceProvider.GetInstance().GetResourceString(name);
+
+    private void AddParityFeature(KeyGraphFeaturesInfo info)
+    {
+        var item = new KeyGraphFeaturesItem
+        {
+            Title = Resource("Parity"),
+            IsText = true
+        };
+        item.DisplayItems.Add(info.Data.Parity switch
+        {
+            0 => Resource("KGFParityUnknown"),
+            1 => Resource("KGFParityOdd"),
+            2 => Resource("KGFParityEven"),
+            3 => Resource("KGFParityNeither"),
+            _ => Resource("KGFParityUnknown")
+        });
+        KeyGraphFeaturesItems.Add(item);
+    }
+
+    private void AddPeriodicityFeature(KeyGraphFeaturesInfo info)
+    {
+        var item = new KeyGraphFeaturesItem { Title = Resource("Periodicity") };
+        switch (info.Data.PeriodicityDirection)
+        {
+            case 0:
+                return;
+            case 1 when string.IsNullOrEmpty(info.Data.PeriodicityExpression):
+                item.DisplayItems.Add(Resource("KGFPeriodicityUnknown"));
+                item.IsText = true;
+                break;
+            case 1:
+                item.DisplayItems.Add(info.Data.PeriodicityExpression);
+                break;
+            case 2:
+                item.DisplayItems.Add(Resource("KGFPeriodicityNotPeriodic"));
+                break;
+            default:
+                item.DisplayItems.Add(Resource("KGFPeriodicityError"));
+                item.IsText = true;
+                break;
+        }
+
+        KeyGraphFeaturesItems.Add(item);
+    }
+
+    private void AddMonotonicityFeature(KeyGraphFeaturesInfo info)
+    {
+        var item = new KeyGraphFeaturesItem { Title = Resource("Monotonicity") };
+        if (info.Data.MonotoneIntervals.Count != 0)
+        {
+            foreach ((string expression, int direction) in info.Data.MonotoneIntervals)
             {
-                if (m_FunctionLabelIndex != value)
+                item.GridItems.Add(new GridDisplayItems
                 {
-                    m_FunctionLabelIndex = value;
-                    RaisePropertyChanged(nameof(FunctionLabelIndex));
-                }
+                    Expression = expression,
+                    Direction = direction switch
+                    {
+                        0 => Resource("KGFMonotonicityUnknown"),
+                        1 => Resource("KGFMonotonicityIncreasing"),
+                        2 => Resource("KGFMonotonicityDecreasing"),
+                        3 => Resource("KGFMonotonicityConstant"),
+                        _ => Resource("KGFMonotonicityError")
+                    }
+                });
+            }
+        }
+        else
+        {
+            item.DisplayItems.Add(Resource("KGFMonotonicityError"));
+            item.IsText = true;
+        }
+
+        KeyGraphFeaturesItems.Add(item);
+    }
+
+    private void AddTextFeature(string title, string value, string emptyValue)
+    {
+        var item = new KeyGraphFeaturesItem
+        {
+            Title = title,
+            IsText = string.IsNullOrWhiteSpace(value)
+        };
+        item.DisplayItems.Add(string.IsNullOrWhiteSpace(value) ? emptyValue : value);
+        KeyGraphFeaturesItems.Add(item);
+    }
+
+    private void AddListFeature(string title, IReadOnlyList<string> values, string emptyValue)
+    {
+        var item = new KeyGraphFeaturesItem
+        {
+            Title = title,
+            IsText = values.Count == 0
+        };
+        if (values.Count == 0)
+        {
+            item.DisplayItems.Add(emptyValue);
+        }
+        else
+        {
+            foreach (string value in values)
+            {
+                item.DisplayItems.Add(value);
             }
         }
 
-        private bool m_IsLastItemInList;
-        public bool IsLastItemInList
+        KeyGraphFeaturesItems.Add(item);
+    }
+
+    private void AddTooComplexFeature(KeyGraphFeaturesInfo info)
+    {
+        var flags = (KeyGraphFeatureFlag)info.Data.TooComplexFeatures;
+        if (flags == 0)
         {
-            get { return m_IsLastItemInList; }
-            set
+            return;
+        }
+
+        var featureNames = new List<string>();
+        void AddFlagName(KeyGraphFeatureFlag flag, string resourceName)
+        {
+            if ((flags & flag) == flag)
             {
-                if (m_IsLastItemInList != value)
-                {
-                    m_IsLastItemInList = value;
-                    RaisePropertyChanged(nameof(IsLastItemInList));
-                }
+                featureNames.Add(Resource(resourceName));
             }
         }
 
-        private int m_LineColorIndex;
-        public int LineColorIndex
+        AddFlagName(KeyGraphFeatureFlag.Domain, "Domain");
+        AddFlagName(KeyGraphFeatureFlag.Range, "Range");
+        AddFlagName(KeyGraphFeatureFlag.Zeros, "XIntercept");
+        AddFlagName(KeyGraphFeatureFlag.YIntercept, "YIntercept");
+        AddFlagName(KeyGraphFeatureFlag.Parity, "Parity");
+        AddFlagName(KeyGraphFeatureFlag.Periodicity, "Periodicity");
+        AddFlagName(KeyGraphFeatureFlag.Minima, "Minima");
+        AddFlagName(KeyGraphFeatureFlag.Maxima, "Maxima");
+        AddFlagName(KeyGraphFeatureFlag.InflectionPoints, "InflectionPoints");
+        AddFlagName(KeyGraphFeatureFlag.VerticalAsymptotes, "VerticalAsymptotes");
+        AddFlagName(KeyGraphFeatureFlag.HorizontalAsymptotes, "HorizontalAsymptotes");
+        AddFlagName(KeyGraphFeatureFlag.ObliqueAsymptotes, "ObliqueAsymptotes");
+        AddFlagName(KeyGraphFeatureFlag.MonotoneIntervals, "Monotonicity");
+
+        string separator = CultureInfo.CurrentCulture.TextInfo.ListSeparator + " ";
+        var item = new KeyGraphFeaturesItem { IsText = true };
+        item.DisplayItems.Add(Resource("KGFTooComplexFeaturesError"));
+        item.DisplayItems.Add(string.Join(separator, featureNames));
+        KeyGraphFeaturesItems.Add(item);
+    }
+
+    private void OnGraphEquationPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        OnPropertyChanged(e.PropertyName);
+        if (e.PropertyName == nameof(Equation.Expression))
         {
-            get { return m_LineColorIndex; }
-            set { m_LineColorIndex = value; }
+            OnPropertyChanged(nameof(AnalysisExpression));
         }
-
-        public string Expression
+        else if (e.PropertyName == nameof(Equation.LineColor))
         {
-            get { return GraphEquation.Expression; }
-            set
-            {
-                if (GraphEquation.Expression != value)
-                {
-                    GraphEquation.Expression = value;
-                    RaisePropertyChanged(nameof(Expression));
-                }
-            }
+            OnPropertyChanged(nameof(LineBrush));
         }
-
-        public Color LineColor
+        else if (e.PropertyName == nameof(Equation.IsLineEnabled))
         {
-            get { return GraphEquation.LineColor; }
-            set
-            {
-                if (!(GraphEquation.LineColor == value))
-                {
-                    GraphEquation.LineColor = value;
-                    RaisePropertyChanged(nameof(LineColor));
-                }
-            }
+            OnPropertyChanged(nameof(IsLineDisabled));
         }
-
-        public bool IsLineEnabled
+        else if (e.PropertyName is nameof(Equation.HasGraphError) or
+                 nameof(Equation.GraphErrorCode) or
+                 nameof(Equation.GraphErrorType))
         {
-            get { return GraphEquation.IsLineEnabled; }
-            set
-            {
-                if (GraphEquation.IsLineEnabled != value)
-                {
-                    GraphEquation.IsLineEnabled = value;
-                    RaisePropertyChanged(nameof(IsLineEnabled));
-                }
-            }
+            OnPropertyChanged(nameof(HasGraphError));
+            OnPropertyChanged(nameof(GraphErrorText));
         }
-
-        private string m_AnalysisErrorString;
-        public string AnalysisErrorString
-        {
-            get { return m_AnalysisErrorString; }
-            private set { m_AnalysisErrorString = value; }
-        }
-
-        private bool m_AnalysisErrorVisible;
-        public bool AnalysisErrorVisible
-        {
-            get { return m_AnalysisErrorVisible; }
-            private set { m_AnalysisErrorVisible = value; }
-        }
-
-        private ObservableCollection<KeyGraphFeaturesItem> m_KeyGraphFeaturesItems;
-        public ObservableCollection<KeyGraphFeaturesItem> KeyGraphFeaturesItems
-        {
-            get { return m_KeyGraphFeaturesItems; }
-            private set { m_KeyGraphFeaturesItems = value; }
-        }
-
-        //public void PopulateKeyGraphFeatures(GraphControl.KeyGraphFeaturesInfo info);
-
-        //public static string EquationErrorText(GraphControl.ErrorType errorType, int errorCode);
-
-        internal void RaisePropertyChanged(string p)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
-        }
-
-        //private void AddKeyGraphFeature(string title, string expression, string errorString);
-
-        //private void AddKeyGraphFeature(
-        //    string title,
-        //    IList<string> expressionVector,
-        //    string errorString);
-
-        //private void AddParityKeyGraphFeature(GraphControl.KeyGraphFeaturesInfo info);
-
-        //private void AddPeriodicityKeyGraphFeature(GraphControl.KeyGraphFeaturesInfo info);
-
-        //private void AddMonotoncityKeyGraphFeature(GraphControl.KeyGraphFeaturesInfo info);
-
-        //private void AddTooComplexKeyGraphFeature(GraphControl.KeyGraphFeaturesInfo info);
-
-        private IObservableMap<string, string> m_Monotonicity;
-        private Windows.ApplicationModel.Resources.ResourceLoader m_resourceLoader;
     }
 }

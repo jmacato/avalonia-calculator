@@ -1,0 +1,226 @@
+using System.Globalization;
+using System.Text;
+using Graphing;
+
+namespace GraphingImpl;
+
+internal enum TokenKind
+{
+    End,
+    Number,
+    Identifier,
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Caret,
+    OpenParenthesis,
+    CloseParenthesis,
+    OpenBracket,
+    CloseBracket,
+    OpenBrace,
+    CloseBrace,
+    Comma,
+    Semicolon,
+    Equal,
+    Less,
+    LessOrEqual,
+    Greater,
+    GreaterOrEqual,
+    Bang,
+    Radical
+}
+
+internal readonly record struct Token(
+    TokenKind Kind,
+    SourceSpan Span,
+    string Text,
+    double Number = 0);
+
+internal sealed class LinearLexer
+{
+    private readonly string _source;
+    private readonly char _decimalSeparator;
+    private int _position;
+
+    public LinearLexer(string source, LocalizationType localization)
+    {
+        _source = source;
+        _decimalSeparator = localization == LocalizationType.DecimalCommaAndListSemicolon ? ',' : '.';
+    }
+
+    public Token Next()
+    {
+        SkipWhiteSpace();
+        if (_position >= _source.Length)
+        {
+            return new Token(TokenKind.End, new SourceSpan(_position, 0), string.Empty);
+        }
+
+        int start = _position;
+        char current = _source[_position++];
+        return current switch
+        {
+            '+' => Single(TokenKind.Plus, start),
+            '-' or '\u2212' => Single(TokenKind.Minus, start),
+            '*' or '\u00D7' or '\u22C5' or '\u2062' => Single(TokenKind.Star, start),
+            '/' or '\u00F7' => Single(TokenKind.Slash, start),
+            '^' => Single(TokenKind.Caret, start),
+            '(' => Single(TokenKind.OpenParenthesis, start),
+            ')' => Single(TokenKind.CloseParenthesis, start),
+            '[' => Single(TokenKind.OpenBracket, start),
+            ']' => Single(TokenKind.CloseBracket, start),
+            '{' => Single(TokenKind.OpenBrace, start),
+            '}' => Single(TokenKind.CloseBrace, start),
+            ',' => Single(TokenKind.Comma, start),
+            ';' => Single(TokenKind.Semicolon, start),
+            '=' => Single(TokenKind.Equal, start),
+            '<' => Match('=') ? TokenFrom(TokenKind.LessOrEqual, start) : Single(TokenKind.Less, start),
+            '>' => Match('=') ? TokenFrom(TokenKind.GreaterOrEqual, start) : Single(TokenKind.Greater, start),
+            '\u2264' => Single(TokenKind.LessOrEqual, start),
+            '\u2265' => Single(TokenKind.GreaterOrEqual, start),
+            '!' => Single(TokenKind.Bang, start),
+            '\u221A' => Single(TokenKind.Radical, start),
+            '\u2061' => Next(),
+            _ when char.IsDigit(current) || current == _decimalSeparator => ReadNumber(start),
+            _ when IsIdentifierStart(current) => ReadIdentifier(start),
+            _ => throw new GraphParseException(
+                SyntaxErrorCode.InvalidToken,
+                new SourceSpan(start, 1),
+                $"Invalid character U+{(int)current:X4}.")
+        };
+    }
+
+    private Token ReadNumber(int start)
+    {
+        bool sawDecimal = _source[start] == _decimalSeparator;
+        bool sawDigit = char.IsDigit(_source[start]);
+        int digitCount = sawDigit ? 1 : 0;
+
+        while (_position < _source.Length)
+        {
+            char value = _source[_position];
+            if (char.IsDigit(value))
+            {
+                sawDigit = true;
+                digitCount++;
+                _position++;
+                continue;
+            }
+
+            if (value == _decimalSeparator)
+            {
+                if (sawDecimal)
+                {
+                    throw new GraphParseException(
+                        SyntaxErrorCode.TooManyDecimalPoints,
+                        new SourceSpan(start, _position - start + 1),
+                        "A number contains more than one decimal separator.");
+                }
+
+                sawDecimal = true;
+                _position++;
+                continue;
+            }
+
+            break;
+        }
+
+        if (!sawDigit)
+        {
+            throw new GraphParseException(
+                SyntaxErrorCode.DecimalPointWithoutDigits,
+                new SourceSpan(start, _position - start),
+                "A decimal separator must have an adjacent digit.");
+        }
+
+        // 4096 binary digits is approximately 1234 decimal digits. Rejecting
+        // before conversion also avoids pathological parser work.
+        if (digitCount > 1_234)
+        {
+            throw new GraphParseException(
+                SyntaxErrorCode.GeneralError,
+                new SourceSpan(start, _position - start),
+                $"Exact values are limited to {GraphLimits.MaximumExactValueBits} bits.");
+        }
+
+        if (_position < _source.Length && (_source[_position] is 'e' or 'E'))
+        {
+            int exponentStart = _position++;
+            if (_position < _source.Length && (_source[_position] is '+' or '-'))
+            {
+                _position++;
+            }
+
+            int exponentDigits = _position;
+            while (_position < _source.Length && char.IsDigit(_source[_position]))
+            {
+                _position++;
+            }
+
+            if (_position == exponentDigits)
+            {
+                _position = exponentStart;
+            }
+        }
+
+        string text = _source[start.._position];
+        string invariant = _decimalSeparator == '.' ? text : text.Replace(',', '.');
+        if (!double.TryParse(invariant, NumberStyles.Float, CultureInfo.InvariantCulture, out double number))
+        {
+            throw new GraphParseException(
+                SyntaxErrorCode.InvalidNumberDigit,
+                new SourceSpan(start, _position - start),
+                "The numeric literal is invalid or outside the supported range.");
+        }
+
+        return new Token(TokenKind.Number, new SourceSpan(start, _position - start), text, number);
+    }
+
+    private Token ReadIdentifier(int start)
+    {
+        while (_position < _source.Length && IsIdentifierPart(_source[_position]))
+        {
+            _position++;
+        }
+
+        string value = _source[start.._position].Normalize(NormalizationForm.FormC);
+        if (string.Equals(value, "π", StringComparison.Ordinal))
+        {
+            value = "pi";
+        }
+
+        return new Token(TokenKind.Identifier, new SourceSpan(start, _position - start), value);
+    }
+
+    private Token Single(TokenKind kind, int start) =>
+        new(kind, new SourceSpan(start, 1), _source.Substring(start, 1));
+
+    private Token TokenFrom(TokenKind kind, int start) =>
+        new(kind, new SourceSpan(start, _position - start), _source[start.._position]);
+
+    private bool Match(char expected)
+    {
+        if (_position >= _source.Length || _source[_position] != expected)
+        {
+            return false;
+        }
+
+        _position++;
+        return true;
+    }
+
+    private void SkipWhiteSpace()
+    {
+        while (_position < _source.Length && char.IsWhiteSpace(_source[_position]))
+        {
+            _position++;
+        }
+    }
+
+    private static bool IsIdentifierStart(char value) =>
+        char.IsLetter(value) || value is '_' or '\u03C0' or '\u03A0';
+
+    private static bool IsIdentifierPart(char value) =>
+        char.IsLetterOrDigit(value) || value is '_' or '\u2032' or '\u2033';
+}

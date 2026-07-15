@@ -2,45 +2,370 @@
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:CalculatorApp.Controls"
+             xmlns:local="using:CalculatorApp"
+             xmlns:utils="using:CalculatorApp.Utils"
              xmlns:vm="using:CalculatorApp.ViewModel"
              x:DataType="vm:GraphingCalculatorViewModel"
              x:CompileBindings="True">
-  <Grid RowDefinitions="*,*,*,*,*,*" ColumnDefinitions="*,*,*,*">
-    <Button Command="{CompiledBinding AppendTokenCommand}" CommandParameter="sin(" Content="sin" />
-    <Button Grid.Column="1" Command="{CompiledBinding AppendTokenCommand}" CommandParameter="cos(" Content="cos" />
-    <Button Grid.Column="2" Command="{CompiledBinding AppendTokenCommand}" CommandParameter="tan(" Content="tan" />
-    <Button Grid.Column="3" Command="{CompiledBinding AppendTokenCommand}" CommandParameter="^">
-      <Button.Content>
-        <TextBlock FontFamily="{DynamicResource CalculatorFontFamily}"
-                   FontSize="20"
-                   Text="&#xF7CA;" />
-      </Button.Content>
-    </Button>
+  <UserControl.Styles>
+    <Style Selector="ToggleButton.graphOperator">
+      <Setter Property="Margin" Value="1" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="FontSize" Value="16" />
+    </Style>
+  </UserControl.Styles>
 
-    <Button Grid.Row="1" Command="{CompiledBinding AppendTokenCommand}" CommandParameter="(" Content="(" />
-    <Button Grid.Row="1" Grid.Column="1" Command="{CompiledBinding AppendTokenCommand}" CommandParameter=")" Content=")" />
-    <Button Grid.Row="1" Grid.Column="2" Command="{CompiledBinding ClearExpressionCommand}" Content="CE" />
-    <Button Grid.Row="1"
-            Grid.Column="3"
-            FontFamily="{DynamicResource CalculatorFontFamily}"
-            Command="{CompiledBinding BackspaceCommand}"
-            Content="&#xE94F;" />
+  <!-- Direct Avalonia translation of the original eight-row, five-column
+       graphing keypad. The operator strip and each flyout retain the original
+       control families, names, and state groupings. -->
+  <Border Background="{DynamicResource AppOperatorPanelBackground}">
+    <Grid x:Name="GraphingOperators"
+          RowDefinitions="Auto,*,*,*,*,*,*,*"
+          ColumnDefinitions="*,*,*,*,*">
+      <controls:OperatorPanelListView Grid.ColumnSpan="5"
+                                      AutomationProperties.Name="{utils:ResourceString Name='ScientificOperatorPanel.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}">
+        <controls:OperatorPanelButton x:Name="TrigButton"
+                                      AutomationProperties.AutomationId="trigButton"
+                                      AutomationProperties.Name="{utils:ResourceString Name='trigButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                      Glyph="&#xF892;"
+                                      Text="{utils:ResourceString Name='trigButton.Text'}">
+          <controls:OperatorPanelButton.FlyoutMenu>
+            <Flyout Placement="BottomEdgeAlignedLeft">
+              <Grid x:Name="TrigGrid" Width="300" Height="112"
+                    RowDefinitions="*,*" ColumnDefinitions="*,*,*,*">
+                <ToggleButton x:Name="TrigShiftButton"
+                              Classes="graphOperator"
+                              FontFamily="{DynamicResource CalculatorFontFamily}"
+                              AutomationProperties.AutomationId="trigShiftButton"
+                              AutomationProperties.Name="{utils:ResourceString Name='trigShiftButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                              Click="TrigFlyoutShift_Toggle"
+                              Content="&#xF897;" />
+                <ToggleButton x:Name="HypButton"
+                              Grid.Row="1"
+                              Classes="graphOperator"
+                              AutomationProperties.AutomationId="hypShiftButton"
+                              AutomationProperties.Name="{utils:ResourceString Name='hypButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                              Click="TrigFlyoutHyp_Toggle"
+                              Content="hyp" />
 
-    <controls:CalculatorButton Grid.Row="2" ButtonId="Seven" Content="7" />
-    <controls:CalculatorButton Grid.Row="2" Grid.Column="1" ButtonId="Eight" Content="8" />
-    <controls:CalculatorButton Grid.Row="2" Grid.Column="2" ButtonId="Nine" Content="9" />
-    <controls:CalculatorButton Grid.Row="2" Grid.Column="3" ButtonId="Divide" Content="÷" />
-    <controls:CalculatorButton Grid.Row="3" ButtonId="Four" Content="4" />
-    <controls:CalculatorButton Grid.Row="3" Grid.Column="1" ButtonId="Five" Content="5" />
-    <controls:CalculatorButton Grid.Row="3" Grid.Column="2" ButtonId="Six" Content="6" />
-    <controls:CalculatorButton Grid.Row="3" Grid.Column="3" ButtonId="Multiply" Content="×" />
-    <controls:CalculatorButton Grid.Row="4" ButtonId="One" Content="1" />
-    <controls:CalculatorButton Grid.Row="4" Grid.Column="1" ButtonId="Two" Content="2" />
-    <controls:CalculatorButton Grid.Row="4" Grid.Column="2" ButtonId="Three" Content="3" />
-    <controls:CalculatorButton Grid.Row="4" Grid.Column="3" ButtonId="Subtract" Content="−" />
-    <Button Grid.Row="5" Command="{CompiledBinding AppendTokenCommand}" CommandParameter="x" Content="x" />
-    <controls:CalculatorButton Grid.Row="5" Grid.Column="1" ButtonId="Zero" Content="0" />
-    <controls:CalculatorButton Grid.Row="5" Grid.Column="2" ButtonId="Decimal" Content="." />
-    <controls:CalculatorButton Grid.Row="5" Grid.Column="3" ButtonId="Add" Content="+" />
-  </Grid>
+                <Grid x:Name="TrigFunctions" Grid.RowSpan="2" Grid.Column="1" Grid.ColumnSpan="3"
+                      RowDefinitions="*,*" ColumnDefinitions="*,*,*">
+                  <controls:CalculatorButton x:Name="SinButton" Classes="operator"
+                                             AutomationProperties.AutomationId="sinButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='sinButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="Sin" Click="FlyoutButton_Clicked" Content="sin" />
+                  <controls:CalculatorButton x:Name="CosButton" Grid.Column="1" Classes="operator"
+                                             AutomationProperties.AutomationId="cosButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='cosButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="Cos" Click="FlyoutButton_Clicked" Content="cos" />
+                  <controls:CalculatorButton x:Name="TanButton" Grid.Column="2" Classes="operator"
+                                             AutomationProperties.AutomationId="tanButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='tanButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="Tan" Click="FlyoutButton_Clicked" Content="tan" />
+                  <controls:CalculatorButton x:Name="SecButton" Grid.Row="1" Classes="operator"
+                                             AutomationProperties.AutomationId="secButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='secButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="Sec" Click="FlyoutButton_Clicked" Content="sec" />
+                  <controls:CalculatorButton x:Name="CscButton" Grid.Row="1" Grid.Column="1" Classes="operator"
+                                             AutomationProperties.AutomationId="cscButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='cscButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="Csc" Click="FlyoutButton_Clicked" Content="csc" />
+                  <controls:CalculatorButton x:Name="CotButton" Grid.Row="1" Grid.Column="2" Classes="operator"
+                                             AutomationProperties.AutomationId="cotButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='cotButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="Cot" Click="FlyoutButton_Clicked" Content="cot" />
+                </Grid>
+
+                <Grid x:Name="InverseTrigFunctions" Grid.RowSpan="2" Grid.Column="1" Grid.ColumnSpan="3"
+                      RowDefinitions="*,*" ColumnDefinitions="*,*,*" IsVisible="False">
+                  <controls:CalculatorButton x:Name="InvsinButton" Classes="operator emphasized"
+                                             AutomationProperties.AutomationId="invsinButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='invsinButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="InvSin" Click="FlyoutButton_Clicked" Content="sin⁻¹" />
+                  <controls:CalculatorButton x:Name="InvcosButton" Grid.Column="1" Classes="operator emphasized"
+                                             AutomationProperties.AutomationId="invcosButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='invcosButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="InvCos" Click="FlyoutButton_Clicked" Content="cos⁻¹" />
+                  <controls:CalculatorButton x:Name="InvtanButton" Grid.Column="2" Classes="operator emphasized"
+                                             AutomationProperties.AutomationId="invtanButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='invtanButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="InvTan" Click="FlyoutButton_Clicked" Content="tan⁻¹" />
+                  <controls:CalculatorButton x:Name="InvsecButton" Grid.Row="1" Classes="operator emphasized"
+                                             AutomationProperties.AutomationId="invsecButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='invsecButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="InvSec" Click="FlyoutButton_Clicked" Content="sec⁻¹" />
+                  <controls:CalculatorButton x:Name="InvcscButton" Grid.Row="1" Grid.Column="1" Classes="operator emphasized"
+                                             AutomationProperties.AutomationId="invcscButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='invcscButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="InvCsc" Click="FlyoutButton_Clicked" Content="csc⁻¹" />
+                  <controls:CalculatorButton x:Name="InvcotButton" Grid.Row="1" Grid.Column="2" Classes="operator emphasized"
+                                             AutomationProperties.AutomationId="invcotButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='invcotButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="InvCot" Click="FlyoutButton_Clicked" Content="cot⁻¹" />
+                </Grid>
+
+                <Grid x:Name="HyperbolicTrigFunctions" Grid.RowSpan="2" Grid.Column="1" Grid.ColumnSpan="3"
+                      RowDefinitions="*,*" ColumnDefinitions="*,*,*" IsVisible="False">
+                  <controls:CalculatorButton x:Name="SinhButton" Classes="operator"
+                                             AutomationProperties.AutomationId="sinhButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='sinhButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="Sinh" Click="FlyoutButton_Clicked" Content="sinh" />
+                  <controls:CalculatorButton x:Name="CoshButton" Grid.Column="1" Classes="operator"
+                                             AutomationProperties.AutomationId="coshButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='coshButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="Cosh" Click="FlyoutButton_Clicked" Content="cosh" />
+                  <controls:CalculatorButton x:Name="TanhButton" Grid.Column="2" Classes="operator"
+                                             AutomationProperties.AutomationId="tanhButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='tanhButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="Tanh" Click="FlyoutButton_Clicked" Content="tanh" />
+                  <controls:CalculatorButton x:Name="SechButton" Grid.Row="1" Classes="operator"
+                                             AutomationProperties.AutomationId="sechButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='sechButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="Sech" Click="FlyoutButton_Clicked" Content="sech" />
+                  <controls:CalculatorButton x:Name="CschButton" Grid.Row="1" Grid.Column="1" Classes="operator"
+                                             AutomationProperties.AutomationId="cschButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='cschButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="Csch" Click="FlyoutButton_Clicked" Content="csch" />
+                  <controls:CalculatorButton x:Name="CothButton" Grid.Row="1" Grid.Column="2" Classes="operator"
+                                             AutomationProperties.AutomationId="cothButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='cothButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="Coth" Click="FlyoutButton_Clicked" Content="coth" />
+                </Grid>
+
+                <Grid x:Name="InverseHyperbolicTrigFunctions" Grid.RowSpan="2" Grid.Column="1" Grid.ColumnSpan="3"
+                      RowDefinitions="*,*" ColumnDefinitions="*,*,*" IsVisible="False">
+                  <controls:CalculatorButton x:Name="InvsinhButton" Classes="operator emphasized"
+                                             AutomationProperties.AutomationId="invsinhButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='invsinhButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="InvSinh" Click="FlyoutButton_Clicked" Content="sinh⁻¹" />
+                  <controls:CalculatorButton x:Name="InvcoshButton" Grid.Column="1" Classes="operator emphasized"
+                                             AutomationProperties.AutomationId="invcoshButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='invcoshButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="InvCosh" Click="FlyoutButton_Clicked" Content="cosh⁻¹" />
+                  <controls:CalculatorButton x:Name="InvtanhButton" Grid.Column="2" Classes="operator emphasized"
+                                             AutomationProperties.AutomationId="invtanhButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='invtanhButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="InvTanh" Click="FlyoutButton_Clicked" Content="tanh⁻¹" />
+                  <controls:CalculatorButton x:Name="InvsechButton" Grid.Row="1" Classes="operator emphasized"
+                                             AutomationProperties.AutomationId="invsechButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='invsechButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="InvSech" Click="FlyoutButton_Clicked" Content="sech⁻¹" />
+                  <controls:CalculatorButton x:Name="InvcschButton" Grid.Row="1" Grid.Column="1" Classes="operator emphasized"
+                                             AutomationProperties.AutomationId="invcschButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='invcschButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="InvCsch" Click="FlyoutButton_Clicked" Content="csch⁻¹" />
+                  <controls:CalculatorButton x:Name="InvcothButton" Grid.Row="1" Grid.Column="2" Classes="operator emphasized"
+                                             AutomationProperties.AutomationId="invcothButton"
+                                             AutomationProperties.Name="{utils:ResourceString Name='invcothButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                             ButtonId="InvCoth" Click="FlyoutButton_Clicked" Content="coth⁻¹" />
+                </Grid>
+              </Grid>
+            </Flyout>
+          </controls:OperatorPanelButton.FlyoutMenu>
+        </controls:OperatorPanelButton>
+
+        <controls:OperatorPanelButton x:Name="InequalityButton"
+                                      AutomationProperties.AutomationId="inequalityButton"
+                                      AutomationProperties.Name="{utils:ResourceString Name='inequalityButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                      Glyph="&#xF896;"
+                                      Text="{utils:ResourceString Name='inequalityButton.Text'}">
+          <controls:OperatorPanelButton.FlyoutMenu>
+            <Flyout Placement="BottomEdgeAlignedLeft">
+              <Grid x:Name="InequalityGrid" Width="300" Height="56" ColumnDefinitions="*,*,*,*,*">
+                <controls:CalculatorButton x:Name="LessThanFlyoutButton" Classes="operator symbol"
+                                           AutomationProperties.AutomationId="lessThanFlyoutButton"
+                                           AutomationProperties.Name="{utils:ResourceString Name='lessThanFlyoutButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                           ButtonId="LessThan" Click="FlyoutButton_Clicked" Content="&#xF88A;" />
+                <controls:CalculatorButton x:Name="LessThanOrEqualFlyoutButton" Grid.Column="1" Classes="operator symbol"
+                                           AutomationProperties.AutomationId="lessThanOrEqualFlyoutButton"
+                                           AutomationProperties.Name="{utils:ResourceString Name='lessThanOrEqualFlyoutButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                           ButtonId="LessThanOrEqualTo" Click="FlyoutButton_Clicked" Content="&#xF88B;" />
+                <controls:CalculatorButton x:Name="EqualsFlyoutButton" Grid.Column="2" Classes="operator symbol"
+                                           AutomationProperties.AutomationId="equalsFlyoutButton"
+                                           AutomationProperties.Name="{utils:ResourceString Name='equalsFlyoutButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                           ButtonId="Equals" Click="FlyoutButton_Clicked" Content="&#xE94E;" />
+                <controls:CalculatorButton x:Name="GreaterThanOrEqualFlyoutButton" Grid.Column="3" Classes="operator symbol"
+                                           AutomationProperties.AutomationId="greaterThanOrEqualFlyoutButton"
+                                           AutomationProperties.Name="{utils:ResourceString Name='greaterThanOrEqualFlyoutButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                           ButtonId="GreaterThanOrEqualTo" Click="FlyoutButton_Clicked" Content="&#xF88D;" />
+                <controls:CalculatorButton x:Name="GreaterThanFlyoutButton" Grid.Column="4" Classes="operator symbol"
+                                           AutomationProperties.AutomationId="greaterThanFlyoutButton"
+                                           AutomationProperties.Name="{utils:ResourceString Name='greaterThanFlyoutButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                           ButtonId="GreaterThan" Click="FlyoutButton_Clicked" Content="&#xF88C;" />
+              </Grid>
+            </Flyout>
+          </controls:OperatorPanelButton.FlyoutMenu>
+        </controls:OperatorPanelButton>
+
+        <controls:OperatorPanelButton x:Name="FuncButton"
+                                      AutomationProperties.AutomationId="funcButton"
+                                      AutomationProperties.Name="{utils:ResourceString Name='funcButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                      Glyph="&#xF893;"
+                                      Text="{utils:ResourceString Name='funcButton.Text'}">
+          <controls:OperatorPanelButton.FlyoutMenu>
+            <Flyout Placement="BottomEdgeAlignedLeft">
+              <Grid x:Name="FuncGrid" Width="225" Height="56" ColumnDefinitions="*,*,*">
+                <controls:CalculatorButton x:Name="AbsFlyoutButton" Classes="operator symbol"
+                                           AutomationProperties.AutomationId="absButton"
+                                           AutomationProperties.Name="{utils:ResourceString Name='absButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                           ButtonId="Abs" Click="FlyoutButton_Clicked" Content="&#xF884;" />
+                <controls:CalculatorButton x:Name="FloorButton" Grid.Column="1" Classes="operator symbol"
+                                           AutomationProperties.AutomationId="floorButton"
+                                           AutomationProperties.Name="{utils:ResourceString Name='floorButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                           ButtonId="Floor" Click="FlyoutButton_Clicked" Content="&#xF885;" />
+                <controls:CalculatorButton x:Name="CeilButton" Grid.Column="2" Classes="operator symbol"
+                                           AutomationProperties.AutomationId="ceilButton"
+                                           AutomationProperties.Name="{utils:ResourceString Name='ceilButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                           ButtonId="Ceil" Click="FlyoutButton_Clicked" Content="&#xF886;" />
+              </Grid>
+            </Flyout>
+          </controls:OperatorPanelButton.FlyoutMenu>
+        </controls:OperatorPanelButton>
+      </controls:OperatorPanelListView>
+
+      <ToggleButton x:Name="ShiftButton" Grid.Row="1" Classes="graphOperator"
+                    FontFamily="{DynamicResource CalculatorFontFamily}" FontSize="20"
+                    AutomationProperties.AutomationId="shiftButton"
+                    AutomationProperties.Name="{utils:ResourceString Name='shiftButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                    Click="ShiftButton_Check" Content="&#xF897;" />
+      <controls:CalculatorButton x:Name="PiButton" Grid.Row="1" Grid.Column="1" Classes="operator symbol"
+                                 AutomationProperties.AutomationId="piButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='piButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="Pi" Content="&#xF7CF;" />
+      <controls:CalculatorButton x:Name="EulerButton" Grid.Row="1" Grid.Column="2" Classes="operator"
+                                 AutomationProperties.AutomationId="eulerButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='eulerButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="Euler" Content="e" />
+      <controls:CalculatorButton x:Name="ClearButton" Grid.Row="1" Grid.Column="3" Classes="operator"
+                                 AutomationProperties.AutomationId="clearButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='clearButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="Clear" Content="C" />
+      <controls:CalculatorButton x:Name="BackSpaceButton" Grid.Row="1" Grid.Column="4" Classes="operator symbol"
+                                 AutomationProperties.AutomationId="backSpaceButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='backSpaceButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="Backspace" Content="&#xE94F;" />
+
+      <Grid x:Name="Row1" Grid.Row="2" Grid.RowSpan="6">
+        <Grid RowDefinitions="*,*,*,*,*,*">
+          <controls:CalculatorButton x:Name="XPower2Button" Classes="operator symbol"
+                                     AutomationProperties.AutomationId="xpower2Button"
+                                     AutomationProperties.Name="{utils:ResourceString Name='xpower2Button.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                     ButtonId="XPower2" Content="&#xF7C8;" />
+          <controls:CalculatorButton x:Name="SquareRootButton" Grid.Row="1" Classes="operator symbol"
+                                     AutomationProperties.AutomationId="squareRootButton"
+                                     AutomationProperties.Name="{utils:ResourceString Name='squareRootButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                     ButtonId="Sqrt" Content="&#xF899;" />
+          <controls:CalculatorButton x:Name="PowerButton" Grid.Row="2" Classes="operator symbol"
+                                     AutomationProperties.AutomationId="powerButton"
+                                     AutomationProperties.Name="{utils:ResourceString Name='powerButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                     ButtonId="XPowerY" Content="&#xF7CA;" />
+          <controls:CalculatorButton x:Name="PowerOf10Button" Grid.Row="3" Classes="operator symbol"
+                                     AutomationProperties.AutomationId="powerOf10Button"
+                                     AutomationProperties.Name="{utils:ResourceString Name='powerOf10Button.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                     ButtonId="TenPowerX" Content="&#xF7CC;" />
+          <controls:CalculatorButton x:Name="LogBase10Button" Grid.Row="4" Classes="operator"
+                                     AutomationProperties.AutomationId="logBase10Button"
+                                     AutomationProperties.Name="{utils:ResourceString Name='logBase10Button.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                     ButtonId="LogBase10" Content="log" />
+          <controls:CalculatorButton x:Name="LogBaseEButton" Grid.Row="5" Classes="operator"
+                                     AutomationProperties.AutomationId="logBaseEButton"
+                                     AutomationProperties.Name="{utils:ResourceString Name='logBaseEButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                     ButtonId="LogBaseE" Content="ln" />
+        </Grid>
+      </Grid>
+
+      <Grid x:Name="InvRow1" Grid.Row="2" Grid.RowSpan="6" IsVisible="False">
+        <Grid RowDefinitions="*,*,*,*,*,*">
+          <controls:CalculatorButton x:Name="XPower3Button" Classes="operator symbol emphasized"
+                                     AutomationProperties.AutomationId="xpower3Button"
+                                     AutomationProperties.Name="{utils:ResourceString Name='xpower3Button.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                     ButtonId="Cube" Click="ShiftButton_Uncheck" Content="&#xF7CB;" />
+          <controls:CalculatorButton x:Name="CubeRootButton" Grid.Row="1" Classes="operator symbol emphasized"
+                                     AutomationProperties.AutomationId="cubeRootButton"
+                                     AutomationProperties.Name="{utils:ResourceString Name='cubeRootButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                     ButtonId="CubeRoot" Click="ShiftButton_Uncheck" Content="&#xF881;" />
+          <controls:CalculatorButton x:Name="YSquareRootButton" Grid.Row="2" Classes="operator symbol emphasized"
+                                     AutomationProperties.AutomationId="ySquareRootButton"
+                                     AutomationProperties.Name="{utils:ResourceString Name='ySquareRootButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                     ButtonId="YRootX" Click="ShiftButton_Uncheck" Content="&#xF7CD;" />
+          <controls:CalculatorButton x:Name="TwoPowerXButton" Grid.Row="3" Classes="operator symbol emphasized"
+                                     AutomationProperties.AutomationId="twoPowerXButton"
+                                     AutomationProperties.Name="{utils:ResourceString Name='twoPowerXButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                     ButtonId="TwoPowerX" Click="ShiftButton_Uncheck" Content="&#xF882;" />
+          <controls:CalculatorButton x:Name="LogBaseY" Grid.Row="4" Classes="operator symbol emphasized"
+                                     AutomationProperties.AutomationId="logBaseY"
+                                     AutomationProperties.Name="{utils:ResourceString Name='logBaseY.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                     ButtonId="LogBaseY" Click="ShiftButton_Uncheck" Content="&#xF883;" />
+          <controls:CalculatorButton x:Name="PowerOfEButton" Grid.Row="5" Classes="operator symbol emphasized"
+                                     AutomationProperties.AutomationId="powerOfEButton"
+                                     AutomationProperties.Name="{utils:ResourceString Name='powerOfEButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                     ButtonId="EPowerX" Click="ShiftButton_Uncheck" Content="&#xF7CE;" />
+        </Grid>
+      </Grid>
+
+      <controls:CalculatorButton x:Name="InvertButton" Grid.Row="2" Grid.Column="1" Classes="operator symbol"
+                                 AutomationProperties.AutomationId="invertButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='invertButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="Invert" Content="&#xF7C9;" />
+      <controls:CalculatorButton x:Name="AbsButton" Grid.Row="2" Grid.Column="2" Classes="operator symbol"
+                                 AutomationProperties.AutomationId="absButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='absButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="Abs" Content="&#xF884;" />
+      <controls:CalculatorButton x:Name="XButton" Grid.Row="2" Grid.Column="3" Classes="operator"
+                                 AutomationProperties.AutomationId="xButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='xButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="X" Content="𝑥" />
+      <controls:CalculatorButton x:Name="YButton" Grid.Row="2" Grid.Column="4" Classes="operator"
+                                 AutomationProperties.AutomationId="yButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='yButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="Y" Content="𝑦" />
+
+      <controls:CalculatorButton x:Name="OpenParenthesisButton" Grid.Row="3" Grid.Column="1" Classes="operator"
+                                 AutomationProperties.AutomationId="openParenthesisButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='openParenthesisButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="OpenParenthesis" Content="(" />
+      <controls:CalculatorButton x:Name="CloseParenthesisButton" Grid.Row="3" Grid.Column="2" Classes="operator"
+                                 AutomationProperties.AutomationId="closeParenthesisButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='closeParenthesisButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="CloseParenthesis" Content=")" />
+      <controls:CalculatorButton x:Name="EqualButton" Grid.Row="3" Grid.Column="3" Classes="operator symbol"
+                                 AutomationProperties.AutomationId="equalButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='equalButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="Equals" Content="&#xE94E;" />
+
+      <local:NumberPad x:Name="NumberPad" Grid.Row="4" Grid.RowSpan="4" Grid.Column="1" Grid.ColumnSpan="3"
+                       IsDecimalEnabled="{CompiledBinding IsDecimalEnabled}"
+                       AutomationProperties.Name="{utils:ResourceString Name='NumberPad.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}" />
+      <controls:CalculatorButton x:Name="NegateButton" Grid.Row="7" Grid.Column="1" Classes="operator symbol"
+                                 AutomationProperties.AutomationId="negateButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='negateButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="Negate" Content="&#xF898;" />
+
+      <controls:CalculatorButton x:Name="DivideButton" Grid.Row="3" Grid.Column="4" Classes="operator symbol"
+                                 AutomationProperties.AutomationId="divideButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='divideButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="Divide" Content="&#xE94A;" />
+      <controls:CalculatorButton x:Name="MultiplyButton" Grid.Row="4" Grid.Column="4" Classes="operator symbol"
+                                 AutomationProperties.AutomationId="multiplyButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='multiplyButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="Multiply" Content="&#xE947;" />
+      <controls:CalculatorButton x:Name="MinusButton" Grid.Row="5" Grid.Column="4" Classes="operator symbol"
+                                 AutomationProperties.AutomationId="minusButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='minusButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="Subtract" Content="&#xE949;" />
+      <controls:CalculatorButton x:Name="PlusButton" Grid.Row="6" Grid.Column="4" Classes="operator symbol"
+                                 AutomationProperties.AutomationId="plusButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='plusButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 ButtonId="Add" Content="&#xE948;" />
+      <controls:CalculatorButton x:Name="SubmitButton" Grid.Row="7" Grid.Column="4" Classes="equals"
+                                 AutomationProperties.AutomationId="submitButton"
+                                 AutomationProperties.Name="{utils:ResourceString Name='submitButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 FontFamily="{DynamicResource ContentControlThemeFontFamily}"
+                                 ButtonId="Submit" Content="↵" />
+    </Grid>
+  </Border>
 </UserControl>

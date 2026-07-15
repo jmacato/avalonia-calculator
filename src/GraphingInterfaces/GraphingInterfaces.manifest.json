@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "nativeRoot": "src/GraphingInterfaces",
+  "mappings": {
+    "Common.h": ["Color", "IExpression", "IVariable", "IExpressible"],
+    "GraphingEnums.h": ["LocalizationType", "EquationParsingMode", "FormatType", "EvalNumberField", "EvalExpandMode", "EvalTrigUnitMode", "ContextualActionType", "MathActionCategoryType", "StepSequenceType", "FormatVerbosityMode", "Renderer.ChangeRangeAction", "Renderer.LineStyle", "Analyzer.GraphAnalyzerMessage", "Analyzer.AnalysisType", "Analyzer.PerformAnalysisType", "Analyzer.FunctionParityType", "Analyzer.FunctionMonotonicityType", "Analyzer.AsymptoteType", "Analyzer.FunctionPeriodicityType"],
+    "IBitmap.h": ["IBitmap.GetData"],
+    "IEquation.h": ["IEquation"],
+    "IEquationOptions.h": ["IEquationOptions"],
+    "IGraph.h": ["IGraph"],
+    "IGraphAnalyzer.h": ["Analyzer.IGraphAnalyzer"],
+    "IGraphRenderer.h": ["Renderer.IGraphRenderer"],
+    "IGraphingOptions.h": ["IGraphingOptions"],
+    "IMathSolver.h": ["GraphFunctionAnalysisData", "IParsingOptions", "IEvalOptions", "IFormatOptions", "IMathSolver"]
+  },
+  "managedExtensions": ["GraphStatus", "AxisRange", "GraphFrame", "IGraphDrawingTarget", "IMathSolverFactory", "Renderer.IGraphRenderer.CurrentFrame"]
+}

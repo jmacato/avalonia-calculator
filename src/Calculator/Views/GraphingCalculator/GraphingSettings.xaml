@@ -1,20 +1,183 @@
 <UserControl x:Class="CalculatorApp.GraphingSettings"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:utils="using:CalculatorApp.Utils">
-  <StackPanel Spacing="10" IsEnabled="False">
-    <TextBlock FontSize="18" FontWeight="SemiBold"
-               Text="{utils:ResourceString Name=GraphOptionsHeading.Text}" />
-    <TextBlock FontWeight="SemiBold" Text="{utils:ResourceString Name=GridHeading.Text}" />
-    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
-      <TextBox PlaceholderText="{utils:ResourceString Name=GraphSettingsXMin.Header}" />
-      <TextBox Grid.Column="1" PlaceholderText="{utils:ResourceString Name=GraphSettingsXMax.Header}" />
-      <TextBox Grid.Row="1" PlaceholderText="{utils:ResourceString Name=GraphSettingsYMin.Header}" />
-      <TextBox Grid.Row="1" Grid.Column="1" PlaceholderText="{utils:ResourceString Name=GraphSettingsYMax.Header}" />
+             xmlns:utils="using:CalculatorApp.Utils"
+             xmlns:vm="using:CalculatorApp.ViewModel"
+             x:DataType="vm:GraphingSettingsViewModel"
+             x:CompileBindings="True">
+  <UserControl.Styles>
+    <Style Selector="TextBlock.subtitle">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="TextBox.range">
+      <Setter Property="MinHeight" Value="32" />
+    </Style>
+    <Style Selector="TextBox.range.error">
+      <Setter Property="Background" Value="#33EB5757" />
+      <Setter Property="BorderBrush" Value="#FFEB5757" />
+    </Style>
+    <Style Selector="RadioButton.trigUnit">
+      <Setter Property="MinHeight" Value="38" />
+      <Setter Property="MinWidth" Value="90" />
+      <Setter Property="Padding" Value="4,0" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="TrigUnitRoot"
+                  MinWidth="{TemplateBinding MinWidth}"
+                  MinHeight="{TemplateBinding MinHeight}"
+                  Padding="{TemplateBinding Padding}"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}">
+            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="RadioButton.trigUnit:pointerover /template/ Border#TrigUnitRoot">
+      <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="RadioButton.trigUnit:pressed /template/ Border#TrigUnitRoot">
+      <Setter Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+    </Style>
+    <Style Selector="RadioButton.trigUnit:checked /template/ Border#TrigUnitRoot">
+      <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+    </Style>
+    <Style Selector="RadioButton.trigUnit:checked /template/ ContentPresenter">
+      <Setter Property="TextElement.Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel Width="280" Margin="4,0,4,4">
+    <TextBlock FontSize="20"
+               FontWeight="Medium"
+               Text="{utils:ResourceString Name='GraphOptionsHeading.Text'}" />
+
+    <Grid Margin="0,16,0,4" ColumnDefinitions="*,Auto">
+      <TextBlock Classes="subtitle"
+                 VerticalAlignment="Center"
+                 Text="{utils:ResourceString Name='GridHeading.Text'}" />
+      <Button Grid.Column="1"
+              MinWidth="0"
+              MinHeight="0"
+              Padding="0"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Center"
+              Background="Transparent"
+              BorderThickness="0"
+              Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+              FontSize="12"
+              Click="OnResetViewClicked"
+              Content="{utils:ResourceString Name='ResetViewButton.Content'}" />
     </Grid>
-    <TextBlock FontWeight="SemiBold" Text="{utils:ResourceString Name=UnitsHeading.Text}" />
-    <RadioButton Content="{utils:ResourceString Name=TrigModeRadians.Content}" />
-    <RadioButton Content="{utils:ResourceString Name=TrigModeDegrees.Content}" />
-    <RadioButton Content="{utils:ResourceString Name=TrigModeGradians.Content}" />
+
+    <Grid ColumnDefinitions="*,10,*" RowDefinitions="Auto,10,Auto">
+      <StackPanel Grid.Column="0" Spacing="4">
+        <TextBlock Classes="subtitle"
+                   Text="{utils:ResourceString Name='GraphSettingsXMin.Header'}" />
+        <TextBox x:Name="SettingsXMin"
+                 Classes="range"
+                 Classes.error="{CompiledBinding XMinHasError}"
+                 KeyDown="OnRangeKeyDown"
+                 Text="{CompiledBinding XMin, Mode=TwoWay}" />
+      </StackPanel>
+      <StackPanel Grid.Column="2" Spacing="4">
+        <TextBlock Classes="subtitle"
+                   Text="{utils:ResourceString Name='GraphSettingsXMax.Header'}" />
+        <TextBox x:Name="SettingsXMax"
+                 Classes="range"
+                 Classes.error="{CompiledBinding XMaxHasError}"
+                 KeyDown="OnRangeKeyDown"
+                 Text="{CompiledBinding XMax, Mode=TwoWay}" />
+      </StackPanel>
+      <StackPanel Grid.Row="2" Grid.Column="0" Spacing="4">
+        <TextBlock Classes="subtitle"
+                   Text="{utils:ResourceString Name='GraphSettingsYMin.Header'}" />
+        <TextBox x:Name="SettingsYMin"
+                 Classes="range"
+                 Classes.error="{CompiledBinding YMinHasError}"
+                 KeyDown="OnRangeKeyDown"
+                 Text="{CompiledBinding YMin, Mode=TwoWay}" />
+      </StackPanel>
+      <StackPanel Grid.Row="2" Grid.Column="2" Spacing="4">
+        <TextBlock Classes="subtitle"
+                   Text="{utils:ResourceString Name='GraphSettingsYMax.Header'}" />
+        <TextBox x:Name="SettingsYMax"
+                 Classes="range"
+                 Classes.error="{CompiledBinding YMaxHasError}"
+                 KeyDown="OnRangeKeyDown"
+                 Text="{CompiledBinding YMax, Mode=TwoWay}" />
+      </StackPanel>
+    </Grid>
+
+    <TextBlock Margin="0,16,0,6"
+               Classes="subtitle"
+               Text="{utils:ResourceString Name='UnitsHeading.Text'}" />
+    <StackPanel Orientation="Horizontal">
+      <RadioButton Classes="trigUnit"
+                   GroupName="TrigUnit"
+                   Content="{utils:ResourceString Name='TrigModeRadians.Content'}"
+                   IsChecked="{CompiledBinding TrigModeRadians, Mode=TwoWay}" />
+      <RadioButton Margin="4,0"
+                   Classes="trigUnit"
+                   GroupName="TrigUnit"
+                   Content="{utils:ResourceString Name='TrigModeDegrees.Content'}"
+                   IsChecked="{CompiledBinding TrigModeDegrees, Mode=TwoWay}" />
+      <RadioButton Classes="trigUnit"
+                   GroupName="TrigUnit"
+                   Content="{utils:ResourceString Name='TrigModeGradians.Content'}"
+                   IsChecked="{CompiledBinding TrigModeGradians, Mode=TwoWay}" />
+    </StackPanel>
+
+    <TextBlock Margin="0,16,0,6"
+               Classes="subtitle"
+               Text="{utils:ResourceString Name='LineThicknessBoxHeading.Text'}" />
+    <ComboBox MinWidth="200"
+              HorizontalAlignment="Stretch"
+              ItemsSource="{CompiledBinding AvailableLineWidths}"
+              SelectedIndex="{CompiledBinding SelectedLineWidthIndex, Mode=TwoWay}">
+      <ComboBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:GraphLineWidthChoice">
+          <Grid Height="20"
+                MinWidth="200"
+                AutomationProperties.Name="{CompiledBinding AutomationName}">
+            <Line VerticalAlignment="Center"
+                  Stroke="{DynamicResource TextFillColorPrimaryBrush}"
+                  StrokeThickness="{CompiledBinding Width}"
+                  StartPoint="0,10"
+                  EndPoint="200,10" />
+          </Grid>
+        </DataTemplate>
+      </ComboBox.ItemTemplate>
+    </ComboBox>
+
+    <TextBlock Margin="0,16,0,6"
+               Classes="subtitle"
+               AutomationProperties.Name="{utils:ResourceString Name='GraphThemeHeading.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+               Text="{utils:ResourceString Name='GraphThemeHeading.Text'}" />
+    <StackPanel>
+      <RadioButton GroupName="GraphTheme"
+                   AutomationProperties.Name="{utils:ResourceString Name='AlwaysLightTheme.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                   Content="{utils:ResourceString Name='AlwaysLightTheme.Content'}"
+                   IsChecked="{CompiledBinding IsAlwaysLightTheme, Mode=TwoWay}" />
+      <RadioButton Margin="1,0,0,0"
+                   GroupName="GraphTheme"
+                   AutomationProperties.Name="{utils:ResourceString Name='MatchAppTheme.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                   Content="{utils:ResourceString Name='MatchAppTheme.Content'}"
+                   IsChecked="{CompiledBinding IsMatchAppTheme, Mode=TwoWay}" />
+    </StackPanel>
   </StackPanel>
 </UserControl>

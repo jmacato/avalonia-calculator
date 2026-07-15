@@ -32,6 +32,9 @@
     <Compile Include="Controls\CalculationResult.cs" />
     <Compile Include="Controls\CalculationResultAutomationPeer.cs" />
     <Compile Include="Controls\CalculatorButton.cs" />
+    <Compile Include="Controls\EquationTextBox.cs" />
+    <Compile Include="Controls\MathRichEditBox.cs" />
+    <Compile Include="Controls\MathExpressionView.cs" />
     <Compile Include="Controls\ConverterCarouselPanel.cs" />
     <Compile Include="Controls\ConverterComboBox.cs" />
     <Compile Include="Controls\FlipButtons.cs" />
@@ -73,6 +76,7 @@
     <Compile Include="Views\TitleBar.xaml.cs" />
     <Compile Include="Views\MainPage.xaml.cs" />
     <Compile Include="Selectors\NavViewMenuItemTemplateSelector.cs" />
+    <Compile Include="Selectors\KeyGraphFeaturesTemplateSelector.cs" />
     <Compile Include="Converters\ExpressionItemTemplateSelector.cs" />
     <Compile Include="Utils\ResourceString.cs" />
     <Compile Include="Services\Settings\AppSettings.cs" />
@@ -86,6 +90,11 @@
     <Compile Include="ViewModels\UnitConverterViewModel.cpp.cs" />
     <Compile Include="ViewModels\GraphingCalculator\GraphingCalculatorViewModel.cpp.h.cs" />
     <Compile Include="ViewModels\GraphingCalculator\GraphingCalculatorViewModel.cpp.cs" />
+    <Compile Include="ViewModels\GraphingCalculator\EquationViewModel.cpp.h.cs" />
+    <Compile Include="ViewModels\GraphingCalculator\EquationViewModel.cpp.cs" />
+    <Compile Include="ViewModels\GraphingCalculator\VariableViewModel.h.cs" />
+    <Compile Include="ViewModels\GraphingCalculator\GraphingSettingsViewModel.cpp.h.cs" />
+    <Compile Include="ViewModels\GraphingCalculator\GraphingSettingsViewModel.cpp.cs" />
     <Compile Include="ViewModels\HistoryViewModel.h.cs" />
     <Compile Include="ViewModels\HistoryViewModel.cpp.cs" />
     <Compile Include="ViewModels\HistoryItemViewModel.h.cs" />
@@ -167,6 +176,7 @@
     <AvaloniaXaml Include="Controls\HistoryMemoryStyles.xaml" />
     <AvaloniaXaml Include="Views\MainPage.xaml" />
     <AvaloniaResource Include="Assets\Fonts\Hind2\**\*.ttf" />
+    <AvaloniaResource Include="Assets\Fonts\NotoSansMath\**\*.ttf" />
     <AvaloniaResource Include="Assets\CalculatorIcons.ttf" />
     <AvaloniaResource Include="Assets\CalculatorAppList.targetsize-20.png" />
     <EmbeddedResource Include="Resources\*.resx" />
@@ -179,9 +189,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\GraphControl\GraphControl.csproj" />
     <ProjectReference Include="..\CalcManagerManaged\CalcManagerPort\CalcManagerPort.csproj"
                       GlobalPropertiesToRemove="PublishAot;PublishTrimmed;SelfContained;RuntimeIdentifier" />
     <ProjectReference Include="Vendor\FluentAvalonia\FluentAvalonia.csproj" />
     <ProjectReference Include="Vendor\Avalonia.Labs.Lottie\Avalonia.Labs.Lottie.csproj" />
+    <ProjectReference Include="Vendor\CSharpMath\CSharpMath.Avalonia\CSharpMath.Avalonia.csproj" />
   </ItemGroup>
 </Project>

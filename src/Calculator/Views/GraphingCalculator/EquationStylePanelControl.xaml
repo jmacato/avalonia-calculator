@@ -1,20 +1,106 @@
 <UserControl x:Class="CalculatorApp.EquationStylePanelControl"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:utils="using:CalculatorApp.Utils">
-  <StackPanel Spacing="10" IsEnabled="False">
-    <TextBlock FontSize="18" FontWeight="SemiBold"
-               Text="{utils:ResourceString Name=LineOptionsHeading.Text}" />
-    <TextBlock Text="{utils:ResourceString Name=LineColorText.Text}" />
-    <ComboBox SelectedIndex="0">
-      <ComboBoxItem Content="Blue" />
-      <ComboBoxItem Content="Red" />
-      <ComboBoxItem Content="Green" />
-    </ComboBox>
-    <TextBlock Text="{utils:ResourceString Name=StyleChooserBoxHeading.Text}" />
-    <ComboBox SelectedIndex="0">
-      <ComboBoxItem Content="Solid" />
-      <ComboBoxItem Content="Dashed" />
+             xmlns:local="using:CalculatorApp"
+             xmlns:utils="using:CalculatorApp.Utils"
+             x:Name="Control"
+             x:DataType="local:EquationStylePanelControl"
+             x:CompileBindings="True">
+  <UserControl.Resources>
+    <ControlTheme x:Key="ColorChooserItemTheme" TargetType="ListBoxItem">
+      <Setter Property="Width" Value="52" />
+      <Setter Property="Height" Value="52" />
+      <Setter Property="MinWidth" Value="52" />
+      <Setter Property="MinHeight" Value="52" />
+      <Setter Property="MaxWidth" Value="52" />
+      <Setter Property="MaxHeight" Value="52" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Grid Width="52" Height="52">
+            <Ellipse x:Name="ItemBorder"
+                     Margin="6"
+                     Fill="Transparent"
+                     Stroke="Transparent"
+                     StrokeThickness="2" />
+            <ContentPresenter x:Name="ItemContent"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}" />
+          </Grid>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ ContentPresenter#ItemContent">
+        <Setter Property="Margin" Value="-2" />
+      </Style>
+      <Style Selector="^:selected /template/ Ellipse#ItemBorder">
+        <Setter Property="Stroke" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+      </Style>
+    </ControlTheme>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="ListBox.colorChooser">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="ItemsPanel">
+        <ItemsPanelTemplate>
+          <WrapPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+      </Setter>
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel Width="364" Margin="8,12,8,16">
+    <TextBlock Margin="8,0,0,16"
+               FontSize="20"
+               FontWeight="Medium"
+               AutomationProperties.HeadingLevel="2"
+               Text="{utils:ResourceString Name='LineOptionsHeading.Text'}" />
+    <TextBlock Margin="8,0,8,8"
+               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+               Text="{utils:ResourceString Name='LineColorText.Text'}" />
+    <ListBox x:Name="ColorChooser"
+             Classes="colorChooser"
+             Width="364"
+             ItemContainerTheme="{StaticResource ColorChooserItemTheme}"
+             ItemsSource="{Binding AvailableColors, ElementName=Control}"
+             SelectedIndex="{Binding SelectedColorIndex, ElementName=Control, Mode=TwoWay}"
+             SelectionChanged="OnColorSelectionChanged">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <Ellipse Width="36"
+                   Height="36"
+                   Fill="{Binding}"
+                   StrokeThickness="0" />
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <TextBlock Margin="8,8,8,8"
+               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+               Text="{utils:ResourceString Name='StyleChooserBoxHeading.Text'}" />
+    <ComboBox x:Name="StyleChooserBox"
+              MinWidth="200"
+              Margin="8,0"
+              HorizontalAlignment="Stretch"
+              ItemsSource="{Binding AvailableStyles, ElementName=Control}"
+              SelectedIndex="{Binding SelectedStyleIndex, ElementName=Control, Mode=TwoWay}"
+              IsEnabled="{Binding EnableLineStylePicker, ElementName=Control}">
+      <ComboBox.ItemTemplate>
+        <DataTemplate x:DataType="local:EquationLineStyleChoice">
+          <Grid Height="20" MinWidth="200">
+            <Line VerticalAlignment="Center"
+                  Stroke="{DynamicResource TextFillColorPrimaryBrush}"
+                  StrokeThickness="2.5"
+                  StrokeDashArray="{CompiledBinding DashArray}"
+                  StartPoint="0,10" EndPoint="200,10" />
+          </Grid>
+        </DataTemplate>
+      </ComboBox.ItemTemplate>
     </ComboBox>
   </StackPanel>
 </UserControl>

@@ -1,11 +1,183 @@
 <UserControl x:Class="CalculatorApp.KeyGraphFeaturesPanel"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:utils="using:CalculatorApp.Utils">
-  <StackPanel Spacing="8">
-    <TextBlock FontSize="18" FontWeight="SemiBold"
+             xmlns:controls="using:CalculatorApp.Controls"
+             xmlns:ts="using:CalculatorApp.TemplateSelectors"
+             xmlns:utils="using:CalculatorApp.Utils"
+             xmlns:vm="using:CalculatorApp.ViewModel"
+             x:DataType="vm:EquationViewModel"
+             x:CompileBindings="True"
+             Background="{DynamicResource ApplicationPageBackgroundThemeBrush}">
+  <UserControl.Styles>
+    <Style Selector="Button.kgfBackButton">
+      <Setter Property="MinWidth" Value="44" />
+      <Setter Property="Padding" Value="5,0" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Grid Background="{TemplateBinding Background}">
+            <Border x:Name="BackButtonOverlay"
+                    Background="{DynamicResource TextFillColorPrimaryBrush}"
+                    CornerRadius="{TemplateBinding CornerRadius}"
+                    Opacity="0" />
+            <ContentPresenter Padding="{TemplateBinding Padding}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}" />
+          </Grid>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="Button.kgfBackButton:pointerover /template/ Border#BackButtonOverlay">
+      <Setter Property="Opacity" Value="0.2" />
+    </Style>
+    <Style Selector="Button.kgfBackButton:pressed /template/ Border#BackButtonOverlay">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
+
+    <Style Selector="TextBlock.kgfTitle">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="SelectableTextBlock.kgfText">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="controls|MathExpressionView.kgfMath">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="IsTabStop" Value="False" />
+      <Setter Property="TextColor" Value="{DynamicResource TextFillColorPrimary}" />
+      <Setter Property="TextAlignment" Value="TopLeft" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.Resources>
+    <DataTemplate x:Key="KGFRichEditDataTemplate" x:DataType="vm:KeyGraphFeaturesItem">
+      <StackPanel Margin="0,10">
+        <TextBlock Classes="kgfTitle" Text="{CompiledBinding Title}" />
+        <ItemsControl ItemsSource="{CompiledBinding DisplayItems}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <controls:MathExpressionView Classes="kgfMath" Expression="{Binding}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate x:Key="KGFGridDataTemplate" x:DataType="vm:KeyGraphFeaturesItem">
+      <StackPanel Margin="0,10">
+        <TextBlock Classes="kgfTitle" Text="{CompiledBinding Title}" />
+        <ItemsControl ItemsSource="{CompiledBinding GridItems}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:GridDisplayItems">
+              <Grid ColumnDefinitions="Auto,Auto" VerticalAlignment="Center">
+                <controls:MathExpressionView MinWidth="64"
+                                             Classes="kgfMath"
+                                             Expression="{CompiledBinding Expression}" />
+                <TextBlock Grid.Column="1"
+                           Margin="0,-2,0,0"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Center"
+                           FontSize="14"
+                           Text="{CompiledBinding Direction}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate x:Key="KGFTextBlockDataTemplate" x:DataType="vm:KeyGraphFeaturesItem">
+      <StackPanel Margin="0,10">
+        <TextBlock Classes="kgfTitle" Text="{CompiledBinding Title}" />
+        <ItemsControl ItemsSource="{CompiledBinding DisplayItems}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <SelectableTextBlock Classes="kgfText" Text="{Binding}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
+
+    <ts:KeyGraphFeaturesTemplateSelector x:Key="KGFTemplateSelector"
+                                         GridTemplate="{StaticResource KGFGridDataTemplate}"
+                                         RichEditTemplate="{StaticResource KGFRichEditDataTemplate}"
+                                         TextBlockTemplate="{StaticResource KGFTextBlockDataTemplate}" />
+  </UserControl.Resources>
+
+  <Grid RowDefinitions="Auto,Auto,*"
+        AutomationProperties.Name="Function analysis">
+    <Border MinHeight="48"
+            Margin="4,0"
+            Background="{DynamicResource TextControlBackground}"
+            CornerRadius="{DynamicResource ControlCornerRadius}">
+      <Grid ColumnDefinitions="Auto,*">
+        <Button x:Name="BackButton"
+                Classes="kgfBackButton"
+                VerticalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                AutomationProperties.Name="Back"
+                Background="{CompiledBinding LineBrush}"
+                Click="OnCloseClicked">
+          <StackPanel HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      Orientation="Horizontal">
+            <TextBlock Margin="0,0,6,0"
+                       VerticalAlignment="Center"
+                       FontFamily="{DynamicResource CalculatorFontFamily}"
+                       FontSize="16"
+                       Text="&#xE72B;" />
+            <StackPanel Orientation="Horizontal">
+              <TextBlock FontFamily="{DynamicResource CalculatorFontFamily}"
+                         FontSize="18"
+                         Text="&#xF893;" />
+              <TextBlock Margin="-5,15,0,0"
+                         FontSize="11"
+                         Text="{CompiledBinding FunctionLabelText}" />
+            </StackPanel>
+          </StackPanel>
+        </Button>
+        <controls:MathExpressionView Grid.Column="1"
+                                     Margin="10,0,6,0"
+                                     HorizontalAlignment="Stretch"
+                                     VerticalAlignment="Center"
+                                     Classes="kgfMath"
+                                     FontSize="18"
+                                     Expression="{CompiledBinding AnalysisExpression}" />
+      </Grid>
+    </Border>
+
+    <TextBlock Grid.Row="1"
+               Margin="12,12,10,0"
+               FontSize="20"
+               FontWeight="Medium"
                Text="{utils:ResourceString Name=KeyGraphFeaturesLabel.Text}" />
-    <TextBlock TextWrapping="Wrap"
-               Text="{utils:ResourceString Name=GraphingEngineLimitationNotice}" />
-  </StackPanel>
+
+    <ScrollViewer Grid.Row="2"
+                  Padding="12,0,10,12"
+                  IsVisible="{CompiledBinding AnalysisItemsVisible}"
+                  VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemTemplate="{StaticResource KGFTemplateSelector}"
+                    ItemsSource="{CompiledBinding KeyGraphFeaturesItems}" />
+    </ScrollViewer>
+
+    <TextBlock Grid.Row="2"
+               Margin="12,10,10,0"
+               IsVisible="{CompiledBinding AnalysisErrorVisible}"
+               FontSize="14"
+               Text="{CompiledBinding AnalysisErrorString}"
+               TextWrapping="Wrap" />
+  </Grid>
 </UserControl>

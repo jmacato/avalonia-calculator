@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GraphControl\GraphControl.csproj" />
+    <ProjectReference Include="..\GraphingImpl\GraphingImpl.csproj" />
+    <ProjectReference Include="..\GraphingInterfaces\GraphingInterfaces.csproj" />
+    <ProjectReference Include="..\GraphingRaster.Skia\GraphingRaster.Skia.csproj" />
+    <ProjectReference Include="..\JsMath.Port\JsMath.Port.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\GraphingInterfaces\*.h"
+          Link="NativeContracts\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\GraphingInterfaces\GraphingInterfaces.manifest.json"
+          Link="GraphingInterfaces.manifest.json"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

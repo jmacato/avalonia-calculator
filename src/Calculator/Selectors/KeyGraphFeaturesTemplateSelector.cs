@@ -1,48 +1,37 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalculatorApp.ViewModel; 
+using Avalonia.Controls;
+using Avalonia.Controls.Templates;
+using CalculatorApp.ViewModel;
 
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
+namespace CalculatorApp.TemplateSelectors;
 
-namespace CalculatorApp
+/// <summary>
+/// Avalonia port of the native function-analysis template selector. Symbolic
+/// expressions use the math template, monotonicity uses the two-column grid,
+/// and localized explanatory messages remain normal text.
+/// </summary>
+public sealed class KeyGraphFeaturesTemplateSelector : IDataTemplate
 {
-    namespace TemplateSelectors
+    public IDataTemplate RichEditTemplate { get; set; } = null!;
+
+    public IDataTemplate GridTemplate { get; set; } = null!;
+
+    public IDataTemplate TextBlockTemplate { get; set; } = null!;
+
+    public Control? Build(object? parameter)
     {
-        public sealed class KeyGraphFeaturesTemplateSelector : DataTemplateSelector
-        {
-            public KeyGraphFeaturesTemplateSelector()
-            {
-            }
+        IDataTemplate template = parameter is KeyGraphFeaturesItem item && !item.IsText
+            ? item.DisplayItems.Count != 0
+                ? RichEditTemplate
+                : item.GridItems.Count != 0
+                    ? GridTemplate
+                    : TextBlockTemplate
+            : TextBlockTemplate;
 
-            public Microsoft.UI.Xaml.DataTemplate RichEditTemplate { get; set; }
-            public Microsoft.UI.Xaml.DataTemplate GridTemplate { get; set; }
-            public Microsoft.UI.Xaml.DataTemplate TextBlockTemplate { get; set; }
-
-            protected override DataTemplate SelectTemplateCore(object item)
-            {
-                var kgfItem = (KeyGraphFeaturesItem)item;
-
-                if (!kgfItem.IsText)
-                {
-                    if (kgfItem.DisplayItems.Count != 0)
-                    {
-                        return RichEditTemplate;
-                    }
-                    else if (kgfItem.GridItems.Count != 0)
-                    {
-                        return GridTemplate;
-                    }
-                }
-
-                return TextBlockTemplate;
-            }
-
-            protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
-            {
-                return SelectTemplateCore(item);
-            }
-        }
+        return template.Build(parameter);
     }
+
+    public bool Match(object? data) => data is KeyGraphFeaturesItem;
 }

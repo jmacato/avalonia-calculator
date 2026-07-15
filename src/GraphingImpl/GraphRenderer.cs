@@ -1,0 +1,1312 @@
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Globalization;
+using Graphing;
+using Graphing.Renderer;
+using GraphingRaster.Skia;
+using JsMath.Port;
+
+namespace GraphingImpl;
+
+internal sealed record PreparedEquationGeometry(
+    CompiledGraphEquation Definition,
+    SampledCurve? Curve,
+    InequalityMesh? Inequality);
+
+internal sealed record PreparedGraph(
+    GraphSnapshot Snapshot,
+    SamplingViewport Viewport,
+    ImmutableArray<PreparedEquationGeometry> Equations,
+    bool HasMissingData);
+
+internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
+{
+    private const double MinimumRangeLength = 1e-12;
+    private const double MaximumRangeLength = 1e12;
+    private readonly Lock _lock = new();
+    private readonly ManagedGraphingOptions _options;
+    private readonly EvaluationOptions _evaluationOptions;
+    private GraphSnapshot _snapshot = GraphSnapshot.Empty;
+    private AxisRange _xRange;
+    private AxisRange _yRange;
+    private uint _width = 800;
+    private uint _height = 600;
+    private float _dpiX = 96;
+    private float _dpiY = 96;
+    private long _generation;
+    private CancellationTokenSource _samplingCancellation = new();
+    private PreparedGraph? _prepared;
+    private GraphFrame? _frame;
+    private bool _disposed;
+
+    public ManagedGraphRenderer(ManagedGraphingOptions options, EvaluationOptions evaluationOptions)
+    {
+        _options = options;
+        _evaluationOptions = evaluationOptions;
+        _xRange = options.GetDefaultXRange();
+        _yRange = options.GetDefaultYRange();
+    }
+
+    public GraphFrame? CurrentFrame
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _frame;
+            }
+        }
+    }
+
+    public GraphStatus SetGraphSize(uint width, uint height)
+    {
+        if (width == 0 || height == 0 || width > 32_768 || height > 32_768)
+        {
+            return GraphStatus.InvalidArgument;
+        }
+
+        lock (_lock)
+        {
+            ThrowIfDisposed();
+            if (_width == width && _height == height)
+            {
+                return GraphStatus.Ok;
+            }
+
+            _width = width;
+            _height = height;
+            InvalidateGeometryLocked(transformExisting: true);
+        }
+
+        return GraphStatus.Ok;
+    }
+
+    public GraphStatus SetDpi(float dpiX, float dpiY)
+    {
+        if (!float.IsFinite(dpiX) || dpiX <= 0 || !float.IsFinite(dpiY) || dpiY <= 0)
+        {
+            return GraphStatus.InvalidArgument;
+        }
+
+        lock (_lock)
+        {
+            ThrowIfDisposed();
+            _dpiX = dpiX;
+            _dpiY = dpiY;
+            RebuildFrameFromPreparedLocked(stale: false);
+        }
+
+        return GraphStatus.Ok;
+    }
+
+    public GraphStatus Draw(IGraphDrawingTarget drawingTarget, out bool hasSomeMissingData)
+    {
+        ArgumentNullException.ThrowIfNull(drawingTarget);
+        GraphFrame? frame = CurrentFrame;
+        GraphStatus status = GraphStatus.Ok;
+        if (frame is null)
+        {
+            status = PrepareGraph();
+            frame = CurrentFrame;
+        }
+
+        hasSomeMissingData = frame?.HasSomeMissingData ?? false;
+        if (frame is null || status.Failed)
+        {
+            return status.Failed ? status : GraphStatus.Fail;
+        }
+
+        try
+        {
+            drawingTarget.BeginFrame(frame);
+            foreach (GraphFrameCommand command in frame.Commands)
+            {
+                drawingTarget.Draw(command);
+            }
+
+            drawingTarget.EndFrame();
+            return GraphStatus.Ok;
+        }
+        catch (OperationCanceledException)
+        {
+            return GraphStatus.Cancelled;
+        }
+        catch (Exception)
+        {
+            return GraphStatus.Fail;
+        }
+    }
+
+    public GraphStatus GetClosePointData(
+        double screenPointX,
+        double screenPointY,
+        double precision,
+        out int formulaId,
+        out float screenX,
+        out float screenY,
+        out double x,
+        out double y,
+        out double rho,
+        out double theta,
+        out double t)
+    {
+        SetUnavailable(out formulaId, out screenX, out screenY, out x, out y, out rho, out theta, out t);
+        if (!double.IsFinite(screenPointX) || !double.IsFinite(screenPointY) || !double.IsFinite(precision) || precision < 0)
+        {
+            return GraphStatus.InvalidArgument;
+        }
+
+        PreparedGraph? prepared;
+        SamplingViewport viewport;
+        lock (_lock)
+        {
+            ThrowIfDisposed();
+            prepared = _prepared;
+            viewport = EffectiveViewportLocked();
+        }
+
+        if (prepared is null)
+        {
+            GraphStatus prepareStatus = PrepareGraph();
+            if (prepareStatus.Failed)
+            {
+                return prepareStatus;
+            }
+
+            lock (_lock)
+            {
+                prepared = _prepared;
+                viewport = EffectiveViewportLocked();
+            }
+        }
+
+        if (prepared is null)
+        {
+            return GraphStatus.False;
+        }
+
+        double maximumDistance = Math.Clamp(
+            Math.Max(6, precision * viewport.Width / viewport.XRange.Length),
+            6,
+            32);
+        var target = new GraphPoint(screenPointX, screenPointY);
+        ClosestCandidate best = ClosestCandidate.None;
+        for (int equationIndex = 0; equationIndex < prepared.Equations.Length; equationIndex++)
+        {
+            PreparedEquationGeometry geometry = prepared.Equations[equationIndex];
+            if (geometry.Curve is not null)
+            {
+                foreach (SampledComponent component in geometry.Curve.Components)
+                {
+                    SearchComponent(component.Points, viewport, target, equationIndex, ref best);
+                }
+            }
+
+            if (geometry.Inequality is not null)
+            {
+                foreach (ImmutableArray<GraphPoint> contour in geometry.Inequality.Contours)
+                {
+                    SearchContour(contour, viewport, target, equationIndex, ref best);
+                }
+            }
+        }
+
+        if (!best.Available || Math.Sqrt(best.DistanceSquared) > maximumDistance)
+        {
+            return GraphStatus.False;
+        }
+
+        formulaId = best.EquationIndex;
+        screenX = (float)best.Screen.X;
+        screenY = (float)best.Screen.Y;
+        x = best.User.X;
+        y = best.User.Y;
+        rho = Hypotenuse(x, y);
+        theta = Math.Atan2(y, x);
+        t = best.Parameter;
+        return GraphStatus.Ok;
+    }
+
+    public GraphStatus ScaleRange(double centerX, double centerY, double scale)
+    {
+        if (!double.IsFinite(centerX) || !double.IsFinite(centerY) ||
+            !double.IsFinite(scale) || scale <= 0)
+        {
+            return GraphStatus.InvalidArgument;
+        }
+
+        lock (_lock)
+        {
+            ThrowIfDisposed();
+            double graphCenterX = _xRange.Center + (Math.Clamp(centerX, -1, 1) * _xRange.Length * 0.5);
+            double graphCenterY = _yRange.Center + (Math.Clamp(centerY, -1, 1) * _yRange.Length * 0.5);
+            AxisRange x = Scale(_xRange, graphCenterX, scale);
+            AxisRange y = Scale(_yRange, graphCenterY, scale);
+            if (!IsAllowed(x) || !IsAllowed(y))
+            {
+                return GraphStatus.False;
+            }
+
+            _xRange = x;
+            _yRange = y;
+            InvalidateGeometryLocked(transformExisting: true);
+        }
+
+        return GraphStatus.Ok;
+    }
+
+    public GraphStatus ChangeRange(ChangeRangeAction action)
+    {
+        return action switch
+        {
+            ChangeRangeAction.ZoomIn => ScaleRange(0, 0, 0.8),
+            ChangeRangeAction.ZoomOut => ScaleRange(0, 0, 1.25),
+            ChangeRangeAction.WidenX => ScaleSingleAxis(xAxis: true, 1.25),
+            ChangeRangeAction.ShrinkX => ScaleSingleAxis(xAxis: true, 0.8),
+            ChangeRangeAction.WidenY => ScaleSingleAxis(xAxis: false, 1.25),
+            ChangeRangeAction.ShrinkY => ScaleSingleAxis(xAxis: false, 0.8),
+            ChangeRangeAction.MoveNegativeX => MoveRangeByRatio(-0.2, 0),
+            ChangeRangeAction.MovePositiveX => MoveRangeByRatio(0.2, 0),
+            ChangeRangeAction.MoveNegativeY => MoveRangeByRatio(0, -0.2),
+            ChangeRangeAction.MovePositiveY => MoveRangeByRatio(0, 0.2),
+            ChangeRangeAction.SmoothZoomIn => ScaleRange(0, 0, 0.95),
+            ChangeRangeAction.SmoothZoomOut => ScaleRange(0, 0, 1.05),
+            ChangeRangeAction.PinchZoomIn => ScaleRange(0, 0, 0.9),
+            ChangeRangeAction.PinchZoomOut => ScaleRange(0, 0, 1.1),
+            ChangeRangeAction.WidenZ or
+            ChangeRangeAction.ShrinkZ or
+            ChangeRangeAction.MoveNegativeZ or
+            ChangeRangeAction.MovePositiveZ => GraphStatus.False,
+            _ => GraphStatus.InvalidArgument
+        };
+    }
+
+    public GraphStatus MoveRangeByRatio(double ratioX, double ratioY)
+    {
+        if (!double.IsFinite(ratioX) || !double.IsFinite(ratioY))
+        {
+            return GraphStatus.InvalidArgument;
+        }
+
+        lock (_lock)
+        {
+            ThrowIfDisposed();
+            double xOffset = ratioX * _xRange.Length * 0.5;
+            double yOffset = ratioY * _yRange.Length * 0.5;
+            _xRange = new AxisRange(_xRange.Minimum + xOffset, _xRange.Maximum + xOffset);
+            _yRange = new AxisRange(_yRange.Minimum + yOffset, _yRange.Maximum + yOffset);
+            InvalidateGeometryLocked(transformExisting: true);
+        }
+
+        return GraphStatus.Ok;
+    }
+
+    public GraphStatus ResetRange()
+    {
+        AxisRange x = _options.GetDefaultXRange();
+        AxisRange y = _options.GetDefaultYRange();
+        lock (_lock)
+        {
+            ThrowIfDisposed();
+            _xRange = x;
+            _yRange = y;
+            InvalidateGeometryLocked(transformExisting: true);
+        }
+
+        return GraphStatus.Ok;
+    }
+
+    public GraphStatus GetDisplayRanges(out double xMin, out double xMax, out double yMin, out double yMax)
+    {
+        lock (_lock)
+        {
+            ThrowIfDisposed();
+            xMin = _xRange.Minimum;
+            xMax = _xRange.Maximum;
+            yMin = _yRange.Minimum;
+            yMax = _yRange.Maximum;
+        }
+
+        return GraphStatus.Ok;
+    }
+
+    public GraphStatus SetDisplayRanges(double xMin, double xMax, double yMin, double yMax)
+    {
+        var x = new AxisRange(xMin, xMax);
+        var y = new AxisRange(yMin, yMax);
+        if (!IsAllowed(x) || !IsAllowed(y))
+        {
+            return GraphStatus.InvalidArgument;
+        }
+
+        lock (_lock)
+        {
+            ThrowIfDisposed();
+            _xRange = x;
+            _yRange = y;
+            InvalidateGeometryLocked(transformExisting: true);
+        }
+
+        return GraphStatus.Ok;
+    }
+
+    public GraphStatus PrepareGraph()
+    {
+        GraphSnapshot snapshot;
+        SamplingViewport viewport;
+        long generation;
+        CancellationToken cancellationToken;
+        lock (_lock)
+        {
+            ThrowIfDisposed();
+            snapshot = _snapshot;
+            viewport = EffectiveViewportLocked();
+            if (_prepared is not null &&
+                _prepared.Snapshot.Revision == snapshot.Revision &&
+                _prepared.Viewport == viewport)
+            {
+                _frame ??= BuildFrame(_prepared, stale: false);
+                return GraphStatus.Ok;
+            }
+
+            generation = _generation;
+            cancellationToken = _samplingCancellation.Token;
+        }
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        ulong maximumMilliseconds = _options.GetMaxExecutionTime();
+        if (maximumMilliseconds > 0)
+        {
+            timeout.CancelAfter(TimeSpan.FromMilliseconds(Math.Min(maximumMilliseconds, int.MaxValue)));
+        }
+
+        PreparedGraph prepared;
+        try
+        {
+            prepared = SampleSnapshot(snapshot, viewport, timeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return cancellationToken.IsCancellationRequested ? GraphStatus.Cancelled : GraphStatus.Timeout;
+        }
+
+        lock (_lock)
+        {
+            if (_disposed || generation != _generation || snapshot.Revision != _snapshot.Revision)
+            {
+                return GraphStatus.Cancelled;
+            }
+
+            _prepared = prepared;
+            _frame = BuildFrame(prepared, stale: false);
+        }
+
+        return GraphStatus.Ok;
+    }
+
+    public GraphStatus GetBitmap(out IBitmap? bitmap, out bool hasSomeMissingData)
+    {
+        bitmap = null;
+        GraphFrame? frame = CurrentFrame;
+        if (frame is null)
+        {
+            GraphStatus status = PrepareGraph();
+            if (status.Failed)
+            {
+                hasSomeMissingData = false;
+                return status;
+            }
+
+            frame = CurrentFrame;
+        }
+
+        hasSomeMissingData = frame?.HasSomeMissingData ?? false;
+        if (frame is null)
+        {
+            return GraphStatus.Fail;
+        }
+
+        try
+        {
+            bitmap = new PngGraphBitmap(SkiaGraphFrameRasterizer.EncodePng(frame));
+            return GraphStatus.Ok;
+        }
+        catch (OutOfMemoryException)
+        {
+            return GraphStatus.OutOfMemory;
+        }
+        catch (Exception)
+        {
+            return GraphStatus.Fail;
+        }
+    }
+
+    public void Dispose()
+    {
+        lock (_lock)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            _samplingCancellation.Cancel();
+            _samplingCancellation.Dispose();
+            _frame = null;
+            _prepared = null;
+        }
+    }
+
+    internal void UpdateSnapshot(GraphSnapshot snapshot)
+    {
+        lock (_lock)
+        {
+            ThrowIfDisposed();
+            _snapshot = snapshot;
+            _prepared = null;
+            _frame = null;
+            InvalidateGeometryLocked(transformExisting: false);
+        }
+    }
+
+    internal void InvalidateStyle()
+    {
+        lock (_lock)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            RebuildFrameFromPreparedLocked(stale: _prepared?.Viewport != EffectiveViewportLocked());
+        }
+    }
+
+    private PreparedGraph SampleSnapshot(
+        GraphSnapshot snapshot,
+        SamplingViewport viewport,
+        CancellationToken cancellationToken)
+    {
+        var geometries = ImmutableArray.CreateBuilder<PreparedEquationGeometry>(snapshot.Definitions.Length);
+        int totalVertices = 0;
+        bool missing = false;
+        for (int index = 0; index < snapshot.Definitions.Length; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CompiledGraphEquation definition = snapshot.Definitions[index];
+            int remaining = Math.Max(2, 262_144 - totalVertices);
+            if (remaining <= 2)
+            {
+                missing = true;
+                break;
+            }
+
+            if (definition.Kind == GraphEquationKind.Inequality)
+            {
+                InequalityMesh mesh = SampleInequality(definition, snapshot, viewport, remaining, cancellationToken);
+                totalVertices += mesh.VertexCount;
+                missing |= mesh.HasMissingData;
+                geometries.Add(new PreparedEquationGeometry(definition, null, mesh));
+            }
+            else
+            {
+                SampledCurve curve = SampleCurve(definition, snapshot, viewport, Math.Min(65_536, remaining), cancellationToken);
+                totalVertices += curve.VertexCount;
+                missing |= curve.HasMissingData;
+                geometries.Add(new PreparedEquationGeometry(definition, curve, null));
+            }
+        }
+
+        missing |= geometries.Count != snapshot.Definitions.Length;
+        return new PreparedGraph(snapshot, viewport, geometries.ToImmutable(), missing);
+    }
+
+    private SampledCurve SampleCurve(
+        CompiledGraphEquation definition,
+        GraphSnapshot snapshot,
+        SamplingViewport viewport,
+        int maximumVertices,
+        CancellationToken cancellationToken)
+    {
+        double[] values = snapshot.Values.ToArray();
+        EvalTrigUnitMode trigMode = _evaluationOptions.GetTrigUnitMode();
+        if (definition.Kind == GraphEquationKind.Implicit)
+        {
+            return ImplicitCurveTracer.Trace(
+                (x, y) => EvaluateImplicit(definition, values, x, y, trigMode),
+                viewport,
+                new ImplicitTraceOptions(MaximumVertices: maximumVertices),
+                cancellationToken);
+        }
+
+        bool inverse = definition.Kind == GraphEquationKind.InverseX;
+        CurveEvaluator evaluator = parameter =>
+        {
+            if (inverse)
+            {
+                SetVariable(values, definition.YIndex, parameter);
+            }
+            else
+            {
+                SetVariable(values, definition.XIndex, parameter);
+            }
+
+            EvaluationValue result = definition.Program.Evaluate(values, trigMode);
+            return result.IsFinite
+                ? new CurveSample(
+                    parameter,
+                    inverse ? result.Value : parameter,
+                    inverse ? parameter : result.Value,
+                    SampleState.Finite)
+                : CurveSample.Undefined(parameter, ToSampleState(result.State));
+        };
+
+        AxisRange parameterRange = inverse ? viewport.YRange : viewport.XRange;
+        return AdaptiveCurveSampler.Sample(
+            evaluator,
+            parameterRange.Minimum,
+            parameterRange.Maximum,
+            viewport,
+            SamplingOptions.Settled with { MaximumVertices = maximumVertices },
+            cancellationToken);
+    }
+
+    private InequalityMesh SampleInequality(
+        CompiledGraphEquation definition,
+        GraphSnapshot snapshot,
+        SamplingViewport viewport,
+        int maximumVertices,
+        CancellationToken cancellationToken)
+    {
+        double[] values = snapshot.Values.ToArray();
+        EvalTrigUnitMode trigMode = _evaluationOptions.GetTrigUnitMode();
+        bool Predicate(double value) => definition.Relation switch
+        {
+            RelationKind.Less => value < 0,
+            RelationKind.LessOrEqual => value <= 0,
+            RelationKind.Greater => value > 0,
+            RelationKind.GreaterOrEqual => value >= 0,
+            _ => false
+        };
+
+        int columns = Math.Clamp((int)(_width / 8), 32, 128);
+        int rows = Math.Clamp((int)(_height / 8), 32, 128);
+        return MarchingSquares.Build(
+            (x, y) => EvaluateImplicit(definition, values, x, y, trigMode),
+            Predicate,
+            viewport,
+            columns,
+            rows,
+            maximumVertices,
+            cancellationToken);
+    }
+
+    private GraphFrame BuildFrame(PreparedGraph prepared, bool stale)
+    {
+        SamplingViewport viewport = EffectiveViewportLocked();
+        var commands = ImmutableArray.CreateBuilder<GraphFrameCommand>();
+        var labels = ImmutableArray.CreateBuilder<GlyphCommand>();
+        commands.Add(new PushClipCommand(new GraphRect(0, 0, viewport.Width, viewport.Height)));
+        AppendGridAndAxes(commands, labels, viewport);
+        AppendEquationGeometry(commands, prepared, viewport);
+        commands.AddRange(labels);
+        commands.Add(new PopClipCommand());
+        return new GraphFrame(
+            _width,
+            _height,
+            _dpiX,
+            _dpiY,
+            prepared.Snapshot.Revision,
+            _options.GetBackColor(),
+            commands.ToImmutable(),
+            prepared.HasMissingData || stale);
+    }
+
+    private void AppendGridAndAxes(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        ImmutableArray<GlyphCommand>.Builder labels,
+        SamplingViewport viewport)
+    {
+        double xStep = NiceStep(viewport.XRange.Length);
+        double yStep = NiceStep(viewport.YRange.Length);
+        Color gridColor = _options.GetGridColor();
+        var majorGridPaint = new GraphPaint(gridColor, 1);
+        var minorGridPaint = new GraphPaint(
+            new Color(gridColor.R, gridColor.G, gridColor.B, (byte)(gridColor.A / 2)),
+            1);
+        if (_options.GetShowGrid())
+        {
+            AppendVerticalGridLines(commands, viewport, xStep, majorGridPaint, minorGridPaint);
+            AppendHorizontalGridLines(commands, viewport, yStep, majorGridPaint, minorGridPaint);
+        }
+
+        if (_options.GetShowAxis())
+        {
+            var axisPaint = new GraphPaint(_options.GetAxisColor(), 1);
+            GraphPaint fontPaint = new(_options.GetFontColor());
+            GraphPaint backgroundPaint = new(_options.GetBackColor());
+            bool hasVerticalAxis = viewport.XRange.Minimum <= 0 && viewport.XRange.Maximum >= 0;
+            bool hasHorizontalAxis = viewport.YRange.Minimum <= 0 && viewport.YRange.Maximum >= 0;
+            double verticalAxisX = hasVerticalAxis ? viewport.ToScreen(0, 0).X : double.NaN;
+            double horizontalAxisY = hasHorizontalAxis ? viewport.ToScreen(0, 0).Y : double.NaN;
+
+            if (hasHorizontalAxis)
+            {
+                AppendHorizontalAxis(commands, viewport, horizontalAxisY, axisPaint);
+                AppendHorizontalLabels(
+                    commands,
+                    labels,
+                    viewport,
+                    xStep,
+                    horizontalAxisY,
+                    verticalAxisX,
+                    hasVerticalAxis,
+                    fontPaint,
+                    backgroundPaint);
+            }
+
+            if (hasVerticalAxis)
+            {
+                AppendVerticalAxis(commands, viewport, verticalAxisX, axisPaint);
+                AppendVerticalLabels(
+                    commands,
+                    labels,
+                    viewport,
+                    yStep,
+                    verticalAxisX,
+                    fontPaint,
+                    backgroundPaint);
+            }
+        }
+
+        if (_options.GetShowBox())
+        {
+            commands.Add(new StrokePathCommand(
+                new GraphPath(
+                [
+                    new GraphPoint(0, 0),
+                    new GraphPoint(viewport.Width, 0),
+                    new GraphPoint(viewport.Width, viewport.Height),
+                    new GraphPoint(0, viewport.Height)
+                ],
+                isClosed: true),
+                new GraphPaint(_options.GetBoxColor(), 1)));
+        }
+    }
+
+    private void AppendEquationGeometry(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        PreparedGraph prepared,
+        SamplingViewport viewport)
+    {
+        for (int index = 0; index < prepared.Equations.Length; index++)
+        {
+            PreparedEquationGeometry geometry = prepared.Equations[index];
+            ManagedEquation equation = prepared.Snapshot.Equations[index];
+            IEquationOptions equationOptions = equation.GetGraphEquationOptions();
+            Color color = equationOptions.GetGraphColor();
+            bool selected = equation.IsEquationSelected();
+            float width = selected
+                ? equationOptions.GetSelectedEquationLineWidth()
+                : equationOptions.GetLineWidth();
+            var linePaint = new GraphPaint(color, width, equationOptions.GetLineStyle());
+
+            if (geometry.Inequality is not null)
+            {
+                LineStyle boundaryStyle = geometry.Definition.Relation is RelationKind.Less or RelationKind.Greater
+                    ? LineStyle.Dash
+                    : LineStyle.Solid;
+                var boundaryPaint = new GraphPaint(color, width, boundaryStyle);
+                foreach (ImmutableArray<GraphPoint> contour in geometry.Inequality.Contours)
+                {
+                    if (contour.Length >= 2)
+                    {
+                        GraphPath path = ToScreenPath(contour, viewport, isClosed: false);
+                        // Calculator emits the inequality boundary through both
+                        // inequality graph parts. Replaying both paths preserves
+                        // its antialiasing and selected-width appearance.
+                        commands.Add(new StrokePathCommand(path, boundaryPaint));
+                        commands.Add(new StrokePathCommand(path, boundaryPaint));
+                    }
+                }
+
+                AppendInequalityHatch(commands, prepared.Snapshot, geometry.Definition, viewport, color);
+            }
+
+            if (geometry.Curve is null)
+            {
+                continue;
+            }
+
+            foreach (SampledComponent component in geometry.Curve.Components)
+            {
+                if (component.Points.Length < 2)
+                {
+                    continue;
+                }
+
+                commands.Add(new StrokePathCommand(
+                    new GraphPath(component.Points.Select(point => viewport.ToScreen(point.X, point.Y))),
+                    linePaint));
+                AppendFeatureMarkers(commands, component, viewport, color);
+            }
+        }
+    }
+
+    private void AppendFeatureMarkers(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        SampledComponent component,
+        SamplingViewport viewport,
+        Color equationColor)
+    {
+        if (!_options.GetMarkZeros() && !_options.GetMarkYIntercept())
+        {
+            return;
+        }
+
+        for (int index = 1; index < component.Points.Length; index++)
+        {
+            CurveSample left = component.Points[index - 1];
+            CurveSample right = component.Points[index];
+            if (_options.GetMarkZeros() && left.Y * right.Y <= 0 && left.Y != right.Y)
+            {
+                double amount = -left.Y / (right.Y - left.Y);
+                double x = left.X + ((right.X - left.X) * amount);
+                commands.Add(new MarkerCommand(
+                    viewport.ToScreen(x, 0),
+                    3,
+                    GraphMarkerShape.Circle,
+                    new GraphPaint(_options.GetZerosColor()),
+                    new GraphPaint(equationColor, 1)));
+            }
+
+            if (_options.GetMarkYIntercept() && left.X * right.X <= 0 && left.X != right.X)
+            {
+                double amount = -left.X / (right.X - left.X);
+                double y = left.Y + ((right.Y - left.Y) * amount);
+                commands.Add(new MarkerCommand(
+                    viewport.ToScreen(0, y),
+                    3,
+                    GraphMarkerShape.Circle,
+                    new GraphPaint(_options.GetZerosColor()),
+                    new GraphPaint(equationColor, 1)));
+            }
+        }
+    }
+
+    private void AppendInequalityHatch(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        GraphSnapshot snapshot,
+        CompiledGraphEquation definition,
+        SamplingViewport viewport,
+        Color color)
+    {
+        const int latticeIntervals = 58;
+        double[] values = snapshot.Values.ToArray();
+        EvalTrigUnitMode trigMode = _evaluationOptions.GetTrigUnitMode();
+        var paint = new GraphPaint(color, 1, LineStyle.Solid, AntiAlias: false);
+        for (int column = 0; column < latticeIntervals; column++)
+        {
+            double sampleX = column * viewport.Width / latticeIntervals;
+            double screenX = Math.Floor(sampleX);
+            for (int row = 1; row < latticeIntervals; row++)
+            {
+                double sampleY = row * viewport.Height / latticeIntervals;
+                double screenY = Math.Floor(sampleY);
+                GraphPoint point = viewport.ToUser(sampleX, sampleY);
+                double result = EvaluateImplicit(definition, values, point.X, point.Y, trigMode);
+                if (!IsInequalitySatisfied(definition.Relation, result))
+                {
+                    continue;
+                }
+
+                commands.Add(new MarkerCommand(
+                    new GraphPoint(screenX, screenY),
+                    1,
+                    GraphMarkerShape.Cross,
+                    paint));
+            }
+        }
+    }
+
+    private static bool IsInequalitySatisfied(RelationKind relation, double value) =>
+        double.IsFinite(value) && relation switch
+        {
+            RelationKind.Less => value < 0,
+            RelationKind.LessOrEqual => value < 0,
+            RelationKind.Greater => value > 0,
+            RelationKind.GreaterOrEqual => value > 0,
+            _ => false
+        };
+
+    private static void AppendVerticalGridLines(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        SamplingViewport viewport,
+        double majorStep,
+        GraphPaint majorPaint,
+        GraphPaint minorPaint)
+    {
+        double minorStep = majorStep / 5;
+        double first = Math.Floor(viewport.XRange.Minimum / minorStep) * minorStep;
+        double last = Math.Ceiling(viewport.XRange.Maximum / minorStep) * minorStep;
+        for (int count = 0; count < 512; count++)
+        {
+            double value = first + (count * minorStep);
+            if (value > last + (minorStep * 1e-10))
+            {
+                break;
+            }
+
+            double x = viewport.ToScreen(value, 0).X;
+            AppendLine(
+                commands,
+                new GraphPoint(x, 0),
+                new GraphPoint(x, viewport.Height),
+                IsMajorGridValue(value, majorStep) ? majorPaint : minorPaint);
+        }
+    }
+
+    private static void AppendHorizontalGridLines(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        SamplingViewport viewport,
+        double majorStep,
+        GraphPaint majorPaint,
+        GraphPaint minorPaint)
+    {
+        double minorStep = majorStep / 5;
+        double first = Math.Floor(viewport.YRange.Minimum / minorStep) * minorStep;
+        double last = Math.Ceiling(viewport.YRange.Maximum / minorStep) * minorStep;
+        for (int count = 0; count < 512; count++)
+        {
+            double value = first + (count * minorStep);
+            if (value > last + (minorStep * 1e-10))
+            {
+                break;
+            }
+
+            double y = viewport.ToScreen(0, value).Y;
+            AppendLine(
+                commands,
+                new GraphPoint(0, y),
+                new GraphPoint(viewport.Width, y),
+                IsMajorGridValue(value, majorStep) ? majorPaint : minorPaint);
+        }
+    }
+
+    private static bool IsMajorGridValue(double value, double majorStep)
+    {
+        double quotient = value / majorStep;
+        return Math.Abs(quotient - Math.Round(quotient)) <= 1e-9;
+    }
+
+    private static void AppendHorizontalAxis(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        SamplingViewport viewport,
+        double y,
+        GraphPaint paint)
+    {
+        double left = Math.Min(2, viewport.Width * 0.5);
+        double right = Math.Max(left, viewport.Width - 2);
+        AppendLine(commands, new GraphPoint(left, y), new GraphPoint(right, y), paint);
+        AppendLine(commands, new GraphPoint(right, y), new GraphPoint(right - 6, y - 6), paint);
+        AppendLine(commands, new GraphPoint(right, y), new GraphPoint(right - 6, y + 6), paint);
+    }
+
+    private static void AppendVerticalAxis(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        SamplingViewport viewport,
+        double x,
+        GraphPaint paint)
+    {
+        double top = Math.Min(2, viewport.Height * 0.5);
+        double bottom = Math.Max(top, viewport.Height - 2);
+        AppendLine(commands, new GraphPoint(x, bottom), new GraphPoint(x, top), paint);
+        AppendLine(commands, new GraphPoint(x, top), new GraphPoint(x - 6, top + 6), paint);
+        AppendLine(commands, new GraphPoint(x, top), new GraphPoint(x + 6, top + 6), paint);
+    }
+
+    private void AppendHorizontalLabels(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        ImmutableArray<GlyphCommand>.Builder labels,
+        SamplingViewport viewport,
+        double step,
+        double axisY,
+        double verticalAxisX,
+        bool hasVerticalAxis,
+        GraphPaint fontPaint,
+        GraphPaint backgroundPaint)
+    {
+        if (viewport.Width < 48 || viewport.Height < 24)
+        {
+            return;
+        }
+
+        AppendLabel(
+            commands,
+            labels,
+            _options.GetAliasX(),
+            new GraphPoint(viewport.Width - 7, axisY + 5),
+            GraphTextAlignment.Center,
+            fontPaint,
+            backgroundPaint);
+
+        double first = Math.Ceiling(viewport.XRange.Minimum / step) * step;
+        for (int count = 0; count < 128; count++)
+        {
+            double value = first + (count * step);
+            if (value > viewport.XRange.Maximum + (step * 1e-10))
+            {
+                break;
+            }
+
+            bool zero = Math.Abs(value) <= step * 1e-10;
+            GraphPoint origin = zero && hasVerticalAxis
+                ? new GraphPoint(verticalAxisX - 4, axisY + 2)
+                : new GraphPoint(viewport.ToScreen(value, 0).X, axisY + 2);
+            AppendLabel(
+                commands,
+                labels,
+                FormatTick(zero ? 0 : value, step),
+                origin,
+                zero && hasVerticalAxis ? GraphTextAlignment.End : GraphTextAlignment.Center,
+                fontPaint,
+                backgroundPaint);
+        }
+    }
+
+    private void AppendVerticalLabels(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        ImmutableArray<GlyphCommand>.Builder labels,
+        SamplingViewport viewport,
+        double step,
+        double axisX,
+        GraphPaint fontPaint,
+        GraphPaint backgroundPaint)
+    {
+        if (viewport.Width < 48 || viewport.Height < 24)
+        {
+            return;
+        }
+
+        AppendLabel(
+            commands,
+            labels,
+            _options.GetAliasY(),
+            new GraphPoint(axisX - 11, -0.98046875),
+            GraphTextAlignment.End,
+            fontPaint,
+            backgroundPaint);
+
+        double first = Math.Ceiling(viewport.YRange.Minimum / step) * step;
+        for (int count = 0; count < 128; count++)
+        {
+            double value = first + (count * step);
+            if (value > viewport.YRange.Maximum + (step * 1e-10))
+            {
+                break;
+            }
+
+            if (Math.Abs(value) <= step * 1e-10)
+            {
+                continue;
+            }
+
+            AppendLabel(
+                commands,
+                labels,
+                FormatTick(value, step),
+                new GraphPoint(axisX - 4, viewport.ToScreen(0, value).Y - 7.98046875),
+                GraphTextAlignment.End,
+                fontPaint,
+                backgroundPaint);
+        }
+    }
+
+    private static void AppendLabel(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        ImmutableArray<GlyphCommand>.Builder labels,
+        string text,
+        GraphPoint origin,
+        GraphTextAlignment alignment,
+        GraphPaint fontPaint,
+        GraphPaint backgroundPaint)
+    {
+        var glyph = new GlyphCommand(
+            text,
+            origin,
+            "Segoe UI",
+            12,
+            fontPaint,
+            alignment,
+            GraphFontStyle.Italic);
+        commands.Add(new GlyphBackgroundCommand(glyph, backgroundPaint));
+        labels.Add(glyph);
+    }
+
+    private static void AppendLine(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        GraphPoint start,
+        GraphPoint end,
+        GraphPaint paint) =>
+        commands.Add(new StrokePathCommand(new GraphPath([start, end]), paint));
+
+    private GraphStatus ScaleSingleAxis(bool xAxis, double scale)
+    {
+        lock (_lock)
+        {
+            ThrowIfDisposed();
+            AxisRange candidate = Scale(xAxis ? _xRange : _yRange, xAxis ? _xRange.Center : _yRange.Center, scale);
+            if (!IsAllowed(candidate))
+            {
+                return GraphStatus.False;
+            }
+
+            if (xAxis)
+            {
+                _xRange = candidate;
+            }
+            else
+            {
+                _yRange = candidate;
+            }
+
+            InvalidateGeometryLocked(transformExisting: true);
+        }
+
+        return GraphStatus.Ok;
+    }
+
+    private void InvalidateGeometryLocked(bool transformExisting)
+    {
+        _generation++;
+        _samplingCancellation.Cancel();
+        _samplingCancellation.Dispose();
+        _samplingCancellation = new CancellationTokenSource();
+        if (transformExisting)
+        {
+            RebuildFrameFromPreparedLocked(stale: true);
+        }
+        else
+        {
+            _frame = null;
+        }
+    }
+
+    private void RebuildFrameFromPreparedLocked(bool stale)
+    {
+        _frame = _prepared is null ? null : BuildFrame(_prepared, stale);
+    }
+
+    private SamplingViewport EffectiveViewportLocked()
+    {
+        AxisRange x = _xRange;
+        AxisRange y = _yRange;
+        if (_options.GetForceProportional())
+        {
+            double xUnitsPerPixel = x.Length / _width;
+            double yUnitsPerPixel = y.Length / _height;
+            if (xUnitsPerPixel > yUnitsPerPixel)
+            {
+                double half = xUnitsPerPixel * _height * 0.5;
+                y = new AxisRange(y.Center - half, y.Center + half);
+            }
+            else
+            {
+                double half = yUnitsPerPixel * _width * 0.5;
+                x = new AxisRange(x.Center - half, x.Center + half);
+            }
+        }
+
+        return new SamplingViewport(x, y, _width, _height);
+    }
+
+    private static void SearchComponent(
+        ImmutableArray<CurveSample> points,
+        SamplingViewport viewport,
+        GraphPoint target,
+        int equationIndex,
+        ref ClosestCandidate best)
+    {
+        for (int index = 1; index < points.Length; index++)
+        {
+            CurveSample left = points[index - 1];
+            CurveSample right = points[index];
+            GraphPoint userLeft = new(left.X, left.Y);
+            GraphPoint userRight = new(right.X, right.Y);
+            SearchSegment(
+                userLeft,
+                userRight,
+                left.Parameter,
+                right.Parameter,
+                viewport,
+                target,
+                equationIndex,
+                ref best);
+        }
+    }
+
+    private static void SearchContour(
+        ImmutableArray<GraphPoint> points,
+        SamplingViewport viewport,
+        GraphPoint target,
+        int equationIndex,
+        ref ClosestCandidate best)
+    {
+        for (int index = 1; index < points.Length; index++)
+        {
+            SearchSegment(points[index - 1], points[index], double.NaN, double.NaN, viewport, target, equationIndex, ref best);
+        }
+    }
+
+    private static void SearchSegment(
+        GraphPoint userLeft,
+        GraphPoint userRight,
+        double parameterLeft,
+        double parameterRight,
+        SamplingViewport viewport,
+        GraphPoint target,
+        int equationIndex,
+        ref ClosestCandidate best)
+    {
+        GraphPoint left = viewport.ToScreen(userLeft.X, userLeft.Y);
+        GraphPoint right = viewport.ToScreen(userRight.X, userRight.Y);
+        double dx = right.X - left.X;
+        double dy = right.Y - left.Y;
+        double denominator = (dx * dx) + (dy * dy);
+        double amount = denominator <= double.Epsilon
+            ? 0
+            : Math.Clamp((((target.X - left.X) * dx) + ((target.Y - left.Y) * dy)) / denominator, 0, 1);
+        GraphPoint screen = new(left.X + (amount * dx), left.Y + (amount * dy));
+        double distanceX = screen.X - target.X;
+        double distanceY = screen.Y - target.Y;
+        double distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+        if (distanceSquared >= best.DistanceSquared)
+        {
+            return;
+        }
+
+        best = new ClosestCandidate(
+            true,
+            equationIndex,
+            distanceSquared,
+            screen,
+            new GraphPoint(
+                userLeft.X + (amount * (userRight.X - userLeft.X)),
+                userLeft.Y + (amount * (userRight.Y - userLeft.Y))),
+            double.IsNaN(parameterLeft)
+                ? double.NaN
+                : parameterLeft + (amount * (parameterRight - parameterLeft)));
+    }
+
+    private static GraphPath ToScreenPath(
+        ImmutableArray<GraphPoint> points,
+        SamplingViewport viewport,
+        bool isClosed) => new(points.Select(point => viewport.ToScreen(point.X, point.Y)), isClosed);
+
+    private static double EvaluateImplicit(
+        CompiledGraphEquation definition,
+        double[] values,
+        double x,
+        double y,
+        EvalTrigUnitMode trigMode)
+    {
+        SetVariable(values, definition.XIndex, x);
+        SetVariable(values, definition.YIndex, y);
+        EvaluationValue result = definition.Program.Evaluate(values, trigMode);
+        return result.IsFinite ? result.Value : double.NaN;
+    }
+
+    private static void SetVariable(double[] values, int index, double value)
+    {
+        if (index >= 0)
+        {
+            values[index] = value;
+        }
+    }
+
+    private static SampleState ToSampleState(EvaluationState state) => state switch
+    {
+        EvaluationState.NonReal => SampleState.NonReal,
+        EvaluationState.Overflow => SampleState.Overflow,
+        EvaluationState.BudgetExceeded => SampleState.BudgetExceeded,
+        _ => SampleState.Undefined
+    };
+
+    private static AxisRange Scale(AxisRange range, double center, double scale) => new(
+        center + ((range.Minimum - center) * scale),
+        center + ((range.Maximum - center) * scale));
+
+    private static bool IsAllowed(AxisRange range) =>
+        range.IsFiniteAndOrdered &&
+        range.Length >= MinimumRangeLength &&
+        range.Length <= MaximumRangeLength;
+
+    private static double NiceStep(double range)
+    {
+        double raw = range / 8;
+        double exponent = Math.Pow(10, Math.Floor(Math.Log10(raw)));
+        double fraction = raw / exponent;
+        double nice = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10;
+        return nice * exponent;
+    }
+
+    private static string FormatTick(double value, double step)
+    {
+        int decimals = Math.Clamp((int)Math.Ceiling(-Math.Log10(step)), 0, 12);
+        return value.ToString(decimals == 0 ? "0" : $"0.{new string('#', decimals)}", CultureInfo.InvariantCulture);
+    }
+
+    private static double Hypotenuse(double first, double second)
+    {
+        first = Math.Abs(first);
+        second = Math.Abs(second);
+        double maximum = Math.Max(first, second);
+        if (maximum == 0 || double.IsInfinity(maximum))
+        {
+            return maximum;
+        }
+
+        double ratio = Math.Min(first, second) / maximum;
+        return maximum * Math.Sqrt(1 + (ratio * ratio));
+    }
+
+    private static void SetUnavailable(
+        out int formulaId,
+        out float screenX,
+        out float screenY,
+        out double x,
+        out double y,
+        out double rho,
+        out double theta,
+        out double t)
+    {
+        formulaId = -1;
+        screenX = float.NaN;
+        screenY = float.NaN;
+        x = double.NaN;
+        y = double.NaN;
+        rho = double.NaN;
+        theta = double.NaN;
+        t = double.NaN;
+    }
+
+    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
+
+    private readonly record struct ClosestCandidate(
+        bool Available,
+        int EquationIndex,
+        double DistanceSquared,
+        GraphPoint Screen,
+        GraphPoint User,
+        double Parameter)
+    {
+        public static ClosestCandidate None { get; } = new(
+            false,
+            -1,
+            double.PositiveInfinity,
+            new GraphPoint(double.NaN, double.NaN),
+            new GraphPoint(double.NaN, double.NaN),
+            double.NaN);
+    }
+}

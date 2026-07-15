@@ -14,6 +14,7 @@
       </ResourceDictionary.MergedDictionaries>
 
       <FontFamily x:Key="CalculatorFontFamily">avares://Calculator/Assets/CalculatorIcons.ttf#Calculator Fluent Icons</FontFamily>
+      <FontFamily x:Key="MathFontFamily">avares://Calculator/Assets/Fonts/NotoSansMath#Noto Sans Math</FontFamily>
       <FontFamily x:Key="ContentControlThemeFontFamily">Segoe UI Variable,Segoe UI,avares://Calculator/Assets/Fonts/Hind2#Hind2,sans-serif</FontFamily>
 
       <!-- Original Calculator overrides for WinUI's NavigationView resources.
@@ -286,6 +287,41 @@
                          Text="&#xE70D;" />
             </StackPanel>
           </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="controls|OperatorPanelListView">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="ItemsPanel">
+        <ItemsPanelTemplate>
+          <StackPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+      </Setter>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Grid ClipToBounds="True">
+            <ScrollViewer x:Name="PART_ScrollViewer"
+                          HorizontalScrollBarVisibility="Hidden"
+                          VerticalScrollBarVisibility="Disabled">
+              <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
+            </ScrollViewer>
+            <Button x:Name="PART_ScrollLeft"
+                    Width="32"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Stretch"
+                    Padding="0"
+                    IsVisible="False"
+                    FontFamily="{DynamicResource CalculatorFontFamily}"
+                    Content="&#xE76B;" />
+            <Button x:Name="PART_ScrollRight"
+                    Width="32"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Stretch"
+                    Padding="0"
+                    IsVisible="False"
+                    FontFamily="{DynamicResource CalculatorFontFamily}"
+                    Content="&#xE76C;" />
+          </Grid>
         </ControlTemplate>
       </Setter>
     </Style>

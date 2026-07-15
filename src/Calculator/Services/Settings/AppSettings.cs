@@ -25,6 +25,8 @@ public sealed record AppSettings
 
     public bool AutomaticCurrencyRefresh { get; init; } = true;
 
+    public bool GraphThemeMatchApp { get; init; }
+
     public string UnitConverterPreferences { get; init; } = string.Empty;
 
     [JsonPropertyName("lastCurrencyFrom")]

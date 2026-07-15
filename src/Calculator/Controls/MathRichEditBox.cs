@@ -1,248 +1,462 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using System;
-using System.Runtime.InteropServices;
+using Avalonia;
+using Avalonia.Automation;
+using Avalonia.Controls;
+using Avalonia.Data;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using GraphControl;
 
-using Windows.ApplicationModel;
-using Windows.System;
-using Microsoft.Windows.System;
-using Windows.UI.Core;
-using Microsoft.UI.Text;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
+namespace CalculatorApp.Controls;
 
-namespace CalculatorApp
+public enum EquationSubmissionSource
 {
-    namespace Controls
-    {
-        namespace Windows_2004_Prerelease
-        {
-            public enum RichEditMathMode
-            {
-                NoMath,
-                MathOnly
-            }
-
-            [Guid("619c20f2-cb3b-4521-981f-2865b1b93f04")]
-            internal interface ITextDocument4
-            {
-                int SetMath(string value);
-                int GetMath(out string value);
-                int SetMathMode(RichEditMathMode mathMode);
-            }
-        }
-
-        public enum EquationSubmissionSource
-        {
-            FOCUS_LOST,
-            ENTER_KEY,
-            PROGRAMMATIC
-        }
-
-        public sealed class MathRichEditBoxSubmission
-        {
-            public bool HasTextChanged { get; }
-
-            public EquationSubmissionSource Source { get; }
-
-            public MathRichEditBoxSubmission(bool hasTextChanged, EquationSubmissionSource source)
-            {
-                HasTextChanged = hasTextChanged;
-                Source = source;
-            }
-
-        }
-
-        public sealed class MathRichEditBoxFormatRequest
-        {
-            public string OriginalText { get; }
-
-            public string FormattedText { get; set; }
-
-            public MathRichEditBoxFormatRequest(string originalText)
-            {
-                OriginalText = originalText;
-            }
-
-        }
-
-        public sealed class MathRichEditBox : RichEditBox
-        {
-            public MathRichEditBox()
-            {
-                string packageName = Package.Current.Id.Name;
-
-                if (packageName == "Microsoft.WindowsCalculator.Dev")
-                {
-                    LimitedAccessFeatures.TryUnlockFeature(
-                                "com.microsoft.windows.richeditmath",
-                                "BeDD/jxKhz/yfVNA11t4uA==", // Microsoft.WindowsCalculator.Dev
-                                "8wekyb3d8bbwe has registered their use of com.microsoft.windows.richeditmath with Microsoft and agrees to the terms of use.");
-                }
-                else if (packageName == "Microsoft.WindowsCalculator")
-                {
-                    LimitedAccessFeatures.TryUnlockFeature(
-                                "com.microsoft.windows.richeditmath",
-                                "pfanNuxnzo+mAkBQ3N/rGQ==", // Microsoft.WindowsCalculator
-                                "8wekyb3d8bbwe has registered their use of com.microsoft.windows.richeditmath with Microsoft and agrees to the terms of use.");
-                }
-
-                TextDocument.SetMathMode(RichEditMathMode.MathOnly);
-                LosingFocus += OnLosingFocus;
-                KeyUp += OnKeyUp;
-            }
-
-            public string MathText
-            {
-                get => (string)GetValue(MathTextProperty);
-                set => SetValue(MathTextProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for MathText.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty MathTextProperty =
-                DependencyProperty.Register(nameof(MathText), typeof(string), typeof(MathRichEditBox), new PropertyMetadata(string.Empty, (sender, args) =>
-                {
-                    var self = (MathRichEditBox)sender;
-                    self.OnMathTextPropertyChanged((string)args.OldValue, (string)args.NewValue);
-                }));
-
-            public event EventHandler<MathRichEditBoxFormatRequest> FormatRequest;
-            public event EventHandler<MathRichEditBoxSubmission> EquationSubmitted;
-
-            public void OnMathTextPropertyChanged(string oldValue, string newValue)
-            {
-                SetMathTextProperty(newValue);
-
-                // Get the new math text directly from the TextBox since the textbox may have changed its formatting
-                SetValue(MathTextProperty, GetMathTextProperty());
-            }
-
-            public void InsertText(string text, int cursorOffSet, int selectionLength)
-            {
-                // If the rich edit is empty, the math zone may not exist, and so selection (and thus the resulting text) will not be in a math zone.
-                // If the rich edit has content already, then the mathzone will already be created due to mathonly mode being set and the selection will exist inside the
-                // math zone. To handle this, we will force a math zone to be created in teh case of the text being empty and then replacing the text inside of the math
-                // zone with the newly inserted text.
-                if (string.IsNullOrEmpty(GetMathTextProperty()))
-                {
-                    SetMathTextProperty("<math xmlns=\"http://www.w3.org/1998/Math/MathML\"><mi>x</mi></math>");
-                    TextDocument.Selection.StartPosition = 0;
-                    TextDocument.Selection.EndPosition = 1;
-                }
-
-                // insert the text in place of selection
-                TextDocument.Selection.SetText(TextSetOptions.FormatRtf, text);
-
-                // Move the cursor to the next logical place for users to enter text.
-                TextDocument.Selection.StartPosition += cursorOffSet;
-                TextDocument.Selection.EndPosition = TextDocument.Selection.StartPosition + selectionLength;
-            }
-
-            public void SubmitEquation(EquationSubmissionSource source)
-            {
-                // Clear formatting since the graph control doesn't work with bold/underlines
-                var range = TextDocument.GetRange(0, TextDocument.Selection.EndPosition);
-
-                if (range != null)
-                {
-                    range.CharacterFormat.Underline = UnderlineType.None;
-                }
-
-                var newVal = GetMathTextProperty();
-                if (MathText != newVal)
-                {
-                    // Request the final formatting of the text
-                    var formatRequest = new MathRichEditBoxFormatRequest(newVal);
-                    FormatRequest?.Invoke(this, formatRequest);
-
-                    if (!string.IsNullOrEmpty(formatRequest.FormattedText))
-                    {
-                        newVal = formatRequest.FormattedText;
-                    }
-
-                    SetValue(MathTextProperty, newVal);
-                    EquationSubmitted?.Invoke(this, new MathRichEditBoxSubmission(true, source));
-                }
-                else
-                {
-                    EquationSubmitted?.Invoke(this, new MathRichEditBoxSubmission(false, source));
-                }
-            }
-
-            public void BackSpace()
-            {
-                // if anything is selected, just delete the selection.  Note: EndPosition can be before start position.
-                if (TextDocument.Selection.StartPosition != TextDocument.Selection.EndPosition)
-                {
-                    TextDocument.Selection.SetText(TextSetOptions.None, "");
-                    return;
-                }
-
-                // if we are at the start of the string, do nothing
-                if (TextDocument.Selection.StartPosition == 0)
-                {
-                    return;
-                }
-
-                // Select the previous group.
-                TextDocument.Selection.EndPosition = TextDocument.Selection.StartPosition;
-                TextDocument.Selection.StartPosition -= 1;
-
-                // If the group contains anything complex, we want to give the user a chance to preview the deletion.
-                // If it's a single character, then just delete it.  Otherwise do nothing until the user triggers backspace again.
-                var text = TextDocument.Selection.Text;
-                if (text.Length == 1)
-                {
-                    TextDocument.Selection.SetText(TextSetOptions.None, "");
-                }
-            }
-
-            protected override void OnKeyDown(KeyRoutedEventArgs e)
-            {
-                // suppress control + B to prevent bold input from being entered
-                //if ((App.Window.CoreWindow.GetKeyState(VirtualKey.Control) & CoreVirtualKeyStates.Down) != CoreVirtualKeyStates.Down ||
-                //    e.Key != VirtualKey.B)
-                {
-                    base.OnKeyDown(e);
-                }
-            }
-
-            private string GetMathTextProperty()
-            {
-                TextDocument.GetMathML(out string math);
-                return math;
-            }
-
-            private void SetMathTextProperty(string newValue)
-            {
-                bool readOnlyState = IsReadOnly;
-                IsReadOnly = false;
-
-                TextDocument.SetMathML(newValue);
-
-                IsReadOnly = readOnlyState;
-            }
-
-            private void OnLosingFocus(UIElement sender, LosingFocusEventArgs args)
-            {
-                if (IsReadOnly || ContextFlyout.IsOpen)
-                {
-                    return;
-                }
-
-                SubmitEquation(EquationSubmissionSource.FOCUS_LOST);
-            }
-
-            private void OnKeyUp(object sender, KeyRoutedEventArgs e)
-            {
-                if (!IsReadOnly && e.Key == VirtualKey.Enter)
-                {
-                    SubmitEquation(EquationSubmissionSource.ENTER_KEY);
-                }
-            }
-        }
-    }
+    FocusLost,
+    EnterKey,
+    Programmatic
 }
 
+public sealed class MathRichEditBoxSubmission(bool hasTextChanged, EquationSubmissionSource source) : EventArgs
+{
+    public bool HasTextChanged { get; } = hasTextChanged;
+
+    public EquationSubmissionSource Source { get; } = source;
+}
+
+public sealed class MathRichEditBoxFormatRequest(string originalText) : EventArgs
+{
+    public string OriginalText { get; } = originalText;
+
+    public string FormattedText { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Cross-platform port of Calculator's math-only RichEdit control. Avalonia's
+/// text services provide caret, selection, IME, clipboard, and undo/redo; this
+/// class owns equation insertion semantics and the MathML conversion boundary.
+/// </summary>
+public sealed class MathRichEditBox : TextBox
+{
+    public static readonly StyledProperty<string> MathTextProperty =
+        AvaloniaProperty.Register<MathRichEditBox, string>(
+            nameof(MathText),
+            string.Empty,
+            defaultBindingMode: BindingMode.TwoWay);
+
+    public static readonly StyledProperty<string> LinearTextProperty =
+        AvaloniaProperty.Register<MathRichEditBox, string>(
+            nameof(LinearText),
+            string.Empty,
+            defaultBindingMode: BindingMode.TwoWay);
+
+    public static readonly StyledProperty<bool> HasEquationErrorProperty =
+        AvaloniaProperty.Register<MathRichEditBox, bool>(nameof(HasEquationError));
+
+    public static readonly StyledProperty<int> ErrorCodeProperty =
+        AvaloniaProperty.Register<MathRichEditBox, int>(nameof(ErrorCode));
+
+    public static readonly StyledProperty<int> ErrorTypeProperty =
+        AvaloniaProperty.Register<MathRichEditBox, int>(nameof(ErrorType));
+
+    private readonly EquationTextCodec _codec = new();
+    private readonly MenuItem _cutMenuItem;
+    private readonly MenuItem _copyMenuItem;
+    private readonly MenuItem _pasteMenuItem;
+    private readonly MenuItem _undoMenuItem;
+    private readonly MenuItem _redoMenuItem;
+    private bool _updatingProperties;
+    private string _lastSubmittedLinear = string.Empty;
+
+    static MathRichEditBox()
+    {
+        MathTextProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, args) =>
+            editor.OnMathTextChanged(args.NewValue as string ?? string.Empty));
+        LinearTextProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, args) =>
+            editor.OnLinearTextChanged(args.NewValue as string ?? string.Empty));
+    }
+
+    public MathRichEditBox()
+    {
+        AcceptsReturn = false;
+        TextWrapping = Avalonia.Media.TextWrapping.NoWrap;
+        TextChanged += OnEditorTextChanged;
+
+        _cutMenuItem = MenuItem("Cut", (_, _) => Cut());
+        _copyMenuItem = MenuItem("Copy", (_, _) => Copy());
+        _pasteMenuItem = MenuItem("Paste", (_, _) => Paste());
+        _undoMenuItem = MenuItem("Undo", (_, _) => Undo());
+        _redoMenuItem = MenuItem("Redo", (_, _) => Redo());
+        var contextMenu = new ContextMenu
+        {
+            ItemsSource = new object[]
+            {
+                _undoMenuItem,
+                _redoMenuItem,
+                new Separator(),
+                _cutMenuItem,
+                _copyMenuItem,
+                _pasteMenuItem,
+                new Separator(),
+                MenuItem("Fraction", (_, _) => InsertFraction()),
+                MenuItem("Exponent", (_, _) => InsertPower()),
+                MenuItem("Square root", (_, _) => InsertSquareRoot()),
+                new Separator(),
+                MenuItem("Select all", (_, _) => SelectAll())
+            }
+        };
+        contextMenu.Opened += (_, _) => UpdateContextMenuState();
+        ContextMenu = contextMenu;
+    }
+
+    protected override Type StyleKeyOverride => typeof(TextBox);
+
+    public string MathText
+    {
+        get => GetValue(MathTextProperty);
+        set => SetValue(MathTextProperty, value ?? string.Empty);
+    }
+
+    public string LinearText
+    {
+        get => GetValue(LinearTextProperty);
+        set => SetValue(LinearTextProperty, value ?? string.Empty);
+    }
+
+    public bool HasEquationError
+    {
+        get => GetValue(HasEquationErrorProperty);
+        private set => SetCurrentValue(HasEquationErrorProperty, value);
+    }
+
+    public int ErrorCode
+    {
+        get => GetValue(ErrorCodeProperty);
+        private set => SetCurrentValue(ErrorCodeProperty, value);
+    }
+
+    public int ErrorType
+    {
+        get => GetValue(ErrorTypeProperty);
+        private set => SetCurrentValue(ErrorTypeProperty, value);
+    }
+
+    public event EventHandler<MathRichEditBoxFormatRequest>? FormatRequest;
+
+    public event EventHandler<MathRichEditBoxSubmission>? EquationSubmitted;
+
+    public event EventHandler? ErrorStateChanged;
+
+    public void InsertText(string text, int cursorOffset, int selectionLength)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ReplaceSelection(text, cursorOffset, selectionLength);
+    }
+
+    public void InsertFraction()
+    {
+        string selected = GetSelectedText();
+        if (selected.Length == 0)
+        {
+            ReplaceSelection("()/()", 1, 0);
+        }
+        else
+        {
+            ReplaceSelection($"({selected})/()", selected.Length + 4, 0);
+        }
+    }
+
+    public void InsertPower()
+    {
+        string selected = GetSelectedText();
+        if (selected.Length == 0)
+        {
+            ReplaceSelection("^()", 2, 0);
+        }
+        else
+        {
+            ReplaceSelection($"({selected})^()", selected.Length + 4, 0);
+        }
+    }
+
+    public void InsertSquareRoot()
+    {
+        string selected = GetSelectedText();
+        string replacement = $"sqrt({selected})";
+        ReplaceSelection(replacement, selected.Length == 0 ? 5 : replacement.Length, 0);
+    }
+
+    public void InsertRoot()
+    {
+        string selected = GetSelectedText();
+        string replacement = $"root({selected},2)";
+        int selectionStart = selected.Length == 0 ? 5 : replacement.Length - 2;
+        ReplaceSelection(replacement, selectionStart, selected.Length == 0 ? 0 : 1);
+    }
+
+    public void BackSpace()
+    {
+        int start = Math.Min(SelectionStart, SelectionEnd);
+        int end = Math.Max(SelectionStart, SelectionEnd);
+        string value = Text ?? string.Empty;
+        if (start != end)
+        {
+            ReplaceRange(value, start, end, string.Empty, start, start);
+            return;
+        }
+
+        if (start == 0)
+        {
+            return;
+        }
+
+        // Empty structured groups are deleted as a unit on the second
+        // backspace, matching RichEdit's grouped math-zone behavior.
+        if (start < value.Length && value[start - 1] == '(' && value[start] == ')')
+        {
+            int functionStart = start - 2;
+            while (functionStart >= 0 && char.IsLetter(value[functionStart]))
+            {
+                functionStart--;
+            }
+
+            functionStart++;
+            ReplaceRange(value, functionStart, start + 1, string.Empty, functionStart, functionStart);
+            return;
+        }
+
+        ReplaceRange(value, start - 1, start, string.Empty, start - 1, start - 1);
+    }
+
+    public void SubmitEquation(EquationSubmissionSource source)
+    {
+        string original = Text ?? string.Empty;
+        bool valid = _codec.TryNormalizeLinear(original, out string normalized, out int errorCode, out int errorType);
+        if (!valid)
+        {
+            SetError(errorCode, errorType);
+            EquationSubmitted?.Invoke(
+                this,
+                new MathRichEditBoxSubmission(!string.Equals(_lastSubmittedLinear, original, StringComparison.Ordinal), source));
+            _lastSubmittedLinear = original;
+            return;
+        }
+
+        _ = _codec.TryLinearToMathMl(normalized, out string mathMl, out _, out _);
+        var formatRequest = new MathRichEditBoxFormatRequest(mathMl);
+        FormatRequest?.Invoke(this, formatRequest);
+        if (!string.IsNullOrWhiteSpace(formatRequest.FormattedText))
+        {
+            mathMl = formatRequest.FormattedText;
+            if (_codec.TryMathMlToLinear(mathMl, out string formattedLinear, out _, out _))
+            {
+                normalized = formattedLinear;
+            }
+        }
+
+        bool changed = !string.Equals(_lastSubmittedLinear, normalized, StringComparison.Ordinal);
+        _updatingProperties = true;
+        try
+        {
+            Text = normalized;
+            SetCurrentValue(LinearTextProperty, normalized);
+            SetCurrentValue(MathTextProperty, mathMl);
+        }
+        finally
+        {
+            _updatingProperties = false;
+        }
+
+        _lastSubmittedLinear = normalized;
+        ClearError();
+        EquationSubmitted?.Invoke(this, new MathRichEditBoxSubmission(changed, source));
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.B)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Enter)
+        {
+            SubmitEquation(EquationSubmissionSource.EnterKey);
+            e.Handled = true;
+            return;
+        }
+
+        base.OnKeyDown(e);
+    }
+
+    protected override void OnLostFocus(FocusChangedEventArgs e)
+    {
+        base.OnLostFocus(e);
+        if (!IsReadOnly && ContextMenu?.IsOpen != true)
+        {
+            SubmitEquation(EquationSubmissionSource.FocusLost);
+        }
+    }
+
+    private void OnMathTextChanged(string mathMl)
+    {
+        if (_updatingProperties)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(mathMl))
+        {
+            SetLinearTextFromExternalValue(string.Empty);
+            return;
+        }
+
+        if (_codec.TryMathMlToLinear(mathMl, out string linear, out int errorCode, out int errorType))
+        {
+            SetLinearTextFromExternalValue(linear);
+            ClearError();
+        }
+        else
+        {
+            SetError(errorCode, errorType);
+        }
+    }
+
+    private void OnLinearTextChanged(string linear)
+    {
+        if (_updatingProperties || string.Equals(Text, linear, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _updatingProperties = true;
+        try
+        {
+            Text = linear;
+        }
+        finally
+        {
+            _updatingProperties = false;
+        }
+
+        Validate(linear);
+    }
+
+    private void OnEditorTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_updatingProperties)
+        {
+            return;
+        }
+
+        string linear = Text ?? string.Empty;
+        SetCurrentValue(LinearTextProperty, linear);
+        Validate(linear);
+    }
+
+    private void Validate(string linear)
+    {
+        if (_codec.TryNormalizeLinear(linear, out _, out int errorCode, out int errorType))
+        {
+            ClearError();
+        }
+        else
+        {
+            SetError(errorCode, errorType);
+        }
+    }
+
+    private void SetLinearTextFromExternalValue(string linear)
+    {
+        _updatingProperties = true;
+        try
+        {
+            Text = linear;
+            SetCurrentValue(LinearTextProperty, linear);
+            _lastSubmittedLinear = linear;
+        }
+        finally
+        {
+            _updatingProperties = false;
+        }
+    }
+
+    private void ReplaceSelection(string replacement, int cursorOffset, int selectionLength)
+    {
+        string value = Text ?? string.Empty;
+        int start = Math.Min(SelectionStart, SelectionEnd);
+        int end = Math.Max(SelectionStart, SelectionEnd);
+        int requestedStart = Math.Clamp(start + cursorOffset, start, start + replacement.Length);
+        int requestedEnd = Math.Clamp(requestedStart + selectionLength, requestedStart, start + replacement.Length);
+        ReplaceRange(value, start, end, replacement, requestedStart, requestedEnd);
+    }
+
+    private void ReplaceRange(
+        string value,
+        int start,
+        int end,
+        string replacement,
+        int newSelectionStart,
+        int newSelectionEnd)
+    {
+        Text = string.Concat(value.AsSpan(0, start), replacement, value.AsSpan(end));
+        SelectionStart = newSelectionStart;
+        SelectionEnd = newSelectionEnd;
+        Focus();
+    }
+
+    private string GetSelectedText()
+    {
+        string value = Text ?? string.Empty;
+        int start = Math.Min(SelectionStart, SelectionEnd);
+        int end = Math.Max(SelectionStart, SelectionEnd);
+        return value[start..end];
+    }
+
+    private void SetError(int errorCode, int errorType)
+    {
+        bool changed = !HasEquationError || ErrorCode != errorCode || ErrorType != errorType;
+        HasEquationError = true;
+        ErrorCode = errorCode;
+        ErrorType = errorType;
+        PseudoClasses.Set(":error", true);
+        AutomationProperties.SetHelpText(this, $"Equation error {errorType}:{errorCode}");
+        if (changed)
+        {
+            ErrorStateChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private void ClearError()
+    {
+        bool changed = HasEquationError;
+        HasEquationError = false;
+        ErrorCode = 0;
+        ErrorType = 0;
+        PseudoClasses.Set(":error", false);
+        AutomationProperties.SetHelpText(this, string.Empty);
+        if (changed)
+        {
+            ErrorStateChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private void UpdateContextMenuState()
+    {
+        bool hasSelection = SelectionStart != SelectionEnd;
+        _cutMenuItem.IsEnabled = !IsReadOnly && hasSelection;
+        _copyMenuItem.IsEnabled = hasSelection;
+        _pasteMenuItem.IsEnabled = !IsReadOnly;
+        _undoMenuItem.IsEnabled = !IsReadOnly && CanUndo;
+        _redoMenuItem.IsEnabled = !IsReadOnly && CanRedo;
+    }
+
+    private static MenuItem MenuItem(string header, EventHandler<RoutedEventArgs> handler)
+    {
+        var item = new MenuItem { Header = header };
+        item.Click += handler;
+        return item;
+    }
+}

@@ -60,6 +60,15 @@ public sealed class OperatorPanelButton : ToggleButton
         set => SetValue(FlyoutMenuProperty, value);
     }
 
+    protected override void OnClick()
+    {
+        base.OnClick();
+        if (IsChecked == true && FlyoutMenu is not null)
+        {
+            FlyoutMenu.ShowAt(this);
+        }
+    }
+
     private void OnFlyoutMenuChanged(Flyout? oldValue, Flyout? newValue)
     {
         if (oldValue is not null)
@@ -67,7 +76,6 @@ public sealed class OperatorPanelButton : ToggleButton
             oldValue.Closed -= FlyoutClosed;
         }
 
-        Flyout = newValue;
         if (newValue is not null)
         {
             newValue.Closed += FlyoutClosed;

@@ -1,300 +1,320 @@
-using System;
-using System.ComponentModel;
-using Microsoft.UI.Xaml.Data;
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
+using System.Globalization;
+using CalculatorApp.Services.Settings;
+using CalculatorApp.ViewModel.Common;
 using GraphControl;
+using Graphing;
 
-namespace CalculatorApp.ViewModel
+namespace CalculatorApp.ViewModel;
+
+public sealed class GraphLineWidthChoice
 {
-    [Microsoft.UI.Xaml.Data.Bindable]
-    public sealed partial class GraphingSettingsViewModel : INotifyPropertyChanged
+    public required double Width { get; init; }
+
+    public required string AutomationName { get; init; }
+}
+
+public sealed partial class GraphingSettingsViewModel : ViewModelBase
+{
+    private readonly ISettingsStore _settingsStore;
+    private Grapher? _graph;
+    private string _xMin = string.Empty;
+    private string _xMax = string.Empty;
+    private string _yMin = string.Empty;
+    private string _yMax = string.Empty;
+    private bool _xMinError;
+    private bool _xMaxError;
+    private bool _yMinError;
+    private bool _yMaxError;
+    private bool _updatingRanges;
+    private double _xMinValue;
+    private double _xMaxValue;
+    private double _yMinValue;
+    private double _yMaxValue;
+    private int _selectedLineWidthIndex = 1;
+    private bool _isMatchAppTheme;
+
+    public GraphingSettingsViewModel()
+        : this(App.SettingsStore)
     {
-        // OBSERVABLE_OBJECT() expansion
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        internal void RaisePropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        // OBSERVABLE_PROPERTY_R(bool, YMinError) expansion
-        private bool m_YMinError;
-        public bool YMinError
-        {
-            get { return m_YMinError; }
-            private set { m_YMinError = value; }
-        }
-
-        // OBSERVABLE_PROPERTY_R(bool, XMinError) expansion
-        private bool m_XMinError;
-        public bool XMinError
-        {
-            get { return m_XMinError; }
-            private set { m_XMinError = value; }
-        }
-
-        // OBSERVABLE_PROPERTY_R(bool, XMaxError) expansion
-        private bool m_XMaxError;
-        public bool XMaxError
-        {
-            get { return m_XMaxError; }
-            private set { m_XMaxError = value; }
-        }
-
-        // OBSERVABLE_PROPERTY_R(bool, YMaxError) expansion
-        private bool m_YMaxError;
-        public bool YMaxError
-        {
-            get { return m_YMaxError; }
-            private set { m_YMaxError = value; }
-        }
-
-        // OBSERVABLE_PROPERTY_R(GraphControl.Grapher ^, Graph) expansion
-        private Grapher m_Graph;
-        public Grapher Graph
-        {
-            get { return m_Graph; }
-            private set { m_Graph = value; }
-        }
-
- 
-        public bool XError
-        {
-            get
-            {
-                return !m_XMinError && !m_XMaxError && m_XMinValue >= m_XMaxValue;
-            }
-        }
-
-        public bool YError
-        {
-            get
-            {
-                return !m_YMinError && !m_YMaxError && m_YMinValue >= m_YMaxValue;
-            }
-        }
-
-        private string m_XMin;
-        public string XMin
-        {
-            get
-            {
-                return m_XMin;
-            }
-            set
-            {
-                if (m_XMin == value)
-                {
-                    return;
-                }
-                m_XMin = value;
-                m_XIsMinLastChanged = true;
-                if (m_Graph != null)
-                {
-                    double number;
-                    if (double.TryParse(value, out number))
-                    {
-                        m_Graph.XAxisMin = m_XMinValue = number;
-                        XMinError = false;
-                    }
-                    else
-                    {
-                        XMinError = true;
-                    }
-                }
-                RaisePropertyChanged(nameof(XError));
-                RaisePropertyChanged(nameof(XMin));
-                UpdateDisplayRange();
-            }
-        }
-
-        private string m_XMax;
-        public string XMax
-        {
-            get
-            {
-                return m_XMax;
-            }
-            set
-            {
-                if (m_XMax == value)
-                {
-                    return;
-                }
-                m_XMax = value;
-                m_XIsMinLastChanged = false;
-                if (m_Graph != null)
-                {
-                    double number;
-                    if (double.TryParse(value, out number))
-                    {
-                        m_Graph.XAxisMax = m_XMaxValue = number;
-                        XMaxError = false;
-                    }
-                    else
-                    {
-                        XMaxError = true;
-                    }
-                }
-                RaisePropertyChanged(nameof(XError));
-                RaisePropertyChanged(nameof(XMax));
-                UpdateDisplayRange();
-            }
-        }
-
-        private string m_YMin;
-        public string YMin
-        {
-            get
-            {
-                return m_YMin;
-            }
-            set
-            {
-                if (m_YMin == value)
-                {
-                    return;
-                }
-                m_YMin = value;
-                m_YIsMinLastChanged = true;
-                if (m_Graph != null)
-                {
-                    double number;
-                    if (double.TryParse(value, out number))
-                    {
-                        m_Graph.YAxisMin = m_YMinValue = number;
-                        YMinError = false;
-                    }
-                    else
-                    {
-                        YMinError = true;
-                    }
-                }
-                RaisePropertyChanged(nameof(YError));
-                RaisePropertyChanged(nameof(YMin));
-                UpdateDisplayRange();
-            }
-        }
-
-        private string m_YMax;
-        public string YMax
-        {
-            get
-            {
-                return m_YMax;
-            }
-            set
-            {
-                if (m_YMax == value)
-                {
-                    return;
-                }
-                m_YMax = value;
-                m_YIsMinLastChanged = false;
-                if (m_Graph != null)
-                {
-                    double number;
-                    if (double.TryParse(value, out number))
-                    {
-                        m_Graph.YAxisMax = m_YMaxValue = number;
-                        YMaxError = false;
-                    }
-                    else
-                    {
-                        YMaxError = true;
-                    }
-                }
-                RaisePropertyChanged(nameof(YError));
-                RaisePropertyChanged(nameof(YMax));
-                UpdateDisplayRange();
-            }
-        }
-
-        public int TrigUnit
-        {
-            get
-            {
-                return m_Graph == null ? (int)Graphing.EvalTrigUnitMode.Invalid : m_Graph.TrigUnitMode;
-            }
-            set
-            {
-                if (m_Graph == null)
-                {
-                    return;
-                }
-                m_Graph.TrigUnitMode = value;
-                RaisePropertyChanged(nameof(TrigUnit));
-            }
-        }
-
-        public bool TrigModeRadians
-        {
-            get
-            {
-                return m_Graph != null && m_Graph.TrigUnitMode == (int)Graphing.EvalTrigUnitMode.Radians;
-            }
-            set
-            {
-                if (value && m_Graph != null && m_Graph.TrigUnitMode != (int)Graphing.EvalTrigUnitMode.Radians)
-                {
-                    m_Graph.TrigUnitMode = (int)Graphing.EvalTrigUnitMode.Radians;
-
-                    RaisePropertyChanged(nameof(TrigModeRadians));
-                    RaisePropertyChanged(nameof(TrigModeDegrees));
-                    RaisePropertyChanged(nameof(TrigModeGradians));
-
-                    CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphSettingsChanged(CalculatorApp.ViewModel.Common.GraphSettingsType.TrigUnits, "Radians");
-                }
-            }
-        }
-
-        public bool TrigModeDegrees
-        {
-            get
-            {
-                return m_Graph != null && m_Graph.TrigUnitMode == (int)Graphing.EvalTrigUnitMode.Degrees;
-            }
-            set
-            {
-                if (value && m_Graph != null && m_Graph.TrigUnitMode != (int)Graphing.EvalTrigUnitMode.Degrees)
-                {
-                    m_Graph.TrigUnitMode = (int)Graphing.EvalTrigUnitMode.Degrees;
-
-                    RaisePropertyChanged(nameof(TrigModeDegrees));
-                    RaisePropertyChanged(nameof(TrigModeRadians));
-                    RaisePropertyChanged(nameof(TrigModeGradians));
-
-                    CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphSettingsChanged(CalculatorApp.ViewModel.Common.GraphSettingsType.TrigUnits, "Degrees");
-                }
-            }
-        }
-
-        public bool TrigModeGradians
-        {
-            get
-            {
-                return m_Graph != null && m_Graph.TrigUnitMode == (int)Graphing.EvalTrigUnitMode.Grads;
-            }
-            set
-            {
-                if (value && m_Graph != null && m_Graph.TrigUnitMode != (int)Graphing.EvalTrigUnitMode.Grads)
-                {
-                    m_Graph.TrigUnitMode = (int)Graphing.EvalTrigUnitMode.Grads;
-
-                    RaisePropertyChanged(nameof(TrigModeGradians));
-                    RaisePropertyChanged(nameof(TrigModeDegrees));
-                    RaisePropertyChanged(nameof(TrigModeRadians));
-
-                    CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphSettingsChanged(CalculatorApp.ViewModel.Common.GraphSettingsType.TrigUnits, "Gradians");
-                }
-            }
-        } 
-
-        private double m_XMinValue;
-        private double m_XMaxValue;
-        private double m_YMinValue;
-        private double m_YMaxValue;
-        private bool m_dontUpdateDisplayRange;
-        private bool m_XIsMinLastChanged;
-        private bool m_YIsMinLastChanged;
     }
+
+    internal GraphingSettingsViewModel(ISettingsStore settingsStore)
+    {
+        _settingsStore = settingsStore;
+        _isMatchAppTheme = settingsStore.Current.GraphThemeMatchApp;
+        AppResourceProvider resources = AppResourceProvider.GetInstance();
+        AvailableLineWidths =
+        [
+            new GraphLineWidthChoice
+            {
+                Width = 1,
+                AutomationName = resources.GetResourceString("SmallLineWidthAutomationName")
+            },
+            new GraphLineWidthChoice
+            {
+                Width = 2,
+                AutomationName = resources.GetResourceString("MediumLineWidthAutomationName")
+            },
+            new GraphLineWidthChoice
+            {
+                Width = 3,
+                AutomationName = resources.GetResourceString("LargeLineWidthAutomationName")
+            },
+            new GraphLineWidthChoice
+            {
+                Width = 4,
+                AutomationName = resources.GetResourceString("ExtraLargeLineWidthAutomationName")
+            }
+        ];
+    }
+
+    public IReadOnlyList<GraphLineWidthChoice> AvailableLineWidths { get; }
+
+    public int SelectedLineWidthIndex
+    {
+        get => _selectedLineWidthIndex;
+        set
+        {
+            int index = Math.Clamp(value, 0, AvailableLineWidths.Count - 1);
+            if (SetProperty(ref _selectedLineWidthIndex, index) && Graph is not null)
+            {
+                Graph.LineWidth = AvailableLineWidths[index].Width;
+            }
+        }
+    }
+
+    public bool IsMatchAppTheme
+    {
+        get => _isMatchAppTheme;
+        set
+        {
+            if (!SetProperty(ref _isMatchAppTheme, value))
+            {
+                return;
+            }
+
+            _settingsStore.Update(settings => settings with { GraphThemeMatchApp = value });
+            OnPropertyChanged(nameof(IsAlwaysLightTheme));
+            GraphThemeSettingChanged?.Invoke(value);
+        }
+    }
+
+    public bool IsAlwaysLightTheme
+    {
+        get => !IsMatchAppTheme;
+        set
+        {
+            if (value)
+            {
+                IsMatchAppTheme = false;
+            }
+        }
+    }
+
+    public event Action<bool>? GraphThemeSettingChanged;
+
+    public Grapher? Graph
+    {
+        get => _graph;
+        private set => SetProperty(ref _graph, value);
+    }
+
+    public string XMin
+    {
+        get => _xMin;
+        set => SetRangeValue(ref _xMin, value, ref _xMinValue, ref _xMinError, nameof(XMin), nameof(XMinError));
+    }
+
+    public string XMax
+    {
+        get => _xMax;
+        set => SetRangeValue(ref _xMax, value, ref _xMaxValue, ref _xMaxError, nameof(XMax), nameof(XMaxError));
+    }
+
+    public string YMin
+    {
+        get => _yMin;
+        set => SetRangeValue(ref _yMin, value, ref _yMinValue, ref _yMinError, nameof(YMin), nameof(YMinError));
+    }
+
+    public string YMax
+    {
+        get => _yMax;
+        set => SetRangeValue(ref _yMax, value, ref _yMaxValue, ref _yMaxError, nameof(YMax), nameof(YMaxError));
+    }
+
+    public bool XMinError => _xMinError;
+
+    public bool XMaxError => _xMaxError;
+
+    public bool YMinError => _yMinError;
+
+    public bool YMaxError => _yMaxError;
+
+    public bool XError => !_xMinError && !_xMaxError && _xMinValue >= _xMaxValue;
+
+    public bool YError => !_yMinError && !_yMaxError && _yMinValue >= _yMaxValue;
+
+    public bool XMinHasError => XMinError || XError;
+
+    public bool XMaxHasError => XMaxError || XError;
+
+    public bool YMinHasError => YMinError || YError;
+
+    public bool YMaxHasError => YMaxError || YError;
+
+    public bool TrigModeRadians
+    {
+        get => Graph?.TrigUnitMode == (int)EvalTrigUnitMode.Radians;
+        set
+        {
+            if (value && Graph is not null)
+            {
+                Graph.TrigUnitMode = (int)EvalTrigUnitMode.Radians;
+                RaiseTrigProperties();
+            }
+        }
+    }
+
+    public bool TrigModeDegrees
+    {
+        get => Graph?.TrigUnitMode == (int)EvalTrigUnitMode.Degrees;
+        set
+        {
+            if (value && Graph is not null)
+            {
+                Graph.TrigUnitMode = (int)EvalTrigUnitMode.Degrees;
+                RaiseTrigProperties();
+            }
+        }
+    }
+
+    public bool TrigModeGradians
+    {
+        get => Graph?.TrigUnitMode == (int)EvalTrigUnitMode.Grads;
+        set
+        {
+            if (value && Graph is not null)
+            {
+                Graph.TrigUnitMode = (int)EvalTrigUnitMode.Grads;
+                RaiseTrigProperties();
+            }
+        }
+    }
+
+    public void SetGrapher(Grapher grapher)
+    {
+        ArgumentNullException.ThrowIfNull(grapher);
+        Graph = grapher;
+        if (grapher.TrigUnitMode == (int)EvalTrigUnitMode.Invalid)
+        {
+            grapher.TrigUnitMode = (int)EvalTrigUnitMode.Radians;
+        }
+
+        InitRanges();
+        RaiseTrigProperties();
+        int widthIndex = AvailableLineWidths
+            .Select((choice, index) => (choice, index))
+            .OrderBy(pair => Math.Abs(pair.choice.Width - grapher.LineWidth))
+            .First().index;
+        if (_selectedLineWidthIndex != widthIndex)
+        {
+            _selectedLineWidthIndex = widthIndex;
+            OnPropertyChanged(nameof(SelectedLineWidthIndex));
+        }
+    }
+
+    public void InitRanges()
+    {
+        Graph?.GetDisplayRanges(out _xMinValue, out _xMaxValue, out _yMinValue, out _yMaxValue);
+        _updatingRanges = true;
+        try
+        {
+            XMin = Format(_xMinValue);
+            XMax = Format(_xMaxValue);
+            YMin = Format(_yMinValue);
+            YMax = Format(_yMaxValue);
+        }
+        finally
+        {
+            _updatingRanges = false;
+        }
+    }
+
+    public void ResetView()
+    {
+        Graph?.ResetGrid();
+        _xMinError = _xMaxError = _yMinError = _yMaxError = false;
+        InitRanges();
+        RaiseRangeErrorProperties();
+    }
+
+    private void SetRangeValue(
+        ref string field,
+        string? value,
+        ref double numericField,
+        ref bool errorField,
+        string propertyName,
+        string errorPropertyName)
+    {
+        value ??= string.Empty;
+        if (!SetProperty(ref field, value, propertyName))
+        {
+            return;
+        }
+
+        bool parsed = double.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out double number) ||
+            double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out number);
+        errorField = !parsed || !double.IsFinite(number);
+        if (!errorField)
+        {
+            numericField = number;
+        }
+
+        OnPropertyChanged(errorPropertyName);
+        OnPropertyChanged(propertyName.StartsWith('X') ? nameof(XError) : nameof(YError));
+        RaiseRangeStyleProperties();
+        UpdateDisplayRange();
+    }
+
+    private void UpdateDisplayRange()
+    {
+        if (!_updatingRanges && Graph is not null && !HasError())
+        {
+            Graph.SetDisplayRanges(_xMinValue, _xMaxValue, _yMinValue, _yMaxValue);
+        }
+    }
+
+    private bool HasError() => _xMinError || _xMaxError || _yMinError || _yMaxError || XError || YError;
+
+    private void RaiseTrigProperties()
+    {
+        OnPropertyChanged(nameof(TrigModeRadians));
+        OnPropertyChanged(nameof(TrigModeDegrees));
+        OnPropertyChanged(nameof(TrigModeGradians));
+    }
+
+    private void RaiseRangeErrorProperties()
+    {
+        OnPropertyChanged(nameof(XMinError));
+        OnPropertyChanged(nameof(XMaxError));
+        OnPropertyChanged(nameof(YMinError));
+        OnPropertyChanged(nameof(YMaxError));
+        OnPropertyChanged(nameof(XError));
+        OnPropertyChanged(nameof(YError));
+        RaiseRangeStyleProperties();
+    }
+
+    private void RaiseRangeStyleProperties()
+    {
+        OnPropertyChanged(nameof(XMinHasError));
+        OnPropertyChanged(nameof(XMaxHasError));
+        OnPropertyChanged(nameof(YMinHasError));
+        OnPropertyChanged(nameof(YMaxHasError));
+    }
+
+    private static string Format(double value) => value.ToString("G8", CultureInfo.CurrentCulture);
 }

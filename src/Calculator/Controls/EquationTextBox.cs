@@ -1,610 +1,366 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalculatorApp.ViewModel.Common;
+using Avalonia;
+using Avalonia.Automation;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Data;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Media;
 
-using Microsoft.UI.Text;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Automation;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Input;
-using System;
+namespace CalculatorApp.Controls;
 
-namespace CalculatorApp
+/// <summary>
+/// Avalonia port of the original templated equation row. The visual template
+/// remains in EquationInputArea.xaml, while this class retains the equation,
+/// style, focus, submission, context-menu, and accessibility behavior.
+/// </summary>
+public sealed class EquationTextBox : TemplatedControl
 {
-    namespace Controls
+    public static readonly StyledProperty<IBrush?> EquationColorProperty =
+        AvaloniaProperty.Register<EquationTextBox, IBrush?>(nameof(EquationColor));
+
+    public static readonly StyledProperty<IBrush?> EquationButtonForegroundColorProperty =
+        AvaloniaProperty.Register<EquationTextBox, IBrush?>(nameof(EquationButtonForegroundColor));
+
+    public static readonly StyledProperty<Flyout?> ColorChooserFlyoutProperty =
+        AvaloniaProperty.Register<EquationTextBox, Flyout?>(nameof(ColorChooserFlyout));
+
+    public static readonly StyledProperty<string> EquationButtonContentIndexProperty =
+        AvaloniaProperty.Register<EquationTextBox, string>(nameof(EquationButtonContentIndex), string.Empty);
+
+    public static readonly StyledProperty<string> MathEquationProperty =
+        AvaloniaProperty.Register<EquationTextBox, string>(
+            nameof(MathEquation),
+            string.Empty,
+            defaultBindingMode: BindingMode.TwoWay);
+
+    public static readonly StyledProperty<string> LinearEquationProperty =
+        AvaloniaProperty.Register<EquationTextBox, string>(
+            nameof(LinearEquation),
+            string.Empty,
+            defaultBindingMode: BindingMode.TwoWay);
+
+    public static readonly StyledProperty<bool> HasErrorProperty =
+        AvaloniaProperty.Register<EquationTextBox, bool>(nameof(HasError));
+
+    public static readonly StyledProperty<bool> IsAddEquationModeProperty =
+        AvaloniaProperty.Register<EquationTextBox, bool>(nameof(IsAddEquationMode));
+
+    public static readonly StyledProperty<string> ErrorTextProperty =
+        AvaloniaProperty.Register<EquationTextBox, string>(nameof(ErrorText), string.Empty);
+
+    public static readonly StyledProperty<bool> IsEquationLineDisabledProperty =
+        AvaloniaProperty.Register<EquationTextBox, bool>(nameof(IsEquationLineDisabled));
+
+    private MathRichEditBox? _richEditBox;
+    private ToggleButton? _equationButton;
+    private Button? _removeButton;
+    private Button? _functionButton;
+    private Button? _colorChooserButton;
+    private TextBlock? _errorTextBlock;
+
+    static EquationTextBox()
     {
-        public sealed class EquationTextBox : Control
+        EquationButtonContentIndexProperty.Changed.AddClassHandler<EquationTextBox>(static (control, _) =>
+            control.UpdateAccessibility());
+        MathEquationProperty.Changed.AddClassHandler<EquationTextBox>(static (control, args) =>
+            control.UpdateMathEquation(args.NewValue as string ?? string.Empty));
+        LinearEquationProperty.Changed.AddClassHandler<EquationTextBox>(static (control, args) =>
+            control.UpdateLinearEquation(args.NewValue as string ?? string.Empty));
+        HasErrorProperty.Changed.AddClassHandler<EquationTextBox>(static (control, _) => control.UpdateVisualState());
+        IsAddEquationModeProperty.Changed.AddClassHandler<EquationTextBox>(static (control, _) => control.UpdateVisualState());
+        ErrorTextProperty.Changed.AddClassHandler<EquationTextBox>(static (control, _) => control.UpdateVisualState());
+        IsEquationLineDisabledProperty.Changed.AddClassHandler<EquationTextBox>(static (control, _) =>
+            control.UpdateAccessibility());
+    }
+
+    public IBrush? EquationColor
+    {
+        get => GetValue(EquationColorProperty);
+        set => SetValue(EquationColorProperty, value);
+    }
+
+    public IBrush? EquationButtonForegroundColor
+    {
+        get => GetValue(EquationButtonForegroundColorProperty);
+        set => SetValue(EquationButtonForegroundColorProperty, value);
+    }
+
+    public Flyout? ColorChooserFlyout
+    {
+        get => GetValue(ColorChooserFlyoutProperty);
+        set => SetValue(ColorChooserFlyoutProperty, value);
+    }
+
+    public string EquationButtonContentIndex
+    {
+        get => GetValue(EquationButtonContentIndexProperty);
+        set => SetValue(EquationButtonContentIndexProperty, value ?? string.Empty);
+    }
+
+    public string MathEquation
+    {
+        get => GetValue(MathEquationProperty);
+        set => SetValue(MathEquationProperty, value ?? string.Empty);
+    }
+
+    public string LinearEquation
+    {
+        get => GetValue(LinearEquationProperty);
+        set => SetValue(LinearEquationProperty, value ?? string.Empty);
+    }
+
+    public bool HasError
+    {
+        get => GetValue(HasErrorProperty);
+        set => SetValue(HasErrorProperty, value);
+    }
+
+    public bool IsAddEquationMode
+    {
+        get => GetValue(IsAddEquationModeProperty);
+        set => SetValue(IsAddEquationModeProperty, value);
+    }
+
+    public string ErrorText
+    {
+        get => GetValue(ErrorTextProperty);
+        set => SetValue(ErrorTextProperty, value ?? string.Empty);
+    }
+
+    public bool IsEquationLineDisabled
+    {
+        get => GetValue(IsEquationLineDisabledProperty);
+        set => SetValue(IsEquationLineDisabledProperty, value);
+    }
+
+    public MathRichEditBox? Editor => _richEditBox;
+
+    public event EventHandler<RoutedEventArgs>? RemoveButtonClicked;
+
+    public event EventHandler<RoutedEventArgs>? KeyGraphFeaturesButtonClicked;
+
+    public event EventHandler<MathRichEditBoxSubmission>? EquationSubmitted;
+
+    public event EventHandler<MathRichEditBoxFormatRequest>? EquationFormatRequested;
+
+    public event EventHandler<RoutedEventArgs>? EquationButtonClicked;
+
+    public void SetEquationText(string equationText) => MathEquation = equationText;
+
+    public void FocusTextBox() => _richEditBox?.Focus();
+
+    public void InsertText(string text, int cursorOffset, int selectionLength) =>
+        _richEditBox?.InsertText(text, cursorOffset, selectionLength);
+
+    protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
+    {
+        DetachTemplateParts();
+        base.OnApplyTemplate(e);
+
+        _equationButton = e.NameScope.Find<ToggleButton>("EquationButton");
+        _richEditBox = e.NameScope.Find<MathRichEditBox>("MathRichEditBox");
+        _removeButton = e.NameScope.Find<Button>("RemoveButton");
+        _functionButton = e.NameScope.Find<Button>("FunctionButton");
+        _colorChooserButton = e.NameScope.Find<Button>("ColorChooserButton");
+        _errorTextBlock = e.NameScope.Find<TextBlock>("ErrorTextBlock");
+
+        if (_richEditBox is not null)
         {
-            public EquationTextBox()
+            _richEditBox.LinearText = LinearEquation;
+            if (!string.IsNullOrEmpty(MathEquation))
             {
+                _richEditBox.MathText = MathEquation;
             }
 
-            public Microsoft.UI.Xaml.Media.SolidColorBrush EquationColor
-            {
-                get => (Microsoft.UI.Xaml.Media.SolidColorBrush)GetValue(EquationColorProperty);
-                set => SetValue(EquationColorProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for EquationColor.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty EquationColorProperty =
-                DependencyProperty.Register(nameof(EquationColor), typeof(Microsoft.UI.Xaml.Media.SolidColorBrush), typeof(EquationTextBox), new PropertyMetadata(default(Microsoft.UI.Xaml.Media.SolidColorBrush)));
-
-            public Microsoft.UI.Xaml.Media.SolidColorBrush EquationButtonForegroundColor
-            {
-                get => (Microsoft.UI.Xaml.Media.SolidColorBrush)GetValue(EquationButtonForegroundColorProperty);
-                set => SetValue(EquationButtonForegroundColorProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for EquationButtonForegroundColor.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty EquationButtonForegroundColorProperty =
-                DependencyProperty.Register(nameof(EquationButtonForegroundColor), typeof(Microsoft.UI.Xaml.Media.SolidColorBrush), typeof(EquationTextBox), new PropertyMetadata(default(Microsoft.UI.Xaml.Media.SolidColorBrush)));
-
-            public Flyout ColorChooserFlyout
-            {
-                get => (Flyout)GetValue(ColorChooserFlyoutProperty);
-                set => SetValue(ColorChooserFlyoutProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for ColorChooserFlyout.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty ColorChooserFlyoutProperty =
-                DependencyProperty.Register(nameof(ColorChooserFlyout), typeof(Flyout), typeof(EquationTextBox), new PropertyMetadata(default(Flyout)));
-
-            public string EquationButtonContentIndex
-            {
-                get => (string)GetValue(EquationButtonContentIndexProperty);
-                set => SetValue(EquationButtonContentIndexProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for EquationButtonContentIndex.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty EquationButtonContentIndexProperty =
-                DependencyProperty.Register(nameof(EquationButtonContentIndex), typeof(string), typeof(EquationTextBox), new PropertyMetadata(string.Empty, (sender, args) =>
-                {
-                    var self = (EquationTextBox)sender;
-                    self.OnEquationButtonContentIndexPropertyChanged((string)args.OldValue, (string)args.NewValue);
-                }));
-
-            public string MathEquation
-            {
-                get => (string)GetValue(MathEquationProperty);
-                set => SetValue(MathEquationProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for MathEquation.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty MathEquationProperty =
-                DependencyProperty.Register(nameof(MathEquation), typeof(string), typeof(EquationTextBox), new PropertyMetadata(string.Empty));
-
-            public bool HasError
-            {
-                get => (bool)GetValue(HasErrorProperty);
-                set => SetValue(HasErrorProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for HasError.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty HasErrorProperty =
-                DependencyProperty.Register(nameof(HasError), typeof(bool), typeof(EquationTextBox), new PropertyMetadata(default(bool), (sender, args) =>
-                {
-                    var self = (EquationTextBox)sender;
-                    self.OnHasErrorPropertyChanged((bool)args.OldValue, (bool)args.NewValue);
-                }));
-
-            public bool IsAddEquationMode
-            {
-                get => (bool)GetValue(IsAddEquationModeProperty);
-                set => SetValue(IsAddEquationModeProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for IsAddEquationMode.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty IsAddEquationModeProperty =
-                DependencyProperty.Register(nameof(IsAddEquationMode), typeof(bool), typeof(EquationTextBox), new PropertyMetadata(default(bool), (sender, args) =>
-                {
-                    var self = (EquationTextBox)sender;
-                    self.OnIsAddEquationModePropertyChanged((bool)args.OldValue, (bool)args.NewValue);
-                }));
-
-            public string ErrorText
-            {
-                get => (string)GetValue(ErrorTextProperty);
-                set => SetValue(ErrorTextProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for ErrorText.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty ErrorTextProperty =
-                DependencyProperty.Register(nameof(ErrorText), typeof(string), typeof(EquationTextBox), new PropertyMetadata(string.Empty));
-
-            public bool IsEquationLineDisabled
-            {
-                get => (bool)GetValue(IsEquationLineDisabledProperty);
-                set => SetValue(IsEquationLineDisabledProperty, value);
-            }
-
-            // Using a DependencyProperty as the backing store for IsEquationLineDisabled.  This enables animation, styling, binding, etc...
-            public static readonly DependencyProperty IsEquationLineDisabledProperty =
-                DependencyProperty.Register(nameof(IsEquationLineDisabled), typeof(bool), typeof(EquationTextBox), new PropertyMetadata(default(bool)));
-
-            private bool HasFocus { get; set; }
-
-            public event Microsoft.UI.Xaml.RoutedEventHandler RemoveButtonClicked;
-            public event Microsoft.UI.Xaml.RoutedEventHandler KeyGraphFeaturesButtonClicked;
-            public event System.EventHandler<MathRichEditBoxSubmission> EquationSubmitted;
-            public event System.EventHandler<MathRichEditBoxFormatRequest> EquationFormatRequested;
-            public event Microsoft.UI.Xaml.RoutedEventHandler EquationButtonClicked;
-
-            public void SetEquationText(string equationText)
-            {
-                if (m_richEditBox != null)
-                {
-                    m_richEditBox.MathText = equationText;
-                }
-            }
-
-            public void FocusTextBox()
-            {
-                if (m_richEditBox != null)
-                {
-                    _ = FocusManager.TryFocusAsync(m_richEditBox, FocusState.Programmatic);
-                }
-            }
-
-            protected override void OnApplyTemplate()
-            {
-                m_equationButton = GetTemplateChild("EquationButton") as ToggleButton;
-                m_richEditBox = GetTemplateChild("MathRichEditBox") as MathRichEditBox;
-                m_deleteButton = GetTemplateChild("DeleteButton") as Button;
-                m_removeButton = GetTemplateChild("RemoveButton") as Button;
-                m_functionButton = GetTemplateChild("FunctionButton") as Button;
-                m_colorChooserButton = GetTemplateChild("ColorChooserButton") as ToggleButton;
-                m_richEditContextMenu = GetTemplateChild("MathRichEditContextMenu") as MenuFlyout;
-                m_kgfEquationMenuItem = GetTemplateChild("FunctionAnalysisMenuItem") as MenuFlyoutItem;
-                m_removeMenuItem = GetTemplateChild("RemoveFunctionMenuItem") as MenuFlyoutItem;
-                m_colorChooserMenuItem = GetTemplateChild("ChangeFunctionStyleMenuItem") as MenuFlyoutItem;
-                m_cutMenuItem = GetTemplateChild("CutMenuItem") as MenuFlyoutItem;
-                m_copyMenuItem = GetTemplateChild("CopyMenuItem") as MenuFlyoutItem;
-                m_pasteMenuItem = GetTemplateChild("PasteMenuItem") as MenuFlyoutItem;
-                m_undoMenuItem = GetTemplateChild("UndoMenuItem") as MenuFlyoutItem;
-                m_selectAllMenuItem = GetTemplateChild("SelectAllMenuItem") as MenuFlyoutItem;
-
-                var resProvider = AppResourceProvider.GetInstance();
-
-                if (m_richEditBox != null)
-                {
-                    m_richEditBox.GotFocus += OnRichEditBoxGotFocus;
-                    m_richEditBox.LostFocus += OnRichEditBoxLostFocus;
-                    m_richEditBox.TextChanged += OnRichEditTextChanged;
-                    m_richEditBox.SelectionFlyout = null;
-                    m_richEditBox.EquationSubmitted += OnEquationSubmitted;
-                    m_richEditBox.FormatRequest += OnEquationFormatRequested;
-                }
-
-                if (m_equationButton != null)
-                {
-                    m_equationButton.Click += OnEquationButtonClicked;
-                }
-
-                if (m_richEditContextMenu != null)
-                {
-                    m_richEditContextMenu.Opened += OnRichEditMenuOpened;
-                }
-
-                if (m_deleteButton != null)
-                {
-                    m_deleteButton.Click += OnDeleteButtonClicked;
-                }
-
-                if (m_removeButton != null)
-                {
-                    m_removeButton.Click += OnRemoveButtonClicked;
-                }
-
-                if (m_removeMenuItem != null)
-                {
-                    m_removeMenuItem.Text = resProvider.GetResourceString("removeMenuItem");
-                    m_removeMenuItem.Click += OnRemoveButtonClicked;
-                }
-
-                if (m_colorChooserButton != null)
-                {
-                    m_colorChooserButton.Click += OnColorChooserButtonClicked;
-                }
-
-                if (m_colorChooserMenuItem != null)
-                {
-                    m_colorChooserMenuItem.Text = resProvider.GetResourceString("colorChooserMenuItem");
-                    m_colorChooserMenuItem.Click += OnColorChooserButtonClicked;
-                }
-
-                if (m_functionButton != null)
-                {
-                    m_functionButton.Click += OnFunctionButtonClicked;
-                    m_functionButton.IsEnabled = false;
-                }
-
-                if (m_kgfEquationMenuItem != null)
-                {
-                    m_kgfEquationMenuItem.Text = resProvider.GetResourceString("functionAnalysisMenuItem");
-                    m_kgfEquationMenuItem.Click += OnFunctionMenuButtonClicked;
-                }
-
-                if (ColorChooserFlyout != null)
-                {
-                    ColorChooserFlyout.Opened += OnColorFlyoutOpened;
-                    ColorChooserFlyout.Closed += OnColorFlyoutClosed;
-                }
-
-                if (m_cutMenuItem != null)
-                {
-                    m_cutMenuItem.Click += OnCutClicked;
-                }
-
-                if (m_copyMenuItem != null)
-                {
-                    m_copyMenuItem.Click += OnCopyClicked;
-                }
-
-                if (m_pasteMenuItem != null)
-                {
-                    m_pasteMenuItem.Click += OnPasteClicked;
-                }
-
-                if (m_undoMenuItem != null)
-                {
-                    m_undoMenuItem.Click += OnUndoClicked;
-                }
-
-                if (m_selectAllMenuItem != null)
-                {
-                    m_selectAllMenuItem.Click += OnSelectAllClicked;
-                }
-
-                UpdateCommonVisualState();
-                UpdateButtonsVisualState();
-            }
-
-            protected override void OnPointerEntered(PointerRoutedEventArgs e)
-            {
-                m_isPointerOver = true;
-                UpdateCommonVisualState();
-            }
-
-            protected override void OnPointerExited(PointerRoutedEventArgs e)
-            {
-                m_isPointerOver = false;
-                UpdateCommonVisualState();
-            }
-
-            protected override void OnPointerCanceled(PointerRoutedEventArgs e)
-            {
-                m_isPointerOver = false;
-                UpdateCommonVisualState();
-            }
-
-            protected override void OnPointerCaptureLost(PointerRoutedEventArgs e)
-            {
-                m_isPointerOver = false;
-                UpdateCommonVisualState();
-            }
-
-            private void OnIsAddEquationModePropertyChanged(bool oldValue, bool newValue)
-            {
-                UpdateCommonVisualState();
-                UpdateButtonsVisualState();
-            }
-
-            private void UpdateCommonVisualState()
-            {
-                string state;
-                bool richEditHasContent = RichEditHasContent();
-
-                if (HasFocus && HasError)
-                {
-                    state = "FocusedError";
-                }
-                else if (IsAddEquationMode && HasFocus && !richEditHasContent)
-                {
-                    state = "AddEquationFocused";
-                }
-                else if (HasFocus)
-                {
-                    state = "Focused";
-                }
-                else if (IsAddEquationMode && m_isPointerOver && !richEditHasContent)
-                {
-                    state = "AddEquation";
-                }
-                else if (HasError && (m_isPointerOver || m_isColorChooserFlyoutOpen))
-                {
-                    state = "PointerOverError";
-                }
-                else if (m_isPointerOver || m_isColorChooserFlyoutOpen)
-                {
-                    state = "PointerOver";
-                }
-                else if (HasError)
-                {
-                    state = "Error";
-                }
-                else if (IsAddEquationMode)
-                {
-                    state = "AddEquation";
-                }
-                else
-                {
-                    state = "Normal";
-                }
-                VisualStateManager.GoToState(this, state, false);
-            }
-
-            private void UpdateButtonsVisualState()
-            {
-                string state;
-
-                if (HasFocus && RichEditHasContent())
-                {
-                    state = "ButtonVisible";
-                }
-                else if (IsAddEquationMode)
-                {
-                    state = "ButtonHideRemove";
-                }
-                else
-                {
-                    state = "ButtonCollapsed";
-                }
-
-                VisualStateManager.GoToState(this, state, true);
-            }
-
-            private bool RichEditHasContent()
-            {
-                string text = null;
-                try
-                {
-                    Console.Write("a");
-                    m_richEditBox?.TextDocument.GetText(TextGetOptions.NoHidden, out text);
-                }
-                catch
-                {
-                    return false;
-                }
-                return !string.IsNullOrEmpty(text);
-            }
-
-            private void OnRichEditBoxGotFocus(object sender, RoutedEventArgs e)
-            {
-                HasFocus = true;
-                UpdateCommonVisualState();
-                UpdateButtonsVisualState();
-            }
-
-            private void OnRichEditBoxLostFocus(object sender, RoutedEventArgs e)
-            {
-                if (!m_richEditBox.ContextFlyout.IsOpen)
-                {
-                    HasFocus = false;
-                }
-
-                UpdateCommonVisualState();
-                UpdateButtonsVisualState();
-            }
-
-            private void OnRichEditTextChanged(object sender, RoutedEventArgs e)
-            {
-                UpdateCommonVisualState();
-                UpdateButtonsVisualState();
-            }
-
-            private void OnDeleteButtonClicked(object sender, RoutedEventArgs e)
-            {
-                if (m_richEditBox != null)
-                {
-                    m_richEditBox.TextDocument.SetText(TextSetOptions.None, "");
-                    if (m_functionButton != null)
-                    {
-                        m_functionButton.IsEnabled = false;
-                    }
-                }
-            }
-
-            private void OnEquationButtonClicked(object sender, RoutedEventArgs e)
-            {
-                EquationButtonClicked?.Invoke(this, new RoutedEventArgs());
-
-                SetEquationButtonTooltipAndAutomationName();
-            }
-
-            private void OnRemoveButtonClicked(object sender, RoutedEventArgs e)
-            {
-                if (IsAddEquationMode)
-                {
-                    // Don't remove the last equation
-                    return;
-                }
-
-                if (m_richEditBox != null)
-                {
-                    m_richEditBox.MathText = "";
-                }
-
-                RemoveButtonClicked?.Invoke(this, new RoutedEventArgs());
-
-                if (m_functionButton != null)
-                {
-                    m_functionButton.IsEnabled = false;
-                }
-
-                if (m_equationButton != null)
-                {
-                    IsEquationLineDisabled = false;
-                }
-
-                TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.RemoveFunction, GraphButtonValue.None);
-
-                VisualStateManager.GoToState(this, "Normal", true);
-            }
-
-            private void OnColorChooserButtonClicked(object sender, RoutedEventArgs e)
-            {
-                if (ColorChooserFlyout != null && m_richEditBox != null)
-                {
-                    ColorChooserFlyout.ShowAt(m_richEditBox);
-                    TraceLogger.GetInstance().LogGraphButtonClicked(GraphButton.StylePicker, GraphButtonValue.None);
-                }
-            }
-
-            private void OnFunctionButtonClicked(object sender, RoutedEventArgs e)
-            {
-                KeyGraphFeaturesButtonClicked?.Invoke(this, new RoutedEventArgs());
-            }
-
-            private void OnFunctionMenuButtonClicked(object sender, RoutedEventArgs e)
-            {
-                // Submit the equation before trying to analyze it if invoked from context menu
-                m_richEditBox?.SubmitEquation(EquationSubmissionSource.FOCUS_LOST);
-
-                KeyGraphFeaturesButtonClicked?.Invoke(this, new RoutedEventArgs());
-            }
-
-            private void OnRichEditMenuOpened(object sender, object args)
-            {
-                if (m_removeMenuItem != null)
-                {
-                    m_removeMenuItem.IsEnabled = !IsAddEquationMode;
-                }
-
-                if (m_kgfEquationMenuItem != null)
-                {
-                    m_kgfEquationMenuItem.IsEnabled = HasFocus && !HasError && RichEditHasContent();
-                }
-
-                if (m_colorChooserMenuItem != null)
-                {
-                    m_colorChooserMenuItem.IsEnabled = !HasError && !IsAddEquationMode;
-                }
-
-                if (m_richEditBox != null && m_cutMenuItem != null)
-                {
-                    m_cutMenuItem.IsEnabled = m_richEditBox.TextDocument.CanCopy();
-                }
-
-                if (m_richEditBox != null && m_copyMenuItem != null)
-                {
-                    m_copyMenuItem.IsEnabled = m_richEditBox.TextDocument.CanCopy();
-                }
-
-                if (m_richEditBox != null && m_pasteMenuItem != null)
-                {
-                    m_pasteMenuItem.IsEnabled = m_richEditBox.TextDocument.CanPaste();
-                }
-
-                if (m_richEditBox != null && m_undoMenuItem != null)
-                {
-                    m_undoMenuItem.IsEnabled = m_richEditBox.TextDocument.CanUndo();
-                }
-            }
-
-            private void OnCutClicked(object sender, RoutedEventArgs e)
-            {
-                m_richEditBox?.TextDocument.Selection.Cut();
-            }
-
-            private void OnCopyClicked(object sender, RoutedEventArgs e)
-            {
-                m_richEditBox?.TextDocument.Selection.Copy();
-            }
-
-            private void OnPasteClicked(object sender, RoutedEventArgs e)
-            {
-                m_richEditBox?.TextDocument.Selection.Paste(0);
-            }
-
-            private void OnUndoClicked(object sender, RoutedEventArgs e)
-            {
-                m_richEditBox?.TextDocument.Undo();
-            }
-
-            private void OnSelectAllClicked(object sender, RoutedEventArgs e)
-            {
-                m_richEditBox?.TextDocument.Selection.SetRange(0, m_richEditBox.TextDocument.Selection.EndPosition);
-            }
-
-            private void OnColorFlyoutOpened(object sender, object e)
-            {
-                m_isColorChooserFlyoutOpen = true;
-                UpdateCommonVisualState();
-            }
-
-            private void OnColorFlyoutClosed(object sender, object e)
-            {
-                m_colorChooserButton.IsChecked = false;
-                m_isColorChooserFlyoutOpen = false;
-                UpdateCommonVisualState();
-            }
-
-            private void OnHasErrorPropertyChanged(bool oldValue, bool newValue)
-            {
-                UpdateCommonVisualState();
-            }
-
-            private void OnEquationButtonContentIndexPropertyChanged(string oldValue, string newValue)
-            {
-                SetEquationButtonTooltipAndAutomationName();
-            }
-
-            private void SetEquationButtonTooltipAndAutomationName()
-            {
-                var toolTip = new ToolTip();
-                var resProvider = AppResourceProvider.GetInstance();
-
-                var equationButtonMessage = LocalizationStringUtil.GetLocalizedString(
-                    IsEquationLineDisabled ? resProvider.GetResourceString("showEquationButtonAutomationName")
-                                           : resProvider.GetResourceString("hideEquationButtonAutomationName"),
-                    EquationButtonContentIndex);
-
-                var equationButtonTooltip = LocalizationStringUtil.GetLocalizedString(
-                    IsEquationLineDisabled ? resProvider.GetResourceString("showEquationButtonToolTip") : resProvider.GetResourceString("hideEquationButtonToolTip"));
-
-                toolTip.Content = equationButtonTooltip;
-                ToolTipService.SetToolTip(m_equationButton, toolTip);
-                AutomationProperties.SetName(m_equationButton, equationButtonMessage);
-            }
-
-            private CalculatorApp.Controls.MathRichEditBox m_richEditBox;
-            private ToggleButton m_equationButton;
-            private Button m_deleteButton;
-            private Button m_removeButton;
-            private Button m_functionButton;
-            private ToggleButton m_colorChooserButton;
-
-            private MenuFlyout m_richEditContextMenu;
-            private MenuFlyoutItem m_cutMenuItem;
-            private MenuFlyoutItem m_copyMenuItem;
-            private MenuFlyoutItem m_pasteMenuItem;
-            private MenuFlyoutItem m_undoMenuItem;
-            private MenuFlyoutItem m_selectAllMenuItem;
-            private MenuFlyoutItem m_kgfEquationMenuItem;
-            private MenuFlyoutItem m_removeMenuItem;
-            private MenuFlyoutItem m_colorChooserMenuItem;
-
-            private bool m_isPointerOver;
-            private bool m_isColorChooserFlyoutOpen;
-            private void OnEquationSubmitted(object sender, MathRichEditBoxSubmission args)
-            {
-                if (args.HasTextChanged)
-                {
-                    if (m_functionButton != null && m_richEditBox.MathText != "")
-                    {
-                        m_functionButton.IsEnabled = true;
-                    }
-                }
-
-                EquationSubmitted?.Invoke(this, args);
-            }
-
-            private void OnEquationFormatRequested(object sender, MathRichEditBoxFormatRequest args)
-            {
-                EquationFormatRequested?.Invoke(this, args);
-            }
+            _richEditBox.GotFocus += OnEditorGotFocus;
+            _richEditBox.LostFocus += OnEditorLostFocus;
+            _richEditBox.TextChanged += OnEditorTextChanged;
+            _richEditBox.EquationSubmitted += OnEquationSubmitted;
+            _richEditBox.FormatRequest += OnEquationFormatRequested;
+            _richEditBox.ErrorStateChanged += OnEditorErrorStateChanged;
+        }
+
+        if (_equationButton is not null)
+        {
+            _equationButton.Click += OnEquationButtonClicked;
+        }
+
+        if (_removeButton is not null)
+        {
+            _removeButton.Click += OnRemoveButtonClicked;
+        }
+
+        if (_functionButton is not null)
+        {
+            _functionButton.Click += OnFunctionButtonClicked;
+        }
+
+        if (_colorChooserButton is not null)
+        {
+            _colorChooserButton.Click += OnColorChooserButtonClicked;
+        }
+
+        UpdateAccessibility();
+        UpdateVisualState();
+    }
+
+    private void DetachTemplateParts()
+    {
+        if (_richEditBox is not null)
+        {
+            _richEditBox.GotFocus -= OnEditorGotFocus;
+            _richEditBox.LostFocus -= OnEditorLostFocus;
+            _richEditBox.TextChanged -= OnEditorTextChanged;
+            _richEditBox.EquationSubmitted -= OnEquationSubmitted;
+            _richEditBox.FormatRequest -= OnEquationFormatRequested;
+            _richEditBox.ErrorStateChanged -= OnEditorErrorStateChanged;
+        }
+
+        if (_equationButton is not null)
+        {
+            _equationButton.Click -= OnEquationButtonClicked;
+        }
+
+        if (_removeButton is not null)
+        {
+            _removeButton.Click -= OnRemoveButtonClicked;
+        }
+
+        if (_functionButton is not null)
+        {
+            _functionButton.Click -= OnFunctionButtonClicked;
+        }
+
+        if (_colorChooserButton is not null)
+        {
+            _colorChooserButton.Click -= OnColorChooserButtonClicked;
+        }
+    }
+
+    private void UpdateMathEquation(string value)
+    {
+        if (_richEditBox is not null && !string.Equals(_richEditBox.MathText, value, StringComparison.Ordinal))
+        {
+            _richEditBox.MathText = value;
+        }
+    }
+
+    private void UpdateLinearEquation(string value)
+    {
+        if (_richEditBox is not null && !string.Equals(_richEditBox.LinearText, value, StringComparison.Ordinal))
+        {
+            _richEditBox.LinearText = value;
+        }
+    }
+
+    private void OnEditorGotFocus(object? sender, FocusChangedEventArgs e)
+    {
+        PseudoClasses.Set(":editor-focused", true);
+        UpdateVisualState();
+    }
+
+    private void OnEditorLostFocus(object? sender, FocusChangedEventArgs e)
+    {
+        PseudoClasses.Set(":editor-focused", false);
+        UpdateVisualState();
+    }
+
+    private void OnEditorTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_richEditBox is not null)
+        {
+            SetCurrentValue(LinearEquationProperty, _richEditBox.LinearText);
+        }
+
+        UpdateVisualState();
+    }
+
+    private void OnEditorErrorStateChanged(object? sender, EventArgs e) => UpdateVisualState();
+
+    private void OnEquationSubmitted(object? sender, MathRichEditBoxSubmission e)
+    {
+        if (_richEditBox is not null)
+        {
+            SetCurrentValue(LinearEquationProperty, _richEditBox.LinearText);
+            SetCurrentValue(MathEquationProperty, _richEditBox.MathText);
+        }
+
+        EquationSubmitted?.Invoke(this, e);
+        UpdateVisualState();
+    }
+
+    private void OnEquationFormatRequested(object? sender, MathRichEditBoxFormatRequest e) =>
+        EquationFormatRequested?.Invoke(this, e);
+
+    private void OnEquationButtonClicked(object? sender, RoutedEventArgs e)
+    {
+        EquationButtonClicked?.Invoke(this, e);
+        UpdateAccessibility();
+    }
+
+    private void OnRemoveButtonClicked(object? sender, RoutedEventArgs e)
+    {
+        if (!IsAddEquationMode)
+        {
+            RemoveButtonClicked?.Invoke(this, e);
+        }
+    }
+
+    private void OnFunctionButtonClicked(object? sender, RoutedEventArgs e) =>
+        KeyGraphFeaturesButtonClicked?.Invoke(this, e);
+
+    private void OnColorChooserButtonClicked(object? sender, RoutedEventArgs e)
+    {
+        if (ColorChooserFlyout is not null && _richEditBox is not null)
+        {
+            ColorChooserFlyout.ShowAt(_richEditBox);
+        }
+    }
+
+    private void UpdateVisualState()
+    {
+        bool hasContent = !string.IsNullOrWhiteSpace(_richEditBox?.Text ?? LinearEquation);
+        bool hasError = HasError || _richEditBox?.HasEquationError == true;
+        PseudoClasses.Set(":error", hasError);
+        PseudoClasses.Set(":add-equation", IsAddEquationMode);
+        if (_removeButton is not null)
+        {
+            _removeButton.IsVisible = !IsAddEquationMode;
+        }
+
+        if (_functionButton is not null)
+        {
+            _functionButton.IsVisible = !IsAddEquationMode && hasContent;
+            _functionButton.IsEnabled = !hasError;
+        }
+
+        if (_errorTextBlock is not null)
+        {
+            _errorTextBlock.Text = ErrorText;
+            _errorTextBlock.IsVisible = hasError && !string.IsNullOrWhiteSpace(ErrorText);
+        }
+    }
+
+    private void UpdateAccessibility()
+    {
+        string index = string.IsNullOrWhiteSpace(EquationButtonContentIndex)
+            ? string.Empty
+            : $" {EquationButtonContentIndex}";
+        if (_equationButton is not null)
+        {
+            _equationButton.IsChecked = !IsEquationLineDisabled;
+            string action = IsEquationLineDisabled ? "Show" : "Hide";
+            AutomationProperties.SetName(_equationButton, $"{action} function{index}");
+            ToolTip.SetTip(_equationButton, $"{action} function");
+        }
+
+        if (_richEditBox is not null)
+        {
+            AutomationProperties.SetName(_richEditBox, $"Function{index} equation");
         }
     }
 }

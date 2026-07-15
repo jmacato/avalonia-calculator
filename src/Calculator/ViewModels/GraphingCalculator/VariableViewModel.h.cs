@@ -1,173 +1,148 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-// #pragma once
-
-// #include "../Common/Utils.h"
-// #include "CalcViewModel/Common/LocalizationStringUtil.h"
-// #include "EquationViewModel.cpp.h.cs"
-
-using GraphControl;
-using System;
 using System.ComponentModel;
+using CalculatorApp.ViewModel.Common;
+using GraphControl;
 
-namespace CalculatorApp.ViewModel
-{
+namespace CalculatorApp.ViewModel;
 
-public struct VariableChangedEventArgs
+public sealed class VariableChangedEventArgs(string variableName, double newValue) : EventArgs
 {
-    public string variableName;
-    public double newValue;
+    public string VariableName { get; } = variableName;
+
+    public double NewValue { get; } = newValue;
 }
 
-[Microsoft.UI.Xaml.Data.Bindable]
-public partial class VariableViewModel : INotifyPropertyChanged
+public sealed class VariableViewModel : ViewModelBase
 {
-
     public const int DefaultMinMaxRange = 10;
+
+    private Variable _variable;
+    private bool _sliderSettingsVisible;
 
     public VariableViewModel(string name, Variable variable)
     {
-        m_Name = name;
-        m_variable = variable;
-        m_SliderSettingsVisible = false;
+        Name = name;
+        _variable = variable;
+        _variable.PropertyChanged += OnVariablePropertyChanged;
     }
 
-    // Expanded from OBSERVABLE_OBJECT()
-    public event PropertyChangedEventHandler PropertyChanged;
+    public string Name { get; }
 
-    internal void RaisePropertyChanged(string p)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
-    }
-
-    // Expanded from OBSERVABLE_PROPERTY_R(string ^, Name)
-    public string Name
-    {
-        get
-        {
-            return m_Name;
-        }
-        private set
-        {
-            m_Name = value;
-        }
-    }
-    private string m_Name;
-
-    // Expanded from OBSERVABLE_PROPERTY_RW(bool, SliderSettingsVisible)
     public bool SliderSettingsVisible
     {
-        get
-        {
-            return m_SliderSettingsVisible;
-        }
+        get => _sliderSettingsVisible;
         set
         {
-            m_SliderSettingsVisible = value;
+            if (SetProperty(ref _sliderSettingsVisible, value))
+            {
+                OnPropertyChanged(nameof(SliderSettingsChevron));
+            }
         }
     }
-    private bool m_SliderSettingsVisible;
+
+    public string SliderSettingsChevron => SliderSettingsVisible ? "\uE70E" : "\uE70D";
 
     public double Min
     {
-        get
-        {
-            return m_variable.Min;
-        }
+        get => _variable.Min;
         set
         {
-            if (m_variable.Min != value)
+            if (!double.IsFinite(value) || _variable.Min.Equals(value))
             {
-                if (value >= m_variable.Max)
-                {
-                    m_variable.Max = value + DefaultMinMaxRange;
-                    RaisePropertyChanged("Max");
-                }
-
-                m_variable.Min = value;
-                RaisePropertyChanged("Min");
+                return;
             }
+
+            if (value >= _variable.Max)
+            {
+                _variable.Max = value + DefaultMinMaxRange;
+            }
+
+            _variable.Min = value;
         }
     }
 
     public double Step
     {
-        get
-        {
-            return m_variable.Step;
-        }
+        get => _variable.Step;
         set
         {
-            if (m_variable.Step != value)
+            if (double.IsFinite(value) && value > 0)
             {
-                m_variable.Step = value;
-                RaisePropertyChanged("Step");
+                _variable.Step = value;
             }
         }
     }
 
     public double Max
     {
-        get
-        {
-            return m_variable.Max;
-        }
+        get => _variable.Max;
         set
         {
-            if (m_variable.Max != value)
+            if (!double.IsFinite(value) || _variable.Max.Equals(value))
             {
-                if (value <= m_variable.Min)
-                {
-                    m_variable.Min = value - DefaultMinMaxRange;
-                    RaisePropertyChanged("Min");
-                }
-
-                m_variable.Max = value;
-                RaisePropertyChanged("Max");
+                return;
             }
+
+            if (value <= _variable.Min)
+            {
+                _variable.Min = value - DefaultMinMaxRange;
+            }
+
+            _variable.Max = value;
         }
     }
-
-    public event EventHandler<VariableChangedEventArgs> VariableUpdated;
 
     public double Value
     {
-        get
-        {
-            return m_variable.Value;
-        }
+        get => _variable.Value;
         set
         {
-            if (value < m_variable.Min)
+            if (!double.IsFinite(value))
             {
-                m_variable.Min = value;
-                RaisePropertyChanged("Min");
-            }
-            else if (value > m_variable.Max)
-            {
-                m_variable.Max = value;
-                RaisePropertyChanged("Max");
+                return;
             }
 
-            if (m_variable.Value != value)
+            if (value < _variable.Min)
             {
-                m_variable.Value = value;
-                VariableUpdated(this, new VariableChangedEventArgs { variableName = Name, newValue = value });
-                RaisePropertyChanged("Value");
+                _variable.Min = value;
+            }
+            else if (value > _variable.Max)
+            {
+                _variable.Max = value;
+            }
+
+            if (!_variable.Value.Equals(value))
+            {
+                _variable.Value = value;
+                VariableUpdated?.Invoke(this, new VariableChangedEventArgs(Name, value));
             }
         }
     }
 
-    public string VariableAutomationName
+    public string VariableAutomationName => LocalizationStringUtil.GetLocalizedString(
+        AppResourceProvider.GetInstance().GetResourceString("VariableListViewItem"),
+        Name);
+
+    public event EventHandler<VariableChangedEventArgs>? VariableUpdated;
+
+    internal void UpdateVariable(Variable variable)
     {
-        get
+        if (ReferenceEquals(_variable, variable))
         {
-            return CalculatorApp.ViewModel.Common.LocalizationStringUtil.GetLocalizedString(
-                CalculatorApp.ViewModel.Common.AppResourceProvider.GetInstance().GetResourceString("VariableListViewItem"), Name);
+            return;
         }
+
+        _variable.PropertyChanged -= OnVariablePropertyChanged;
+        _variable = variable;
+        _variable.PropertyChanged += OnVariablePropertyChanged;
+        OnPropertyChanged(nameof(Value));
+        OnPropertyChanged(nameof(Min));
+        OnPropertyChanged(nameof(Max));
+        OnPropertyChanged(nameof(Step));
     }
 
-    private Variable m_variable;
-}
+    private void OnVariablePropertyChanged(object? sender, PropertyChangedEventArgs e) =>
+        OnPropertyChanged(e.PropertyName);
 }

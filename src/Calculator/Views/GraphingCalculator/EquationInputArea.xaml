@@ -1,23 +1,282 @@
 <UserControl x:Class="CalculatorApp.EquationInputArea"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:CalculatorApp.Controls"
+             xmlns:local="using:CalculatorApp"
              xmlns:utils="using:CalculatorApp.Utils"
              xmlns:vm="using:CalculatorApp.ViewModel"
              x:DataType="vm:GraphingCalculatorViewModel"
              x:CompileBindings="True">
-  <Grid RowDefinitions="Auto,8,*">
-    <TextBlock FontSize="15"
-               FontWeight="SemiBold"
-               Text="{utils:ResourceString Name=GraphingExpressionEditorLabel}" />
-    <TextBox x:Name="ExpressionEditor"
-             Grid.Row="2"
-             MinHeight="120"
-             Padding="12"
-             AcceptsReturn="True"
-             TextWrapping="Wrap"
-             PlaceholderText="f(x) ="
-             Text="{CompiledBinding ExpressionText, Mode=TwoWay}"
-             AutomationProperties.AutomationId="GraphingExpressionEditor"
-             AutomationProperties.Name="{utils:ResourceString Name=GraphingExpressionEditorLabel}" />
-  </Grid>
+  <UserControl.Styles>
+    <!-- Port of the original EquationTextBox template. The math editor remains
+         a named template part so its focus, context-menu, and submission
+         behavior stays owned by the custom control. -->
+    <Style Selector="controls|EquationTextBox">
+      <Setter Property="MinHeight" Value="68" />
+      <Setter Property="Margin" Value="4,2" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="EquationBoxBorder"
+                  Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{TemplateBinding EquationColor}"
+                  BorderThickness="0,0,0,1"
+                  CornerRadius="4">
+            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="40,*,Auto">
+              <ToggleButton x:Name="EquationButton"
+                            Width="32"
+                            Height="32"
+                            Margin="4,10,2,0"
+                            Padding="0"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Top"
+                            Background="Transparent"
+                            BorderThickness="0">
+                <Ellipse Width="14"
+                         Height="14"
+                         Fill="{TemplateBinding EquationColor}" />
+              </ToggleButton>
+
+              <controls:MathRichEditBox x:Name="MathRichEditBox"
+                                        Grid.Column="1"
+                                        MinHeight="54"
+                                        Padding="8,12"
+                                        VerticalContentAlignment="Center"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        FontSize="20"
+                                        PlaceholderText="f(x) ="
+                                        AutomationProperties.AutomationId="GraphingExpressionEditor" />
+
+              <StackPanel Grid.Column="2"
+                          Margin="2,8,6,0"
+                          VerticalAlignment="Top"
+                          Orientation="Horizontal"
+                          Spacing="2">
+                <Button x:Name="FunctionButton"
+                        Width="32"
+                        Height="32"
+                        Padding="0"
+                        AutomationProperties.Name="Function analysis"
+                        Content="ƒ" />
+                <Button x:Name="ColorChooserButton"
+                        Width="32"
+                        Height="32"
+                        Padding="0"
+                        AutomationProperties.Name="Change function style"
+                        Content="●" />
+                <Button x:Name="RemoveButton"
+                        Width="32"
+                        Height="32"
+                        Padding="0"
+                        AutomationProperties.Name="Remove function"
+                        Content="×" />
+              </StackPanel>
+
+              <TextBlock x:Name="ErrorTextBlock"
+                         Grid.Row="1"
+                         Grid.Column="1"
+                         Grid.ColumnSpan="2"
+                         Margin="8,0,8,6"
+                         Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                         FontSize="12"
+                         TextWrapping="Wrap" />
+            </Grid>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="controls|EquationTextBox:pointerover /template/ Border#EquationBoxBorder">
+      <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="controls|EquationTextBox:editor-focused /template/ Border#EquationBoxBorder">
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="controls|EquationTextBox:error /template/ Border#EquationBoxBorder">
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="controls|EquationTextBox:add-equation /template/ Button#ColorChooserButton">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="TextBox.variableTextBox">
+      <Setter Property="MinWidth" Value="30" />
+      <Setter Property="Margin" Value="1,0,0,0" />
+      <Setter Property="Padding" Value="2,6,2,2" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="FontSize" Value="14" />
+    </Style>
+  </UserControl.Styles>
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto">
+    <StackPanel AutomationProperties.Name="{utils:ResourceString Name='EquationInputPanel.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}">
+      <ItemsControl x:Name="EquationInputList"
+                    ItemsSource="{CompiledBinding Equations}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:EquationViewModel">
+            <controls:EquationTextBox EquationButtonContentIndex="{CompiledBinding FunctionLabelText}"
+                                      EquationColor="{CompiledBinding LineBrush}"
+                                      LinearEquation="{CompiledBinding Expression, Mode=TwoWay}"
+                                      MathEquation="{CompiledBinding MathExpression, Mode=TwoWay}"
+                                      HasError="{CompiledBinding HasGraphError}"
+                                      ErrorText="{CompiledBinding GraphErrorText}"
+                                      IsAddEquationMode="{CompiledBinding IsLastItemInList}"
+                                      IsEquationLineDisabled="{CompiledBinding IsLineDisabled}"
+                                      EquationButtonClicked="OnEquationButtonClicked"
+                                      EquationFormatRequested="OnEquationFormatRequested"
+                                      EquationSubmitted="OnEquationSubmitted"
+                                      GotFocus="OnEquationGotFocus"
+                                      KeyGraphFeaturesButtonClicked="OnKeyGraphFeaturesButtonClicked"
+                                      Loaded="OnEquationLoaded"
+                                      LostFocus="OnEquationLostFocus"
+                                      RemoveButtonClicked="OnRemoveButtonClicked">
+              <controls:EquationTextBox.ColorChooserFlyout>
+                <Flyout Placement="Bottom">
+                  <local:EquationStylePanelControl SelectedColor="{CompiledBinding LineColor, Mode=TwoWay}"
+                                                   SelectedColorIndex="{CompiledBinding LineColorIndex, Mode=TwoWay}"
+                                                   SelectedStyle="{CompiledBinding EquationStyle, Mode=TwoWay}"
+                                                   EnableLineStylePicker="True" />
+                </Flyout>
+              </controls:EquationTextBox.ColorChooserFlyout>
+            </controls:EquationTextBox>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <ItemsControl x:Name="VariableInputList"
+                    ItemsSource="{CompiledBinding Variables}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:VariableViewModel">
+            <Grid AutomationProperties.Name="{CompiledBinding VariableAutomationName}"
+                  Tapped="OnVariableAreaTapped">
+              <Border Margin="4,3"
+                      Padding="12,0,12,6"
+                      Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                      CornerRadius="4">
+                <StackPanel>
+                  <Grid ColumnDefinitions="Auto,Auto,*">
+                    <TextBlock MinWidth="16"
+                               Margin="8,8,0,0"
+                               VerticalAlignment="Center"
+                               FontSize="16"
+                               FontStyle="Italic"
+                               Text="{CompiledBinding Name}" />
+                    <TextBlock Grid.Column="1"
+                               MinWidth="16"
+                               Margin="6,8,0,0"
+                               VerticalAlignment="Center"
+                               FontSize="16"
+                               FontStyle="Italic"
+                               Text="=" />
+                    <TextBox x:Name="ValueTextBox"
+                             Grid.Column="2"
+                             Classes="variableTextBox"
+                             MinWidth="32"
+                             Margin="6,0,0,0"
+                             Padding="0,10,0,0"
+                             HorizontalAlignment="Left"
+                             VerticalAlignment="Center"
+                             FontStyle="Italic"
+                             AutomationProperties.Name="{utils:ResourceString Name='VariableValueTextBox.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                             GotFocus="OnVariableTextBoxGotFocus"
+                             KeyDown="OnVariableTextBoxKeyDown"
+                             LostFocus="OnVariableTextBoxLostFocus"
+                             Text="{CompiledBinding Value, Mode=OneWay}" />
+                  </Grid>
+
+                  <Slider x:Name="VariableValueSlider"
+                          Margin="8,0,8,-6"
+                          VerticalAlignment="Center"
+                          AutomationProperties.Name="{utils:ResourceString Name='VariableValueSlider.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                          IsSnapToTickEnabled="True"
+                          Maximum="{CompiledBinding Max}"
+                          Minimum="{CompiledBinding Min}"
+                          SmallChange="{CompiledBinding Step}"
+                          TickFrequency="{CompiledBinding Step}"
+                          Value="{CompiledBinding Value, Mode=TwoWay}" />
+
+                  <Grid Margin="8,0,8,8"
+                        ColumnDefinitions="*,*,*"
+                        IsVisible="{CompiledBinding SliderSettingsVisible}">
+                    <Grid HorizontalAlignment="Left" ColumnDefinitions="Auto,*">
+                      <TextBlock Margin="0,12,4,0"
+                                 VerticalAlignment="Center"
+                                 Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                 FontSize="12"
+                                 Text="{utils:ResourceString Name='MinTextBlock.Text'}" />
+                      <TextBox x:Name="MinTextBox"
+                               Grid.Column="1"
+                               Classes="variableTextBox"
+                               MinWidth="18"
+                               Padding="2,16,2,2"
+                               FontSize="12"
+                               AutomationProperties.Name="{utils:ResourceString Name='VariableMinTextBox.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                               GotFocus="OnVariableTextBoxGotFocus"
+                               KeyDown="OnVariableTextBoxKeyDown"
+                               LostFocus="OnVariableTextBoxLostFocus"
+                               Text="{CompiledBinding Min, Mode=OneWay}" />
+                    </Grid>
+                    <Grid Grid.Column="1" HorizontalAlignment="Center" ColumnDefinitions="Auto,*">
+                      <TextBlock Margin="0,12,4,0"
+                                 VerticalAlignment="Center"
+                                 Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                 FontSize="12"
+                                 Text="{utils:ResourceString Name='StepTextBlock.Text'}" />
+                      <TextBox x:Name="StepTextBox"
+                               Grid.Column="1"
+                               Classes="variableTextBox"
+                               MinWidth="18"
+                               Padding="2,16,2,2"
+                               FontSize="12"
+                               AutomationProperties.Name="{utils:ResourceString Name='VariableStepTextBox.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                               GotFocus="OnVariableTextBoxGotFocus"
+                               KeyDown="OnVariableTextBoxKeyDown"
+                               LostFocus="OnVariableTextBoxLostFocus"
+                               Text="{CompiledBinding Step, Mode=OneWay}" />
+                    </Grid>
+                    <Grid Grid.Column="2" HorizontalAlignment="Right" ColumnDefinitions="Auto,*">
+                      <TextBlock Margin="0,12,4,0"
+                                 VerticalAlignment="Center"
+                                 Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                 FontSize="12"
+                                 Text="{utils:ResourceString Name='MaxTextBlock.Text'}" />
+                      <TextBox x:Name="MaxTextBox"
+                               Grid.Column="1"
+                               Classes="variableTextBox"
+                               MinWidth="18"
+                               Padding="2,16,2,2"
+                               FontSize="12"
+                               AutomationProperties.Name="{utils:ResourceString Name='VariableMaxTextBox.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                               GotFocus="OnVariableTextBoxGotFocus"
+                               KeyDown="OnVariableTextBoxKeyDown"
+                               LostFocus="OnVariableTextBoxLostFocus"
+                               Text="{CompiledBinding Max, Mode=OneWay}" />
+                    </Grid>
+                  </Grid>
+
+                  <ToggleButton x:Name="VariableAreaSettings"
+                                Margin="0,6,0,0"
+                                Padding="10,4"
+                                HorizontalAlignment="Center"
+                                BorderThickness="0"
+                                AutomationProperties.Name="{utils:ResourceString Name='VariableAreaSettings.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                Click="OnVariableAreaClicked"
+                                IsChecked="{CompiledBinding SliderSettingsVisible, Mode=OneWay}"
+                                Tapped="OnVariableAreaButtonTapped">
+                    <TextBlock FontFamily="{DynamicResource CalculatorFontFamily}"
+                               FontSize="9"
+                               Text="{CompiledBinding SliderSettingsChevron}" />
+                  </ToggleButton>
+                </StackPanel>
+              </Border>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>

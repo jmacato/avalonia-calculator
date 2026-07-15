@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation and the Avalonia contributors.
 // Licensed under the MIT License.
 
+using System.Collections;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using Avalonia;
@@ -13,10 +14,9 @@ using Avalonia.Layout;
 namespace CalculatorApp.Controls;
 
 /// <summary>
-/// Avalonia implementation of the vertical, touch-only WinUI CarouselPanel
-/// used by ComboBox. It virtualizes the visible cyclic slots, keeps WinUI's
-/// blank separator slot between cycles, and exposes item-based scrolling and
-/// snap points to ScrollViewer.
+/// Avalonia implementation of the vertical WinUI CarouselPanel used by
+/// ComboBox. The same panel provides the ordinary linear layout and the
+/// touch-only cyclic layout, including WinUI's blank separator slot.
 /// </summary>
 public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollable, IScrollSnapPointsInfo
 {
@@ -35,6 +35,40 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         public Control Control { get; } = control;
     }
 
+    /// <summary>
+    /// Avalonia lacks WinUI's OptionalSingle snap-point mode. MandatorySingle
+    /// is the nearest available gesture behavior, but a regular interval would
+    /// make the null separator a valid resting position. Expose every real
+    /// item across WinUI's inflated extent as an indexed, allocation-free list
+    /// and deliberately omit each separator slot.
+    /// </summary>
+    private sealed class CarouselSnapPoints(int itemCount) : IReadOnlyList<double>
+    {
+        public int Count { get; } = checked(itemCount * DirectManipulationExtentMultiplier);
+
+        public double this[int index]
+        {
+            get
+            {
+                ArgumentOutOfRangeException.ThrowIfNegative(index);
+                ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Count);
+                int cycle = index / itemCount;
+                int item = index % itemCount;
+                return cycle * (itemCount + 1) + item;
+            }
+        }
+
+        public IEnumerator<double> GetEnumerator()
+        {
+            for (int index = 0; index < Count; index++)
+            {
+                yield return this[index];
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
     private readonly Dictionary<int, RealizedItem> _realized = new();
     private Dictionary<object, Stack<Control>>? _recyclePool;
     private Size _extent;
@@ -48,9 +82,17 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
     private bool _isInLayout;
     private bool _shouldCarousel;
 
-    public bool AreHorizontalSnapPointsRegular { get; set; }
+    public bool AreHorizontalSnapPointsRegular
+    {
+        get => false;
+        set { }
+    }
 
-    public bool AreVerticalSnapPointsRegular { get; set; } = true;
+    public bool AreVerticalSnapPointsRegular
+    {
+        get => false;
+        set { }
+    }
 
     public event EventHandler<RoutedEventArgs>? HorizontalSnapPointsChanged
     {
@@ -360,6 +402,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         ClearRealized();
         _minimumDesiredWidth = 0;
         _offsetInitialized = false;
+        VerticalSnapPointsChanged?.Invoke(this, new RoutedEventArgs());
         InvalidateMeasure();
     }
 
@@ -372,6 +415,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
             _recyclePool?.Clear();
             _minimumDesiredWidth = 0;
             _offsetInitialized = false;
+            VerticalSnapPointsChanged?.Invoke(this, new RoutedEventArgs());
         }
     }
 
@@ -398,8 +442,17 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
 
     public IReadOnlyList<double> GetIrregularSnapPoints(
         Orientation orientation,
-        SnapPointsAlignment snapPointsAlignment) =>
-        Array.Empty<double>();
+        SnapPointsAlignment snapPointsAlignment)
+    {
+        if (orientation != Orientation.Vertical
+            || !_shouldCarousel
+            || Items.Count == 0)
+        {
+            return Array.Empty<double>();
+        }
+
+        return new CarouselSnapPoints(Items.Count);
+    }
 
     public double GetRegularSnapPoints(
         Orientation orientation,
