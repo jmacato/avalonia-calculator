@@ -7,3 +7,4 @@
 - Do not use shortcuts, placeholders, simplified substitutes, or generic framework controls when the original implementation has a custom control, panel, template selector, style, animation, layout algorithm, or interaction model. Port that original implementation in place before treating the feature as complete.
 - Before changing a view, trace every referenced original control, resource dictionary, template, selector, converter, and code-behind dependency and port those dependencies as well. Do not silently drop them or replace them with superficially similar Avalonia behavior.
 - If an earlier port introduced a shortcut, remove it and restore the original structure and logic from the WinUI source; do not layer another exception on top.
+- Commit completed work frequently in small, coherent stages. Verify the staged diff before each commit and do not bundle unrelated changes together.

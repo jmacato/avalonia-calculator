@@ -205,8 +205,8 @@ public static class EngineStrings
     public const string SidsProgrammerMod = "ProgrammerMod";
 
     // Include the resource key ID from above into this vector to load it into memory for the engine to use
-    internal static string[] g_sids =
-    {
+    internal static string[] CreateResourceIds() =>
+    [
         SidsPlusMinus,
         SidsC,
         SidsCe,
@@ -359,5 +359,5 @@ public static class EngineStrings
         SidsNor,
         SidsCuberoot,
         SidsProgrammerMod,
-    };
+    ];
 }

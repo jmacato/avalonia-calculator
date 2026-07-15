@@ -3,6 +3,8 @@
 
 using System.Globalization;
 using System.Text.Json;
+using CalcEngine;
+using CalculatorApp.Services.Settings;
 using CalculatorApp.ViewModel.Common;
 using UCM = UnitConversionManager;
 
@@ -22,9 +24,16 @@ public partial class CurrencyDataLoader
             return;
         }
 
-        _initialLoadTask = LoadInitialDataAsync();
-        bool didLoad = await _initialLoadTask;
+        RegisterForNetworkBehaviorChanges();
+        _initialLoadTask = LoadInitialDataAndNotifyAsync();
+        await _initialLoadTask;
+    }
+
+    private async Task<bool> LoadInitialDataAndNotifyAsync()
+    {
+        bool didLoad = await LoadInitialDataAsync();
         NotifyDataLoadFinished(didLoad);
+        return didLoad;
     }
 
     private async Task<bool> LoadInitialDataAsync()
@@ -81,20 +90,68 @@ public partial class CurrencyDataLoader
     public void SetViewModelCallback(UCM.IViewModelCurrencyCallback callback)
     {
         _viewModelCallback = callback;
-        callback.NetworkBehaviorChanged((int)NetworkAccessBehavior.Normal);
+        OnNetworkBehaviorChanged(_networkAccessBehavior);
     }
+
+    private void RegisterForNetworkBehaviorChanges()
+    {
+        _networkManager.NetworkBehaviorChanged -= OnNetworkBehaviorChanged;
+        _networkManager.NetworkBehaviorChanged += OnNetworkBehaviorChanged;
+        OnNetworkBehaviorChanged(NetworkManager.GetNetworkAccessBehavior());
+    }
+
+    private void OnNetworkBehaviorChanged(NetworkAccessBehavior newBehavior)
+    {
+        NetworkAccessBehavior previousBehavior = _networkAccessBehavior;
+        _networkAccessBehavior = newBehavior;
+        _viewModelCallback?.NetworkBehaviorChanged((int)newBehavior);
+
+        if (previousBehavior == NetworkAccessBehavior.Offline &&
+            newBehavior == NetworkAccessBehavior.Normal &&
+            _settingsStore.Current.AutomaticCurrencyRefresh &&
+            (_automaticRefreshTask is null || _automaticRefreshTask.IsCompleted))
+        {
+            _automaticRefreshTask = RefreshAfterNetworkAvailableAsync();
+        }
+    }
+
+    private async Task RefreshAfterNetworkAvailableAsync()
+    {
+        // The network event can arrive immediately after registration, before
+        // LoadData has stored the task. Yield once so the initial load remains
+        // the only operation that initializes the converter data.
+        await Task.Yield();
+        if (_initialLoadTask is not null)
+        {
+            await _initialLoadTask;
+        }
+
+        if (!_settingsStore.Current.AutomaticCurrencyRefresh ||
+            _networkAccessBehavior != NetworkAccessBehavior.Normal ||
+            !CurrencyDataNeedsRefresh())
+        {
+            return;
+        }
+
+        bool didLoad = await TryLoadDataFromWebAsync();
+        NotifyDataLoadFinished(didLoad);
+    }
+
+    private bool CurrencyDataNeedsRefresh() =>
+        _loadStatus == CurrencyLoadStatus.FailedToLoad ||
+        _cacheTimestamp == default ||
+        DateTimeOffset.UtcNow - _cacheTimestamp > CacheRefreshAge;
 
     public (string, string) GetCurrencySymbols(UCM.Unit unit1, UCM.Unit unit2)
     {
         lock (_currencyUnitsMutex)
         {
-            string symbol1 = _currencyMetadata.TryGetValue(unit1, out var first)
-                ? first.Symbol
-                : unit1.Abbreviation;
-            string symbol2 = _currencyMetadata.TryGetValue(unit2, out var second)
-                ? second.Symbol
-                : unit2.Abbreviation;
-            return (symbol1, symbol2);
+            // Preserve the WinUI loader contract: these are currency symbols,
+            // not generic unit abbreviations. Both values must be currencies.
+            return _currencyMetadata.TryGetValue(unit1, out var first) &&
+                   _currencyMetadata.TryGetValue(unit2, out var second)
+                ? (first.Symbol, second.Symbol)
+                : (string.Empty, string.Empty);
         }
     }
 
@@ -108,17 +165,32 @@ public partial class CurrencyDataLoader
                 return (string.Empty, string.Empty);
             }
 
-            double rounded = RoundCurrencyRatio(conversion.Ratio);
-            string formatted = rounded.ToString("G15", CultureInfo.CurrentCulture);
+            Rational ratio = RatPakDecimal.Parse(_ratPak, conversion.RatioNumerator) /
+                             RatPakDecimal.Parse(_ratPak, conversion.RatioDenominator);
+            int decimals = 4;
+            int exponent = RatPakDecimal.GetDecimalExponent(_ratPak, ratio);
+            if (exponent < 0)
+            {
+                decimals = Math.Max(decimals, -exponent + 3);
+            }
+
+            string formatted = RatPakDecimal.FormatFixed(
+                _ratPak,
+                ratio,
+                Math.Min(decimals, 15),
+                RatPakRoundingMode.AwayFromZero);
+            formatted = FormatCurrencyRatio(formatted, _numberFormat);
+            LocalizationSettings localization = LocalizationSettings.GetInstance();
+            string one = localization.GetDigitSymbolFromEnUsDigit('1').ToString();
             string visible = LocalizationStringUtil.GetLocalizedString(
                 _ratioFormat,
-                LocalizationSettings.GetInstance().GetDigitSymbolFromEnUsDigit('1').ToString(),
+                one,
                 unit1.Abbreviation,
                 formatted,
                 unit2.Abbreviation);
             string accessible = LocalizationStringUtil.GetLocalizedString(
                 _ratioFormat,
-                "1",
+                one,
                 unit1.AccessibleName,
                 formatted,
                 unit2.AccessibleName);
@@ -126,20 +198,35 @@ public partial class CurrencyDataLoader
         }
     }
 
-    public static double RoundCurrencyRatio(double ratio)
+    private static string FormatCurrencyRatio(
+        string invariantValue,
+        NumberFormatInfo numberFormat)
     {
-        if (ratio <= 0 || double.IsNaN(ratio) || double.IsInfinity(ratio))
+        const int minimumFractionDigits = 2;
+
+        bool isNegative = invariantValue.StartsWith("-", StringComparison.Ordinal);
+        string unsignedValue = isNegative ? invariantValue[1..] : invariantValue;
+        int decimalPosition = unsignedValue.IndexOf('.');
+        string whole = decimalPosition < 0
+            ? unsignedValue
+            : unsignedValue[..decimalPosition];
+        string fraction = decimalPosition < 0
+            ? string.Empty
+            : unsignedValue[(decimalPosition + 1)..];
+
+        while (fraction.Length > minimumFractionDigits && fraction.EndsWith('0'))
         {
-            return ratio;
+            fraction = fraction[..^1];
         }
 
-        int decimals = 4;
-        if (ratio < 1)
-        {
-            decimals = Math.Max(decimals, (int)-Math.Floor(Math.Log10(ratio)) + 3);
-        }
-
-        return Math.Round(ratio, Math.Min(decimals, 15), MidpointRounding.AwayFromZero);
+        fraction = fraction.PadRight(minimumFractionDigits, '0');
+        string grouped = CurrencyDisplayFormatter.ApplyGrouping(
+            whole,
+            numberFormat.NumberGroupSeparator,
+            numberFormat.NumberGroupSizes);
+        string localized = grouped + numberFormat.NumberDecimalSeparator + fraction;
+        localized = CurrencyDisplayFormatter.LocalizeDigits(localized, numberFormat);
+        return isNegative ? numberFormat.NegativeSign + localized : localized;
     }
 
     public string GetCurrencyTimestamp()
@@ -170,6 +257,11 @@ public partial class CurrencyDataLoader
 
     public async Task<bool> TryLoadDataFromWebAsync()
     {
+        if (_networkAccessBehavior == NetworkAccessBehavior.Offline)
+        {
+            return false;
+        }
+
         try
         {
             CurrencyRateSnapshot snapshot = await _rateProvider.GetLatestRatesAsync();
@@ -208,7 +300,7 @@ public partial class CurrencyDataLoader
     private void FinalizeUnits(CurrencyRateSnapshot snapshot)
     {
         ValidateSnapshot(snapshot);
-        Dictionary<string, double> rates = snapshot.Rates
+        Dictionary<string, decimal> rates = snapshot.Rates
             .Where(rate => rate.Rate > 0 && !string.IsNullOrWhiteSpace(rate.QuoteCurrency))
             .GroupBy(rate => rate.QuoteCurrency, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Last().Rate,
@@ -220,15 +312,25 @@ public partial class CurrencyDataLoader
             .ToDictionary(group => group.Key, group => group.First(),
                 StringComparer.OrdinalIgnoreCase);
 
-        string preferredFrom = GetRegionalCurrencyCode();
+        AppSettings settings = _settingsStore.Current;
+        string preferredFrom = settings.CurrencyUnitFrom;
+        if (!rates.ContainsKey(preferredFrom))
+        {
+            preferredFrom = GetRegionalCurrencyCode();
+        }
+
         if (!rates.ContainsKey(preferredFrom))
         {
             preferredFrom = rates.ContainsKey("USD") ? "USD" : rates.Keys.First();
         }
 
-        string preferredTo = preferredFrom.Equals("EUR", StringComparison.OrdinalIgnoreCase)
-            ? "USD"
-            : rates.ContainsKey("EUR") ? "EUR" : rates.Keys.First();
+        string preferredTo = settings.CurrencyUnitTo;
+        if (!rates.ContainsKey(preferredTo))
+        {
+            preferredTo = preferredFrom.Equals("EUR", StringComparison.OrdinalIgnoreCase)
+                ? "USD"
+                : rates.ContainsKey("EUR") ? "EUR" : rates.Keys.First();
+        }
 
         lock (_currencyUnitsMutex)
         {
@@ -237,7 +339,7 @@ public partial class CurrencyDataLoader
             _currencyMetadata = [];
 
             int id = (int)UnitConverterUnits.UnitEnd + 1;
-            foreach ((string isoCode, double _) in rates.OrderBy(pair => pair.Key,
+            foreach ((string isoCode, decimal _) in rates.OrderBy(pair => pair.Key,
                          StringComparer.OrdinalIgnoreCase))
             {
                 metadata.TryGetValue(isoCode, out CurrencyMetadataRecord? fallback);
@@ -256,18 +358,21 @@ public partial class CurrencyDataLoader
                     AccessibleName = $"{isoCode} {display.Name}"
                 };
                 _currencyUnits.Add(unit);
-                _currencyMetadata[unit] = new CurrencyUnitMetadata(display.Symbol);
+                _currencyMetadata[unit] = new CurrencyUnitMetadata(
+                    display.Symbol,
+                    display.FractionDigits);
             }
 
             foreach (UCM.Unit source in _currencyUnits)
             {
-                double sourceRate = rates[source.Abbreviation];
+                decimal sourceRate = rates[source.Abbreviation];
                 Dictionary<UCM.Unit, UCM.ConversionData> conversions = [];
                 foreach (UCM.Unit target in _currencyUnits)
                 {
                     conversions[target] = new UCM.ConversionData(
-                        rates[target.Abbreviation] / sourceRate,
-                        0,
+                        rates[target.Abbreviation].ToString(CultureInfo.InvariantCulture),
+                        sourceRate.ToString(CultureInfo.InvariantCulture),
+                        "0",
                         false);
                 }
                 _currencyRatioMap[source] = conversions;
@@ -291,8 +396,20 @@ public partial class CurrencyDataLoader
 
     private static void ValidateSnapshot(CurrencyRateSnapshot snapshot)
     {
-        if (snapshot.Currencies.Count == 0 || snapshot.Rates.Count == 0 ||
-            snapshot.Rates.Any(rate => rate.Rate <= 0 || !double.IsFinite(rate.Rate)))
+        if (snapshot.FetchedAtUtc == default ||
+            string.IsNullOrWhiteSpace(snapshot.BaseCurrency) ||
+            snapshot.Currencies is not { Count: > 0 } ||
+            snapshot.Currencies.Any(currency =>
+                currency is null || string.IsNullOrWhiteSpace(currency.IsoCode)) ||
+            snapshot.Rates is not { Count: > 0 } ||
+            snapshot.Rates.Any(rate =>
+                rate is null ||
+                rate.Rate <= 0 ||
+                string.IsNullOrWhiteSpace(rate.BaseCurrency) ||
+                !rate.BaseCurrency.Equals(
+                    snapshot.BaseCurrency,
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.IsNullOrWhiteSpace(rate.QuoteCurrency)))
         {
             throw new InvalidDataException("Currency data is empty or malformed.");
         }
@@ -381,8 +498,11 @@ public partial class CurrencyDataLoader
 
     private void NotifyDataLoadFinished(bool didLoad)
     {
-        _viewModelCallback?.NetworkBehaviorChanged(
-            (int)(didLoad ? NetworkAccessBehavior.Normal : NetworkAccessBehavior.Offline));
+        if (!didLoad)
+        {
+            _loadStatus = CurrencyLoadStatus.FailedToLoad;
+        }
+
         UpdateDisplayedTimestamp();
         _viewModelCallback?.CurrencyDataLoadFinished(didLoad);
     }

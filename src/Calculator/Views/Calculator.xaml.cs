@@ -28,6 +28,14 @@ public sealed partial class Calculator : UserControl
 
     public StandardCalculatorViewModel? Model => DataContext as StandardCalculatorViewModel;
 
+    public void SetDefaultFocus()
+    {
+        if (Model?.IsAlwaysOnTop != true)
+        {
+            Results.Focus();
+        }
+    }
+
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
         SubscribeToModel();

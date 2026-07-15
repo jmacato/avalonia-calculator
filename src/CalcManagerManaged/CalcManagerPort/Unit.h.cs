@@ -14,7 +14,7 @@ public class Unit : IEquatable<Unit>
     // null checks.
     //
     // unitId, name, abbreviation, isConversionSource, isConversionTarget, isWhimsical
-    public static readonly Unit EmptyUnit = new Unit
+    public static Unit EmptyUnit => new Unit
     {
         Id = -1,
         Name = "",

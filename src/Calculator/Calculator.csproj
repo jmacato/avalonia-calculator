@@ -32,6 +32,8 @@
     <Compile Include="Controls\CalculationResult.cs" />
     <Compile Include="Controls\CalculationResultAutomationPeer.cs" />
     <Compile Include="Controls\CalculatorButton.cs" />
+    <Compile Include="Controls\ConverterCarouselPanel.cs" />
+    <Compile Include="Controls\ConverterComboBox.cs" />
     <Compile Include="Controls\FlipButtons.cs" />
     <Compile Include="Controls\HorizontalNoOverflowStackPanel.cs" />
     <Compile Include="Controls\OperatorPanelButton.cs" />
@@ -73,6 +75,8 @@
     <Compile Include="Selectors\NavViewMenuItemTemplateSelector.cs" />
     <Compile Include="Converters\ExpressionItemTemplateSelector.cs" />
     <Compile Include="Utils\ResourceString.cs" />
+    <Compile Include="Services\Settings\AppSettings.cs" />
+    <Compile Include="Services\Settings\SettingsStores.cs" />
     <Compile Include="ViewModels\ApplicationViewModel.cs" />
     <Compile Include="ViewModels\StandardCalculatorViewModel.h.cs" />
     <Compile Include="ViewModels\StandardCalculatorViewModel.cpp.cs" />
@@ -104,6 +108,7 @@
     <Compile Include="ViewModels\Common\CalculatorDisplay.cpp.cs" />
     <Compile Include="ViewModels\Common\CopyPasteManager.h.cs" />
     <Compile Include="ViewModels\Common\CopyPasteManager.cpp.cs" />
+    <Compile Include="ViewModels\Common\CurrencyDisplayFormatter.cs" />
     <Compile Include="ViewModels\Common\DateCalculator.h.cs" />
     <Compile Include="ViewModels\Common\DateCalculator.cpp.cs" />
     <Compile Include="ViewModels\Common\DelegateCommand.cs" />
@@ -114,6 +119,7 @@
     <Compile Include="ViewModels\Common\LocalizationStringUtil.h.cs" />
     <Compile Include="ViewModels\Common\MyVirtualKey.h.cs" />
     <Compile Include="ViewModels\Common\NetworkManager.h.cs" />
+    <Compile Include="ViewModels\Common\NetworkManager.cpp.cs" />
     <Compile Include="ViewModels\Common\NavCategory.h.cs" />
     <Compile Include="ViewModels\Common\NavCategory.cpp.cs" />
     <Compile Include="ViewModels\Common\NumberBase.h.cs" />
@@ -123,6 +129,7 @@
     <Compile Include="ViewModels\DataLoaders\UnitConverterDataConstants.h.cs" />
     <Compile Include="ViewModels\DataLoaders\UnitConverterDataLoader.cpp.h.cs" />
     <Compile Include="ViewModels\DataLoaders\UnitConverterDataLoader.cpp.cs" />
+    <Compile Include="ViewModels\DataLoaders\CldrCurrencyData.g.cs" />
     <Compile Include="ViewModels\DataLoaders\CurrencyHttpClient.cpp.h.cs" />
     <Compile Include="ViewModels\DataLoaders\CurrencyHttpClient.cpp.cs" />
     <Compile Include="ViewModels\DataLoaders\CurrencyDataLoader.cpp.h.cs" />

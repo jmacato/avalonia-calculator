@@ -9,13 +9,13 @@ namespace UnitConversionManager;
 
 public class CurrencyRatio
 {
-    public double Ratio { get; set; }
+    public string Ratio { get; set; }
 
     public wstring SourceCurrencyCode { get; set; }
 
     public wstring TargetCurrencyCode { get; set; }
 
-    public CurrencyRatio(double ratio, string sourceCurrencyCode, string targetCurrencyCode)
+    public CurrencyRatio(string ratio, string sourceCurrencyCode, string targetCurrencyCode)
     {
         this.Ratio = ratio;
         this.SourceCurrencyCode = sourceCurrencyCode;

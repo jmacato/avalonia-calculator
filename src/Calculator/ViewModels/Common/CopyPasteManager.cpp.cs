@@ -137,11 +137,17 @@ public partial class CopyPasteManager
         }
     }
 
-    public static bool HasStringToPaste()
+    public static async Task<bool> HasStringToPasteAsync()
     {
-        // Clipboard inspection is asynchronous on Avalonia. The paste operation
-        // performs the authoritative format/content check without blocking the UI.
-        return Clipboard is not null;
+        try
+        {
+            return Clipboard is { } clipboard &&
+                   await clipboard.TryGetTextAsync() is not null;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     static String ValidatePasteExpression(String pastedText, ViewMode mode, NumberBase programmerNumberBase, BitLength bitLengthType)

@@ -9,9 +9,11 @@ namespace UnitConversionManager;
 
 public class SuggestedValueIntermediate
 {
-    public double Magnitude { get; set; }
+    public Rational Magnitude { get; set; } = null!;
 
-    public double Value { get; set; }
+    public bool IsMagnitudeAtLeastOne { get; set; }
+
+    public Rational Value { get; set; } = null!;
 
     public Unit Type { get; set; } = Unit.EmptyUnit;
 }

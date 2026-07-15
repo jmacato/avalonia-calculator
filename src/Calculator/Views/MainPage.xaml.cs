@@ -19,7 +19,7 @@ public sealed partial class MainPage : UserControl
 
     public MainPage()
     {
-        Model = new ApplicationViewModel();
+        Model = new ApplicationViewModel(App.SettingsStore);
         NavViewCategoriesSource = ExpandNavViewCategoryGroups(Model.Categories);
 
         InitializeComponent();
@@ -68,7 +68,6 @@ public sealed partial class MainPage : UserControl
         if (e.IsSettingsSelected)
         {
             _isSettingsVisible = true;
-            Header.Text = AppResourceProvider.GetInstance().GetResourceString("SettingsHeader.Text");
             EnsureSettingsView();
             UpdateModeHolders();
             NavView.IsPaneOpen = false;
@@ -89,6 +88,14 @@ public sealed partial class MainPage : UserControl
         {
             SelectNavigationItemByModel();
             UpdateModeHolders();
+            if (NavCategory.IsConverterViewMode(Model.Mode)
+                && !NavCategory.IsConverterViewMode(Model.PreviousMode)
+                && ConverterHolder.Child is UnitConverter converter)
+            {
+                converter.AnimateConverter();
+            }
+
+            SetDefaultFocus();
         }
         else if (e.PropertyName == nameof(ApplicationViewModel.CategoryName))
         {
@@ -161,6 +168,7 @@ public sealed partial class MainPage : UserControl
         SetHolderVisibility("ConverterHolder", !_isSettingsVisible && NavCategory.IsConverterViewMode(Model.Mode));
         SetHolderVisibility("CalcHolder", !_isSettingsVisible && NavCategory.IsCalculatorViewMode(Model.Mode));
         SetHolderVisibility("SettingsHolder", _isSettingsVisible);
+        NavView.IsVisible = !_isSettingsVisible;
     }
 
     private void EnsureSettingsView()
@@ -170,7 +178,7 @@ public sealed partial class MainPage : UserControl
             return;
         }
 
-        var settings = new Settings();
+        var settings = new Settings(App.SettingsStore);
         settings.BackButtonClick += OnSettingsBackButtonClick;
         SettingsHolder.Child = settings;
     }
@@ -180,6 +188,35 @@ public sealed partial class MainPage : UserControl
         _isSettingsVisible = false;
         SelectNavigationItemByModel();
         UpdateModeHolders();
+        SetDefaultFocus();
+    }
+
+    private void OnNavPaneClosed(FANavigationView sender, EventArgs e) =>
+        SetDefaultFocus();
+
+    private void SetDefaultFocus()
+    {
+        if (_isSettingsVisible && SettingsHolder.Child is Settings settings)
+        {
+            settings.SetDefaultFocus();
+        }
+        else if (CalcHolder.IsVisible && CalcHolder.Child is Calculator calculator)
+        {
+            calculator.SetDefaultFocus();
+        }
+        else if (DateCalcHolder.IsVisible && DateCalcHolder.Child is DateCalculator dateCalculator)
+        {
+            dateCalculator.SetDefaultFocus();
+        }
+        else if (GraphingCalcHolder.IsVisible
+                 && GraphingCalcHolder.Child is GraphingCalculator graphingCalculator)
+        {
+            graphingCalculator.SetDefaultFocus();
+        }
+        else if (ConverterHolder.IsVisible && ConverterHolder.Child is UnitConverter converter)
+        {
+            converter.SetDefaultFocus();
+        }
     }
 
     private void SetHolderVisibility(string name, bool isVisible)

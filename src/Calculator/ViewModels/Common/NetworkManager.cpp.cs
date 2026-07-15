@@ -1,62 +1,76 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-// #include  "pch.h"
-// #include  "NetworkManager.h"
-
-using System;
-using CalculatorApp;
-using CalculatorApp.ViewModel;
-using CalculatorApp.ViewModel.Common;
-using Windows.Networking.Connectivity;
+using System.Net.NetworkInformation;
+using Avalonia.Threading;
 
 namespace CalculatorApp.ViewModel.Common;
 
-public partial class NetworkManager
+/// <summary>
+/// Portable implementation of the original WinRT NetworkManager. The port
+/// intentionally reports only available/offline because metered connection
+/// cost is not consistently discoverable across the supported platforms.
+/// </summary>
+public sealed partial class NetworkManager : IDisposable
 {
+    private bool _disposed;
+
     public NetworkManager()
     {
-        NetworkInformation.NetworkStatusChanged += OnNetworkStatusChange;
-    }
-
-    ~NetworkManager()
-    {
-        NetworkInformation.NetworkStatusChanged -= OnNetworkStatusChange;
-    }
-
-    public NetworkAccessBehavior GetNetworkAccessBehavior()
-    {
-        NetworkAccessBehavior behavior = NetworkAccessBehavior.Offline;
-        ConnectionProfile connectionProfile = NetworkInformation.GetInternetConnectionProfile();
-        if (connectionProfile != null)
+        if (!OperatingSystem.IsBrowser())
         {
-            NetworkConnectivityLevel connectivityLevel = connectionProfile.GetNetworkConnectivityLevel();
-            if (connectivityLevel == NetworkConnectivityLevel.InternetAccess ||
-                connectivityLevel == NetworkConnectivityLevel.ConstrainedInternetAccess)
-            {
-                ConnectionCost connectionCost = connectionProfile.GetConnectionCost();
-                behavior = ConvertCostInfoToBehavior(connectionCost);
-            }
+            NetworkChange.NetworkAvailabilityChanged += OnNetworkStatusChange;
+        }
+    }
+
+    ~NetworkManager() => Dispose(disposing: false);
+
+    public static NetworkAccessBehavior GetNetworkAccessBehavior()
+    {
+        if (OperatingSystem.IsBrowser())
+        {
+            return NetworkAccessBehavior.Normal;
         }
 
-        return behavior;
+        return NetworkInterface.GetIsNetworkAvailable()
+            ? NetworkAccessBehavior.Normal
+            : NetworkAccessBehavior.Offline;
     }
 
-    public  void OnNetworkStatusChange(Object sender)
+    public void Dispose()
     {
-        NetworkBehaviorChanged(GetNetworkAccessBehavior());
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 
-// See app behavior guidelines at https://msdn.microsoft.com/en-us/library/windows/apps/xaml/jj835821(v=win.10).aspx
-    public NetworkAccessBehavior ConvertCostInfoToBehavior(ConnectionCost connectionCost)
+    private void OnNetworkStatusChange(object? sender, NetworkAvailabilityEventArgs e)
     {
-        if (connectionCost.Roaming || connectionCost.OverDataLimit ||
-            connectionCost.NetworkCostType == NetworkCostType.Variable
-            || connectionCost.NetworkCostType == NetworkCostType.Fixed)
+        _ = sender;
+        NetworkAccessBehavior behavior = e.IsAvailable
+            ? NetworkAccessBehavior.Normal
+            : NetworkAccessBehavior.Offline;
+        if (Dispatcher.UIThread.CheckAccess())
         {
-            return NetworkAccessBehavior.OptIn;
+            RaiseNetworkBehaviorChanged(behavior);
+        }
+        else
+        {
+            Dispatcher.UIThread.Post(() => RaiseNetworkBehaviorChanged(behavior));
+        }
+    }
+
+    private void Dispose(bool disposing)
+    {
+        _ = disposing;
+        if (_disposed)
+        {
+            return;
         }
 
-        return NetworkAccessBehavior.Normal;
+        _disposed = true;
+        if (!OperatingSystem.IsBrowser())
+        {
+            NetworkChange.NetworkAvailabilityChanged -= OnNetworkStatusChange;
+        }
     }
 }

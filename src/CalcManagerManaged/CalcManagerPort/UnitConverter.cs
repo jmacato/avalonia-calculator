@@ -10,6 +10,54 @@ namespace UnitConversionManager;
 
 public class UnitConverter : IUnitConverter
 {
+    private sealed class CurrencyDataLoaderCallback : IViewModelCurrencyCallback
+    {
+        private readonly UnitConverter _owner;
+
+        public CurrencyDataLoaderCallback(UnitConverter owner)
+        {
+            _owner = owner;
+        }
+
+        public void CurrencyDataLoadFinished(bool didLoad)
+        {
+            if (didLoad)
+            {
+                _owner.ReloadCurrencyData();
+            }
+
+            _owner.m_vmCurrencyCallback?.CurrencyDataLoadFinished(didLoad);
+        }
+
+        public void CurrencySymbolsCallback(string fromSymbol, string toSymbol) =>
+            _owner.m_vmCurrencyCallback?.CurrencySymbolsCallback(fromSymbol, toSymbol);
+
+        public void CurrencyRatiosCallback(string ratioEquality, string accRatioEquality) =>
+            _owner.m_vmCurrencyCallback?.CurrencyRatiosCallback(ratioEquality, accRatioEquality);
+
+        public void CurrencyTimestampCallback(string timestamp, bool isWeekOldData) =>
+            _owner.m_vmCurrencyCallback?.CurrencyTimestampCallback(timestamp, isWeekOldData);
+
+        public void NetworkBehaviorChanged(int newBehavior) =>
+            _owner.m_vmCurrencyCallback?.NetworkBehaviorChanged(newBehavior);
+    }
+
+    private sealed class RationalConversionData
+    {
+        public RationalConversionData(Rational ratio, Rational offset, bool offsetFirst)
+        {
+            Ratio = ratio;
+            Offset = offset;
+            OffsetFirst = offsetFirst;
+        }
+
+        public Rational Ratio { get; }
+
+        public Rational Offset { get; }
+
+        public bool OffsetFirst { get; }
+    }
+
     IConverterDataLoader m_dataLoader;
 
     IConverterDataLoader? m_currencyDataLoader;
@@ -18,11 +66,25 @@ public class UnitConverter : IUnitConverter
 
     IViewModelCurrencyCallback? m_vmCurrencyCallback;
 
+    readonly CurrencyDataLoaderCallback m_currencyDataLoaderCallback;
+
     IList<Category> m_categories = [];
 
     CategoryToUnitVectorMap m_categoryToUnits = [];
 
     UnitToUnitToConversionDataMap m_ratioMap = new();
+
+    readonly Dictionary<ConversionData, RationalConversionData> m_rationalConversions = new();
+
+    readonly RatPak m_ratPak = new(RatPakDecimal.Precision);
+
+    readonly Rational m_zero;
+
+    readonly Rational m_one;
+
+    readonly Rational m_optimalDecimalAllowed;
+
+    readonly Rational m_minimumDecimalAllowed;
 
     Category m_currentCategory = new();
 
@@ -52,10 +114,6 @@ public class UnitConverter : IUnitConverter
 
     const wchar_t RIGHTESCAPECHAR = '}';
 
-    const double OPTIMALDECIMALALLOWED = 1e-6; // pow(10, -1 * (OPTIMALDIGITSALLOWED - 1));
-
-    const double MINIMUMDECIMALALLOWED = 1e-14; // pow(10, -1 * (MAXIMUMDIGITSALLOWED - 1));
-
     Dictionary<wchar_t, wstring> quoteConversions = new();
 
     Dictionary<wstring, wchar_t> unquoteConversions = new();
@@ -78,6 +136,11 @@ public class UnitConverter : IUnitConverter
     {
         m_dataLoader = dataLoader;
         m_currencyDataLoader = currencyDataLoader;
+        m_currencyDataLoaderCallback = new CurrencyDataLoaderCallback(this);
+        m_zero = new Rational(m_ratPak, 0);
+        m_one = new Rational(m_ratPak, 1);
+        m_optimalDecimalAllowed = RatPakDecimal.Parse(m_ratPak, "1e-6");
+        m_minimumDecimalAllowed = RatPakDecimal.Parse(m_ratPak, "1e-14");
         // declaring the delimiter character conversion map
         quoteConversions['|'] = "{p}";
         quoteConversions['['] = "{lc}";
@@ -145,10 +208,13 @@ public class UnitConverter : IUnitConverter
         {
             if (m_currentCategory.Id != input.Id)
             {
-                foreach (var unit in m_categoryToUnits[m_currentCategory.Id])
+                if (m_categoryToUnits.TryGetValue(m_currentCategory.Id, out var currentUnits))
                 {
-                    unit.IsConversionSource = (unit.Id == m_fromType.Id);
-                    unit.IsConversionTarget = (unit.Id == m_toType.Id);
+                    foreach (var unit in currentUnits)
+                    {
+                        unit.IsConversionSource = (unit.Id == m_fromType.Id);
+                        unit.IsConversionTarget = (unit.Id == m_toType.Id);
+                    }
                 }
 
                 m_currentCategory = input;
@@ -159,7 +225,10 @@ public class UnitConverter : IUnitConverter
                 }
             }
 
-            newUnitList = m_categoryToUnits[input.Id];
+            if (m_categoryToUnits.TryGetValue(input.Id, out var units))
+            {
+                newUnitList = units;
+            }
         }
 
         InitializeSelectedUnits();
@@ -249,7 +318,7 @@ public class UnitConverter : IUnitConverter
 
         return Quote((c.Id.ToString(CultureInfo.InvariantCulture)))
                + (delimiter)
-               + (Quote((c.SupportsNegative.ToString())))
+               + (Quote(c.SupportsNegative ? "1" : "0"))
                + (delimiter)
                + (Quote(c.Name))
                + (delimiter);
@@ -294,11 +363,11 @@ public class UnitConverter : IUnitConverter
                + (delimiter)
                + (Quote(u.Abbreviation))
                + (delimiter)
-               + (u.IsConversionSource.ToString())
+               + (u.IsConversionSource ? "1" : "0")
                + (delimiter)
-               + (u.IsConversionTarget.ToString())
+               + (u.IsConversionTarget ? "1" : "0")
                + (delimiter)
-               + (u.IsWhimsical.ToString())
+               + (u.IsWhimsical ? "1" : "0")
                + (delimiter);
     }
 
@@ -311,9 +380,12 @@ public class UnitConverter : IUnitConverter
         serializedUnit.Name = Unquote(tokenList[1]);
         serializedUnit.AccessibleName = serializedUnit.Name;
         serializedUnit.Abbreviation = Unquote(tokenList[2]);
-        serializedUnit.IsConversionSource = (tokenList[3] == "1");
-        serializedUnit.IsConversionTarget = (tokenList[4] == "1");
-        serializedUnit.IsWhimsical = (tokenList[5] == "1");
+        serializedUnit.IsConversionSource = tokenList[3] == "1" ||
+                                            tokenList[3].Equals("True", StringComparison.OrdinalIgnoreCase);
+        serializedUnit.IsConversionTarget = tokenList[4] == "1" ||
+                                            tokenList[4].Equals("True", StringComparison.OrdinalIgnoreCase);
+        serializedUnit.IsWhimsical = tokenList[5] == "1" ||
+                                     tokenList[5].Equals("True", StringComparison.OrdinalIgnoreCase);
         return serializedUnit;
     }
 
@@ -323,7 +395,8 @@ public class UnitConverter : IUnitConverter
         Debug.Assert(tokenList.Count == EXPECTEDSERIALIZEDCATEGORYTOKENCOUNT);
         Category serializedCategory = new();
         serializedCategory.Id = int.Parse(Unquote(tokenList[0]), CultureInfo.InvariantCulture);
-        serializedCategory.SupportsNegative = (tokenList[1] == "1");
+        serializedCategory.SupportsNegative = tokenList[1] == "1" ||
+                                              tokenList[1].Equals("True", StringComparison.OrdinalIgnoreCase);
         serializedCategory.Name = Unquote(tokenList[2]);
         return serializedCategory;
     }
@@ -643,7 +716,7 @@ public class UnitConverter : IUnitConverter
         var currencyDataLoader = GetCurrencyConverterDataLoader();
         if (currencyDataLoader != null)
         {
-            currencyDataLoader.SetViewModelCallback(newCallback);
+            currencyDataLoader.SetViewModelCallback(m_currencyDataLoaderCallback);
         }
     }
 
@@ -661,12 +734,17 @@ public class UnitConverter : IUnitConverter
             loadDataResult = Task.FromResult(false);
         }
 
-        bool didLoad = await loadDataResult.ConfigureAwait(false);
+        bool didLoad = await loadDataResult.ConfigureAwait(true);
         string timestamp = "";
 
         if (currencyDataLoader != null)
         {
             timestamp = currencyDataLoader.GetCurrencyTimestamp();
+        }
+
+        if (didLoad)
+        {
+            ReloadCurrencyData();
         }
 
         return (didLoad, timestamp);
@@ -678,11 +756,82 @@ public class UnitConverter : IUnitConverter
     }
 
     /// <summary>
-    /// Converts a double value into another unit type
+    /// Replaces only the currency category's object-keyed conversion tables after
+    /// the loader publishes a new snapshot. Currency unit ids are regenerated by
+    /// the loader, so preserve the active selection by ISO abbreviation instead.
     /// </summary>
-    /// <param name="value">double input value to convert</param>
+    void ReloadCurrencyData()
+    {
+        if (m_currencyDataLoader == null)
+        {
+            return;
+        }
+
+        Category? currencyCategory = m_categories.FirstOrDefault(
+            m_currencyDataLoader.SupportsCategory);
+        if (currencyCategory == null)
+        {
+            return;
+        }
+
+        bool isCurrentCategory = m_currencyDataLoader.SupportsCategory(m_currentCategory);
+        string previousFromAbbreviation = isCurrentCategory ? m_fromType.Abbreviation : "";
+        string previousToAbbreviation = isCurrentCategory ? m_toType.Abbreviation : "";
+
+        if (m_categoryToUnits.TryGetValue(currencyCategory.Id, out IList<Unit>? previousUnits))
+        {
+            foreach (Unit unit in previousUnits)
+            {
+                m_ratioMap.Remove(unit);
+            }
+        }
+
+        IList<Unit> refreshedUnits = m_currencyDataLoader.GetOrderedUnits(currencyCategory);
+        m_categoryToUnits[currencyCategory.Id] = refreshedUnits;
+        foreach (Unit unit in refreshedUnits)
+        {
+            m_ratioMap.Set(unit, m_currencyDataLoader.LoadOrderedRatios(unit));
+        }
+
+        // ConversionData instances are replaced with every currency snapshot.
+        // Clear the exact Rational cache so no stale ratio can survive a refresh.
+        m_rationalConversions.Clear();
+
+        if (!isCurrentCategory)
+        {
+            return;
+        }
+
+        m_fromType = FindRefreshedCurrencyUnit(
+            refreshedUnits,
+            previousFromAbbreviation,
+            static unit => unit.IsConversionSource);
+        m_toType = FindRefreshedCurrencyUnit(
+            refreshedUnits,
+            previousToAbbreviation,
+            static unit => unit.IsConversionTarget);
+        Calculate();
+        UpdateCurrencySymbols();
+    }
+
+    static Unit FindRefreshedCurrencyUnit(
+        IList<Unit> units,
+        string abbreviation,
+        Func<Unit, bool> fallbackSelector)
+    {
+        Unit? selected = units.FirstOrDefault(unit =>
+            unit.Abbreviation.Equals(abbreviation, StringComparison.OrdinalIgnoreCase));
+        selected ??= units.FirstOrDefault(fallbackSelector);
+        selected ??= units.FirstOrDefault();
+        return selected ?? Unit.EmptyUnit;
+    }
+
+    /// <summary>
+    /// Converts a RatPak rational value into another unit type
+    /// </summary>
+    /// <param name="value">RatPak input value to convert</param>
     /// <param name="conversionData">offset and ratio to use</param>
-    static double Convert(double value, ConversionData conversionData)
+    static Rational Convert(Rational value, RationalConversionData conversionData)
     {
         if (conversionData.OffsetFirst)
         {
@@ -692,6 +841,23 @@ public class UnitConverter : IUnitConverter
         {
             return (value * conversionData.Ratio) + conversionData.Offset;
         }
+    }
+
+    RationalConversionData GetRationalConversion(ConversionData conversionData)
+    {
+        if (m_rationalConversions.TryGetValue(conversionData, out RationalConversionData? conversion))
+        {
+            return conversion;
+        }
+
+        Rational numerator = RatPakDecimal.Parse(m_ratPak, conversionData.RatioNumerator);
+        Rational denominator = RatPakDecimal.Parse(m_ratPak, conversionData.RatioDenominator);
+        conversion = new RationalConversionData(
+            numerator / denominator,
+            RatPakDecimal.Parse(m_ratPak, conversionData.Offset),
+            conversionData.OffsetFirst);
+        m_rationalConversions.Add(conversionData, conversion);
+        return conversion;
     }
 
     /// <summary>
@@ -708,15 +874,22 @@ public class UnitConverter : IUnitConverter
         List<SuggestedValueIntermediate> intermediateVector = [];
         List<SuggestedValueIntermediate> intermediateWhimsicalVector = [];
         var ratios = m_ratioMap.GetOrAdd(m_fromType);
+        Rational currentValue = RatPakDecimal.Parse(m_ratPak, m_currentDisplay);
         // Calculate converted values for every other unit type in this category, along with their magnitude
         foreach (var cur in ratios)
         {
             if (cur.Key != m_fromType && cur.Key != m_toType)
             {
-                double convertedValue = Convert(double.Parse(m_currentDisplay, CultureInfo.InvariantCulture), cur.Value);
+                Rational convertedValue = Convert(currentValue, GetRationalConversion(cur.Value));
+                Rational absoluteValue = RationalMath.Abs(m_ratPak, convertedValue);
                 var newEntry = new SuggestedValueIntermediate();
-                newEntry.Magnitude = Math.Log10(convertedValue);
                 newEntry.Value = convertedValue;
+                newEntry.IsMagnitudeAtLeastOne = absoluteValue >= m_one;
+                newEntry.Magnitude = absoluteValue == m_zero
+                    ? m_zero
+                    : newEntry.IsMagnitudeAtLeastOne
+                        ? absoluteValue
+                        : m_one / absoluteValue;
                 newEntry.Type = cur.Key;
                 if (newEntry.Type.IsWhimsical)
                     intermediateWhimsicalVector.Add(newEntry);
@@ -727,36 +900,14 @@ public class UnitConverter : IUnitConverter
 
         // Sort the resulting list by absolute magnitude, breaking ties by choosing the positive value
 
-        intermediateVector.Sort((first, second) =>
-        {
-            if (Math.Abs(first.Magnitude) == Math.Abs(second.Magnitude))
-            {
-                return second.Magnitude.CompareTo(first.Magnitude); // Descending
-            }
-            else
-            {
-                return Math.Abs(first.Magnitude).CompareTo(Math.Abs(second.Magnitude)); // Ascending
-            }
-        });
+        intermediateVector.Sort(CompareSuggestedValues);
 
         // Now that the list is sorted, iterate over it and populate the return vector with properly rounded and formatted return strings
         foreach (var entry in intermediateVector)
         {
-            wstring roundedString;
-            if (Math.Abs(entry.Value) < 100)
-            {
-                roundedString = NumberFormattingUtils.RoundSignificantDigits(entry.Value, 2U);
-            }
-            else if (Math.Abs(entry.Value) < 1000)
-            {
-                roundedString = NumberFormattingUtils.RoundSignificantDigits(entry.Value, 1U);
-            }
-            else
-            {
-                roundedString = NumberFormattingUtils.RoundSignificantDigits(entry.Value, 0U);
-            }
+            wstring roundedString = FormatSuggestedValue(entry.Value);
 
-            if (double.Parse(roundedString, CultureInfo.InvariantCulture) != 0.0 || m_currentCategory.SupportsNegative)
+            if (RatPakDecimal.Parse(m_ratPak, roundedString) != m_zero || m_currentCategory.SupportsNegative)
             {
                 NumberFormattingUtils.TrimTrailingZeros(ref roundedString);
                 returnVector.Add((roundedString, entry.Type));
@@ -765,39 +916,17 @@ public class UnitConverter : IUnitConverter
 
         // The Whimsicals are determined differently
         // Sort the resulting list by absolute magnitude, breaking ties by choosing the positive value
-        intermediateWhimsicalVector.Sort((first, second) =>
-        {
-            if (Math.Abs(first.Magnitude) == Math.Abs(second.Magnitude))
-            {
-                return second.Magnitude.CompareTo(first.Magnitude);
-            }
-            else
-            {
-                return Math.Abs(first.Magnitude).CompareTo(Math.Abs(second.Magnitude));
-            }
-        });
+        intermediateWhimsicalVector.Sort(CompareSuggestedValues);
 
         // Now that the list is sorted, iterate over it and populate the return vector with properly rounded and formatted return strings
         List<(wstring, Unit)> whimsicalReturnVector = [];
 
         foreach (var entry in intermediateWhimsicalVector)
         {
-            wstring roundedString;
-            if (Math.Abs(entry.Value) < 100)
-            {
-                roundedString = NumberFormattingUtils.RoundSignificantDigits(entry.Value, 2U);
-            }
-            else if (Math.Abs(entry.Value) < 1000)
-            {
-                roundedString = NumberFormattingUtils.RoundSignificantDigits(entry.Value, 1U);
-            }
-            else
-            {
-                roundedString = NumberFormattingUtils.RoundSignificantDigits(entry.Value, 0U);
-            }
+            wstring roundedString = FormatSuggestedValue(entry.Value);
 
             // How to work out which is the best whimsical value to add to the vector?
-            if (double.Parse(roundedString, CultureInfo.InvariantCulture) != 0.0)
+            if (RatPakDecimal.Parse(m_ratPak, roundedString) != m_zero)
             {
                 NumberFormattingUtils.TrimTrailingZeros(ref roundedString);
                 whimsicalReturnVector.Add((roundedString, entry.Type));
@@ -811,6 +940,32 @@ public class UnitConverter : IUnitConverter
         }
 
         return returnVector;
+    }
+
+    int CompareSuggestedValues(SuggestedValueIntermediate first, SuggestedValueIntermediate second)
+    {
+        bool firstIsZero = first.Value == m_zero;
+        bool secondIsZero = second.Value == m_zero;
+        if (firstIsZero || secondIsZero)
+        {
+            return firstIsZero == secondIsZero ? 0 : firstIsZero ? 1 : -1;
+        }
+
+        int comparison = first.Magnitude.CompareTo(second.Magnitude);
+        return comparison == 0
+            ? second.IsMagnitudeAtLeastOne.CompareTo(first.IsMagnitudeAtLeastOne)
+            : comparison;
+    }
+
+    string FormatSuggestedValue(Rational value)
+    {
+        Rational absoluteValue = RationalMath.Abs(m_ratPak, value);
+        uint fractionDigits = absoluteValue < new Rational(m_ratPak, 100)
+            ? 2U
+            : absoluteValue < new Rational(m_ratPak, 1000)
+                ? 1U
+                : 0U;
+        return NumberFormattingUtils.RoundSignificantDigits(m_ratPak, value, fractionDigits);
     }
 
     /// <summary>
@@ -829,6 +984,7 @@ public class UnitConverter : IUnitConverter
 
         m_categoryToUnits.Clear();
         m_ratioMap.Clear();
+        m_rationalConversions.Clear();
         bool readyCategoryFound = false;
         foreach (Category category in m_categories)
         {
@@ -971,7 +1127,8 @@ public class UnitConverter : IUnitConverter
 
         var conversionTable = m_ratioMap.GetOrAdd(m_fromType);
         ConversionData targetConversion = conversionTable[m_toType];
-        if (targetConversion.Ratio == 1.0 && targetConversion.Offset == 0.0)
+        RationalConversionData rationalConversion = GetRationalConversion(targetConversion);
+        if (rationalConversion.Ratio == m_one && rationalConversion.Offset == m_zero)
         {
             m_returnDisplay = m_currentDisplay;
             m_returnHasDecimal = m_currentHasDecimal;
@@ -979,30 +1136,34 @@ public class UnitConverter : IUnitConverter
         }
         else
         {
-            double currentValue = double.Parse(m_currentDisplay, CultureInfo.InvariantCulture);
-            double returnValue = Convert(currentValue, conversionTable[m_toType]);
+            Rational currentValue = RatPakDecimal.Parse(m_ratPak, m_currentDisplay);
+            Rational returnValue = Convert(currentValue, rationalConversion);
 
             var isCurrencyConverter = m_currencyDataLoader != null &&
                                       m_currencyDataLoader.SupportsCategory(this.m_currentCategory);
             if (isCurrencyConverter)
             {
                 // We don't need to trim the value when it's a currency.
-                m_returnDisplay = NumberFormattingUtils.RoundSignificantDigits(returnValue, MAXIMUMDIGITSALLOWED);
+                m_returnDisplay = NumberFormattingUtils.RoundSignificantDigits(
+                    m_ratPak,
+                    returnValue,
+                    MAXIMUMDIGITSALLOWED);
                 NumberFormattingUtils.TrimTrailingZeros(ref m_returnDisplay);
             }
             else
             {
-                uint numPreDecimal = NumberFormattingUtils.GetNumberDigitsWholeNumberPart(returnValue);
+                Rational absoluteReturnValue = RationalMath.Abs(m_ratPak, returnValue);
+                uint numPreDecimal = NumberFormattingUtils.GetNumberDigitsWholeNumberPart(m_ratPak, returnValue);
                 if (numPreDecimal > MAXIMUMDIGITSALLOWED ||
-                    (returnValue != 0 && Math.Abs(returnValue) < MINIMUMDECIMALALLOWED))
+                    (returnValue != m_zero && absoluteReturnValue < m_minimumDecimalAllowed))
                 {
-                    m_returnDisplay = NumberFormattingUtils.ToScientificNumber(returnValue);
+                    m_returnDisplay = NumberFormattingUtils.ToScientificNumber(m_ratPak, returnValue);
                 }
                 else
                 {
                     uint currentNumberSignificantDigits = NumberFormattingUtils.GetNumberDigits(m_currentDisplay);
                     uint precision;
-                    if (Math.Abs(returnValue) < OPTIMALDECIMALALLOWED)
+                    if (absoluteReturnValue < m_optimalDecimalAllowed)
                     {
                         precision = MAXIMUMDIGITSALLOWED;
                     }
@@ -1015,7 +1176,10 @@ public class UnitConverter : IUnitConverter
                         precision = numberDigits > numPreDecimal ? numberDigits - numPreDecimal : 0;
                     }
 
-                    m_returnDisplay = NumberFormattingUtils.RoundSignificantDigits(returnValue, precision);
+                    m_returnDisplay = NumberFormattingUtils.RoundSignificantDigits(
+                        m_ratPak,
+                        returnValue,
+                        precision);
                     NumberFormattingUtils.TrimTrailingZeros(ref m_returnDisplay);
                 }
 

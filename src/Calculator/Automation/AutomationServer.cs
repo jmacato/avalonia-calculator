@@ -8,11 +8,14 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Input.GestureRecognizers;
 using Avalonia.Input.Raw;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using FluentAvalonia.UI.Controls;
 
 namespace CalculatorApp.Automation;
 
@@ -23,12 +26,21 @@ namespace CalculatorApp.Automation;
 /// </summary>
 internal sealed class AutomationServer : IAsyncDisposable
 {
+    private readonly record struct PointerButtonInfo(
+        RawInputModifiers Modifier,
+        PointerUpdateKind PressedKind,
+        PointerUpdateKind ReleasedKind,
+        MouseButton MouseButton);
+
     private readonly HttpListener _listener = new();
     private readonly MainWindow _window;
     private readonly int _port;
     private readonly string _token;
     private readonly CancellationTokenSource _stopping = new();
-    private readonly IPointer _pointer = CreatePointer(4242, PointerType.Mouse, true);
+    private readonly IPointer _mousePointer = CreatePointer(4242, PointerType.Mouse, true);
+    private IPointer _touchPointer = CreatePointer(4243, PointerType.Touch, true);
+    private IPointer _penPointer = CreatePointer(4244, PointerType.Pen, true);
+    private int _nextTransientPointerId = 4245;
     private Task? _listenTask;
 
     private AutomationServer(MainWindow window, int port, string token)
@@ -158,6 +170,16 @@ internal sealed class AutomationServer : IAsyncDisposable
                 return;
             }
 
+            if (request.HttpMethod == "GET" && path == "/render/frame")
+            {
+                var png = await Dispatcher.UIThread.InvokeAsync(RenderWindow);
+                context.Response.ContentType = "image/png";
+                context.Response.ContentLength64 = png.Length;
+                await context.Response.OutputStream.WriteAsync(png).ConfigureAwait(false);
+                context.Response.Close();
+                return;
+            }
+
             if (request.HttpMethod == "POST" && path == "/events/pointer")
             {
                 var body = await JsonSerializer.DeserializeAsync(
@@ -233,8 +255,7 @@ internal sealed class AutomationServer : IAsyncDisposable
     private AutomationTreeResponse BuildTree()
     {
         var elements = new List<AutomationElementInfo>();
-        AddElement(_window, elements);
-        foreach (var control in _window.GetVisualDescendants().OfType<Control>())
+        foreach (var control in EnumerateControls(includeHidden: true))
         {
             AddElement(control, elements);
         }
@@ -244,25 +265,86 @@ internal sealed class AutomationServer : IAsyncDisposable
 
     private void AddElement(Control control, List<AutomationElementInfo> elements)
     {
-        var origin = control.TranslatePoint(default, _window) ?? default;
+        Rect bounds = GetWindowBounds(control);
         elements.Add(new AutomationElementInfo(
             control.GetType().Name,
             control.Name,
             AutomationProperties.GetAutomationId(control),
             AutomationProperties.GetName(control),
-            origin.X,
-            origin.Y,
-            control.Bounds.Width,
-            control.Bounds.Height,
+            AutomationProperties.GetAccessibilityView(control).ToString(),
+            AutomationProperties.GetHeadingLevel(control),
+            AutomationProperties.GetLandmarkType(control)?.ToString(),
+            bounds.X,
+            bounds.Y,
+            bounds.Width,
+            bounds.Height,
+            control.DesiredSize.Width,
+            control.DesiredSize.Height,
             IsEffectivelyVisible(control),
-            control.IsEffectivelyEnabled));
+            control.IsEffectivelyEnabled,
+            control.IsFocused,
+            GetEffectiveOpacity(control),
+            GetFontSize(control),
+            control is FAProgressRing progressRing ? progressRing.IsActive : null,
+            control is ComboBox comboBox ? comboBox.IsDropDownOpen : null,
+            control is CalculatorApp.Controls.ConverterComboBox converterComboBox
+                ? converterComboBox.IsPopupOpen
+                : null,
+            control is ComboBox indexedComboBox ? indexedComboBox.SelectedIndex : null,
+            control is ScrollViewer scrollViewer ? scrollViewer.Offset.X : null,
+            control is ScrollViewer offsetScrollViewer ? offsetScrollViewer.Offset.Y : null,
+            control is ScrollViewer extentScrollViewer ? extentScrollViewer.Extent.Width : null,
+            control is ScrollViewer heightExtentScrollViewer ? heightExtentScrollViewer.Extent.Height : null,
+            control is ScrollViewer viewportScrollViewer ? viewportScrollViewer.Viewport.Width : null,
+            control is ScrollViewer heightViewportScrollViewer ? heightViewportScrollViewer.Viewport.Height : null,
+            control is Popup popup ? popup.HorizontalOffset : null,
+            control is Popup offsetPopup ? offsetPopup.VerticalOffset : null,
+            control is TextBlock textBlock ? textBlock.Text : null,
+            control.Classes.Count > 0 ? string.Join(' ', control.Classes) : null));
     }
+
+    private static double GetEffectiveOpacity(Visual visual)
+    {
+        double opacity = 1;
+        for (Visual? current = visual; current is not null; current = current.GetVisualParent())
+        {
+            opacity *= current.Opacity;
+        }
+
+        return opacity;
+    }
+
+    private static double? GetFontSize(Control control) => control switch
+    {
+        TextBlock textBlock => textBlock.FontSize,
+        TemplatedControl templatedControl => templatedControl.FontSize,
+        _ => null
+    };
 
     private byte[] RenderWindow()
     {
         var size = GetRenderSize();
+        using var windowBitmap = new RenderTargetBitmap(size, new Vector(96, 96));
+        windowBitmap.Render(_window);
         using var bitmap = new RenderTargetBitmap(size, new Vector(96, 96));
-        bitmap.Render(_window);
+        using (var drawingContext = bitmap.CreateDrawingContext())
+        {
+            drawingContext.DrawImage(windowBitmap, new Rect(windowBitmap.Size));
+            foreach (var popupChild in EnumerateOpenPopupChildren())
+            {
+                Rect bounds = GetWindowBounds(popupChild);
+                var popupSize = new PixelSize(
+                    Math.Max(1, (int)Math.Ceiling(popupChild.Bounds.Width)),
+                    Math.Max(1, (int)Math.Ceiling(popupChild.Bounds.Height)));
+                using var popupBitmap = new RenderTargetBitmap(popupSize, new Vector(96, 96));
+                popupBitmap.Render(popupChild);
+                drawingContext.DrawImage(
+                    popupBitmap,
+                    new Rect(popupBitmap.Size),
+                    new Rect(bounds.Position, popupBitmap.Size));
+            }
+        }
+
         using var stream = new MemoryStream();
         bitmap.Save(stream, PngBitmapEncoderOptions.Default);
         return stream.ToArray();
@@ -272,6 +354,14 @@ internal sealed class AutomationServer : IAsyncDisposable
     {
         using var warmup = new RenderTargetBitmap(GetRenderSize(), new Vector(96, 96));
         warmup.Render(_window);
+        foreach (var popupChild in EnumerateOpenPopupChildren())
+        {
+            var popupSize = new PixelSize(
+                Math.Max(1, (int)Math.Ceiling(popupChild.Bounds.Width)),
+                Math.Max(1, (int)Math.Ceiling(popupChild.Bounds.Height)));
+            using var popupWarmup = new RenderTargetBitmap(popupSize, new Vector(96, 96));
+            popupWarmup.Render(popupChild);
+        }
     }
 
     private async Task WaitForAnimationFrameAsync()
@@ -296,51 +386,118 @@ internal sealed class AutomationServer : IAsyncDisposable
             throw new InvalidOperationException($"No visible Avalonia control has name or automation id '{target}'.");
         }
 
+        if (control is MenuItem menuItem)
+        {
+            menuItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, menuItem));
+            return;
+        }
+
         Interactive activationTarget = control.GetVisualAncestors().OfType<ListBoxItem>().FirstOrDefault() ?? control;
         var activationControl = (Control)activationTarget;
-        if (activationControl is ListBoxItem listBoxItem
-            && listBoxItem.GetVisualAncestors().OfType<ListBox>().FirstOrDefault() is { } listBox)
-        {
-            listBox.SelectedItem = listBoxItem.DataContext;
-            return;
-        }
-
-        var origin = activationControl.TranslatePoint(default, _window)
-                     ?? throw new InvalidOperationException($"Control '{target}' is not attached to the window.");
-        var point = new Point(
-            origin.X + activationControl.Bounds.Width / 2,
-            origin.Y + activationControl.Bounds.Height / 2);
-        if (control is Button button)
-        {
-            if (button is ToggleButton toggleButton)
-            {
-                toggleButton.IsChecked = toggleButton.IsChecked != true;
-            }
-
-            if (button.Command?.CanExecute(button.CommandParameter) == true)
-            {
-                button.Command.Execute(button.CommandParameter);
-            }
-
-            button.Flyout?.ShowAt(button);
-
-            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            return;
-        }
-
+        Rect bounds = GetWindowBounds(activationControl);
+        var point = bounds.Center;
         RaisePointerClick(activationTarget, point, RawInputModifiers.None);
     }
 
-    private IEnumerable<Control> EnumerateControls()
+    private IEnumerable<Control> EnumerateControls(bool includeHidden = false)
     {
-        yield return _window;
-        foreach (var control in _window.GetVisualDescendants().OfType<Control>())
+        var controls = new[] { _window }
+            .Concat(_window.GetVisualDescendants().OfType<Control>())
+            .ToList();
+        var seen = new HashSet<Control>(ReferenceEqualityComparer.Instance);
+
+        foreach (var control in controls)
         {
-            if (IsEffectivelyVisible(control))
+            if (seen.Add(control) && (includeHidden || IsEffectivelyVisible(control)))
             {
                 yield return control;
             }
         }
+
+        foreach (var popupChild in controls
+                     .OfType<Popup>()
+                     .Where(popup => popup.IsOpen)
+                     .Select(popup => popup.Child)
+                     .OfType<Control>())
+        {
+            foreach (var control in new[] { popupChild }
+                         .Concat(popupChild.GetLogicalDescendants().OfType<Control>())
+                         .Concat(popupChild.GetVisualDescendants().OfType<Control>()))
+            {
+                if (seen.Add(control) && (includeHidden || IsEffectivelyVisible(control)))
+                {
+                    yield return control;
+                }
+            }
+        }
+
+        var seenMenus = new HashSet<ContextMenu>(ReferenceEqualityComparer.Instance);
+        foreach (var menu in controls
+                     .Select(control => control.ContextMenu)
+                     .OfType<ContextMenu>()
+                     .Where(menu => menu.IsOpen && seenMenus.Add(menu)))
+        {
+            foreach (var control in new[] { menu }
+                         .Concat(menu.GetLogicalDescendants().OfType<Control>())
+                         .Concat(menu.GetVisualDescendants().OfType<Control>()))
+            {
+                if (seen.Add(control) && (includeHidden || IsEffectivelyVisible(control)))
+                {
+                    yield return control;
+                }
+            }
+        }
+    }
+
+    private IEnumerable<Control> EnumerateOpenPopupChildren() =>
+        new[] { _window }
+            .Concat(_window.GetVisualDescendants().OfType<Control>())
+            .OfType<Popup>()
+            .Where(popup => popup.IsOpen)
+            .Select(popup => popup.Child)
+            .OfType<Control>();
+
+    private Rect GetWindowBounds(Control control)
+    {
+        Point[] corners =
+        [
+            default,
+            new Point(control.Bounds.Width, 0),
+            new Point(0, control.Bounds.Height),
+            new Point(control.Bounds.Width, control.Bounds.Height)
+        ];
+        Point[] transformed = new Point[corners.Length];
+        for (int index = 0; index < corners.Length; index++)
+        {
+            if (TranslateToWindow(control, corners[index]) is not { } point)
+            {
+                return new Rect(default, control.Bounds.Size);
+            }
+
+            transformed[index] = point;
+        }
+
+        double left = transformed.Min(point => point.X);
+        double top = transformed.Min(point => point.Y);
+        double right = transformed.Max(point => point.X);
+        double bottom = transformed.Max(point => point.Y);
+        return new Rect(left, top, Math.Max(0, right - left), Math.Max(0, bottom - top));
+    }
+
+    private Point? TranslateToWindow(Control control, Point point)
+    {
+        if (control.TranslatePoint(point, _window) is { } windowPoint)
+        {
+            return windowPoint;
+        }
+
+        if (TopLevel.GetTopLevel(control) is { } topLevel
+            && control.TranslatePoint(point, topLevel) is { } topLevelPoint)
+        {
+            return _window.PointToClient(topLevel.PointToScreen(topLevelPoint));
+        }
+
+        return null;
     }
 
     private static bool IsEffectivelyVisible(Control control) =>
@@ -351,90 +508,338 @@ internal sealed class AutomationServer : IAsyncDisposable
         var point = new Point(request.X, request.Y);
         var modifiers = ParseModifiers(request.Modifiers);
         var keyModifiers = ToKeyModifiers(modifiers);
+        IPointer pointer = GetPointer(request.PointerType);
+        GestureRecognizer? capturedGesture = pointer is Pointer concretePointer
+            ? GetCapturedGestureRecognizer(concretePointer)
+            : null;
+        Interactive? gestureTarget = capturedGesture is null
+            ? null
+            : GetGestureTarget(capturedGesture) as Interactive;
         // Real platform input is routed to the pointer capture target after a
         // drag begins. Preserve that behavior for multi-request gestures such
         // as the official SwipeControl instead of hit-testing every move as a
         // new, unrelated event.
-        var target = _pointer.Captured as Interactive
-                     ?? _window.InputHitTest(point) as Interactive
+        var target = gestureTarget
+                     ?? pointer.Captured as Interactive
+                     ?? HitTestWindowPoint(point)
                      ?? throw new InvalidOperationException($"No Avalonia input element exists at {point}.");
+        var input = GetInputRootPoint(target, point);
+        Point rootPoint = input.Point;
         switch (request.Kind.ToLowerInvariant())
         {
             case "move":
-                target.RaiseEvent(new PointerEventArgs(
+                var moved = new PointerEventArgs(
                     InputElement.PointerMovedEvent,
                     target,
-                    _pointer,
-                    _window,
-                    point,
+                    pointer,
+                    input.Root,
+                    rootPoint,
                     Timestamp(),
                     new PointerPointProperties(modifiers, PointerUpdateKind.Other),
-                    keyModifiers));
+                    keyModifiers);
+                if (capturedGesture is null)
+                {
+                    target.RaiseEvent(moved);
+                }
+                else
+                {
+                    RaiseGesturePointerMoved(capturedGesture, moved);
+                }
                 break;
             case "down":
+                var pressedButton = ParsePointerButton(request.Button);
                 target.RaiseEvent(new PointerPressedEventArgs(
                     target,
-                    _pointer,
-                    _window,
-                    point,
+                    pointer,
+                    input.Root,
+                    rootPoint,
                     Timestamp(),
                     new PointerPointProperties(
-                        modifiers | RawInputModifiers.LeftMouseButton,
-                        PointerUpdateKind.LeftButtonPressed),
+                        modifiers | pressedButton.Modifier,
+                        pressedButton.PressedKind),
                     keyModifiers,
                     1));
                 break;
             case "up":
-                target.RaiseEvent(new PointerReleasedEventArgs(
+                RaisePointerRelease(
                     target,
-                    _pointer,
-                    _window,
                     point,
-                    Timestamp(),
-                    new PointerPointProperties(modifiers, PointerUpdateKind.LeftButtonReleased),
+                    modifiers,
                     keyModifiers,
-                    MouseButton.Left));
+                    ParsePointerButton(request.Button),
+                    pointer,
+                    capturedGesture);
+                CompleteTransientPointer(pointer);
                 break;
             case "click":
-                RaisePointerClick(target, point, modifiers);
+                RaisePointerClick(
+                    target,
+                    point,
+                    modifiers,
+                    ParsePointerButton(request.Button),
+                    pointer);
+                CompleteTransientPointer(pointer);
+                break;
+            case "wheel":
+                double deltaX = request.DeltaX ?? 0;
+                double deltaY = request.DeltaY ?? 0;
+                if (!double.IsFinite(deltaX)
+                    || !double.IsFinite(deltaY)
+                    || (deltaX == 0 && deltaY == 0))
+                {
+                    throw new InvalidDataException(
+                        "A wheel request requires a finite, non-zero deltaX or deltaY.");
+                }
+
+                target.RaiseEvent(new PointerWheelEventArgs(
+                    target,
+                    pointer,
+                    input.Root,
+                    rootPoint,
+                    Timestamp(),
+                    new PointerPointProperties(modifiers, PointerUpdateKind.Other),
+                    keyModifiers,
+                    new Vector(deltaX, deltaY)));
                 break;
             default:
-                throw new InvalidDataException("Pointer kind must be move, down, up, or click.");
+                throw new InvalidDataException(
+                    "Pointer kind must be move, down, up, click, or wheel.");
+        }
+    }
+
+    private void RaisePointerRelease(
+        Interactive target,
+        Point point,
+        RawInputModifiers modifiers,
+        KeyModifiers keyModifiers,
+        PointerButtonInfo button,
+        IPointer pointer,
+        GestureRecognizer? capturedGesture = null)
+    {
+        var input = GetInputRootPoint(target, point);
+        var released = new PointerReleasedEventArgs(
+            target,
+            pointer,
+            input.Root,
+            input.Point,
+            Timestamp(),
+            new PointerPointProperties(modifiers, button.ReleasedKind),
+            keyModifiers,
+            button.MouseButton);
+        if (capturedGesture is null)
+        {
+            target.RaiseEvent(released);
+        }
+        else
+        {
+            RaiseGesturePointerReleased(capturedGesture, released);
+        }
+
+        if (button.MouseButton == MouseButton.Right)
+        {
+            // Platform raw-input processing normally produces this routed
+            // event after a secondary-button release. The automation server
+            // enters below that layer, so reproduce the same Avalonia event
+            // on the nearest control that owns the requested context menu.
+            Interactive contextTarget = new[] { target }
+                .OfType<Control>()
+                .Concat(target.GetVisualAncestors().OfType<Control>())
+                .FirstOrDefault(control => control.ContextMenu is not null)
+                ?? target;
+            var contextRequested = new ContextRequestedEventArgs(released)
+            {
+                RoutedEvent = InputElement.ContextRequestedEvent
+            };
+            contextTarget.RaiseEvent(contextRequested);
+            if (contextTarget is Control { ContextMenu: { IsOpen: false } menu } owner)
+            {
+                // ContextMenu's platform service normally performs this after
+                // raw input. Routed-event injection deliberately bypasses that
+                // service on some backends, so complete the framework operation
+                // only when the routed event did not already open the menu.
+                menu.Open(owner);
+            }
+
+            if (contextTarget is Control { ContextMenu.IsOpen: false })
+            {
+                throw new InvalidOperationException("Avalonia did not open the requested context menu.");
+            }
         }
     }
 
     private void RaisePointerClick(Interactive target, Point point, RawInputModifiers modifiers)
     {
+        RaisePointerClick(
+            target,
+            point,
+            modifiers,
+            ParsePointerButton(null),
+            _mousePointer);
+    }
+
+    private void RaisePointerClick(
+        Interactive target,
+        Point point,
+        RawInputModifiers modifiers,
+        PointerButtonInfo button,
+        IPointer pointer)
+    {
+        var input = GetInputRootPoint(target, point);
         var keyModifiers = ToKeyModifiers(modifiers);
         target.RaiseEvent(new PointerEventArgs(
             InputElement.PointerMovedEvent,
             target,
-            _pointer,
-            _window,
-            point,
+            pointer,
+            input.Root,
+            input.Point,
             Timestamp(),
             new PointerPointProperties(modifiers, PointerUpdateKind.Other),
             keyModifiers));
         target.RaiseEvent(new PointerPressedEventArgs(
             target,
-            _pointer,
-            _window,
-            point,
+            pointer,
+            input.Root,
+            input.Point,
             Timestamp(),
             new PointerPointProperties(
-                modifiers | RawInputModifiers.LeftMouseButton,
-                PointerUpdateKind.LeftButtonPressed),
+                modifiers | button.Modifier,
+                button.PressedKind),
             keyModifiers,
             1));
-        target.RaiseEvent(new PointerReleasedEventArgs(
-            target,
-            _pointer,
-            _window,
-            point,
-            Timestamp(),
-            new PointerPointProperties(modifiers, PointerUpdateKind.LeftButtonReleased),
-            keyModifiers,
-            MouseButton.Left));
+        RaisePointerRelease(target, point, modifiers, keyModifiers, button, pointer);
+    }
+
+    private Interactive? HitTestWindowPoint(Point windowPoint)
+    {
+        PixelPoint screenPoint = _window.PointToScreen(windowPoint);
+        foreach (Control popupChild in EnumerateOpenPopupChildren().Reverse())
+        {
+            Rect popupBounds = GetWindowBounds(popupChild);
+            if (!popupBounds.Contains(windowPoint))
+            {
+                continue;
+            }
+
+            TopLevel? popupRoot = TopLevel.GetTopLevel(popupChild);
+            if (popupRoot is null)
+            {
+                continue;
+            }
+
+            Point popupPoint = popupRoot.PointToClient(screenPoint);
+            if (popupRoot.InputHitTest(popupPoint) is Interactive target)
+            {
+                return target;
+            }
+
+            // A native popup owns a separate presentation source. On macOS,
+            // compositor hit-testing can return no result for an event injected
+            // from the parent window even though the popup visual tree is fully
+            // arranged. Fall back to the same arranged bounds and z-order while
+            // still raising the real routed Avalonia event on the hit element.
+            if (HitTestArrangedPopup(popupChild, popupPoint) is { } arrangedTarget)
+            {
+                return arrangedTarget;
+            }
+        }
+
+        return _window.InputHitTest(windowPoint) as Interactive;
+    }
+
+    private static Interactive? HitTestArrangedPopup(Control popupChild, Point popupPoint)
+    {
+        foreach (Visual visual in popupChild.GetSelfAndVisualDescendants().Reverse())
+        {
+            if (visual is not Interactive target
+                || visual is not IInputElement inputElement
+                || !inputElement.IsHitTestVisible
+                || !inputElement.IsEffectivelyEnabled
+                || visual.GetTransformedBounds() is not { } bounds
+                || !bounds.Clip.Contains(popupPoint)
+                || !bounds.Contains(popupPoint))
+            {
+                continue;
+            }
+
+            bool blockedByAncestor = visual
+                .GetSelfAndVisualAncestors()
+                .TakeWhile(ancestor => !ReferenceEquals(ancestor, popupChild))
+                .Any(ancestor => !ancestor.IsVisible
+                    || ancestor is IInputElement
+                    {
+                        IsHitTestVisible: false
+                    });
+            if (!blockedByAncestor)
+            {
+                return target;
+            }
+        }
+
+        return null;
+    }
+
+    private (TopLevel Root, Point Point) GetInputRootPoint(
+        Interactive target,
+        Point windowPoint)
+    {
+        TopLevel root = target is Visual visual
+            ? TopLevel.GetTopLevel(visual) ?? _window
+            : _window;
+        Point rootPoint = ReferenceEquals(root, _window)
+            ? windowPoint
+            : root.PointToClient(_window.PointToScreen(windowPoint));
+        return (root, rootPoint);
+    }
+
+    private static PointerButtonInfo ParsePointerButton(string? value) =>
+        value?.ToLowerInvariant() switch
+        {
+            null or "" or "left" => new PointerButtonInfo(
+                RawInputModifiers.LeftMouseButton,
+                PointerUpdateKind.LeftButtonPressed,
+                PointerUpdateKind.LeftButtonReleased,
+                MouseButton.Left),
+            "right" => new PointerButtonInfo(
+                RawInputModifiers.RightMouseButton,
+                PointerUpdateKind.RightButtonPressed,
+                PointerUpdateKind.RightButtonReleased,
+                MouseButton.Right),
+            "middle" => new PointerButtonInfo(
+                RawInputModifiers.MiddleMouseButton,
+                PointerUpdateKind.MiddleButtonPressed,
+                PointerUpdateKind.MiddleButtonReleased,
+                MouseButton.Middle),
+            _ => throw new InvalidDataException("Pointer button must be left, right, or middle.")
+        };
+
+    private IPointer GetPointer(string? value) =>
+        value?.ToLowerInvariant() switch
+        {
+            null or "" or "mouse" => _mousePointer,
+            "touch" => _touchPointer,
+            "pen" => _penPointer,
+            _ => throw new InvalidDataException(
+                "Pointer type must be mouse, touch, or pen.")
+        };
+
+    private void CompleteTransientPointer(IPointer pointer)
+    {
+        if (ReferenceEquals(pointer, _touchPointer))
+        {
+            pointer.Capture(null);
+            _touchPointer = CreatePointer(
+                _nextTransientPointerId++,
+                PointerType.Touch,
+                true);
+        }
+        else if (ReferenceEquals(pointer, _penPointer))
+        {
+            pointer.Capture(null);
+            _penPointer = CreatePointer(
+                _nextTransientPointerId++,
+                PointerType.Pen,
+                true);
+        }
     }
 
     private void SendKey(AutomationKeyRequest request)
@@ -557,4 +962,20 @@ internal sealed class AutomationServer : IAsyncDisposable
 
     [UnsafeAccessor(UnsafeAccessorKind.Constructor)]
     private static extern Pointer CreatePointer(int id, PointerType type, bool isPrimary);
+
+    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "get_CapturedGestureRecognizer")]
+    private static extern GestureRecognizer? GetCapturedGestureRecognizer(Pointer pointer);
+
+    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "get_Target")]
+    private static extern IInputElement? GetGestureTarget(GestureRecognizer gestureRecognizer);
+
+    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "PointerMovedInternal")]
+    private static extern void RaiseGesturePointerMoved(
+        GestureRecognizer gestureRecognizer,
+        PointerEventArgs eventArgs);
+
+    [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "PointerReleasedInternal")]
+    private static extern void RaiseGesturePointerReleased(
+        GestureRecognizer gestureRecognizer,
+        PointerReleasedEventArgs eventArgs);
 }

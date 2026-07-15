@@ -41,7 +41,7 @@ namespace CalculatorApp.ViewModel.Common // Adjusted namespace slightly for C# c
     {
         public ViewMode categoryId; // Assuming ViewMode is an enum or similar type
         public UnitConverterUnits unitId;
-        public double factor;
+        public string factor;
     }
 
     // Assuming UnitConversionManager.ConversionData is a class or struct defined elsewhere
@@ -55,8 +55,8 @@ namespace CalculatorApp.ViewModel.Common // Adjusted namespace slightly for C# c
             ViewMode categoryId,
             UnitConverterUnits parentUnitId,
             UnitConverterUnits unitId,
-            double ratio,
-            double offset,
+            string ratio,
+            string offset,
             bool offsetFirst = false)
             : base(ratio, offset, offsetFirst)
         {

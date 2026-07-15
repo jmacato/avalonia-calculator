@@ -50,7 +50,7 @@ namespace CalculatorApp.ViewModel.Common
             // Load categories, units and conversion data into data structures.
             GetCategories();
             Dictionary<ViewMode, List<OrderedUnit>> orderedUnitMap = GetUnits();
-            Dictionary<ViewMode, Dictionary<int, double>> categoryToUnitConversionDataMap = GetConversionData();
+            Dictionary<ViewMode, Dictionary<int, string>> categoryToUnitConversionDataMap = GetConversionData();
             Dictionary<int, Dictionary<int, CalcManager.ConversionData>> explicitConversionData = GetExplicitConversionData(); // This is needed for temperature conversions
 
             m_categoryIDToUnitsMap.Clear();
@@ -99,13 +99,13 @@ namespace CalculatorApp.ViewModel.Common
                     if (!explicitConversionData.ContainsKey(unit.Id))
                     {
                         // Get the associated units for a category id
-                        if (!categoryToUnitConversionDataMap.TryGetValue(categoryViewMode, out Dictionary<int, double>? unitConversions))
+                        if (!categoryToUnitConversionDataMap.TryGetValue(categoryViewMode, out Dictionary<int, string>? unitConversions))
                         {
                             Debug.WriteLine($"Warning: No conversion data found for category {categoryViewMode}");
-                            unitConversions = new Dictionary<int, double>();
+                            unitConversions = new Dictionary<int, string>();
                         }
 
-                        if (!unitConversions.TryGetValue(unit.Id, out double unitFactor))
+                        if (!unitConversions.TryGetValue(unit.Id, out string? unitFactor))
                         {
                              Debug.WriteLine($"Warning: Unit factor not found for unit {unit.Id} in category {categoryViewMode}");
                              continue;
@@ -114,7 +114,7 @@ namespace CalculatorApp.ViewModel.Common
                         foreach (var kvp in unitConversions)
                         {
                             int id = kvp.Key;
-                            double conversionFactor = kvp.Value;
+                            string conversionFactor = kvp.Value;
 
                             if (!idToUnit.ContainsKey(id))
                             {
@@ -123,9 +123,11 @@ namespace CalculatorApp.ViewModel.Common
                                 continue;
                             }
 
-                            var parsedData = new CalcManager.ConversionData { Ratio = 1.0, Offset = 0.0, OffsetFirst = false };
-                            Debug.Assert(conversionFactor > 0); // divide by zero assert
-                            parsedData.Ratio = unitFactor / conversionFactor;
+                            var parsedData = new CalcManager.ConversionData(
+                                unitFactor,
+                                conversionFactor,
+                                "0",
+                                false);
                             conversions.Add(idToUnit[id], parsedData);
                         }
                     }
@@ -399,7 +401,7 @@ namespace CalculatorApp.ViewModel.Common
                 new OrderedUnit( UnitConverterUnits.Pressure_Atmosphere, GetLocalizedStringName("UnitName_Atmosphere"), GetLocalizedStringName("UnitAbbreviation_Atmosphere"), 1, true, false, false ),
                 new OrderedUnit( UnitConverterUnits.Pressure_Bar, GetLocalizedStringName("UnitName_Bar"), GetLocalizedStringName("UnitAbbreviation_Bar"), 2, false, true, false ),
                 new OrderedUnit( UnitConverterUnits.Pressure_KiloPascal, GetLocalizedStringName("UnitName_KiloPascal"), GetLocalizedStringName("UnitAbbreviation_KiloPascal"), 3 ),
-                new OrderedUnit( UnitConverterUnits.Pressure_MillimeterOfMercury, GetLocalizedStringName("UnitName_MillimeterOfMercury "), GetLocalizedStringName("UnitAbbreviation_MillimeterOfMercury "), 4 ), // Note trailing space in C++ resource keys
+                new OrderedUnit( UnitConverterUnits.Pressure_MillimeterOfMercury, GetLocalizedStringName("UnitName_MillimeterOfMercury"), GetLocalizedStringName("UnitAbbreviation_MillimeterOfMercury"), 4 ),
                 new OrderedUnit( UnitConverterUnits.Pressure_Pascal, GetLocalizedStringName("UnitName_Pascal"), GetLocalizedStringName("UnitAbbreviation_Pascal"), 5 ),
                 new OrderedUnit( UnitConverterUnits.Pressure_PSI, GetLocalizedStringName("UnitName_PSI"), GetLocalizedStringName("UnitAbbreviation_PSI"), 6, false, false, false )
             };
@@ -416,185 +418,185 @@ namespace CalculatorApp.ViewModel.Common
             return unitMap;
         }
 
-        private Dictionary<ViewMode, Dictionary<int, double>> GetConversionData()
+        private Dictionary<ViewMode, Dictionary<int, string>> GetConversionData()
         {
             /*categoryId, UnitId, factor*/
             var unitDataList = new List<UnitData> {
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_Acre, factor = 4046.8564224 },
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareMeter, factor = 1 },
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareFoot, factor = 0.09290304 },
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareYard, factor = 0.83612736 },
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareMillimeter, factor = 0.000001 },
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareCentimeter, factor = 0.0001 },
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareInch, factor = 0.00064516 },
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareMile, factor = 2589988.110336 },
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareKilometer, factor = 1000000 },
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_Hectare, factor = 10000 },
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_Hand, factor = 0.012516104 },
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_Paper, factor = 0.06032246 },
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SoccerField, factor = 10869.66 },
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_Castle, factor = 100000 },
-                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_Pyeong, factor = 400.0 / 121.0 },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_Acre, factor = "4046.8564224" },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareMeter, factor = "1" },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareFoot, factor = "0.09290304" },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareYard, factor = "0.83612736" },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareMillimeter, factor = "0.000001" },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareCentimeter, factor = "0.0001" },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareInch, factor = "0.00064516" },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareMile, factor = "2589988.110336" },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SquareKilometer, factor = "1000000" },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_Hectare, factor = "10000" },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_Hand, factor = "0.012516104" },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_Paper, factor = "0.06032246" },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_SoccerField, factor = "10869.66" },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_Castle, factor = "100000" },
+                new UnitData { categoryId = ViewMode.Area, unitId = UnitConverterUnits.Area_Pyeong, factor = "400.0 / 121.0" },
 
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Bit, factor = 0.000000125 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Nibble, factor = 0.0000005 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Byte, factor = 0.000001 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Kilobyte, factor = 0.001 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Megabyte, factor = 1 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Gigabyte, factor = 1000 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Terabyte, factor = 1000000 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Petabyte, factor = 1000000000 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Exabytes, factor = 1000000000000 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Zetabytes, factor = 1000000000000000 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Yottabyte, factor = 1000000000000000000 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Kilobit, factor = 0.000125 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Megabit, factor = 0.125 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Gigabit, factor = 125 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Terabit, factor = 125000 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Petabit, factor = 125000000 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Exabits, factor = 125000000000 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Zetabits, factor = 125000000000000 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Yottabit, factor = 125000000000000000 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Gibibits, factor = 134.217728 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Gibibytes, factor = 1073.741824 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Kibibits, factor = 0.000128 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Kibibytes, factor = 0.001024 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Mebibits, factor = 0.131072 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Mebibytes, factor = 1.048576 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Pebibits, factor = 140737488.355328 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Pebibytes, factor = 1125899906.842624 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Tebibits, factor = 137438.953472 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Tebibytes, factor = 1099511.627776 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Exbibits, factor = 144115188075.855872 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Exbibytes, factor = 1152921504606.846976 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Zebibits, factor = 147573952589676.412928 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Zebibytes, factor = 1180591620717411.303424 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Yobibits, factor = 151115727451828646.838272 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Yobibytes, factor = 1208925819614629174.706176 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_FloppyDisk, factor = 1.474560 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_CD, factor = 700 },
-                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_DVD, factor = 4700 },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Bit, factor = "0.000000125" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Nibble, factor = "0.0000005" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Byte, factor = "0.000001" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Kilobyte, factor = "0.001" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Megabyte, factor = "1" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Gigabyte, factor = "1000" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Terabyte, factor = "1000000" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Petabyte, factor = "1000000000" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Exabytes, factor = "1000000000000" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Zetabytes, factor = "1000000000000000" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Yottabyte, factor = "1000000000000000000" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Kilobit, factor = "0.000125" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Megabit, factor = "0.125" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Gigabit, factor = "125" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Terabit, factor = "125000" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Petabit, factor = "125000000" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Exabits, factor = "125000000000" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Zetabits, factor = "125000000000000" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Yottabit, factor = "125000000000000000" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Gibibits, factor = "134.217728" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Gibibytes, factor = "1073.741824" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Kibibits, factor = "0.000128" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Kibibytes, factor = "0.001024" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Mebibits, factor = "0.131072" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Mebibytes, factor = "1.048576" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Pebibits, factor = "140737488.355328" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Pebibytes, factor = "1125899906.842624" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Tebibits, factor = "137438.953472" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Tebibytes, factor = "1099511.627776" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Exbibits, factor = "144115188075.855872" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Exbibytes, factor = "1152921504606.846976" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Zebibits, factor = "147573952589676.412928" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Zebibytes, factor = "1180591620717411.303424" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Yobibits, factor = "151115727451828646.838272" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_Yobibytes, factor = "1208925819614629174.706176" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_FloppyDisk, factor = "1.474560" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_CD, factor = "700" },
+                new UnitData { categoryId = ViewMode.Data, unitId = UnitConverterUnits.Data_DVD, factor = "4700" },
 
-                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_Calorie, factor = 4.184 },
-                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_Kilocalorie, factor = 4184 },
-                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_BritishThermalUnit, factor = 1055.056 },
-                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_Kilojoule, factor = 1000 },
-                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_Kilowatthour, factor = 3600000 },
-                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_ElectronVolt, factor = 0.0000000000000000001602176565 },
-                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_Joule, factor = 1 },
-                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_FootPound, factor = 1.3558179483314 },
-                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_Battery, factor = 9000 },
-                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_Banana, factor = 439614 },
-                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_SliceOfCake, factor = 1046700 },
+                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_Calorie, factor = "4.184" },
+                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_Kilocalorie, factor = "4184" },
+                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_BritishThermalUnit, factor = "1055.056" },
+                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_Kilojoule, factor = "1000" },
+                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_Kilowatthour, factor = "3600000" },
+                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_ElectronVolt, factor = "0.0000000000000000001602176565" },
+                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_Joule, factor = "1" },
+                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_FootPound, factor = "1.3558179483314" },
+                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_Battery, factor = "9000" },
+                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_Banana, factor = "439614" },
+                new UnitData { categoryId = ViewMode.Energy, unitId = UnitConverterUnits.Energy_SliceOfCake, factor = "1046700" },
 
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Inch, factor = 0.0254 },
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Foot, factor = 0.3048 },
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Yard, factor = 0.9144 },
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Mile, factor = 1609.344 },
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Micron, factor = 0.000001 },
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Millimeter, factor = 0.001 },
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Nanometer, factor = 0.000000001 },
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Angstrom, factor = 0.0000000001 },
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Centimeter, factor = 0.01 },
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Meter, factor = 1 },
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Kilometer, factor = 1000 },
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_NauticalMile, factor = 1852 },
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Paperclip, factor = 0.035052 },
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Hand, factor = 0.18669 },
-                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_JumboJet, factor = 76 },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Inch, factor = "0.0254" },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Foot, factor = "0.3048" },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Yard, factor = "0.9144" },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Mile, factor = "1609.344" },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Micron, factor = "0.000001" },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Millimeter, factor = "0.001" },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Nanometer, factor = "0.000000001" },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Angstrom, factor = "0.0000000001" },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Centimeter, factor = "0.01" },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Meter, factor = "1" },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Kilometer, factor = "1000" },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_NauticalMile, factor = "1852" },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Paperclip, factor = "0.035052" },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_Hand, factor = "0.18669" },
+                new UnitData { categoryId = ViewMode.Length, unitId = UnitConverterUnits.Length_JumboJet, factor = "76" },
 
-                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_BritishThermalUnitPerMinute, factor = 17.58426666666667 },
-                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_FootPoundPerMinute, factor = 0.0225969658055233 },
-                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_Watt, factor = 1 },
-                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_Kilowatt, factor = 1000 },
-                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_Horsepower, factor = 745.69987158227022 },
-                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_LightBulb, factor = 60 },
-                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_Horse, factor = 745.7 },
-                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_TrainEngine, factor = 2982799.486329081 },
+                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_BritishThermalUnitPerMinute, factor = "17.58426666666667" },
+                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_FootPoundPerMinute, factor = "0.0225969658055233" },
+                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_Watt, factor = "1" },
+                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_Kilowatt, factor = "1000" },
+                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_Horsepower, factor = "745.69987158227022" },
+                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_LightBulb, factor = "60" },
+                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_Horse, factor = "745.7" },
+                new UnitData { categoryId = ViewMode.Power, unitId = UnitConverterUnits.Power_TrainEngine, factor = "2982799.486329081" },
 
-                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Day, factor = 86400 },
-                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Second, factor = 1 },
-                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Week, factor = 604800 },
-                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Year, factor = 31557600 },
-                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Millisecond, factor = 0.001 },
-                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Microsecond, factor = 0.000001 },
-                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Minute, factor = 60 },
-                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Hour, factor = 3600 },
+                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Day, factor = "86400" },
+                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Second, factor = "1" },
+                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Week, factor = "604800" },
+                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Year, factor = "31557600" },
+                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Millisecond, factor = "0.001" },
+                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Microsecond, factor = "0.000001" },
+                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Minute, factor = "60" },
+                new UnitData { categoryId = ViewMode.Time, unitId = UnitConverterUnits.Time_Hour, factor = "3600" },
 
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_CupUS, factor = 236.588237 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_PintUS, factor = 473.176473 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_PintUK, factor = 568.26125 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_QuartUS, factor = 946.352946 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_QuartUK, factor = 1136.5225 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_GallonUS, factor = 3785.411784 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_GallonUK, factor = 4546.09 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_Liter, factor = 1000 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_TeaspoonUS, factor = 4.92892159375 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_TablespoonUS, factor = 14.78676478125 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_CubicCentimeter, factor = 1 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_CubicYard, factor = 764554.857984 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_CubicMeter, factor = 1000000 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_Milliliter, factor = 1 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_CubicInch, factor = 16.387064 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_CubicFoot, factor = 28316.846592 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_FluidOunceUS, factor = 29.5735295625 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_FluidOunceUK, factor = 28.4130625 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_TeaspoonUK, factor = 5.91938802083333333333 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_TablespoonUK, factor = 17.7581640625 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_CoffeeCup, factor = 236.5882 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_Bathtub, factor = 378541.2 },
-                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_SwimmingPool, factor = 3750000000 },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_CupUS, factor = "236.588237" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_PintUS, factor = "473.176473" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_PintUK, factor = "568.26125" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_QuartUS, factor = "946.352946" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_QuartUK, factor = "1136.5225" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_GallonUS, factor = "3785.411784" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_GallonUK, factor = "4546.09" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_Liter, factor = "1000" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_TeaspoonUS, factor = "4.92892159375" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_TablespoonUS, factor = "14.78676478125" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_CubicCentimeter, factor = "1" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_CubicYard, factor = "764554.857984" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_CubicMeter, factor = "1000000" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_Milliliter, factor = "1" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_CubicInch, factor = "16.387064" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_CubicFoot, factor = "28316.846592" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_FluidOunceUS, factor = "29.5735295625" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_FluidOunceUK, factor = "28.4130625" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_TeaspoonUK, factor = "5.91938802083333333333" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_TablespoonUK, factor = "17.7581640625" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_CoffeeCup, factor = "236.5882" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_Bathtub, factor = "378541.2" },
+                new UnitData { categoryId = ViewMode.Volume, unitId = UnitConverterUnits.Volume_SwimmingPool, factor = "3750000000" },
 
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Kilogram, factor = 1 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Hectogram, factor = 0.1 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Decagram, factor = 0.01 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Gram, factor = 0.001 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Pound, factor = 0.45359237 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Ounce, factor = 0.028349523125 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Milligram, factor = 0.000001 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Centigram, factor = 0.00001 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Decigram, factor = 0.0001 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_LongTon, factor = 1016.0469088 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Tonne, factor = 1000 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Stone, factor = 6.35029318 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Carat, factor = 0.0002 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_ShortTon, factor = 907.18474 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Snowflake, factor = 0.000002 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_SoccerBall, factor = 0.4325 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Elephant, factor = 4000 },
-                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Whale, factor = 90000 },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Kilogram, factor = "1" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Hectogram, factor = "0.1" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Decagram, factor = "0.01" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Gram, factor = "0.001" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Pound, factor = "0.45359237" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Ounce, factor = "0.028349523125" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Milligram, factor = "0.000001" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Centigram, factor = "0.00001" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Decigram, factor = "0.0001" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_LongTon, factor = "1016.0469088" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Tonne, factor = "1000" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Stone, factor = "6.35029318" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Carat, factor = "0.0002" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_ShortTon, factor = "907.18474" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Snowflake, factor = "0.000002" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_SoccerBall, factor = "0.4325" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Elephant, factor = "4000" },
+                new UnitData { categoryId = ViewMode.Weight, unitId = UnitConverterUnits.Weight_Whale, factor = "90000" },
 
-                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_CentimetersPerSecond, factor = 1 },
-                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_FeetPerSecond, factor = 30.48 },
-                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_KilometersPerHour, factor = 27.777777777777777777778 },
-                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_Knot, factor = 51.44 },
-                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_Mach, factor = 34030 },
-                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_MetersPerSecond, factor = 100 },
-                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_MilesPerHour, factor = 44.7 },
-                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_Turtle, factor = 8.94 },
-                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_Horse, factor = 2011.5 },
-                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_Jet, factor = 24585 },
+                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_CentimetersPerSecond, factor = "1" },
+                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_FeetPerSecond, factor = "30.48" },
+                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_KilometersPerHour, factor = "27.777777777777777777778" },
+                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_Knot, factor = "51.44" },
+                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_Mach, factor = "34030" },
+                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_MetersPerSecond, factor = "100" },
+                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_MilesPerHour, factor = "44.7" },
+                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_Turtle, factor = "8.94" },
+                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_Horse, factor = "2011.5" },
+                new UnitData { categoryId = ViewMode.Speed, unitId = UnitConverterUnits.Speed_Jet, factor = "24585" },
 
-                new UnitData { categoryId = ViewMode.Angle, unitId = UnitConverterUnits.Angle_Degree, factor = 1 },
-                new UnitData { categoryId = ViewMode.Angle, unitId = UnitConverterUnits.Angle_Radian, factor = 57.29577951308233 },
-                new UnitData { categoryId = ViewMode.Angle, unitId = UnitConverterUnits.Angle_Gradian, factor = 0.9 },
+                new UnitData { categoryId = ViewMode.Angle, unitId = UnitConverterUnits.Angle_Degree, factor = "1" },
+                new UnitData { categoryId = ViewMode.Angle, unitId = UnitConverterUnits.Angle_Radian, factor = "57.29577951308233" },
+                new UnitData { categoryId = ViewMode.Angle, unitId = UnitConverterUnits.Angle_Gradian, factor = "0.9" },
 
-                new UnitData { categoryId = ViewMode.Pressure, unitId = UnitConverterUnits.Pressure_Atmosphere, factor = 1 },
-                new UnitData { categoryId = ViewMode.Pressure, unitId = UnitConverterUnits.Pressure_Bar, factor = 0.9869232667160128 },
-                new UnitData { categoryId = ViewMode.Pressure, unitId = UnitConverterUnits.Pressure_KiloPascal, factor = 0.0098692326671601 },
-                new UnitData { categoryId = ViewMode.Pressure, unitId = UnitConverterUnits.Pressure_MillimeterOfMercury, factor = 0.0013155687145324 },
-                new UnitData { categoryId = ViewMode.Pressure, unitId = UnitConverterUnits.Pressure_Pascal, factor = 9.869232667160128e-6 },
-                new UnitData { categoryId = ViewMode.Pressure, unitId = UnitConverterUnits.Pressure_PSI, factor = 0.068045961016531 }
+                new UnitData { categoryId = ViewMode.Pressure, unitId = UnitConverterUnits.Pressure_Atmosphere, factor = "1" },
+                new UnitData { categoryId = ViewMode.Pressure, unitId = UnitConverterUnits.Pressure_Bar, factor = "0.9869232667160128" },
+                new UnitData { categoryId = ViewMode.Pressure, unitId = UnitConverterUnits.Pressure_KiloPascal, factor = "0.0098692326671601" },
+                new UnitData { categoryId = ViewMode.Pressure, unitId = UnitConverterUnits.Pressure_MillimeterOfMercury, factor = "0.0013155687145324" },
+                new UnitData { categoryId = ViewMode.Pressure, unitId = UnitConverterUnits.Pressure_Pascal, factor = "9.869232667160128e-6" },
+                new UnitData { categoryId = ViewMode.Pressure, unitId = UnitConverterUnits.Pressure_PSI, factor = "0.068045961016531" }
             };
 
-            var categoryToUnitConversionMap = new Dictionary<ViewMode, Dictionary<int, double>>();
+            var categoryToUnitConversionMap = new Dictionary<ViewMode, Dictionary<int, string>>();
 
             // Populate the hash map and return;
             foreach (UnitData unitdata in unitDataList)
             {
-                if (!categoryToUnitConversionMap.TryGetValue(unitdata.categoryId, out Dictionary<int, double>? conversionData))
+                if (!categoryToUnitConversionMap.TryGetValue(unitdata.categoryId, out Dictionary<int, string>? conversionData))
                 {
-                    conversionData = new Dictionary<int, double>();
+                    conversionData = new Dictionary<int, string>();
                     categoryToUnitConversionMap.Add(unitdata.categoryId, conversionData);
                 }
                 conversionData.Add((int)unitdata.unitId, unitdata.factor);
@@ -606,15 +608,15 @@ namespace CalculatorApp.ViewModel.Common
         {
             /* categoryId, ParentUnitId, UnitId, ratio, offset, offsetfirst*/
             var conversionDataList = new ExplicitUnitConversionData[] {
-                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_DegreesCelsius, UnitConverterUnits.Temperature_DegreesCelsius, 1, 0 ),
-                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_DegreesCelsius, UnitConverterUnits.Temperature_DegreesFahrenheit, 1.8, 32 ),
-                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_DegreesCelsius, UnitConverterUnits.Temperature_Kelvin, 1, 273.15 ),
-                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_DegreesFahrenheit, UnitConverterUnits.Temperature_DegreesCelsius, 0.55555555555555555555555555555556, -32, CONVERT_WITH_OFFSET_FIRST ),
-                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_DegreesFahrenheit, UnitConverterUnits.Temperature_DegreesFahrenheit, 1, 0 ),
-                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_DegreesFahrenheit, UnitConverterUnits.Temperature_Kelvin, 0.55555555555555555555555555555556, 459.67, CONVERT_WITH_OFFSET_FIRST ),
-                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_Kelvin, UnitConverterUnits.Temperature_DegreesCelsius, 1, -273.15, CONVERT_WITH_OFFSET_FIRST ),
-                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_Kelvin, UnitConverterUnits.Temperature_DegreesFahrenheit, 1.8, -459.67 ),
-                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_Kelvin, UnitConverterUnits.Temperature_Kelvin, 1, 0 )
+                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_DegreesCelsius, UnitConverterUnits.Temperature_DegreesCelsius, "1", "0" ),
+                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_DegreesCelsius, UnitConverterUnits.Temperature_DegreesFahrenheit, "1.8", "32" ),
+                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_DegreesCelsius, UnitConverterUnits.Temperature_Kelvin, "1", "273.15" ),
+                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_DegreesFahrenheit, UnitConverterUnits.Temperature_DegreesCelsius, "0.55555555555555555555555555555556", "-32", CONVERT_WITH_OFFSET_FIRST ),
+                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_DegreesFahrenheit, UnitConverterUnits.Temperature_DegreesFahrenheit, "1", "0" ),
+                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_DegreesFahrenheit, UnitConverterUnits.Temperature_Kelvin, "0.55555555555555555555555555555556", "459.67", CONVERT_WITH_OFFSET_FIRST ),
+                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_Kelvin, UnitConverterUnits.Temperature_DegreesCelsius, "1", "-273.15", CONVERT_WITH_OFFSET_FIRST ),
+                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_Kelvin, UnitConverterUnits.Temperature_DegreesFahrenheit, "1.8", "-459.67" ),
+                new ExplicitUnitConversionData( ViewMode.Temperature, UnitConverterUnits.Temperature_Kelvin, UnitConverterUnits.Temperature_Kelvin, "1", "0" )
             };
 
             var unitToUnitConversionList = new Dictionary<int, Dictionary<int, CalcManager.ConversionData>>();

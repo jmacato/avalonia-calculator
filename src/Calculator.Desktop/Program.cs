@@ -1,5 +1,6 @@
 using Avalonia;
 using CalculatorApp.Automation;
+using CalculatorApp.Services.Settings;
 using Serilog;
 using Serilog.Events;
 
@@ -13,6 +14,7 @@ internal static class Program
     public static int Main(string[] args)
     {
         InitializeDiagnostics();
+        App.SettingsStore = JsonSettingsStore.CreateDefault();
         App.DesktopWindowCreated = window =>
             s_automationServer = AutomationServer.StartFromEnvironment(window);
 
@@ -33,21 +35,9 @@ internal static class Program
 
     public static AppBuilder BuildAvaloniaApp()
     {
-        AppBuilder builder = AppBuilder.Configure<App>()
+        return AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .LogToTrace();
-
-        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CALCULATOR_AUTOMATION_PORT")))
-        {
-            // Keep flyouts in the visual tree so the loopback automation server
-            // can target Avalonia events and directly render the complete surface.
-            builder = builder
-                .With(new AvaloniaNativePlatformOptions { OverlayPopups = true })
-                .With(new Win32PlatformOptions { OverlayPopups = true })
-                .With(new X11PlatformOptions { OverlayPopups = true });
-        }
-
-        return builder;
     }
 
     private static void InitializeDiagnostics()

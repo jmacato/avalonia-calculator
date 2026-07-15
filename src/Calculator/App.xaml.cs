@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using CalculatorApp.Services.Settings;
 
 namespace CalculatorApp;
 
@@ -10,6 +11,8 @@ namespace CalculatorApp;
 /// </summary>
 public sealed partial class App : Application
 {
+    public static ISettingsStore SettingsStore { get; set; } = new InMemorySettingsStore();
+
     public static MainWindow? Window { get; private set; }
     public static Control? RootView { get; private set; }
     public static Action<MainWindow>? DesktopWindowCreated { get; set; }

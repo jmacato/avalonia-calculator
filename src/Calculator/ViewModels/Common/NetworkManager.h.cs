@@ -15,10 +15,10 @@ public enum NetworkAccessBehavior
 public
     delegate void NetworkBehaviorChangedHandler(NetworkAccessBehavior behavior);
 
-public partial class NetworkManager
+public sealed partial class NetworkManager
 {
     public event NetworkBehaviorChangedHandler? NetworkBehaviorChanged;
 
-    protected void RaiseNetworkBehaviorChanged(NetworkAccessBehavior behavior) =>
+    private void RaiseNetworkBehaviorChanged(NetworkAccessBehavior behavior) =>
         NetworkBehaviorChanged?.Invoke(behavior);
 };

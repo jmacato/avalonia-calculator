@@ -4814,4 +4814,32 @@
     <value>Refresh currency rates automatically</value>
     <comment>New Avalonia port string. Machine translation pending human review for localized catalogs.</comment>
   </data>
+  <data name="SettingsConverters.Text" xml:space="preserve">
+    <value>Converters</value>
+    <comment>New Avalonia port string. Machine translation pending human review for localized catalogs.</comment>
+  </data>
+  <data name="ConverterUnitDisplayExpander.Header" xml:space="preserve">
+    <value>Unit and currency label position</value>
+    <comment>New Avalonia port string. Machine translation pending human review for localized catalogs.</comment>
+  </data>
+  <data name="ConverterUnitDisplayExpander.Description" xml:space="preserve">
+    <value>Choose where labels appear beside converter values</value>
+    <comment>New Avalonia port string. Machine translation pending human review for localized catalogs.</comment>
+  </data>
+  <data name="AutomaticUnitDisplayRadioButton.Content" xml:space="preserve">
+    <value>Automatic (culture and unit convention)</value>
+    <comment>New Avalonia port string. Machine translation pending human review for localized catalogs.</comment>
+  </data>
+  <data name="LeftUnitDisplayRadioButton.Content" xml:space="preserve">
+    <value>Always on the left</value>
+    <comment>New Avalonia port string. Machine translation pending human review for localized catalogs.</comment>
+  </data>
+  <data name="RightUnitDisplayRadioButton.Content" xml:space="preserve">
+    <value>Always on the right</value>
+    <comment>New Avalonia port string. Machine translation pending human review for localized catalogs.</comment>
+  </data>
+  <data name="WindowsNativeUnitDisplayRadioButton.Content" xml:space="preserve">
+    <value>Windows native (currency symbols only)</value>
+    <comment>New Avalonia port string. Machine translation pending human review for localized catalogs.</comment>
+  </data>
 </root>

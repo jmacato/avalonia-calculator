@@ -1,3 +1,5 @@
+using CalcEngine;
+
 namespace UnitConversionManager;
 
 public static class NumberFormattingUtils
@@ -60,9 +62,9 @@ public static class NumberFormattingUtils
     /// <summary>
     /// Get number of digits (whole number part only)</summary>
     /// <param name="value">the number</param>
-    public static uint GetNumberDigitsWholeNumberPart(double value)
+    public static uint GetNumberDigitsWholeNumberPart(RatPak ratPak, Rational value)
     {
-        return value == 0 ? 1u : (uint)(1 + Math.Max(0.0, Math.Log10(Math.Abs(value))));
+        return (uint)RatPakDecimal.GetWholeDigitCount(ratPak, value);
     }
 
     /// <summary>
@@ -70,38 +72,17 @@ public static class NumberFormattingUtils
     /// </summary>
     /// <param name="num">input double</param>
     /// <param name="numSignificant">unsigned int number of significant digits to round to</param>
-    public static string RoundSignificantDigits(double num, uint numSignificant)
+    public static string RoundSignificantDigits(RatPak ratPak, Rational num, uint numSignificant)
     {
-        return num.ToString($"F{numSignificant}", System.Globalization.CultureInfo.InvariantCulture);
-
+        return RatPakDecimal.FormatFixed(ratPak, num, (int)numSignificant);
     }
 
     /// <summary>
     ///  Convert a Number to Scientific Notation
     /// </summary>
     /// <param name="number">number to convert</param>
-    public static string ToScientificNumber(double number)
+    public static string ToScientificNumber(RatPak ratPak, Rational number)
     {
-        // First format with standard scientific notation
-        var formatted = number.ToString("e6", System.Globalization.CultureInfo.InvariantCulture);
-
-        // The following junk is to preserve C++ style formatting for double scientific notation strings.
-
-        // Remove trailing zeros in the exponent part
-        // Find the 'e' character
-        var ePosition = formatted.IndexOf('e');
-        if (ePosition < 0) return formatted; // Fallback to original if 'e' not found
-
-        // Get the part before 'e'
-        var mantissa = formatted[..(ePosition + 2)]; // Include 'e' and sign
-
-        // Get the exponent part and remove leading zeros
-        var exponent = formatted[(ePosition + 2)..].TrimStart('0');
-
-        // If exponent is empty, it was just zeros, so use "0"
-        if (string.IsNullOrEmpty(exponent))
-            exponent = "0";
-
-        return mantissa + exponent;
+        return RatPakDecimal.FormatScientific(ratPak, number, 6);
     }
 }

@@ -231,7 +231,7 @@
                 // Populate digit symbols
                 for (int i = 0; i < m_digitSymbols.Length; i++)
                 {
-                    m_digitSymbols[i] = i.ToString(cultureInfo)[0];
+                    m_digitSymbols[i] = numberFormat.NativeDigits[i][0];
                 }
 
                 m_resolvedName = cultureInfo.Name;
@@ -247,9 +247,12 @@
                 m_listSeparator = cultureInfo.TextInfo.ListSeparator;
                 m_currencyTrailingDigits = numberFormat.CurrencyDecimalDigits;
 
-                // Currency symbol precedence is either 0 or 1
-                // A value of 0 indicates the symbol follows the currency value
-                m_currencySymbolPrecedence = numberFormat.CurrencyPositivePattern == 0 ? 0 : 1;
+                // Currency symbol precedence is either 0 or 1.
+                // A value of 0 indicates the symbol follows the currency value,
+                // matching LOCALE_IPOSSYMPRECEDES in the original C++ source.
+                m_currencySymbolPrecedence = numberFormat.CurrencyPositivePattern is 0 or 2
+                    ? 1
+                    : 0;
 
                 // Get the system calendar type
                 m_calendarIdentifier = GetCalendarIdentifierFromCalendarType(cultureInfo.Calendar);

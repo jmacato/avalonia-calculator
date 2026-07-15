@@ -5,6 +5,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Windows.Input;
+using Avalonia.Threading;
+using CalculatorApp.Services.Settings;
 using CalculatorApp.ViewModel.Common;
 using UnitConversionManager;
 
@@ -99,8 +101,13 @@ public partial class UnitConverterViewModel : ViewModelBase
     }
 
     private readonly IUnitConverter _model;
+    private readonly ISettingsStore _settingsStore;
     private readonly NumberFormatInfo _numberFormat;
+    private readonly CurrencyDisplayFormatter _currencyDisplayFormatter = new();
+    private readonly object _supplementaryResultsCacheLock = new();
+    private readonly DispatcherTimer _supplementaryResultsTimer;
     private readonly string _localizedValueFromFormat;
+    private readonly string _localizedValueFromDecimalFormat;
     private readonly string _localizedValueToFormat;
     private readonly string _localizedConversionResultFormat;
     private ConversionParameter _value1Parameter = ConversionParameter.Source;
@@ -112,18 +119,30 @@ public partial class UnitConverterViewModel : ViewModelBase
     private string _value2 = "0";
     private string _unlocalizedValueFrom = "0";
     private string _unlocalizedValueTo = "0";
+    private string _lastAnnouncedFrom = string.Empty;
+    private string _lastAnnouncedTo = string.Empty;
+    private string _lastAnnouncedConversionResult = string.Empty;
+    private List<(string Value, Unit Unit)> _cachedSuggestedValues = [];
     private bool _value1Active = true;
     private bool _value2Active;
     private bool _isChangingCategory;
+    private bool _isInputBlocked;
     private bool _isDecimalEnabled = true;
     private bool _isDropDownOpen;
     private bool _isDropDownEnabled = true;
     private bool _isCurrencyLoadingVisible;
+    private bool _isCurrencyDataLoaded;
     private bool _isCurrencyCurrentCategory;
     private bool _currencyDataLoadFailed;
     private bool _currencyDataIsWeekOld;
     private string _currencySymbol1 = string.Empty;
     private string _currencySymbol2 = string.Empty;
+    private string _displayUnit1 = string.Empty;
+    private string _displayUnit2 = string.Empty;
+    private bool _displayUnit1OnRight = true;
+    private bool _displayUnit2OnRight = true;
+    private bool _displayUnit1UseSpace = true;
+    private bool _displayUnit2UseSpace = true;
     private string _currencyRatioEquality = string.Empty;
     private string _currencyRatioEqualityAutomationName = string.Empty;
     private string _currencyTimestamp = string.Empty;
@@ -249,6 +268,54 @@ public partial class UnitConverterViewModel : ViewModelBase
         private set => SetProperty(ref _currencySymbol2, value);
     }
 
+    public string DisplayUnit1
+    {
+        get => _displayUnit1;
+        private set
+        {
+            if (SetProperty(ref _displayUnit1, value))
+            {
+                OnPropertyChanged(nameof(HasDisplayUnit1));
+            }
+        }
+    }
+
+    public string DisplayUnit2
+    {
+        get => _displayUnit2;
+        private set
+        {
+            if (SetProperty(ref _displayUnit2, value))
+            {
+                OnPropertyChanged(nameof(HasDisplayUnit2));
+            }
+        }
+    }
+
+    public bool DisplayUnit1OnRight
+    {
+        get => _displayUnit1OnRight;
+        private set => SetProperty(ref _displayUnit1OnRight, value);
+    }
+
+    public bool DisplayUnit2OnRight
+    {
+        get => _displayUnit2OnRight;
+        private set => SetProperty(ref _displayUnit2OnRight, value);
+    }
+
+    public bool DisplayUnit1UseSpace
+    {
+        get => _displayUnit1UseSpace;
+        private set => SetProperty(ref _displayUnit1UseSpace, value);
+    }
+
+    public bool DisplayUnit2UseSpace
+    {
+        get => _displayUnit2UseSpace;
+        private set => SetProperty(ref _displayUnit2UseSpace, value);
+    }
+
     public string CurrencyRatioEquality
     {
         get => _currencyRatioEquality;
@@ -307,6 +374,10 @@ public partial class UnitConverterViewModel : ViewModelBase
 
     public bool HasCurrencySymbols =>
         !string.IsNullOrEmpty(CurrencySymbol1) || !string.IsNullOrEmpty(CurrencySymbol2);
+
+    public bool HasDisplayUnit1 => !string.IsNullOrEmpty(DisplayUnit1);
+
+    public bool HasDisplayUnit2 => !string.IsNullOrEmpty(DisplayUnit2);
 
     public bool CanNegate => CurrentCategory?.SupportsNegative == true;
 

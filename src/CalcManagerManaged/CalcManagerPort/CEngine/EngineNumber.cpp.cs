@@ -27,20 +27,19 @@ public class EngineNumber
             throw new ArgumentNullException(nameof(mantissa));
         }
 
+        if (cDigits < 1 || mantissa.Count < cDigits)
+        {
+            throw new ArgumentOutOfRangeException(nameof(cDigits));
+        }
+
         CDigits = cDigits;
 
         Sign = sign;
         Exp = exp;
 
-        var tmp = mantissa.ToArray();
-
-        if (tmp.Length <= CDigits)
-        {
-            // Let's buffer here as it's important for the algorithms to have some leeway for the mantissa digits.
-            Array.Resize(ref tmp, Math.Min((Math.Max(tmp.Length, cDigits) + 8), 256));
-        }
-
-        _mantissa = tmp;
+        // C++ Number(PNUMBER) stores only the logical digits. Native RatPak
+        // work storage belongs to the temporary PNUMBER allocation instead.
+        _mantissa = mantissa.Take(CDigits).ToArray();
     }
 
     public PNUMBER ToPNUMBER()
@@ -51,7 +50,7 @@ public class EngineNumber
         ret._sign = Sign;
         ret._exp = Exp;
         ret._cdigit = CDigits;
-        ret._mant = _mantissa.ToArray();
+        Array.Copy(_mantissa, ret._mant, _mantissa.Length);
 
         return ret;
     }
@@ -64,7 +63,5 @@ public class EngineNumber
 
     public IReadOnlyList<uint32_t> Mantissa => _mantissa;
 
-    public bool IsZero() =>
-        _mantissa.All(x =>
-            x == 0);
+    public bool IsZero() => _mantissa.All(x => x == 0);
 }

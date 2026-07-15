@@ -22,10 +22,15 @@ internal static class TestHelpers
         category.SupportsNegative = supportsNegative;
     }
 
-    public static void SetConversionDataParams(ConversionData conversionData, double ratio, double offset,
+    public static void SetConversionDataParams(
+        ConversionData conversionData,
+        string ratioNumerator,
+        string ratioDenominator,
+        string offset,
         bool offsetFirst)
     {
-        conversionData.Ratio = ratio;
+        conversionData.RatioNumerator = ratioNumerator;
+        conversionData.RatioDenominator = ratioDenominator;
         conversionData.Offset = offset;
         conversionData.OffsetFirst = offsetFirst;
     }

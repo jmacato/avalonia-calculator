@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Collections.ObjectModel;
+using CalculatorApp.Services.Settings;
 using CalculatorApp.ViewModel.Common;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -14,6 +15,8 @@ namespace CalculatorApp.ViewModel;
 /// </summary>
 public partial class ApplicationViewModel : ViewModelBase
 {
+    private readonly ISettingsStore _settingsStore;
+
     [ObservableProperty]
     private StandardCalculatorViewModel? _calculatorViewModel;
 
@@ -44,7 +47,13 @@ public partial class ApplicationViewModel : ViewModelBase
     private ViewMode m_mode = ViewMode.None;
 
     public ApplicationViewModel()
+        : this(App.SettingsStore)
     {
+    }
+
+    public ApplicationViewModel(ISettingsStore settingsStore)
+    {
+        _settingsStore = settingsStore;
         Categories = NavCategoryStates.CreateMenuOptions();
     }
 
@@ -76,7 +85,7 @@ public partial class ApplicationViewModel : ViewModelBase
             }
             else if (NavCategory.IsConverterViewMode(m_mode))
             {
-                ConverterViewModel ??= new UnitConverterViewModel();
+                ConverterViewModel ??= new UnitConverterViewModel(_settingsStore);
                 ConverterViewModel.Mode = m_mode;
             }
             else if (NavCategory.IsGraphingCalculatorViewMode(m_mode))

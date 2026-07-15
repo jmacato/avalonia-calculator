@@ -1,15 +1,17 @@
 <Window x:Class="CalculatorApp.MainWindow"
         xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:chrome="using:Avalonia.Controls.Chrome"
         Title="Calculator"
         Width="440"
         Height="720"
         MinWidth="320"
         MinHeight="500">
-  <Grid RowDefinitions="48,*">
+  <Grid x:Name="WindowRoot" RowDefinitions="48,*">
     <Grid x:Name="AppTitleBar"
           Grid.Row="0"
           Height="48"
+          chrome:WindowDecorationProperties.ElementRole="TitleBar"
           ColumnDefinitions="48,Auto,*">
       <Button x:Name="AppTitleBarBackButton"
               Grid.Column="0"
@@ -26,8 +28,6 @@
                  Margin="4,0,0,0" />
     </Grid>
 
-    <!-- Avalonia has no WinUI Frame. MainPage is inserted here once its existing
-         XAML and code-behind have been translated in place. -->
     <ContentControl x:Name="PageFrame" Grid.Row="1" />
   </Grid>
 </Window>

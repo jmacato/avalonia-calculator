@@ -48,11 +48,11 @@ internal sealed class TestUnitConverterConfigLoader : IConverterDataLoader
         var conversion4 = new ConversionData();
         var conversion5 = new ConversionData();
 
-        TestHelpers.SetConversionDataParams(conversion1, 1.0, 0, false);
-        TestHelpers.SetConversionDataParams(conversion2, 0.08333333333333333333333333333333, 0, false);
-        TestHelpers.SetConversionDataParams(conversion3, 12.0, 0, false);
-        TestHelpers.SetConversionDataParams(conversion4, 0.453592, 0, false);
-        TestHelpers.SetConversionDataParams(conversion5, 2.20462, 0, false);
+        TestHelpers.SetConversionDataParams(conversion1, "1", "1", "0", false);
+        TestHelpers.SetConversionDataParams(conversion2, "1", "12", "0", false);
+        TestHelpers.SetConversionDataParams(conversion3, "12", "1", "0", false);
+        TestHelpers.SetConversionDataParams(conversion4, "0.453592", "1", "0", false);
+        TestHelpers.SetConversionDataParams(conversion5, "2.20462", "1", "0", false);
 
         // Setting the conversion ratios for testing
         unit1Map[u1] = conversion1;

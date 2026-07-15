@@ -41,12 +41,12 @@ public class CCalcEngine
     // returns the ptr to string representing the operator. Mostly same as the button, but few special cases for x^y etc.
     public wstring_view GetString(int ids)
     {
-        return s_engineStrings[ids.ToString(System.Globalization.CultureInfo.InvariantCulture)];
+        return m_engineStrings[ids.ToString(System.Globalization.CultureInfo.InvariantCulture)];
     }
 
     public wstring_view GetString(wstring_view ids)
     {
-        return s_engineStrings[ids];
+        return m_engineStrings[ids];
     }
 
     public wstring_view OpCodeToString(int nOpCode)
@@ -227,16 +227,18 @@ public class CCalcEngine
     // Read strings for keys, errors, trig types, etc.
     // These will be copied from the resources to local memory.
 
-    Dictionary<wstring_view, wstring> s_engineStrings = [];
+    readonly string[] m_engineStringIds = EngineStrings.CreateResourceIds();
+
+    readonly Dictionary<wstring_view, wstring> m_engineStrings = [];
 
     void LoadEngineStrings(IResourceProvider resourceProvider)
     {
-        foreach (var sid in EngineStrings.g_sids)
+        foreach (var sid in m_engineStringIds)
         {
             var locString = resourceProvider.GetCEngineString(sid);
             if (!string.IsNullOrEmpty(locString))
             {
-                s_engineStrings[sid] = locString;
+                m_engineStrings[sid] = locString;
             }
         }
     }
@@ -401,7 +403,7 @@ public class CCalcEngine
             m_HistoryCollector.SetDecimalSymbol(m_decimalSeparator);
 
             // put the new decimal symbol into the table used to draw the decimal key
-            s_engineStrings[EngineStrings.SidsDecimalSeparator] = m_decimalSeparator.ToString();
+            m_engineStrings[EngineStrings.SidsDecimalSeparator] = m_decimalSeparator.ToString();
 
             // we need to redraw to update the decimal point button
             numChanged = true;
@@ -1493,7 +1495,7 @@ public class CCalcEngine
     }
 
     // Table for each unary operator
-    private static readonly Dictionary<int32_t, FunctionNameElement> operatorStringTable = new()
+    private readonly Dictionary<int32_t, FunctionNameElement> m_operatorStringTable = new()
     {
         {
             CCommand.IdcChop,
@@ -1616,7 +1618,7 @@ public class CCalcEngine
         // Try to lookup the ID in the UFNE table
         wstring ids = "";
 
-        if (operatorStringTable.TryGetValue(nOpCode,
+        if (m_operatorStringTable.TryGetValue(nOpCode,
                 out var element)) //(var pair = operatorStringTable.find(nOpCode); pair != operatorStringTable.end())
         {
             if (!element.hasAngleStrings || AngleType.Degrees == angletype)
@@ -1671,7 +1673,7 @@ public class CCalcEngine
         // Try to lookup the ID in the UFNE table
         wstring ids = string.Empty;
 
-        if (operatorStringTable.TryGetValue(nOpCode, out var res))
+        if (m_operatorStringTable.TryGetValue(nOpCode, out var res))
         {
             if (isIntegerMode && !string.IsNullOrEmpty(res.ProgrammerModeString))
             {
@@ -1787,7 +1789,11 @@ public class CCalcEngine
 
     const wstring_view c_decPostSepStr = "]?(\\d*)(?:e[+-]?(\\d*))?$";
 
-    private static LASTDISP gldPrevious = new LASTDISP
+    // The native application owns one calculator manager, so scidisp.cpp can
+    // use a process-wide cache. Managed tests and portable hosts can create
+    // more than one engine; sharing this state suppresses valid callbacks when
+    // another engine happens to display the same value between operations.
+    private LASTDISP m_lastDisplay = new LASTDISP
     {
         value = null,
         precision = -1,
@@ -1826,8 +1832,8 @@ public class CCalcEngine
 
     void DisplayNum()
     {
-        if (gldPrevious.value is null)
-            gldPrevious.value = new Rational(m_ratPak, 0);
+        if (m_lastDisplay.value is null)
+            m_lastDisplay.value = new Rational(m_ratPak, 0);
 
         //
         // Only change the display if
@@ -1836,19 +1842,19 @@ public class CCalcEngine
         //  something important has changed since the last time DisplayNum was
         //  called.
         //
-        if (m_bRecord || gldPrevious.value != m_currentVal || gldPrevious.precision != m_precision ||
-            gldPrevious.radix != m_radix || gldPrevious.nFE != (int)m_nFE
-            || !gldPrevious.bUseSep || gldPrevious.numwidth != m_numwidth || gldPrevious.fIntMath != m_fIntegerMode ||
-            gldPrevious.bRecord != m_bRecord)
+        if (m_bRecord || m_lastDisplay.value != m_currentVal || m_lastDisplay.precision != m_precision ||
+            m_lastDisplay.radix != m_radix || m_lastDisplay.nFE != (int)m_nFE
+            || !m_lastDisplay.bUseSep || m_lastDisplay.numwidth != m_numwidth || m_lastDisplay.fIntMath != m_fIntegerMode ||
+            m_lastDisplay.bRecord != m_bRecord)
         {
-            gldPrevious.precision = m_precision;
-            gldPrevious.radix = m_radix;
-            gldPrevious.nFE = (int)m_nFE;
-            gldPrevious.numwidth = m_numwidth;
+            m_lastDisplay.precision = m_precision;
+            m_lastDisplay.radix = m_radix;
+            m_lastDisplay.nFE = (int)m_nFE;
+            m_lastDisplay.numwidth = m_numwidth;
 
-            gldPrevious.fIntMath = m_fIntegerMode;
-            gldPrevious.bRecord = m_bRecord;
-            gldPrevious.bUseSep = true;
+            m_lastDisplay.fIntMath = m_fIntegerMode;
+            m_lastDisplay.bRecord = m_bRecord;
+            m_lastDisplay.bUseSep = true;
 
             if (m_bRecord)
             {
@@ -1867,7 +1873,7 @@ public class CCalcEngine
             }
 
             // Displayed number can go through transformation. So copy it after transformation
-            gldPrevious.value = m_currentVal;
+            m_lastDisplay.value = m_currentVal;
 
             if ((m_radix == 10) && IsNumberInvalid(m_numberString, MAX_EXPONENT, m_precision, m_radix) != 0)
             {

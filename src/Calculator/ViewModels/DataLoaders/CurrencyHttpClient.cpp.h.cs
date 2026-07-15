@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Globalization;
 using System.Text.Json.Serialization;
 
 namespace CalculatorApp.ViewModel.DataLoaders;
@@ -15,7 +16,7 @@ public interface ICurrencyNameProvider
     CurrencyDisplayMetadata GetCurrency(string isoCode, string fallbackName, string fallbackSymbol);
 }
 
-public sealed record CurrencyDisplayMetadata(string Name, string Symbol);
+public sealed record CurrencyDisplayMetadata(string Name, string Symbol, int FractionDigits);
 
 public sealed class CurrencyRateSnapshot
 {
@@ -49,7 +50,7 @@ public sealed class CurrencyRateRecord
     public string QuoteCurrency { get; set; } = string.Empty;
 
     [JsonPropertyName("rate")]
-    public double Rate { get; set; }
+    public decimal Rate { get; set; }
 }
 
 [JsonSerializable(typeof(List<CurrencyMetadataRecord>))]
@@ -115,12 +116,19 @@ public partial class CurrencyHttpClient : ICurrencyRateProvider
             throw new InvalidDataException("Frankfurter returned an empty currency response.");
         }
 
+        string latestDate = rates.Max(rate => rate.Date) ?? string.Empty;
+        rates.RemoveAll(rate => rate.QuoteCurrency.Equals(
+            _sourceCurrencyCode,
+            StringComparison.OrdinalIgnoreCase));
         rates.Add(new CurrencyRateRecord
         {
-            Date = rates.Max(rate => rate.Date) ?? string.Empty,
+            // A base-to-base rate is always exactly one. Frankfurter v2
+            // currently includes this row, while older responses did not, so
+            // replace any returned row instead of appending a duplicate.
+            Date = latestDate,
             BaseCurrency = _sourceCurrencyCode,
             QuoteCurrency = _sourceCurrencyCode,
-            Rate = 1d
+            Rate = 1m
         });
 
         return new CurrencyRateSnapshot
@@ -135,41 +143,58 @@ public partial class CurrencyHttpClient : ICurrencyRateProvider
 
 /// <summary>
 /// CLDR 48.2 boundary. Frankfurter metadata is used as the ISO fallback while
-/// the vendored table supplies the symbols/names that differ for common UI
-/// locales. Additional locale tables can be added without changing the loader.
+/// the vendored tables supply localized names and symbols for every shipped UI
+/// culture.
 /// </summary>
 public sealed class CldrCurrencyNameProvider : ICurrencyNameProvider
 {
-    // The base English CLDR values cover the currencies selected by default on
-    // the supported test platforms. An ISO fallback is required by the plan.
-    private static readonly IReadOnlyDictionary<string, CurrencyDisplayMetadata> English =
-        new Dictionary<string, CurrencyDisplayMetadata>(StringComparer.OrdinalIgnoreCase)
+    private readonly string _cultureName;
+
+    public CldrCurrencyNameProvider()
+        : this(CultureInfo.CurrentUICulture.Name)
+    {
+    }
+
+    internal CldrCurrencyNameProvider(string cultureName)
+    {
+        try
         {
-            ["AUD"] = new("Australian Dollar", "A$"),
-            ["CAD"] = new("Canadian Dollar", "CA$"),
-            ["CHF"] = new("Swiss Franc", "CHF"),
-            ["CNY"] = new("Chinese Yuan", "CN¥"),
-            ["EUR"] = new("Euro", "€"),
-            ["GBP"] = new("British Pound", "£"),
-            ["INR"] = new("Indian Rupee", "₹"),
-            ["JPY"] = new("Japanese Yen", "¥"),
-            ["KRW"] = new("South Korean Won", "₩"),
-            ["PHP"] = new("Philippine Peso", "₱"),
-            ["USD"] = new("US Dollar", "$"),
-        };
+            _cultureName = CultureInfo.GetCultureInfo(cultureName).Name;
+        }
+        catch (CultureNotFoundException)
+        {
+            _cultureName = string.Empty;
+        }
+    }
 
     public CurrencyDisplayMetadata GetCurrency(
         string isoCode,
         string fallbackName,
         string fallbackSymbol)
     {
-        if (English.TryGetValue(isoCode, out CurrencyDisplayMetadata? metadata))
+        int fractionDigits = GetFractionDigits(isoCode);
+        if (CldrCurrencyData.TryGet(
+                _cultureName,
+                isoCode,
+                out CldrCurrencyDisplayData metadata))
         {
-            return metadata;
+            // CLDR commonly uses the ISO code when base English has no distinct
+            // symbol. Retain the provider's useful native symbol only when the
+            // selected locale did not explicitly choose that ISO-code symbol.
+            string symbol = metadata.Symbol.Equals(isoCode, StringComparison.OrdinalIgnoreCase) &&
+                            !metadata.HasLocalizedSymbol &&
+                            !string.IsNullOrWhiteSpace(fallbackSymbol)
+                ? fallbackSymbol
+                : metadata.Symbol;
+            return new CurrencyDisplayMetadata(metadata.Name, symbol, fractionDigits);
         }
 
         return new CurrencyDisplayMetadata(
             string.IsNullOrWhiteSpace(fallbackName) ? isoCode : fallbackName,
-            string.IsNullOrWhiteSpace(fallbackSymbol) ? isoCode : fallbackSymbol);
+            string.IsNullOrWhiteSpace(fallbackSymbol) ? isoCode : fallbackSymbol,
+            fractionDigits);
     }
+
+    public static int GetFractionDigits(string isoCode) =>
+        CldrCurrencyData.GetFractionDigits(isoCode);
 }

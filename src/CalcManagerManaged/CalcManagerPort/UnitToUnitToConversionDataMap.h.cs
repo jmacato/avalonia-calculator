@@ -29,6 +29,8 @@ public class UnitToUnitToConversionDataMap
 
     public void Set(Unit key, Dictionary<Unit, ConversionData> value) => _map[key] = value;
 
+    public bool Remove(Unit key) => _map.Remove(key);
+
     public bool ContainsKey(Unit key) => _map.ContainsKey(key);
 
     public void Add(Unit key, Dictionary<Unit, ConversionData> value) => _map.Add(key, value);

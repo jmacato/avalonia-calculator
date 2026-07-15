@@ -68,6 +68,55 @@ public sealed class UnitConverterTests : IDisposable
     }
 
     [Fact]
+    public async Task CurrencyRefreshReplacesActiveRatPakConversionAndPreservesIsoSelection()
+    {
+        TestRefreshingCurrencyDataLoader loader = new();
+        UnitConverter converter = new(loader, loader);
+        TestUnitConverterVMCallback displayCallback = new();
+        converter.SetViewModelCallback(displayCallback);
+
+        var initialSelection = converter.SetCurrentCategory(loader.Category);
+        Unit usd = initialSelection.Item1.Single(unit => unit.Abbreviation == "USD");
+        Unit eur = initialSelection.Item1.Single(unit => unit.Abbreviation == "EUR");
+        converter.SetCurrentUnitTypes(usd, eur);
+        converter.SendCommand(Command.One);
+        displayCallback.CheckDisplayValues("1", "2");
+
+        loader.NextRatio = "3";
+        (bool didLoad, string timestamp) = await converter.RefreshCurrencyRatios();
+
+        Assert.True(didLoad);
+        Assert.Equal("test timestamp", timestamp);
+        displayCallback.CheckDisplayValues("1", "3");
+        var refreshedSelection = converter.SetCurrentCategory(loader.Category);
+        Assert.Equal("USD", refreshedSelection.Item2.Abbreviation);
+        Assert.Equal("EUR", refreshedSelection.Item3.Abbreviation);
+        Assert.NotSame(usd, refreshedSelection.Item2);
+        Assert.NotSame(eur, refreshedSelection.Item3);
+    }
+
+    [Fact]
+    public void LoaderDrivenCurrencyRefreshInvalidatesConverterBeforeForwardingCallback()
+    {
+        TestRefreshingCurrencyDataLoader loader = new();
+        UnitConverter converter = new(loader, loader);
+        TestUnitConverterVMCallback displayCallback = new();
+        TestCurrencyVMCallback currencyCallback = new();
+        converter.SetViewModelCallback(displayCallback);
+        converter.SetViewModelCurrencyCallback(currencyCallback);
+
+        var selection = converter.SetCurrentCategory(loader.Category);
+        converter.SetCurrentUnitTypes(selection.Item2, selection.Item3);
+        converter.SendCommand(Command.One);
+        displayCallback.CheckDisplayValues("1", "2");
+
+        loader.PublishLoaderDrivenRefresh("4");
+
+        displayCallback.CheckDisplayValues("1", "4");
+        Assert.Equal(1, currencyCallback.DataLoadFinishedCount);
+    }
+
+    [Fact]
     public void UnitConverterTestGetters()
     {
         // Check the getter functions
@@ -102,6 +151,38 @@ public sealed class UnitConverterTests : IDisposable
         Assert.Equal(_fixture.TestWeight.Id, currentCategory.Id);
         Assert.Equal(_fixture.TestWeight.Name, currentCategory.Name);
         Assert.Equal(_fixture.TestWeight.SupportsNegative, currentCategory.SupportsNegative);
+    }
+
+    [Theory]
+    [InlineData("2;Feet;Ft;0;0;0;|1;Inches;In;1;1;0;|1;1;Length;|")]
+    [InlineData("2;Feet;Ft;False;False;False;|1;Inches;In;True;True;False;|1;True;Length;|")]
+    public void UnitConverterPreferencesRoundTripBooleanFlags(string preferences)
+    {
+        const string canonical =
+            "2;Feet;Ft;0;0;0;|1;Inches;In;1;1;0;|1;1;Length;|";
+        var converter = new UnitConverter(new TestUnitConverterConfigLoader());
+
+        converter.RestoreUserPreferences(preferences);
+
+        Assert.True(converter.GetCurrentCategory().SupportsNegative);
+        Assert.Equal(canonical, converter.SaveUserPreferences());
+    }
+
+    [Fact]
+    public void UnitConverterRemovedPreferenceCategoryFallsBackToSelectedCategory()
+    {
+        const string preferences =
+            "2;Feet;Ft;0;0;0;|1;Inches;In;1;1;0;|99;0;Removed category;|";
+        var converter = new UnitConverter(new TestUnitConverterConfigLoader());
+        Category length = converter.GetCategories()[0];
+
+        converter.RestoreUserPreferences(preferences);
+        var selection = converter.SetCurrentCategory(length);
+
+        Assert.Equal(length, converter.GetCurrentCategory());
+        Assert.Equal(2, selection.Item1.Count);
+        Assert.Equal(1, selection.Item2.Id);
+        Assert.Equal(1, selection.Item3.Id);
     }
 
     [Fact]

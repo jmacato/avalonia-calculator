@@ -202,4 +202,28 @@ public sealed class CCalcEngineTests : IDisposable
 
         Assert.Equal(expected, k);
     }
+
+    [Fact]
+    public void CalculatorEnginesDoNotShareLastDisplayState()
+    {
+        IResourceProvider resourceProvider = new DefaultResourceProvider();
+        var firstDisplay = new CalculatorManagerDisplayTester();
+        var secondDisplay = new CalculatorManagerDisplayTester();
+        var first = new CalculatorManager(firstDisplay, resourceProvider);
+        var second = new CalculatorManager(secondDisplay, resourceProvider);
+
+        first.SetScientificMode();
+        first.SendCommand(Command.Rad);
+        first.SendCommand(Command.NumPI);
+
+        // Leave the process-wide cache at zero between the first calculator's
+        // PI entry and its unary operation. A shared cache suppresses the first
+        // calculator's result callback and leaves its display stuck on PI.
+        second.SetScientificMode();
+        second.SendCommand(Command.Rad);
+
+        first.SendCommand(Command.Sin);
+
+        Assert.Equal("0", firstDisplay.GetPrimaryDisplay());
+    }
 }

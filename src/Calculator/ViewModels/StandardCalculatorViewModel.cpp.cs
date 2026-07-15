@@ -806,7 +806,7 @@ public partial class StandardCalculatorViewModel
             mode = ViewMode.Standard;
         }
         // if there's nothing to copy early out
-        if (IsEditingEnabled || !CopyPasteManager.HasStringToPaste())
+        if (IsEditingEnabled || !await CopyPasteManager.HasStringToPasteAsync())
         {
             return;
         }

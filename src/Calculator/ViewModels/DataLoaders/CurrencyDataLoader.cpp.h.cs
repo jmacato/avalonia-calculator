@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 using System.Globalization;
+using CalcEngine;
+using CalculatorApp.Services.Settings;
 using CalculatorApp.ViewModel.Common;
 using UCM = UnitConversionManager;
 
@@ -15,7 +17,7 @@ public enum CurrencyLoadStatus
     LoadedFromWeb
 }
 
-public readonly record struct CurrencyUnitMetadata(string Symbol);
+public readonly record struct CurrencyUnitMetadata(string Symbol, int FractionDigits);
 
 public partial class CurrencyDataLoader : UCM.IConverterDataLoader, UCM.ICurrencyConverterDataLoader
 {
@@ -26,6 +28,10 @@ public partial class CurrencyDataLoader : UCM.IConverterDataLoader, UCM.ICurrenc
 
     private readonly ICurrencyRateProvider _rateProvider;
     private readonly ICurrencyNameProvider _nameProvider;
+    private readonly ISettingsStore _settingsStore;
+    private readonly NetworkManager _networkManager = new();
+    private readonly RatPak _ratPak = new(RatPakDecimal.Precision);
+    private readonly NumberFormatInfo _numberFormat;
     private readonly object _currencyUnitsMutex = new();
     private readonly string _cachePath;
     private readonly string _ratioFormat;
@@ -35,19 +41,24 @@ public partial class CurrencyDataLoader : UCM.IConverterDataLoader, UCM.ICurrenc
     private Dictionary<UCM.Unit, Dictionary<UCM.Unit, UCM.ConversionData>> _currencyRatioMap = [];
     private Dictionary<UCM.Unit, CurrencyUnitMetadata> _currencyMetadata = [];
     private UCM.IViewModelCurrencyCallback? _viewModelCallback;
+    private NetworkAccessBehavior _networkAccessBehavior = NetworkAccessBehavior.Normal;
     private CurrencyLoadStatus _loadStatus;
     private DateTimeOffset _cacheTimestamp;
     private Task<bool>? _initialLoadTask;
+    private Task? _automaticRefreshTask;
 
     public CurrencyDataLoader(
         ICurrencyRateProvider? rateProvider = null,
         ICurrencyNameProvider? nameProvider = null,
-        string? cachePath = null)
+        string? cachePath = null,
+        ISettingsStore? settingsStore = null)
     {
         _rateProvider = rateProvider ?? new CurrencyHttpClient();
         _nameProvider = nameProvider ?? new CldrCurrencyNameProvider();
+        _settingsStore = settingsStore ?? new InMemorySettingsStore();
         _cachePath = cachePath ?? GetDefaultCachePath();
         _isRtlLanguage = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
+        _numberFormat = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
 
         AppResourceProvider resources = AppResourceProvider.GetInstance();
         _ratioFormat = resources.GetResourceString("CurrencyFromToRatioFormat");

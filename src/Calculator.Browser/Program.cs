@@ -6,8 +6,11 @@ namespace CalculatorApp.Browser;
 
 internal sealed partial class Program
 {
-    private static Task Main(string[] args) =>
-        BuildAvaloniaApp().StartBrowserAppAsync("out");
+    private static Task Main(string[] args)
+    {
+        App.SettingsStore = BrowserSettingsStore.Create();
+        return BuildAvaloniaApp().StartBrowserAppAsync("out");
+    }
 
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>();

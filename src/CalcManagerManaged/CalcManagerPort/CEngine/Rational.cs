@@ -41,7 +41,7 @@ public class Rational
         }
 
         P = new EngineNumber(n.Sign, 0, n.CDigits, n.Mantissa);
-        Q = new EngineNumber(1, qExp, n.CDigits, [1]);
+        Q = new EngineNumber(1, qExp, 1, [1]);
     }
 
     public Rational(RatPak ratPak, EngineNumber p, EngineNumber q)
@@ -86,8 +86,8 @@ public class Rational
                          new Rational(_ratPak, 32)) |
                         new Rational(_ratPak, lo);
 
-        P = new EngineNumber(temp.P.Sign, 0, temp.P.CDigits, temp.P.Mantissa);
-        Q = new EngineNumber(temp.Q.Sign, 0, temp.Q.CDigits, temp.Q.Mantissa);
+        P = new EngineNumber(temp.P.Sign, temp.P.Exp, temp.P.CDigits, temp.P.Mantissa);
+        Q = new EngineNumber(temp.Q.Sign, temp.Q.Exp, temp.Q.CDigits, temp.Q.Mantissa);
     }
 
     public Rational(RatPak ratPak, PRAT prat)
@@ -98,8 +98,8 @@ public class Rational
         }
 
         _ratPak = ratPak;
-        P = new EngineNumber(prat._pp._sign, 0, prat._pp._cdigit, prat._pp._mant);
-        Q = new EngineNumber(prat._pq._sign, 0, prat._pp._cdigit, prat._pq._mant);
+        P = new EngineNumber(prat._pp);
+        Q = new EngineNumber(prat._pq);
     }
 
     public PRAT ToPRAT()

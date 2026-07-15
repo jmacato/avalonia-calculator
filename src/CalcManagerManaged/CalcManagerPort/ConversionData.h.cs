@@ -9,9 +9,11 @@ namespace UnitConversionManager;
 
 public class ConversionData
 {
-    public double Ratio { get; set; }
+    public string RatioNumerator { get; set; } = "1";
 
-    public double Offset { get; set; }
+    public string RatioDenominator { get; set; } = "1";
+
+    public string Offset { get; set; } = "0";
 
     public bool OffsetFirst { get; set; }
 
@@ -19,9 +21,19 @@ public class ConversionData
     {
     }
 
-    public ConversionData(double ratio, double offset, bool offsetFirst)
+    public ConversionData(string ratio, string offset, bool offsetFirst)
+        : this(ratio, "1", offset, offsetFirst)
     {
-        this.Ratio = ratio;
+    }
+
+    public ConversionData(
+        string ratioNumerator,
+        string ratioDenominator,
+        string offset,
+        bool offsetFirst)
+    {
+        this.RatioNumerator = ratioNumerator;
+        this.RatioDenominator = ratioDenominator;
         this.Offset = offset;
         this.OffsetFirst = offsetFirst;
     }

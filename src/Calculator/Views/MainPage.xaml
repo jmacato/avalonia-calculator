@@ -42,6 +42,7 @@
                          MenuItemTemplateSelector="{StaticResource NavViewMenuItemTemplateSelector}"
                          MenuItemsSource="{CompiledBinding NavViewCategoriesSource}"
                          OpenPaneLength="320"
+                         PaneClosed="OnNavPaneClosed"
                          PaneDisplayMode="LeftMinimal"
                          SelectionChanged="OnNavSelectionChanged">
       <Grid>
@@ -50,7 +51,6 @@
           <Border x:Name="DateCalcHolder" />
           <Border x:Name="GraphingCalcHolder" />
           <Border x:Name="ConverterHolder" />
-          <Border x:Name="SettingsHolder" />
         </Grid>
 
         <Grid Height="{StaticResource HamburgerHeight}"
@@ -65,5 +65,10 @@
         </Grid>
       </Grid>
     </fa:FANavigationView>
+
+    <!-- The WinUI Settings page is hosted in a full-window Popup while the
+         NavigationView is collapsed. Keep that stacking and input scope here
+         instead of placing Settings underneath the navigation chrome. -->
+    <Border x:Name="SettingsHolder" IsVisible="False" />
   </Grid>
 </UserControl>

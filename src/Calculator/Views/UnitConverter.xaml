@@ -3,17 +3,161 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:automation="using:CalculatorApp.ViewModel.Common.Automation"
              xmlns:controls="using:CalculatorApp.Controls"
+             xmlns:fa="using:FluentAvalonia.UI.Controls"
              xmlns:local="using:CalculatorApp"
              xmlns:utils="using:CalculatorApp.Utils"
              xmlns:vm="using:CalculatorApp.ViewModel"
              xmlns:ucm="using:UnitConversionManager"
              x:DataType="vm:UnitConverterViewModel"
              x:CompileBindings="True"
+             FlowDirection="LeftToRight"
              Focusable="True"
              KeyDown="OnKeyDown"
              Loaded="OnLoaded"
              SizeChanged="OnSizeChanged">
+  <UserControl.Resources>
+    <!-- Avalonia has no equivalent of WinUI's TextLineBounds="Full". The
+         23-DIP line box at 14 DIPs preserves the native 37-DIP item pitch. -->
+    <DataTemplate x:Key="UnitTemplate" x:DataType="ucm:Unit">
+      <TextBlock Theme="{StaticResource BodyTextBlockStyle}"
+                 LineHeight="23"
+                 AutomationProperties.Name="{CompiledBinding AccessibleName}"
+                 Text="{CompiledBinding Name}"
+                 TextWrapping="NoWrap" />
+    </DataTemplate>
+
+    <!-- The original keeps a distinct selected-item template because the
+         popup item template cannot safely be reused when SelectedItem is null. -->
+    <DataTemplate x:Key="SelectedUnitTemplate" x:DataType="ucm:Unit">
+      <TextBlock Theme="{StaticResource BodyTextBlockStyle}"
+                 LineHeight="23"
+                 FontWeight="Normal"
+                 AutomationProperties.Name="{CompiledBinding AccessibleName}"
+                 Text="{CompiledBinding Name}"
+                 TextWrapping="NoWrap" />
+    </DataTemplate>
+
+    <!-- Direct translation of the original UnitConverter ComboStyle. -->
+    <ControlTheme x:Key="ConverterComboBoxTheme"
+                  TargetType="controls:ConverterComboBox"
+                  BasedOn="{StaticResource {x:Type ComboBox}}">
+      <Setter Property="Margin" Value="12,0,0,0" />
+      <Setter Property="Padding" Value="4,0,0,0" />
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ConverterComboBoxBorderBrush}" />
+      <Setter Property="BorderThickness" Value="{DynamicResource ConverterComboBoxBorderThemeThickness}" />
+      <Setter Property="KeyboardNavigation.TabNavigation" Value="Once" />
+      <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+      <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+      <Setter Property="ScrollViewer.IsDeferredScrollingEnabled" Value="False" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="ItemsPanel">
+        <ItemsPanelTemplate>
+          <controls:ConverterCarouselPanel />
+        </ItemsPanelTemplate>
+      </Setter>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Grid ColumnDefinitions="Auto,*">
+            <Border x:Name="BackgroundElement"
+                    Grid.ColumnSpan="2"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="{TemplateBinding CornerRadius}" />
+
+            <!-- WinUI requires this presenter by name even though the
+                 converter uses a separately styled selected presenter. -->
+            <ContentPresenter x:Name="ContentPresenter"
+                              Opacity="0" />
+
+            <ContentPresenter x:Name="SelectedContentPresenter"
+                              Grid.Column="0"
+                              Margin="{TemplateBinding Padding}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                              AutomationProperties.AccessibilityView="Raw"
+                              Content="{TemplateBinding SelectedItem}"
+                              ContentTemplate="{StaticResource SelectedUnitTemplate}"
+                              FlowDirection="{TemplateBinding FlowDirection}" />
+
+            <TextBlock x:Name="DropDownGlyph"
+                       Grid.Column="1"
+                       Margin="8,3,12,0"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                       FontFamily="{DynamicResource CalculatorFontFamily}"
+                       FontSize="12"
+                       AutomationProperties.AccessibilityView="Raw"
+                       IsHitTestVisible="False"
+                       Text="&#xE70D;" />
+
+            <Popup x:Name="PART_Popup"
+                   IsOpen="{TemplateBinding IsPopupOpen, Mode=OneWay}"
+                   MinWidth="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}"
+                   MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                   Placement="BottomEdgeAlignedLeft"
+                   PlacementTarget="BackgroundElement"
+                   IsLightDismissEnabled="False"
+                   InheritsTransform="True"
+                   WindowManagerAddShadowHint="False">
+              <Border x:Name="PopupBorder"
+                      Margin="0,-0.5,0,-1"
+                      Padding="{DynamicResource ComboBoxDropdownBorderPadding}"
+                      HorizontalAlignment="Stretch"
+                      Background="{DynamicResource ComboBoxDropDownBackground}"
+                      BorderBrush="{DynamicResource ComboBoxDropDownBorderBrush}"
+                      BorderThickness="{DynamicResource ComboBoxDropdownBorderThickness}"
+                      CornerRadius="{DynamicResource OverlayCornerRadius}"
+                      BackgroundSizing="InnerBorderEdge">
+                <!-- Avalonia has no OptionalSingle value; its one-snap-point
+                     gesture mode is MandatorySingle. -->
+                <ScrollViewer x:Name="ScrollViewer"
+                              HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                              VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}"
+                              AutomationProperties.AccessibilityView="Raw"
+                              IsDeferredScrollingEnabled="{TemplateBinding (ScrollViewer.IsDeferredScrollingEnabled)}"
+                              VerticalSnapPointsAlignment="Near"
+                              VerticalSnapPointsType="MandatorySingle">
+                  <ItemsPresenter x:Name="PART_ItemsPresenter"
+                                  ItemsPanel="{TemplateBinding ItemsPanel}" />
+                </ScrollViewer>
+              </Border>
+            </Popup>
+          </Grid>
+        </ControlTemplate>
+      </Setter>
+
+      <Style Selector="^:pointerover /template/ Border#BackgroundElement">
+        <Setter Property="Background" Value="Transparent" />
+      </Style>
+      <Style Selector="^:pointerover /template/ ContentPresenter#SelectedContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+      </Style>
+      <Style Selector="^:pointerover /template/ TextBlock#DropDownGlyph">
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#BackgroundElement">
+        <Setter Property="Background" Value="Transparent" />
+      </Style>
+      <Style Selector="^:pressed /template/ ContentPresenter#SelectedContentPresenter">
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+      </Style>
+      <Style Selector="^:pressed /template/ TextBlock#DropDownGlyph">
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+      </Style>
+    </ControlTheme>
+  </UserControl.Resources>
   <UserControl.Styles>
+    <Style Selector="ComboBoxItem.touchInput">
+      <Setter Property="Padding" Value="{DynamicResource ComboBoxItemThemeTouchPadding}" />
+    </Style>
     <Style Selector="controls|CalculationResult.converterValue">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
@@ -25,7 +169,6 @@
       <Setter Property="DisplayMargin" Value="0,0,0,4" />
     </Style>
     <Style Selector="TextBlock.currencySymbol">
-      <Setter Property="Padding" Value="12,0,0,0" />
       <Setter Property="FontSize" Value="20" />
       <Setter Property="FontWeight" Value="Light" />
       <Setter Property="VerticalAlignment" Value="Bottom" />
@@ -34,10 +177,19 @@
       <Setter Property="FontSize" Value="13" />
       <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
     </Style>
-    <Style Selector="ComboBox.unitPicker">
-      <Setter Property="Margin" Value="12,0" />
-      <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="MinHeight" Value="32" />
+    <Style Selector="TextBlock.currencyTimestamp.fresh">
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+      <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style Selector="TextBlock.currencyTimestamp.stale">
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.currencySecondaryStatus.failed">
+      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+    </Style>
+    <Style Selector="controls|ConverterComboBox.unitPicker">
+      <Setter Property="Theme" Value="{StaticResource ConverterComboBoxTheme}" />
     </Style>
   </UserControl.Styles>
 
@@ -62,109 +214,134 @@
       <ColumnDefinition Width="0" />
     </Grid.ColumnDefinitions>
 
-    <Grid x:Name="Value1Container"
+    <!-- Direct port of CurrencyLoadingGrid and its ProgressRing. The loaded
+         converter remains laid out underneath so the responsive rows do not
+         jump while a refresh is in flight. -->
+    <Grid x:Name="CurrencyLoadingGrid"
           Grid.Row="1"
-          Grid.Column="1">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock x:Name="CurrencySymbol1Block"
-                   Grid.Column="0"
-                   Classes="currencySymbol"
-                   Padding="16,0,0,0"
-                   Margin="0,0,0,8"
-                   AutomationProperties.AccessibilityView="Raw"
-                   IsVisible="{CompiledBinding HasCurrencySymbols}"
-                   Text="{CompiledBinding CurrencySymbol1}" />
-        <controls:CalculationResult x:Name="Value1"
-                                    Grid.Column="1"
-                                    Classes="converterValue"
-                                    AutomationProperties.AutomationId="Value1"
-                                    AutomationProperties.LiveSetting="Assertive"
-                                    AutomationProperties.Name="{CompiledBinding Value1AutomationName}"
-                                    DisplayValue="{CompiledBinding Value1}"
-                                    IsActive="{CompiledBinding Value1Active, Mode=TwoWay}"
-                                    Selected="OnValueSelected">
-          <controls:CalculationResult.ContextMenu>
-            <ContextMenu>
-              <MenuItem Header="{utils:ResourceString Name='copyMenuItem'}"
-                        Command="{CompiledBinding CopyCommand}" />
-              <MenuItem Header="{utils:ResourceString Name='pasteMenuItem'}"
-                        Command="{CompiledBinding PasteCommand}" />
-            </ContextMenu>
-          </controls:CalculationResult.ContextMenu>
-        </controls:CalculationResult>
-      </Grid>
+          Grid.RowSpan="5"
+          Grid.ColumnSpan="4"
+          ZIndex="2">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="10*" />
+        <RowDefinition Height="7*" />
+        <RowDefinition Height="10*" />
+      </Grid.RowDefinitions>
+      <fa:FAProgressRing x:Name="CurrencyLoadingProgressRing"
+                         Grid.Row="1"
+                         Width="NaN"
+                         Height="NaN"
+                         MaxWidth="140"
+                         MaxHeight="140"
+                         HorizontalAlignment="Stretch"
+                         VerticalAlignment="Stretch"
+                         IsActive="False" />
     </Grid>
 
-    <ComboBox x:Name="Units1"
-              Grid.Row="2"
-              Grid.Column="1"
-              Classes="unitPicker"
-              ItemsSource="{CompiledBinding Units}"
-              IsEnabled="{CompiledBinding IsDropDownEnabled}"
-              SelectedItem="{CompiledBinding Unit1, Mode=TwoWay}"
-              DropDownOpened="OnDropDownOpened"
-              DropDownClosed="OnDropDownClosed"
-              AutomationProperties.AutomationId="Units1"
-              AutomationProperties.Name="{CompiledBinding Unit1AutomationName}">
-      <ComboBox.ItemTemplate>
-        <DataTemplate x:DataType="ucm:Unit">
-          <TextBlock Text="{CompiledBinding Name}"
-                     AutomationProperties.Name="{CompiledBinding AccessibleName}" />
-        </DataTemplate>
-      </ComboBox.ItemTemplate>
-    </ComboBox>
+    <Grid x:Name="Value1Container"
+          Grid.Row="1"
+          Grid.Column="1"
+          HorizontalAlignment="Left"
+          AutomationProperties.AccessibilityView="Raw"
+          ColumnDefinitions="Auto,*,Auto">
+      <TextBlock x:Name="CurrencySymbol1Block"
+                 Grid.Column="0"
+                 Classes="currencySymbol"
+                 Padding="16,0,8,0"
+                 Margin="0,0,0,8"
+                 AutomationProperties.AccessibilityView="Raw"
+                 IsVisible="{CompiledBinding HasDisplayUnit1}"
+                 Text="{CompiledBinding DisplayUnit1}" />
+      <controls:CalculationResult x:Name="Value1"
+                                  Grid.Column="1"
+                                  Classes="converterValue"
+                                  AutomationProperties.AutomationId="Value1"
+                                  AutomationProperties.Name="{CompiledBinding Value1AutomationName}"
+                                  ContextRequested="OnResultContextRequested"
+                                  DisplayValue="{CompiledBinding Value1}"
+                                  IsActive="{CompiledBinding Value1Active, Mode=TwoWay}"
+                                  Selected="OnValueSelected"
+                                  TabIndex="1">
+        <controls:CalculationResult.ContextMenu>
+          <ContextMenu Closed="OnResultContextMenuClosed">
+            <MenuItem Header="{utils:ResourceString Name='copyMenuItem'}"
+                      AutomationProperties.AutomationId="Value1CopyMenuItem"
+                      Click="OnCopyMenuItemClicked" />
+            <MenuItem Header="{utils:ResourceString Name='pasteMenuItem'}"
+                      AutomationProperties.AutomationId="Value1PasteMenuItem"
+                      Classes="paste"
+                      Click="OnPasteMenuItemClicked" />
+          </ContextMenu>
+        </controls:CalculationResult.ContextMenu>
+      </controls:CalculationResult>
+    </Grid>
+
+    <controls:ConverterComboBox x:Name="Units1"
+                                Grid.Row="2"
+                                Grid.Column="1"
+                                Classes="unitPicker"
+                                ItemsSource="{CompiledBinding Units}"
+                                ItemTemplate="{StaticResource UnitTemplate}"
+                                IsEnabled="{CompiledBinding IsDropDownEnabled}"
+                                SelectedItem="{CompiledBinding Unit1, Mode=TwoWay}"
+                                DropDownOpened="UpdateDropDownState"
+                                DropDownClosed="UpdateDropDownState"
+                                AutomationProperties.AutomationId="Units1"
+                                AutomationProperties.Name="{CompiledBinding Unit1AutomationName}"
+                                TabIndex="2" />
 
     <Grid x:Name="Value2Container"
           Grid.Row="3"
-          Grid.Column="1">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <TextBlock x:Name="CurrencySymbol2Block"
-                   Grid.Column="0"
-                   Classes="currencySymbol"
-                   Padding="16,0,0,0"
-                   Margin="0,0,0,8"
-                   AutomationProperties.AccessibilityView="Raw"
-                   IsVisible="{CompiledBinding HasCurrencySymbols}"
-                   Text="{CompiledBinding CurrencySymbol2}" />
-        <controls:CalculationResult x:Name="Value2"
-                                    Grid.Column="1"
-                                    Classes="converterValue"
-                                    AutomationProperties.AutomationId="Value2"
-                                    AutomationProperties.LiveSetting="Polite"
-                                    AutomationProperties.Name="{CompiledBinding Value2AutomationName}"
-                                    DisplayValue="{CompiledBinding Value2}"
-                                    IsActive="{CompiledBinding Value2Active, Mode=TwoWay}"
-                                    Selected="OnValueSelected">
-          <controls:CalculationResult.ContextMenu>
-            <ContextMenu>
-              <MenuItem Header="{utils:ResourceString Name='copyMenuItem'}"
-                        Command="{CompiledBinding CopyCommand}" />
-              <MenuItem Header="{utils:ResourceString Name='pasteMenuItem'}"
-                        Command="{CompiledBinding PasteCommand}" />
-            </ContextMenu>
-          </controls:CalculationResult.ContextMenu>
-        </controls:CalculationResult>
-      </Grid>
+          Grid.Column="1"
+          HorizontalAlignment="Left"
+          AutomationProperties.AccessibilityView="Raw"
+          ColumnDefinitions="Auto,*,Auto">
+      <TextBlock x:Name="CurrencySymbol2Block"
+                 Grid.Column="0"
+                 Classes="currencySymbol"
+                 Padding="16,0,8,0"
+                 Margin="0,0,0,8"
+                 AutomationProperties.AccessibilityView="Raw"
+                 IsVisible="{CompiledBinding HasDisplayUnit2}"
+                 Text="{CompiledBinding DisplayUnit2}" />
+      <controls:CalculationResult x:Name="Value2"
+                                  Grid.Column="1"
+                                  Classes="converterValue"
+                                  AutomationProperties.AutomationId="Value2"
+                                  AutomationProperties.LiveSetting="Polite"
+                                  AutomationProperties.Name="{CompiledBinding Value2AutomationName}"
+                                  ContextRequested="OnResultContextRequested"
+                                  DisplayValue="{CompiledBinding Value2}"
+                                  IsActive="{CompiledBinding Value2Active, Mode=TwoWay}"
+                                  Selected="OnValueSelected"
+                                  TabIndex="3">
+        <controls:CalculationResult.ContextMenu>
+          <ContextMenu Closed="OnResultContextMenuClosed">
+            <MenuItem Header="{utils:ResourceString Name='copyMenuItem'}"
+                      AutomationProperties.AutomationId="Value2CopyMenuItem"
+                      Click="OnCopyMenuItemClicked" />
+            <MenuItem Header="{utils:ResourceString Name='pasteMenuItem'}"
+                      AutomationProperties.AutomationId="Value2PasteMenuItem"
+                      Classes="paste"
+                      Click="OnPasteMenuItemClicked" />
+          </ContextMenu>
+        </controls:CalculationResult.ContextMenu>
+      </controls:CalculationResult>
     </Grid>
 
-    <ComboBox x:Name="Units2"
-              Grid.Row="4"
-              Grid.Column="1"
-              Classes="unitPicker"
-              ItemsSource="{CompiledBinding Units}"
-              IsEnabled="{CompiledBinding IsDropDownEnabled}"
-              SelectedItem="{CompiledBinding Unit2, Mode=TwoWay}"
-              DropDownOpened="OnDropDownOpened"
-              DropDownClosed="OnDropDownClosed"
-              AutomationProperties.AutomationId="Units2"
-              AutomationProperties.Name="{CompiledBinding Unit2AutomationName}">
-      <ComboBox.ItemTemplate>
-        <DataTemplate x:DataType="ucm:Unit">
-          <TextBlock Text="{CompiledBinding Name}"
-                     AutomationProperties.Name="{CompiledBinding AccessibleName}" />
-        </DataTemplate>
-      </ComboBox.ItemTemplate>
-    </ComboBox>
+    <controls:ConverterComboBox x:Name="Units2"
+                                Grid.Row="4"
+                                Grid.Column="1"
+                                Classes="unitPicker"
+                                ItemsSource="{CompiledBinding Units}"
+                                ItemTemplate="{StaticResource UnitTemplate}"
+                                IsEnabled="{CompiledBinding IsDropDownEnabled}"
+                                SelectedItem="{CompiledBinding Unit2, Mode=TwoWay}"
+                                DropDownOpened="UpdateDropDownState"
+                                DropDownClosed="UpdateDropDownState"
+                                AutomationProperties.AutomationId="Units2"
+                                AutomationProperties.Name="{CompiledBinding Unit2AutomationName}"
+                                TabIndex="4" />
 
     <StackPanel x:Name="SupplementaryResultsPanelInGrid"
                 Grid.Row="5"
@@ -180,24 +357,67 @@
                                   Results="{CompiledBinding SupplementaryResults}"
                                   IsVisible="{CompiledBinding HasSupplementaryResults}" />
       <StackPanel IsVisible="{CompiledBinding IsCurrencyCurrentCategory}">
-        <TextBlock Margin="16,0,0,0"
-                   Classes="caption"
-                   Text="{CompiledBinding CurrencyRatioEquality}" />
-        <TextBlock Margin="16,0,0,0"
-                   Classes="caption"
-                   Text="{CompiledBinding CurrencyTimestamp}" />
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <Button x:Name="CurrencyRefreshButton"
-                  Margin="0,4,0,0"
-                  Padding="4,0"
-                  Command="{CompiledBinding RefreshCurrencyCommand}"
-                  IsEnabled="{CompiledBinding !IsCurrencyLoadingVisible}"
-                  AutomationProperties.AutomationId="CurrencyRefreshButton"
-                  Content="{utils:ResourceString Name='RefreshButtonText.Content'}" />
-          <ProgressBar Width="88"
-                       IsIndeterminate="True"
-                       IsVisible="{CompiledBinding IsCurrencyLoadingVisible}" />
-        </StackPanel>
+          <TextBlock x:Name="CurrencyRatioEqualityBlock"
+                     Margin="16,0,0,0"
+                     Classes="caption"
+                     AutomationProperties.Name="{CompiledBinding CurrencyRatioEqualityAutomationName}"
+                     Text="{CompiledBinding CurrencyRatioEquality}" />
+          <TextBlock x:Name="CurrencyTimestampTextBlock"
+                     Margin="16,0,0,0"
+                     Classes="caption currencyTimestamp"
+                     Classes.stale="{CompiledBinding CurrencyDataIsWeekOld}"
+                     Text="{CompiledBinding CurrencyTimestamp}" />
+          <StackPanel x:Name="CurrencyRefreshBlockControl"
+                      Orientation="Horizontal">
+            <HyperlinkButton x:Name="CurrencyRefreshBlock"
+                             Margin="16,4,0,0"
+                             Padding="0"
+                             Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Click="CurrencyRefreshButton_Click"
+                             AutomationProperties.AutomationId="CurrencyRefreshBlock"
+                             TabIndex="5"
+                             Content="{utils:ResourceString Name='RefreshButtonText.Content'}">
+              <HyperlinkButton.Resources>
+                <SolidColorBrush x:Key="HyperlinkButtonBackgroundPointerOver" Color="Transparent" />
+                <SolidColorBrush x:Key="HyperlinkButtonBackgroundPressed" Color="Transparent" />
+              </HyperlinkButton.Resources>
+            </HyperlinkButton>
+            <TextBlock x:Name="CurrencySecondaryStatus"
+                       Margin="3,6,0,0"
+                       Classes="caption currencySecondaryStatus"
+                       Classes.failed="{CompiledBinding CurrencyDataLoadFailed}" />
+          </StackPanel>
+          <WrapPanel x:Name="OfflineBlock"
+                     Margin="16,4,0,0"
+                     IsVisible="False"
+                     Orientation="Horizontal">
+            <TextBlock x:Name="OfflineRunBeforeLink"
+                       Classes="caption"
+                       AutomationProperties.AccessibilityView="Raw"
+                       VerticalAlignment="Center" />
+            <HyperlinkButton x:Name="OfflineNetworkSettingsButton"
+                             Margin="3,0,0,0"
+                             Padding="0"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             TabIndex="5">
+              <TextBlock x:Name="OfflineRunLink"
+                         Classes="caption"
+                         AutomationProperties.AccessibilityView="Raw"
+                         Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+              <HyperlinkButton.Resources>
+                <SolidColorBrush x:Key="HyperlinkButtonBackgroundPointerOver" Color="Transparent" />
+                <SolidColorBrush x:Key="HyperlinkButtonBackgroundPressed" Color="Transparent" />
+              </HyperlinkButton.Resources>
+            </HyperlinkButton>
+            <TextBlock x:Name="OfflineRunAfterLink"
+                       Margin="3,0,0,0"
+                       Classes="caption"
+                       AutomationProperties.AccessibilityView="Raw"
+                       VerticalAlignment="Center" />
+          </WrapPanel>
       </StackPanel>
     </StackPanel>
 
@@ -205,25 +425,34 @@
           Grid.Row="6"
           Grid.Column="1"
           Margin="3,0,3,3"
+          RenderTransformOrigin="50%,50%"
+          XYFocus.NavigationModes="Enabled"
           RowDefinitions="*,*,*,*,*"
           ColumnDefinitions="*,*,*">
+      <Grid.RenderTransform>
+        <ScaleTransform />
+      </Grid.RenderTransform>
       <Grid Grid.Column="1"
             Grid.ColumnSpan="2"
+            AutomationProperties.HeadingLevel="1"
+            AutomationProperties.Name="{utils:ResourceString Name='DisplayControls.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
             ColumnDefinitions="*,*">
         <controls:CalculatorButton x:Name="ClearEntryButtonPos0"
                                    Classes="operator"
-                                   AutomationProperties.AutomationId="clearEntryButton"
+                                   AutomationProperties.AutomationId="ClearEntryButtonPos0"
                                    AutomationProperties.Name="{utils:ResourceString Name='clearEntryButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
                                    ButtonId="Clear"
-                                   Content="CE" />
+                                   Content="CE"
+                                   TabIndex="7" />
         <controls:CalculatorButton x:Name="BackSpaceButtonSmall"
                                    Grid.Column="1"
                                    Classes="operator symbol"
                                    FontFamily="{DynamicResource CalculatorFontFamily}"
-                                   AutomationProperties.AutomationId="backSpaceButton"
+                                   AutomationProperties.AutomationId="BackSpaceButtonSmall"
                                    AutomationProperties.Name="{utils:ResourceString Name='backSpaceButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
                                    ButtonId="Backspace"
-                                   Content="&#xE94F;" />
+                                   Content="&#xE94F;"
+                                   TabIndex="8" />
       </Grid>
 
       <local:NumberPad x:Name="NumberPad"
@@ -232,16 +461,20 @@
                        Grid.ColumnSpan="3"
                        IsDecimalEnabled="{CompiledBinding IsDecimalEnabled}"
                        AutomationProperties.AutomationId="NumberPad"
-                       AutomationProperties.Name="{utils:ResourceString Name='NumberPad.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}" />
+                       AutomationProperties.HeadingLevel="1"
+                       AutomationProperties.Name="{utils:ResourceString Name='NumberPad.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                       KeyboardNavigation.TabNavigation="Local"
+                       TabIndex="10" />
       <controls:CalculatorButton x:Name="ConverterNegateButton"
                                  Grid.Row="4"
                                  Classes="operator symbol"
                                  FontFamily="{DynamicResource CalculatorFontFamily}"
                                  IsVisible="{CompiledBinding CanNegate}"
-                                 AutomationProperties.AutomationId="converterNegateButton"
+                                 AutomationProperties.AutomationId="ConverterNegateButton"
                                  AutomationProperties.Name="{utils:ResourceString Name='converterNegateButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
                                  ButtonId="Negate"
                                  Content="&#xF898;"
+                                 TabIndex="6"
                                  ZIndex="2" />
     </Grid>
 

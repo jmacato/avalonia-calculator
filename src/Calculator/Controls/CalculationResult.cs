@@ -38,6 +38,7 @@ public sealed class CalculationResult : TemplatedControl
     private const double WidthToFontOffset = 3;
     private const double WidthCutoff = 50;
     private const double FontTolerance = 0.001;
+    private const double TextFitTolerance = 0.5;
     private const double ScrollRatio = 0.7;
     private const double ScrollButtonsApproximationRange = 4;
 
@@ -152,25 +153,28 @@ public sealed class CalculationResult : TemplatedControl
             return;
         }
 
+        // External state changes restart the sizing pass. Only LayoutUpdated
+        // advances it, after Avalonia has measured the requested font. This
+        // prevents focus, font-weight, and viewport changes from consuming a
+        // pass with stale bounds.
+        _textBlock.Text = DisplayValue;
+        _textBlock.FontSize = MaxFontSize;
+        _textContainer.Padding = default;
+        _isScalingText = true;
+        _haveCalculatedMax = false;
+        _textBlock.InvalidateMeasure();
+    }
+
+    private void ContinueTextScaling()
+    {
+        if (!_isScalingText || _textContainer is null || _textBlock is null)
+        {
+            return;
+        }
+
         double containerSize = _textContainer.Viewport.Width > 0
             ? _textContainer.Viewport.Width
             : _textContainer.Bounds.Width;
-        string oldText = _textBlock.Text ?? string.Empty;
-        string newText = DisplayValue;
-
-        // Preserve the original iterative layout algorithm. A new value first
-        // resets to the requested maximum; subsequent layout passes converge
-        // on the largest font that fits the viewport.
-        if (!_isScalingText || oldText != newText)
-        {
-            _textBlock.Text = newText;
-            _textBlock.FontSize = Math.Clamp(FontSize, MinFontSize, MaxFontSize);
-            _textContainer.Padding = default;
-            _isScalingText = true;
-            _haveCalculatedMax = false;
-            _textBlock.InvalidateMeasure();
-            return;
-        }
 
         if (containerSize <= 0)
         {
@@ -192,7 +196,7 @@ public sealed class CalculationResult : TemplatedControl
                 MaxFontIncrement);
         }
 
-        if (textWidth < containerSize
+        if (textWidth < containerSize - TextFitTolerance
             && Math.Abs(_textBlock.FontSize - MaxFontSize) > FontTolerance
             && !_haveCalculatedMax)
         {
@@ -206,7 +210,7 @@ public sealed class CalculationResult : TemplatedControl
             _haveCalculatedMax = true;
         }
 
-        if (textWidth >= containerSize
+        if (textWidth > containerSize + TextFitTolerance
             && Math.Abs(_textBlock.FontSize - MinFontSize) > FontTolerance)
         {
             ModifyFontAndMargin(-fontSizeChange);
@@ -346,16 +350,22 @@ public sealed class CalculationResult : TemplatedControl
         }
     }
 
-    private void OnTextContainerSizeChanged(object? sender, SizeChangedEventArgs e) => UpdateTextState();
+    private void OnTextContainerSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        // A completed pass must restart for a genuine viewport change. During
+        // an active pass, however, the text itself can resize an auto-sized
+        // converter container; restarting there would oscillate indefinitely.
+        if (!_isScalingText)
+        {
+            UpdateTextState();
+        }
+    }
 
     private void OnTextBlockSizeChanged(object? sender, SizeChangedEventArgs e) => UpdateScrollButtons();
 
     private void OnTextContainerLayoutUpdated(object? sender, EventArgs e)
     {
-        if (_isScalingText)
-        {
-            UpdateTextState();
-        }
+        ContinueTextScaling();
     }
 
     private void OnTextContainerScrollChanged(object? sender, ScrollChangedEventArgs e) => UpdateScrollButtons();

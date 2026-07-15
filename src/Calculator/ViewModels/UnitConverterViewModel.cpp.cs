@@ -3,6 +3,8 @@
 
 using System.Globalization;
 using System.Text;
+using Avalonia.Threading;
+using CalculatorApp.Services.Settings;
 using CalculatorApp.ViewModel.Common;
 using CalculatorApp.ViewModel.DataLoaders;
 using UCM = UnitConversionManager;
@@ -12,16 +14,30 @@ namespace CalculatorApp.ViewModel;
 public partial class UnitConverterViewModel
 {
     public UnitConverterViewModel(UCM.IUnitConverter model)
+        : this(model, App.SettingsStore)
+    {
+    }
+
+    public UnitConverterViewModel(UCM.IUnitConverter model, ISettingsStore settingsStore)
     {
         _model = model;
+        _settingsStore = settingsStore;
         _numberFormat = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
 
         AppResourceProvider resources = AppResourceProvider.GetInstance();
         _localizedValueFromFormat = resources.GetResourceString(UnitConverterResourceKeys.ValueFromFormat);
+        _localizedValueFromDecimalFormat =
+            resources.GetResourceString(UnitConverterResourceKeys.ValueFromDecimalFormat);
         _localizedValueToFormat = resources.GetResourceString(UnitConverterResourceKeys.ValueToFormat);
         _localizedConversionResultFormat = resources.GetResourceString(UnitConverterResourceKeys.ConversionResultFormat);
         Unit1AutomationName = resources.GetResourceString(UnitConverterResourceKeys.InputUnitName);
         Unit2AutomationName = resources.GetResourceString(UnitConverterResourceKeys.OutputUnitName);
+
+        _supplementaryResultsTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(10)
+        };
+        _supplementaryResultsTimer.Tick += SupplementaryResultsTimerTick;
 
         CategoryChanged = new DelegateCommand(_ => ResetCategory());
         UnitChanged = new DelegateCommand(_ => ApplySelectedUnits());
@@ -35,11 +51,25 @@ public partial class UnitConverterViewModel
         _model.SetViewModelCurrencyCallback(new ViewModelCurrencyCallback(this));
         _model.Initialize();
         _model.ResetCategoriesAndRatios();
+        _settingsStore.Changed += OnSettingsChanged;
         InitializeView();
     }
 
     public UnitConverterViewModel()
-        : this(new UCM.UnitConverter(new UnitConverterDataLoader(), new CurrencyDataLoader()))
+        : this(
+            new UCM.UnitConverter(
+                new UnitConverterDataLoader(),
+                new CurrencyDataLoader(settingsStore: App.SettingsStore)),
+            App.SettingsStore)
+    {
+    }
+
+    public UnitConverterViewModel(ISettingsStore settingsStore)
+        : this(
+            new UCM.UnitConverter(
+                new UnitConverterDataLoader(),
+                new CurrencyDataLoader(settingsStore: settingsStore)),
+            settingsStore)
     {
     }
 
@@ -51,6 +81,7 @@ public partial class UnitConverterViewModel
             Categories.Add(new Category(category));
         }
 
+        RestoreUserPreferences();
         UCM.Category modelCategory = _model.GetCurrentCategory();
         CurrentCategory = Categories.FirstOrDefault(category =>
             category.GetModelCategoryId() == modelCategory.Id) ?? Categories.FirstOrDefault();
@@ -87,17 +118,22 @@ public partial class UnitConverterViewModel
                                     NavCategoryStates.Serialize(ViewMode.Currency);
         OnPropertyChanged(nameof(CurrentCategory));
         OnPropertyChanged(nameof(CanNegate));
+        UpdateDisplayedUnits();
         ResetCategory();
     }
 
-    private void ResetCategory()
+    private void ResetCategory(bool clearInput = true)
     {
         if (CurrentCategory is null)
         {
             return;
         }
 
-        _model.SendCommand(UCM.Command.Clear);
+        if (clearInput)
+        {
+            _model.SendCommand(UCM.Command.Clear);
+        }
+
         _isChangingCategory = true;
         var selection = _model.SetCurrentCategory(CurrentCategory.GetModelCategory());
 
@@ -118,8 +154,8 @@ public partial class UnitConverterViewModel
         UnitFrom = FindUnit(selection.Item2);
         UnitTo = FindUnit(selection.Item3);
         _isChangingCategory = false;
+        IsCurrencyLoadingVisible = IsCurrencyCurrentCategory && !_isCurrencyDataLoaded;
         IsDropDownEnabled = Units[0] != UCM.Unit.EmptyUnit;
-        IsCurrencyLoadingVisible = IsCurrencyCurrentCategory && !IsDropDownEnabled;
         ApplySelectedUnits();
     }
 
@@ -135,6 +171,7 @@ public partial class UnitConverterViewModel
 
         field = value;
         OnPropertyChanged(propertyName);
+        UpdateDisplayedUnits();
         UpdateAutomationNames();
         if (!_isChangingCategory)
         {
@@ -150,7 +187,102 @@ public partial class UnitConverterViewModel
             return;
         }
 
+        UpdateCurrencyFormatter();
         _model.SetCurrentUnitTypes(UnitFrom, UnitTo);
+        UpdateIsDecimalEnabled();
+
+        // Unit changes finalize the conversion, so expose the last cached
+        // suggestions immediately instead of waiting for the debounce tick.
+        if (_supplementaryResultsTimer.IsEnabled)
+        {
+            _supplementaryResultsTimer.Stop();
+            RefreshSupplementaryResults();
+        }
+
+        SaveUserPreferences();
+    }
+
+    private void SaveUserPreferences()
+    {
+        if (UnitFrom is null || UnitTo is null ||
+            UnitFrom == UCM.Unit.EmptyUnit || UnitTo == UCM.Unit.EmptyUnit)
+        {
+            return;
+        }
+
+        if (IsCurrencyCurrentCategory)
+        {
+            string from = UnitFrom.Abbreviation;
+            string to = UnitTo.Abbreviation;
+            _settingsStore.Update(settings => settings with
+            {
+                CurrencyUnitFrom = from,
+                CurrencyUnitTo = to
+            });
+        }
+        else
+        {
+            string preferences = _model.SaveUserPreferences();
+            _settingsStore.Update(settings => settings with
+            {
+                UnitConverterPreferences = preferences
+            });
+        }
+    }
+
+    private void RestoreUserPreferences()
+    {
+        string preferences = _settingsStore.Current.UnitConverterPreferences;
+        if (string.IsNullOrEmpty(preferences))
+        {
+            return;
+        }
+
+        try
+        {
+            _model.RestoreUserPreferences(preferences);
+        }
+        catch (Exception exception) when (
+            exception is FormatException or ArgumentException or IndexOutOfRangeException)
+        {
+            TraceLogger.GetInstance().LogPlatformException(
+                Mode,
+                nameof(RestoreUserPreferences),
+                exception);
+            _settingsStore.Update(settings => settings with
+            {
+                UnitConverterPreferences = string.Empty
+            });
+        }
+    }
+
+    private void UpdateCurrencyFormatter()
+    {
+        if (!IsCurrencyCurrentCategory || UnitFrom is null || UnitTo is null ||
+            string.IsNullOrEmpty(UnitFrom.Abbreviation) ||
+            string.IsNullOrEmpty(UnitTo.Abbreviation))
+        {
+            return;
+        }
+
+        UpdateIsDecimalEnabled();
+        int fractionDigits =
+            CldrCurrencyNameProvider.GetFractionDigits(UnitFrom.Abbreviation);
+        OnPaste(TruncateFractionDigits(_unlocalizedValueFrom, fractionDigits));
+    }
+
+    private static string TruncateFractionDigits(string number, int digitCount)
+    {
+        int decimalPosition = number.IndexOf('.');
+        if (decimalPosition < 0)
+        {
+            return number;
+        }
+
+        int actualDigitCount = number.Length - decimalPosition - 1;
+        return actualDigitCount <= digitCount
+            ? number
+            : number[..(number.Length - (actualDigitCount - digitCount))];
     }
 
     private void SetValueActive(ConversionParameter position, bool value)
@@ -179,11 +311,11 @@ public partial class UnitConverterViewModel
 
     private void OnSwitchActive()
     {
-        string newInput = _value1Parameter == ConversionParameter.Source
-            ? ToInvariant(Value2)
-            : ToInvariant(Value1);
+        if (_unlocalizedValueFrom.EndsWith(".", StringComparison.Ordinal))
+        {
+            ValueFrom = FormatDisplayNumber(_unlocalizedValueFrom[..^1], UnitFrom);
+        }
 
-        _model.SwitchActive(string.IsNullOrWhiteSpace(newInput) ? "0" : newInput);
         _value1Parameter = _value1Parameter == ConversionParameter.Source
             ? ConversionParameter.Target
             : ConversionParameter.Source;
@@ -193,6 +325,17 @@ public partial class UnitConverterViewModel
         SetProperty(ref _value2Active,
             _value1Parameter == ConversionParameter.Target,
             nameof(Value2Active));
+
+        (_unlocalizedValueFrom, _unlocalizedValueTo) =
+            (_unlocalizedValueTo, _unlocalizedValueFrom);
+        (Unit1AutomationName, Unit2AutomationName) =
+            (Unit2AutomationName, Unit1AutomationName);
+
+        _isInputBlocked = false;
+        _model.SwitchActive(string.IsNullOrWhiteSpace(_unlocalizedValueFrom)
+            ? "0"
+            : _unlocalizedValueFrom);
+        UpdateIsDecimalEnabled();
         UpdateAutomationNames();
     }
 
@@ -202,6 +345,14 @@ public partial class UnitConverterViewModel
             CalculatorButtonPressedEventArgs.GetOperationFromCommandParameter(parameter);
         UCM.Command command = CommandFromButtonId(operation);
         if (command == UCM.Command.Clear && IsDropDownOpen)
+        {
+            return;
+        }
+
+        // Input should be allowed immediately after switching the active value,
+        // because the converter engine clears the switched value in that case.
+        if (_isInputBlocked && !_model.IsSwitchedActive() &&
+            command != UCM.Command.Clear && command != UCM.Command.Backspace)
         {
             return;
         }
@@ -233,31 +384,63 @@ public partial class UnitConverterViewModel
     {
         _unlocalizedValueFrom = from;
         _unlocalizedValueTo = to;
-        ValueFrom = LocalizeNumber(from);
-        ValueTo = LocalizeNumber(to);
+        UpdateInputBlocked(from);
+        ValueFrom = FormatDisplayNumber(from, UnitFrom);
+        ValueTo = FormatDisplayNumber(to, UnitTo);
         UpdateAutomationNames();
 
+        AnnounceConversionResult(from, to);
+    }
+
+    private void AnnounceConversionResult(string from, string to)
+    {
         if (UnitFrom is not null && UnitTo is not null &&
+            (from != _lastAnnouncedFrom || to != _lastAnnouncedTo) &&
             !(from == "0" && to == "0"))
         {
-            string announcement = LocalizationStringUtil.GetLocalizedString(
+            _lastAnnouncedFrom = from;
+            _lastAnnouncedTo = to;
+            _lastAnnouncedConversionResult = LocalizationStringUtil.GetLocalizedString(
                 _localizedConversionResultFormat,
                 ValueFrom,
                 UnitFrom.Name,
                 ValueTo,
                 UnitTo.Name);
             Announcement = Common.Automation.NarratorAnnouncement
-                .GetDisplayUpdatedAnnouncement(announcement);
+                .GetDisplayUpdatedAnnouncement(_lastAnnouncedConversionResult);
         }
     }
 
     public void UpdateSupplementaryResults(IList<(string, UCM.Unit)> suggestedValues)
     {
+        lock (_supplementaryResultsCacheLock)
+        {
+            _cachedSuggestedValues = [.. suggestedValues];
+        }
+
+        _supplementaryResultsTimer.Stop();
+        _supplementaryResultsTimer.Start();
+    }
+
+    private void SupplementaryResultsTimerTick(object? sender, EventArgs eventArgs)
+    {
+        _supplementaryResultsTimer.Stop();
+        RefreshSupplementaryResults();
+    }
+
+    private void RefreshSupplementaryResults()
+    {
+        List<(string Value, UCM.Unit Unit)> suggestedValues;
+        lock (_supplementaryResultsCacheLock)
+        {
+            suggestedValues = [.. _cachedSuggestedValues];
+        }
+
         SupplementaryResults.Clear();
         SupplementaryResult? whimsical = null;
         foreach ((string value, UCM.Unit unit) in suggestedValues)
         {
-            SupplementaryResult result = new(LocalizeNumber(value), unit);
+            SupplementaryResult result = new(FormatDisplayNumber(value, unit), unit);
             if (result.IsWhimsical())
             {
                 whimsical ??= result;
@@ -281,26 +464,119 @@ public partial class UnitConverterViewModel
     {
         string unit1Name = Unit1?.AccessibleName ?? string.Empty;
         string unit2Name = Unit2?.AccessibleName ?? string.Empty;
-        Value1AutomationName = LocalizationStringUtil.GetLocalizedString(
-            Value1Active ? _localizedValueFromFormat : _localizedValueToFormat,
+        Value1AutomationName = GetLocalizedAutomationName(
             Value1,
-            unit1Name);
-        Value2AutomationName = LocalizationStringUtil.GetLocalizedString(
-            Value2Active ? _localizedValueFromFormat : _localizedValueToFormat,
+            unit1Name,
+            Value1Active);
+        Value2AutomationName = GetLocalizedAutomationName(
             Value2,
-            unit2Name);
+            unit2Name,
+            Value2Active);
     }
 
-    private string LocalizeNumber(string value)
+    private string GetLocalizedAutomationName(
+        string displayValue,
+        string unitName,
+        bool isSource)
     {
-        string separator = _numberFormat.NumberDecimalSeparator;
-        return separator == "." ? value : value.Replace(".", separator, StringComparison.Ordinal);
+        string format = isSource ? _localizedValueFromFormat : _localizedValueToFormat;
+        if (isSource && _unlocalizedValueFrom.EndsWith(".", StringComparison.Ordinal))
+        {
+            displayValue = FormatDecimalNumber(
+                _unlocalizedValueFrom[..^1],
+                allowTrailingDecimal: false,
+                useCurrencyGrouping: IsCurrencyCurrentCategory);
+            format = _localizedValueFromDecimalFormat;
+        }
+
+        return LocalizationStringUtil.GetLocalizedString(format, displayValue, unitName);
     }
 
-    private string ToInvariant(string value)
+    private string FormatDisplayNumber(string value, UCM.Unit? unit)
     {
-        string separator = _numberFormat.NumberDecimalSeparator;
-        return separator == "." ? value : value.Replace(separator, ".", StringComparison.Ordinal);
+        if (!IsCurrencyCurrentCategory || unit is null || unit == UCM.Unit.EmptyUnit)
+        {
+            return FormatDecimalNumber(
+                value,
+                allowTrailingDecimal: true,
+                useCurrencyGrouping: false);
+        }
+
+        return _currencyDisplayFormatter.Format(value, unit.Abbreviation, _numberFormat);
+    }
+
+    private string FormatDecimalNumber(
+        string invariantValue,
+        bool allowTrailingDecimal,
+        bool useCurrencyGrouping)
+    {
+        if (string.IsNullOrEmpty(invariantValue))
+        {
+            return invariantValue;
+        }
+
+        int exponentPosition = invariantValue.IndexOfAny(['e', 'E']);
+        if (exponentPosition >= 0 && exponentPosition < invariantValue.Length - 1)
+        {
+            string exponent = invariantValue[(exponentPosition + 1)..];
+            string exponentSign = string.Empty;
+            if (exponent.StartsWith('+') || exponent.StartsWith('-'))
+            {
+                exponentSign = exponent[0] == '-'
+                    ? _numberFormat.NegativeSign
+                    : _numberFormat.PositiveSign;
+                exponent = exponent[1..];
+            }
+
+            return FormatDecimalNumber(
+                       invariantValue[..exponentPosition],
+                       allowTrailingDecimal,
+                       useCurrencyGrouping) +
+                   "e" + exponentSign +
+                   FormatDecimalNumber(exponent, false, useCurrencyGrouping);
+        }
+
+        bool isNegative = invariantValue.StartsWith("-", StringComparison.Ordinal);
+        string unsignedValue = isNegative ? invariantValue[1..] : invariantValue;
+        int decimalPosition = unsignedValue.IndexOf('.');
+        string whole = decimalPosition < 0
+            ? unsignedValue
+            : unsignedValue[..decimalPosition];
+        string fraction = decimalPosition < 0
+            ? string.Empty
+            : unsignedValue[(decimalPosition + 1)..];
+        if (whole.Length == 0)
+        {
+            whole = "0";
+        }
+
+        string groupSeparator = useCurrencyGrouping
+            ? _numberFormat.CurrencyGroupSeparator
+            : _numberFormat.NumberGroupSeparator;
+        int[] groupSizes = useCurrencyGrouping
+            ? _numberFormat.CurrencyGroupSizes
+            : _numberFormat.NumberGroupSizes;
+        string formatted = CurrencyDisplayFormatter.ApplyGrouping(
+            whole,
+            groupSeparator,
+            groupSizes);
+
+        if (decimalPosition >= 0 && (fraction.Length > 0 || allowTrailingDecimal))
+        {
+            string decimalSeparator = useCurrencyGrouping
+                ? _numberFormat.CurrencyDecimalSeparator
+                : _numberFormat.NumberDecimalSeparator;
+            formatted += decimalSeparator + fraction;
+        }
+
+        formatted = CurrencyDisplayFormatter.LocalizeDigits(formatted, _numberFormat);
+        return isNegative ? _numberFormat.NegativeSign + formatted : formatted;
+    }
+
+    private void UpdateIsDecimalEnabled()
+    {
+        IsDecimalEnabled = !IsCurrencyCurrentCategory || UnitFrom is null ||
+                           CldrCurrencyNameProvider.GetFractionDigits(UnitFrom.Abbreviation) > 0;
     }
 
     private async Task PasteFromClipboardAsync()
@@ -321,39 +597,70 @@ public partial class UnitConverterViewModel
             return;
         }
 
-        bool sentAnyInput = false;
-        bool shouldNegate = false;
+        bool isFirstLegalCharacter = true;
+        bool sendNegate = false;
         StringBuilder accepted = new();
-        foreach (char character in stringToPaste.Trim())
+        foreach (char character in stringToPaste)
         {
-            if (character == '-' && !sentAnyInput)
+            UCM.Command command = character == '-'
+                ? UCM.Command.Negate
+                : CharacterToCommand(character);
+            if (command != UCM.Command.None)
             {
-                shouldNegate = true;
-                continue;
-            }
+                if (isFirstLegalCharacter)
+                {
+                    _model.SendCommand(UCM.Command.Clear);
+                    isFirstLegalCharacter = false;
+                    if (command == UCM.Command.Negate)
+                    {
+                        sendNegate = true;
+                    }
+                }
 
-            UCM.Command command = CharacterToCommand(character);
-            if (command == UCM.Command.None)
+                if (command != UCM.Command.Negate)
+                {
+                    _model.SendCommand(command);
+                    if (sendNegate)
+                    {
+                        _model.SendCommand(UCM.Command.Negate);
+                        sendNegate = false;
+                    }
+                }
+
+                accepted.Append(command switch
+                {
+                    UCM.Command.Negate => '-',
+                    UCM.Command.DecimalSeparator => '.',
+                    _ => (char)('0' + (int)command)
+                });
+                UpdateInputBlocked(accepted.ToString());
+                if (_isInputBlocked)
+                {
+                    break;
+                }
+            }
+            else
             {
-                continue;
+                sendNegate = false;
             }
-
-            if (!sentAnyInput)
-            {
-                _model.SendCommand(UCM.Command.Clear);
-                sentAnyInput = true;
-            }
-
-            _model.SendCommand(command);
-            accepted.Append(character);
-        }
-
-        if (sentAnyInput && shouldNegate && CurrentCategory?.SupportsNegative == true)
-        {
-            _model.SendCommand(UCM.Command.Negate);
         }
 
         TraceLogger.GetInstance().LogInputPasted(Mode);
+    }
+
+    private void UpdateInputBlocked(string currencyInput)
+    {
+        // Converter input is normalized to the invariant decimal separator by
+        // the engine, matching the original WinUI implementation.
+        int decimalPosition = currencyInput.IndexOf('.');
+        _isInputBlocked = false;
+        if (decimalPosition >= 0 && IsCurrencyCurrentCategory &&
+            UnitFrom is not null && UnitFrom != UCM.Unit.EmptyUnit)
+        {
+            int fractionDigits =
+                CldrCurrencyNameProvider.GetFractionDigits(UnitFrom.Abbreviation);
+            _isInputBlocked = decimalPosition + fractionDigits + 1 == currencyInput.Length;
+        }
     }
 
     private UCM.Command CharacterToCommand(char character)
@@ -364,9 +671,21 @@ public partial class UnitConverterViewModel
         }
 
         string separator = _numberFormat.NumberDecimalSeparator;
-        return character == '.' || separator.Contains(character, StringComparison.Ordinal)
-            ? UCM.Command.DecimalSeparator
-            : UCM.Command.None;
+        if (character == '.' || separator.Contains(character, StringComparison.Ordinal))
+        {
+            return UCM.Command.DecimalSeparator;
+        }
+
+        LocalizationSettings localization = LocalizationSettings.GetInstance();
+        for (int digit = 0; digit <= 9; digit++)
+        {
+            if (character == localization.GetDigitSymbolFromEnUsDigit((char)('0' + digit)))
+            {
+                return (UCM.Command)digit;
+            }
+        }
+
+        return UCM.Command.None;
     }
 
     private void DisplayPasteError()
@@ -382,18 +701,16 @@ public partial class UnitConverterViewModel
         string format = AppResourceProvider.GetInstance()
             .GetResourceString(UnitConverterResourceKeys.MaxDigitsReachedFormat);
         Announcement = Common.Automation.NarratorAnnouncement.GetMaxDigitsReachedAnnouncement(
-            LocalizationStringUtil.GetLocalizedString(format, ValueTo));
+            LocalizationStringUtil.GetLocalizedString(
+                format,
+                _lastAnnouncedConversionResult));
     }
 
     public void OnCurrencyDataLoadFinished(bool didLoad)
     {
+        _isCurrencyDataLoaded = true;
         CurrencyDataLoadFailed = !didLoad;
-        IsCurrencyLoadingVisible = false;
-        if (didLoad)
-        {
-            _model.ResetCategoriesAndRatios();
-            ResetCategory();
-        }
+        ResetCategory(clearInput: false);
 
         string resourceKey = didLoad
             ? UnitConverterResourceKeys.CurrencyRatesUpdated
@@ -416,6 +733,100 @@ public partial class UnitConverterViewModel
         }
 
         OnPropertyChanged(nameof(HasCurrencySymbols));
+        UpdateDisplayedUnits();
+    }
+
+    private void OnSettingsChanged(object? sender, EventArgs e)
+    {
+        _ = sender;
+        UpdateDisplayedUnits();
+    }
+
+    private void UpdateDisplayedUnits()
+    {
+        ConverterUnitDisplayMode mode =
+            _settingsStore.Current.ConverterUnitDisplayMode;
+        bool isCurrency = IsCurrencyCurrentCategory;
+
+        if (mode == ConverterUnitDisplayMode.WindowsNative && !isCurrency)
+        {
+            DisplayUnit1 = string.Empty;
+            DisplayUnit2 = string.Empty;
+            ApplyDisplayUnitLayouts((false, false), (false, false));
+            return;
+        }
+
+        DisplayUnit1 = GetDisplayedUnit(Unit1, CurrencySymbol1, isCurrency);
+        DisplayUnit2 = GetDisplayedUnit(Unit2, CurrencySymbol2, isCurrency);
+
+        ApplyDisplayUnitLayouts(
+            GetDisplayUnitLayout(mode, Unit1, isCurrency),
+            GetDisplayUnitLayout(mode, Unit2, isCurrency));
+    }
+
+    private (bool OnRight, bool UseSpace) GetDisplayUnitLayout(
+        ConverterUnitDisplayMode mode,
+        UCM.Unit? unit,
+        bool isCurrency)
+    {
+        if (mode == ConverterUnitDisplayMode.Left)
+        {
+            return (false, true);
+        }
+
+        if (mode == ConverterUnitDisplayMode.Right)
+        {
+            return (true, true);
+        }
+
+        if (isCurrency)
+        {
+            int pattern = _numberFormat.CurrencyPositivePattern;
+            bool onRight = pattern is 1 or 3;
+            // The WinUI currency-symbol states only choose a physical side;
+            // they do not reproduce the culture pattern's optional spacing.
+            bool useSpace = mode != ConverterUnitDisplayMode.WindowsNative &&
+                            pattern is 2 or 3;
+            return (onRight, useSpace);
+        }
+
+        if (unit is null || unit == UCM.Unit.EmptyUnit)
+        {
+            return (true, true);
+        }
+
+        CldrUnitDisplayData display = CldrCurrencyData.GetUnitDisplay(
+            CultureInfo.CurrentUICulture.Name,
+            unit.Id);
+        bool isRightToLeft = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
+        return (display.UnitAfterValue != isRightToLeft, display.UseSpace);
+    }
+
+    private void ApplyDisplayUnitLayouts(
+        (bool OnRight, bool UseSpace) unit1,
+        (bool OnRight, bool UseSpace) unit2)
+    {
+        DisplayUnit1OnRight = unit1.OnRight;
+        DisplayUnit1UseSpace = unit1.UseSpace;
+        DisplayUnit2OnRight = unit2.OnRight;
+        DisplayUnit2UseSpace = unit2.UseSpace;
+    }
+
+    private static string GetDisplayedUnit(UCM.Unit? unit, string currencySymbol, bool isCurrency)
+    {
+        if (unit is null || unit == UCM.Unit.EmptyUnit)
+        {
+            return string.Empty;
+        }
+
+        if (!isCurrency)
+        {
+            return unit.Abbreviation;
+        }
+
+        return string.IsNullOrWhiteSpace(currencySymbol)
+            ? unit.Abbreviation
+            : currencySymbol;
     }
 
     public void OnCurrencyRatiosUpdated(string ratioEquality, string accessibleRatioEquality)
@@ -443,6 +854,7 @@ public partial class UnitConverterViewModel
             return;
         }
 
+        _isCurrencyDataLoaded = false;
         IsCurrencyLoadingVisible = true;
         Announcement = Common.Automation.NarratorAnnouncement.GetUpdateCurrencyRatesAnnouncement(
             AppResourceProvider.GetInstance().GetResourceString(

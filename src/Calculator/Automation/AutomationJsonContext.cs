@@ -30,18 +30,44 @@ internal sealed record AutomationElementInfo(
     string? Name,
     string? AutomationId,
     string? AutomationName,
+    string AccessibilityView,
+    int HeadingLevel,
+    string? LandmarkType,
     double X,
     double Y,
     double Width,
     double Height,
+    double DesiredWidth,
+    double DesiredHeight,
     bool IsVisible,
-    bool IsEnabled);
+    bool IsEnabled,
+    bool IsFocused,
+    double Opacity,
+    double? FontSize,
+    bool? IsActive,
+    bool? IsDropDownOpen,
+    bool? IsPopupOpen,
+    int? SelectedIndex,
+    double? ScrollOffsetX,
+    double? ScrollOffsetY,
+    double? ScrollExtentWidth,
+    double? ScrollExtentHeight,
+    double? ScrollViewportWidth,
+    double? ScrollViewportHeight,
+    double? PopupOffsetX,
+    double? PopupOffsetY,
+    string? Text,
+    string? Classes);
 
 internal sealed record AutomationPointerRequest(
     double X,
     double Y,
     string Kind,
-    string? Modifiers);
+    string? Modifiers,
+    string? Button,
+    string? PointerType,
+    double? DeltaX,
+    double? DeltaY);
 
 internal sealed record AutomationTargetRequest(string Target);
 

@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Styling;
+using CalculatorApp.Services.Settings;
 using CalculatorApp.ViewModel.Common;
 using CalculatorApp.ViewModel.Common.Automation;
 using FluentAvalonia.Styling;
@@ -14,10 +15,19 @@ namespace CalculatorApp;
 
 public sealed partial class Settings : UserControl
 {
+    private readonly ISettingsStore _settingsStore;
     private bool _initializingTheme;
+    private bool _initializingConverterUnitDisplay;
+    private bool _initializingAutomaticCurrencyRefresh;
 
     public Settings()
+        : this(App.SettingsStore)
     {
+    }
+
+    internal Settings(ISettingsStore settingsStore)
+    {
+        _settingsStore = settingsStore;
         InitializeComponent();
     }
 
@@ -45,11 +55,55 @@ public sealed partial class Settings : UserControl
         }
         _initializingTheme = false;
 
+        _initializingConverterUnitDisplay = true;
+        RadioButton selectedUnitDisplay =
+            _settingsStore.Current.ConverterUnitDisplayMode switch
+            {
+                ConverterUnitDisplayMode.Left => LeftUnitDisplayRadioButton,
+                ConverterUnitDisplayMode.Right => RightUnitDisplayRadioButton,
+                ConverterUnitDisplayMode.WindowsNative => WindowsNativeUnitDisplayRadioButton,
+                _ => AutomaticUnitDisplayRadioButton
+            };
+        selectedUnitDisplay.IsChecked = true;
+        _initializingConverterUnitDisplay = false;
+
+        _initializingAutomaticCurrencyRefresh = true;
+        AutomaticCurrencyRefreshToggle.IsChecked =
+            _settingsStore.Current.AutomaticCurrencyRefresh;
+        _initializingAutomaticCurrencyRefresh = false;
+
         string text = AppResourceProvider.GetInstance()
             .GetResourceString("SettingsPageOpenedAnnouncement");
         NarratorNotifier.Announce(
             NarratorAnnouncement.GetSettingsPageOpenedAnnouncement(text));
         SetDefaultFocus();
+    }
+
+    private void OnConverterUnitDisplaySelectionChanged(object? sender, RoutedEventArgs e)
+    {
+        if (_initializingConverterUnitDisplay ||
+            sender is not RadioButton { IsChecked: true } selected ||
+            !Enum.TryParse(selected.Tag?.ToString(), out ConverterUnitDisplayMode mode))
+        {
+            return;
+        }
+
+        _settingsStore.Update(settings =>
+            settings with { ConverterUnitDisplayMode = mode });
+    }
+
+    private void OnAutomaticCurrencyRefreshChanged(object? sender, RoutedEventArgs e)
+    {
+        if (_initializingAutomaticCurrencyRefresh ||
+            sender is not ToggleSwitch toggle)
+        {
+            return;
+        }
+
+        _settingsStore.Update(settings => settings with
+        {
+            AutomaticCurrencyRefresh = toggle.IsChecked == true
+        });
     }
 
     private void OnThemeSelectionChanged(object? sender, RoutedEventArgs e)
