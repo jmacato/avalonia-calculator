@@ -7,7 +7,6 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
-using Avalonia.Rendering.Composition;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Graphing;
@@ -22,8 +21,6 @@ namespace GraphControl;
 public sealed class Grapher : Control, INotifyPropertyChanged
 {
     private static readonly TimeSpan EquationPlotDelay = TimeSpan.FromMilliseconds(350);
-    private static readonly TimeSpan InteractionPlotDelay = TimeSpan.FromMilliseconds(120);
-    private static readonly TimeSpan WheelZoomFrameDelay = TimeSpan.FromMilliseconds(16);
     private static readonly ImmutableSolidColorBrush TraceBrush = new(AvaloniaColor.FromRgb(0x00, 0x63, 0xB1));
     private static readonly ImmutablePen TraceOutline = new(0xFFFFFFFF, 1);
 
@@ -53,21 +50,14 @@ public sealed class Grapher : Control, INotifyPropertyChanged
     private readonly EquationTextCodec _textCodec;
     private readonly AvaloniaGraphRenderCache _renderCache = new();
     private readonly DispatcherTimer _equationPlotTimer;
-    private readonly DispatcherTimer _interactionPlotTimer;
-    private readonly DispatcherTimer _wheelZoomTimer;
-    private readonly DispatcherTimer _compositionPreviewTimer;
     private readonly Dictionary<int, Point> _activePointers = [];
     private Point? _lastPanPoint;
     private double? _lastPinchDistance;
     private double _pendingWheelDelta;
     private Point _pendingWheelPosition;
-    private CompositionVisual? _compositionVisual;
     private bool _prepareGraphOnAttach;
-    private bool _hasSettledViewport;
-    private double _settledXMinimum;
-    private double _settledXMaximum;
-    private double _settledYMinimum;
-    private double _settledYMaximum;
+    private bool _interactionFramePending;
+    private long _interactionFrameRequestVersion;
     private bool _activeTracing;
     private Point _traceLocation = new(double.NaN, double.NaN);
     private int _errorCode;
@@ -102,21 +92,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged
             Interval = EquationPlotDelay
         };
         _equationPlotTimer.Tick += OnEquationPlotTimerTick;
-        _interactionPlotTimer = new DispatcherTimer(DispatcherPriority.Background)
-        {
-            Interval = InteractionPlotDelay
-        };
-        _interactionPlotTimer.Tick += OnInteractionPlotTimerTick;
-        _wheelZoomTimer = new DispatcherTimer(DispatcherPriority.Input)
-        {
-            Interval = WheelZoomFrameDelay
-        };
-        _wheelZoomTimer.Tick += OnWheelZoomTimerTick;
-        _compositionPreviewTimer = new DispatcherTimer(DispatcherPriority.Input)
-        {
-            Interval = WheelZoomFrameDelay
-        };
-        _compositionPreviewTimer.Tick += OnCompositionPreviewTimerTick;
         Equations = [];
         Equations.CollectionChanged += OnEquationsChanged;
     }
@@ -124,28 +99,22 @@ public sealed class Grapher : Control, INotifyPropertyChanged
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        _compositionVisual = ElementComposition.GetElementVisual(this);
-        ResetCompositionPreview();
         if (_prepareGraphOnAttach)
         {
             _prepareGraphOnAttach = false;
-            _interactionPlotTimer.Start();
+            RenderInteractiveGraph();
         }
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        _prepareGraphOnAttach = _interactionPlotTimer.IsEnabled;
+        _prepareGraphOnAttach = _interactionFramePending;
         _equationPlotTimer.Stop();
-        _wheelZoomTimer.Stop();
-        _compositionPreviewTimer.Stop();
-        _interactionPlotTimer.Stop();
+        CancelInteractionFrame();
         _pendingWheelDelta = 0;
         _activePointers.Clear();
         _lastPanPoint = null;
         _lastPinchDistance = null;
-        ResetCompositionPreview();
-        _compositionVisual = null;
         _renderCache.Clear();
         base.OnDetachedFromVisualTree(e);
     }
@@ -549,19 +518,15 @@ public sealed class Grapher : Control, INotifyPropertyChanged
             return;
         }
 
-        // Browser trackpads can enqueue hundreds of wheel events (and sometimes
-        // report very large deltas) before Wasm gets another paint. Coalesce the
-        // burst to one bounded zoom per frame so input cannot manufacture an
-        // unbounded series of transformed graph frames.
+        // Accumulate wheel input until the compositor's next animation frame.
+        // This bounds work to the session frame cadence without assuming a
+        // particular display refresh rate.
         _pendingWheelDelta = Math.Clamp(
             _pendingWheelDelta + Math.Clamp(e.Delta.Y, -4, 4),
             -8,
             8);
         _pendingWheelPosition = e.GetPosition(this);
-        if (!_wheelZoomTimer.IsEnabled)
-        {
-            _wheelZoomTimer.Start();
-        }
+        ScheduleInteractionFrame();
 
         e.Handled = true;
     }
@@ -951,37 +916,55 @@ public sealed class Grapher : Control, INotifyPropertyChanged
 
     private void RenderPreparedGraph()
     {
-        _interactionPlotTimer.Stop();
-        _compositionPreviewTimer.Stop();
         IGraphRenderer renderer = _graph.GetRenderer();
         EnsureSize(renderer);
         _ = renderer.PrepareGraph();
-        CaptureSettledViewport(renderer);
-        ResetCompositionPreview();
         InvalidateVisual();
     }
 
     private void RenderInteractiveGraph()
     {
-        if (!_compositionPreviewTimer.IsEnabled)
-        {
-            _compositionPreviewTimer.Start();
-        }
-
-        _interactionPlotTimer.Stop();
-        _interactionPlotTimer.Start();
+        ScheduleInteractionFrame();
     }
 
-    private void OnInteractionPlotTimerTick(object? sender, EventArgs e)
+    private void ScheduleInteractionFrame()
     {
-        _interactionPlotTimer.Stop();
+        if (_interactionFramePending)
+        {
+            return;
+        }
+
+        TopLevel? topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel is null)
+        {
+            _prepareGraphOnAttach = true;
+            return;
+        }
+
+        _interactionFramePending = true;
+        long requestVersion = ++_interactionFrameRequestVersion;
+        // RequestAnimationFrame is one-shot. Further input shares this request;
+        // only input arriving after the callback can schedule another frame.
+        topLevel.RequestAnimationFrame(_ => OnInteractionFrame(requestVersion, topLevel));
+    }
+
+    private void OnInteractionFrame(long requestVersion, TopLevel requestedTopLevel)
+    {
+        if (!_interactionFramePending ||
+            requestVersion != _interactionFrameRequestVersion ||
+            !ReferenceEquals(TopLevel.GetTopLevel(this), requestedTopLevel))
+        {
+            return;
+        }
+
+        _interactionFramePending = false;
+        ApplyPendingWheelZoom();
         RenderPreparedGraph();
         GraphViewChanged?.Invoke(this, GraphViewChangedReason.Manipulation);
     }
 
-    private void OnWheelZoomTimerTick(object? sender, EventArgs e)
+    private void ApplyPendingWheelZoom()
     {
-        _wheelZoomTimer.Stop();
         double delta = _pendingWheelDelta;
         _pendingWheelDelta = 0;
         if (delta == 0 || Bounds.Width <= 0 || Bounds.Height <= 0)
@@ -992,130 +975,13 @@ public sealed class Grapher : Control, INotifyPropertyChanged
         double centerX = (2 * _pendingWheelPosition.X / Bounds.Width) - 1;
         double centerY = 1 - (2 * _pendingWheelPosition.Y / Bounds.Height);
         double scale = Math.Pow(1.15, -delta);
-        if (_graph.GetRenderer().ScaleRange(centerX, centerY, scale).Succeeded)
-        {
-            RenderInteractiveGraph();
-        }
+        _ = _graph.GetRenderer().ScaleRange(centerX, centerY, scale);
     }
 
-    private void OnCompositionPreviewTimerTick(object? sender, EventArgs e)
+    private void CancelInteractionFrame()
     {
-        _compositionPreviewTimer.Stop();
-        if (!ApplyCompositionPreview())
-        {
-            // Retained composition is unavailable before attachment or on a
-            // backend without an element visual. The transformed command frame
-            // is still allocation-bounded, so use it as the safe fallback.
-            InvalidateVisual();
-        }
-    }
-
-    private void CaptureSettledViewport(IGraphRenderer renderer)
-    {
-        renderer.GetDisplayRanges(
-            out _settledXMinimum,
-            out _settledXMaximum,
-            out _settledYMinimum,
-            out _settledYMaximum);
-        GetGraphDimensions(out double width, out double height);
-        NormalizeProportionalRanges(
-            ref _settledXMinimum,
-            ref _settledXMaximum,
-            ref _settledYMinimum,
-            ref _settledYMaximum,
-            width,
-            height);
-        _hasSettledViewport = true;
-    }
-
-    private bool ApplyCompositionPreview()
-    {
-        if (!_hasSettledViewport || _compositionVisual is null || Bounds.Width <= 0 || Bounds.Height <= 0)
-        {
-            return false;
-        }
-
-        _graph.GetRenderer().GetDisplayRanges(
-            out double xMinimum,
-            out double xMaximum,
-            out double yMinimum,
-            out double yMaximum);
-        GetGraphDimensions(out double width, out double height);
-        NormalizeProportionalRanges(
-            ref xMinimum,
-            ref xMaximum,
-            ref yMinimum,
-            ref yMaximum,
-            width,
-            height);
-        double xLength = xMaximum - xMinimum;
-        double yLength = yMaximum - yMinimum;
-        double settledXLength = _settledXMaximum - _settledXMinimum;
-        double settledYLength = _settledYMaximum - _settledYMinimum;
-        if (xLength <= 0 || yLength <= 0 || settledXLength <= 0 || settledYLength <= 0)
-        {
-            return false;
-        }
-
-        double scaleX = settledXLength / xLength;
-        double scaleY = settledYLength / yLength;
-        double translationX = (_settledXMinimum - xMinimum) * width / xLength;
-        double translationY = (yMaximum - _settledYMaximum) * height / yLength;
-        if (!double.IsFinite(scaleX) || !double.IsFinite(scaleY) ||
-            !double.IsFinite(translationX) || !double.IsFinite(translationY))
-        {
-            return false;
-        }
-
-        _compositionVisual.CenterPoint = default;
-        _compositionVisual.Scale = new Vector3D(scaleX, scaleY, 1);
-        _compositionVisual.Translation = new Vector3D(translationX, translationY, 0);
-        return true;
-    }
-
-    private void NormalizeProportionalRanges(
-        ref double xMinimum,
-        ref double xMaximum,
-        ref double yMinimum,
-        ref double yMaximum,
-        double width,
-        double height)
-    {
-        if (!ForceProportionalAxes)
-        {
-            return;
-        }
-
-        double xLength = xMaximum - xMinimum;
-        double yLength = yMaximum - yMinimum;
-        double xUnitsPerPixel = xLength / width;
-        double yUnitsPerPixel = yLength / height;
-        if (xUnitsPerPixel > yUnitsPerPixel)
-        {
-            double center = (yMinimum + yMaximum) * 0.5;
-            double half = xUnitsPerPixel * height * 0.5;
-            yMinimum = center - half;
-            yMaximum = center + half;
-        }
-        else
-        {
-            double center = (xMinimum + xMaximum) * 0.5;
-            double half = yUnitsPerPixel * width * 0.5;
-            xMinimum = center - half;
-            xMaximum = center + half;
-        }
-    }
-
-    private void ResetCompositionPreview()
-    {
-        if (_compositionVisual is null)
-        {
-            return;
-        }
-
-        _compositionVisual.CenterPoint = default;
-        _compositionVisual.Scale = new Vector3D(1, 1, 1);
-        _compositionVisual.Translation = default;
+        _interactionFramePending = false;
+        _interactionFrameRequestVersion++;
     }
 
     private void EnsureSize(IGraphRenderer renderer)

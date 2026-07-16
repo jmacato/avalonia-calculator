@@ -35,7 +35,7 @@ internal readonly record struct Token(
     TokenKind Kind,
     SourceSpan Span,
     string Text,
-    double Number = 0);
+    ExactRational Number = default);
 
 internal sealed class LinearLexer
 {
@@ -166,7 +166,19 @@ internal sealed class LinearLexer
 
         string text = _source[start.._position];
         string invariant = _decimalSeparator == '.' ? text : text.Replace(',', '.');
-        if (!double.TryParse(invariant, NumberStyles.Float, CultureInfo.InvariantCulture, out double number))
+        ExactRational number;
+        try
+        {
+            number = ExactRational.ParseDecimal(invariant);
+        }
+        catch (OverflowException)
+        {
+            throw new GraphParseException(
+                SyntaxErrorCode.GeneralError,
+                new SourceSpan(start, _position - start),
+                $"Exact values are limited to {GraphLimits.MaximumExactValueBits} bits.");
+        }
+        catch (FormatException)
         {
             throw new GraphParseException(
                 SyntaxErrorCode.InvalidNumberDigit,

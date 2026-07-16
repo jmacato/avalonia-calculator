@@ -111,17 +111,6 @@ public sealed partial class EquationViewModel : ViewModelBase
         set => GraphEquation.Expression = value ?? string.Empty;
     }
 
-    public string AnalysisExpression
-    {
-        get
-        {
-            string expression = Expression.Trim();
-            return expression.Length == 0 || expression.IndexOfAny(['=', '<', '>', '≤', '≥', '≠']) >= 0
-                ? expression
-                : $"y = {expression}";
-        }
-    }
-
     public string MathExpression
     {
         get => _mathExpression;
@@ -277,27 +266,28 @@ public sealed partial class EquationViewModel : ViewModelBase
 
     private void AddPeriodicityFeature(KeyGraphFeaturesInfo info)
     {
-        var item = new KeyGraphFeaturesItem { Title = Resource("Periodicity") };
-        switch (info.Data.PeriodicityDirection)
+        if (info.Data.PeriodicityDirection == 0)
         {
-            case 0:
-                return;
-            case 1 when string.IsNullOrEmpty(info.Data.PeriodicityExpression):
-                item.DisplayItems.Add(Resource("KGFPeriodicityUnknown"));
-                item.IsText = true;
-                break;
-            case 1:
-                item.DisplayItems.Add(info.Data.PeriodicityExpression);
-                break;
-            case 2:
-                item.DisplayItems.Add(Resource("KGFPeriodicityNotPeriodic"));
-                break;
-            default:
-                item.DisplayItems.Add(Resource("KGFPeriodicityError"));
-                item.IsText = true;
-                break;
+            return;
         }
 
+        // Keep content kind explicit for every result. Localized prose belongs
+        // in the text template; only a symbolic period belongs in CSharpMath.
+        (string display, bool isText) = info.Data.PeriodicityDirection switch
+        {
+            1 when string.IsNullOrEmpty(info.Data.PeriodicityExpression) =>
+                (Resource("KGFPeriodicityUnknown"), true),
+            1 => (info.Data.PeriodicityExpression, false),
+            2 => (Resource("KGFPeriodicityNotPeriodic"), true),
+            _ => (Resource("KGFPeriodicityError"), true)
+        };
+
+        var item = new KeyGraphFeaturesItem
+        {
+            Title = Resource("Periodicity"),
+            IsText = isText
+        };
+        item.DisplayItems.Add(display);
         KeyGraphFeaturesItems.Add(item);
     }
 
@@ -405,11 +395,7 @@ public sealed partial class EquationViewModel : ViewModelBase
     private void OnGraphEquationPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         OnPropertyChanged(e.PropertyName);
-        if (e.PropertyName == nameof(Equation.Expression))
-        {
-            OnPropertyChanged(nameof(AnalysisExpression));
-        }
-        else if (e.PropertyName == nameof(Equation.LineColor))
+        if (e.PropertyName == nameof(Equation.LineColor))
         {
             _lineBrush = null;
             OnPropertyChanged(nameof(LineBrush));

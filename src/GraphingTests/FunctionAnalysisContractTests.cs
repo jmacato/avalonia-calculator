@@ -1,56 +1,577 @@
-using Graphing;
-using Graphing.Analyzer;
-using GraphControl;
+using System.Collections.Immutable;
+using System.Numerics;
+using Graphing.Symbolics;
 
 namespace GraphingTests;
 
 public sealed class FunctionAnalysisContractTests
 {
-    [Fact(Timeout = 2_000)]
-    public void InequalityReturnsNativeUnsupportedStateWithoutRunningFunctionAnalysis()
+    private static readonly SourceRange Source = new(0, 1);
+
+    [Fact]
+    public void DeterministicRcfGrammarPublishesOnlyReplayableProofs()
     {
-        var grapher = new Grapher();
-        var equation = new Equation { Expression = "y<sqrt(x)" };
-        grapher.Equations.Add(equation);
+        InputExpression x = Variable();
+        InputExpression one = Number(1);
+        InputExpression positive = Add(Power(x, 2), one);
+        InputExpression[] grammar =
+        [
+            x,
+            Add(Power(x, 2), one),
+            Subtract(Power(x, 3), one),
+            Divide(one, positive),
+            Divide(Subtract(Power(x, 2), one), positive),
+            Multiply(Number(0), Divide(one, x)),
+            Divide(Power(Subtract(x, one), 2), Subtract(x, one))
+        ];
 
-        KeyGraphFeaturesInfo? result = grapher.AnalyzeEquation(equation);
+        foreach (InputExpression expression in grammar)
+        {
+            AnalysisRequest request = Request(expression, AnalysisFeatures.All);
+            AnalysisReport report = AnalysisEngine.Analyze(request);
 
-        Assert.NotNull(result);
-        Assert.Equal(AnalysisErrorType.AnalysisNotSupported, result.AnalysisError);
+            Assert.NotNull(report.Expression);
+            AssertReplay(request, report.Expression, report.Domain);
+            AssertReplay(request, report.Expression, report.Range);
+            AssertReplay(request, report.Expression, report.Parity);
+            AssertReplay(request, report.Expression, report.Zeros);
+            AssertReplay(request, report.Expression, report.YIntercept);
+            AssertReplay(request, report.Expression, report.Minima);
+            AssertReplay(request, report.Expression, report.Maxima);
+            AssertReplay(request, report.Expression, report.InflectionPoints);
+            AssertReplay(request, report.Expression, report.VerticalAsymptotes);
+            AssertReplay(request, report.Expression, report.HorizontalAsymptotes);
+            AssertReplay(request, report.Expression, report.ObliqueAsymptotes);
+            AssertReplay(request, report.Expression, report.Monotonicity);
+            AssertReplay(request, report.Expression, report.Period);
+        }
     }
 
     [Fact]
-    public void SineAnalysisUsesSymbolicFamiliesInsteadOfFiniteSamplePoints()
+    public void CertificateMutationIsRejectedByIndependentReplay()
     {
-        GraphFunctionAnalysisData result = Analyze("sin(x)");
+        InputExpression expression = Divide(Number(1), Subtract(Variable(), Number(1)));
+        AnalysisRequest request = Request(expression, AnalysisFeatures.Domain);
+        AnalysisReport report = AnalysisEngine.Analyze(request);
+        RealSet value = AssertProved(report.Domain);
+        var certificate = Assert.IsType<DomainProofCertificate>(report.Domain.Certificate);
 
-        Assert.Equal("y ∈ [−1, 1]", result.Range);
-        Assert.Equal("x = πn₁, n₁ ∈ ℤ", result.Zeros);
-        Assert.Equal("y = 0", result.YIntercept);
-        Assert.Equal("(2πn₁ + 3π/2, −1), n₁ ∈ ℤ", Assert.Single(result.Minima));
-        Assert.Equal("(2πn₁ + π/2, 1), n₁ ∈ ℤ", Assert.Single(result.Maxima));
-        Assert.Equal("(πn₁, 0), n₁ ∈ ℤ", Assert.Single(result.InflectionPoints));
-        Assert.Equal("2π", result.PeriodicityExpression);
-        Assert.Equal(
-            new[] { (int)FunctionMonotonicityType.Descending, (int)FunctionMonotonicityType.Ascending },
-            result.MonotoneIntervals.Values);
-        Assert.All(
-            result.MonotoneIntervals.Keys,
-            interval => Assert.Contains("n₁ ∈ ℤ", interval, StringComparison.Ordinal));
+        DomainProofCertificate changedClaim = certificate with { Claim = "reals" };
+        Assert.False(CertificateChecker.Check(
+            request,
+            report.Expression!,
+            ProofOutcome<RealSet>.Proved(value, changedClaim)));
+
+        CellDecompositionCertificate cells = Assert.IsType<CellDecompositionCertificate>(certificate.Cells);
+        CellWitness first = cells.Cells[0];
+        CellDecompositionCertificate changedCells = cells with
+        {
+            Cells = cells.Cells.SetItem(0, first with { Included = !first.Included })
+        };
+        DomainProofCertificate changedWitness = certificate with { Cells = changedCells };
+        Assert.False(CertificateChecker.Check(
+            request,
+            report.Expression!,
+            ProofOutcome<RealSet>.Proved(value, changedWitness)));
     }
 
-    private static GraphFunctionAnalysisData Analyze(string formula)
+    [Fact]
+    public void GuardedRewritesPreservePartialFunctionDomains()
     {
-        IMathSolver solver = MathSolver.CreateMathSolver();
-        solver.ParsingOptions().SetFormatType(FormatType.Linear);
-        IExpression expression = solver.ParseInput(formula, out int errorCode, out int errorType)
-            ?? throw new InvalidOperationException($"Parse failed: {errorCode}/{errorType}");
-        IGraph graph = solver.CreateGrapher();
-        Assert.NotNull(graph.TryInitialize(expression));
-        IGraphAnalyzer analyzer = graph.GetAnalyzer();
-        Assert.True(analyzer.CanFunctionAnalysisBePerformed(out bool variableIsNotX));
-        Assert.False(variableIsNotX);
-        Assert.Equal(GraphStatus.Ok, analyzer.PerformFunctionAnalysis((uint)PerformAnalysisType.All));
-        return solver.Analyze(analyzer);
+        SemanticExpression zeroProduct = Build(Multiply(Number(0), Divide(Number(1), Variable())));
+        Assert.Equal(ValueKind.Constant, zeroProduct.Value.Kind);
+        Assert.True(zeroProduct.Value.Constant.IsZero);
+        Assert.NotEqual(Formula.True.Canonical, zeroProduct.DefinedWhen.Canonical);
+
+        SemanticExpression squareRootSquare = Build(
+            Function("sqrt", Power(Variable(), 2)));
+        Assert.Equal(ValueKind.Function, squareRootSquare.Value.Kind);
+        Assert.Equal("abs", squareRootSquare.Value.Name);
+        Assert.Contains(
+            squareRootSquare.RewriteHistory,
+            rewrite => rewrite.Rule == "sqrt-square-to-absolute-value");
+
+        SemanticExpression normalized = Build(Add(Variable(), Number(0)));
+        Assert.Equal("v:x", normalized.Value.Canonical);
+    }
+
+    [Fact]
+    public void ExhaustiveShallowRationalDefinednessMatchesStructuralSemantics()
+    {
+        InputExpression[] leaves = [Variable(), Number(-1), Number(0), Number(1)];
+        var expressions = new List<InputExpression>(leaves);
+        foreach (InputExpression left in leaves)
+        {
+            foreach (InputExpression right in leaves)
+            {
+                expressions.Add(Add(left, right));
+                expressions.Add(Multiply(left, right));
+                expressions.Add(Divide(left, right));
+            }
+        }
+
+        BigRational[] probes = [-2, -1, 0, 1, 2];
+        foreach (InputExpression expression in expressions)
+        {
+            var budget = new ResourceBudget();
+            SemanticExpression semantic = new SemanticGraphBuilder(budget).Build(expression);
+            Assert.True(PolynomialFormulaConverter.TryConvert(
+                semantic.DefinedWhen,
+                "x",
+                budget,
+                out PolynomialFormula formula));
+            foreach (BigRational probe in probes)
+            {
+                bool structural = TryEvaluate(expression, probe, out _);
+                bool formulaValue = Evaluate(formula, probe, budget);
+                Assert.Equal(structural, formulaValue);
+            }
+        }
+    }
+
+    [Fact]
+    public void TrigonometricPolynomialGrammarUsesHalfAngleProofs()
+    {
+        InputExpression x = Variable();
+        InputExpression sin = Function("sin", x);
+        InputExpression cos = Function("cos", x);
+        InputExpression[] grammar =
+        [
+            Multiply(sin, cos),
+            Subtract(Add(Power(sin, 2), Power(cos, 2)), Number(1)),
+            Subtract(Power(cos, 2), Power(sin, 2))
+        ];
+
+        foreach (InputExpression expression in grammar)
+        {
+            AnalysisRequest request = Request(
+                expression,
+                AnalysisFeatures.Domain |
+                AnalysisFeatures.Parity |
+                AnalysisFeatures.Zeros |
+                AnalysisFeatures.Minima |
+                AnalysisFeatures.Maxima |
+                AnalysisFeatures.InflectionPoints |
+                AnalysisFeatures.Monotonicity |
+                AnalysisFeatures.Period);
+            AnalysisReport report = AnalysisEngine.Analyze(request);
+
+            Assert.Equal(ProofState.Proved, report.Domain.State);
+            Assert.Equal(ProofState.Proved, report.Parity.State);
+            Assert.Equal(ProofState.Proved, report.Zeros.State);
+            Assert.Equal(ProofState.Proved, report.Minima.State);
+            Assert.Equal(ProofState.Proved, report.Maxima.State);
+            Assert.Equal(ProofState.Proved, report.InflectionPoints.State);
+            Assert.Equal(ProofState.Proved, report.Monotonicity.State);
+            Assert.Equal(ProofState.Proved, report.Period.State);
+            AssertReplay(request, report.Expression!, report.Zeros);
+            AssertReplay(request, report.Expression!, report.Period);
+        }
+    }
+
+    [Fact]
+    public void CampaignPrimitiveProofsReplayAndRejectMutation()
+    {
+        InputExpression x = Variable();
+        InputExpression[] grammar =
+        [
+            Function("exp", x),
+            Function("sinh", x),
+            Function("cosh", x),
+            Function("log", Subtract(Multiply(Number(2), x), Number(4))),
+            Function("root", x, Number(3)),
+            Negate(Function("sin", x)),
+            Function(
+                "tan",
+                Subtract(Multiply(Number(2), x), Number(1))),
+            Add(Power(Function("sin", x), 2), Power(Function("cos", x), 2))
+        ];
+
+        foreach (InputExpression expression in grammar)
+        {
+            AnalysisRequest request = Request(expression, AnalysisFeatures.All);
+            AnalysisReport report = AnalysisEngine.Analyze(request);
+
+            Assert.Equal(ProofState.Proved, report.Domain.State);
+            Assert.Equal(ProofState.Proved, report.Range.State);
+            Assert.Equal(ProofState.Proved, report.Parity.State);
+            Assert.Equal(ProofState.Proved, report.Zeros.State);
+            Assert.Equal(ProofState.Proved, report.YIntercept.State);
+            Assert.Equal(ProofState.Proved, report.Minima.State);
+            Assert.Equal(ProofState.Proved, report.Maxima.State);
+            Assert.Equal(ProofState.Proved, report.InflectionPoints.State);
+            Assert.Equal(ProofState.Proved, report.VerticalAsymptotes.State);
+            Assert.Equal(ProofState.Proved, report.HorizontalAsymptotes.State);
+            Assert.Equal(ProofState.Proved, report.ObliqueAsymptotes.State);
+            Assert.Equal(ProofState.Proved, report.Monotonicity.State);
+            Assert.Equal(ProofState.Proved, report.Period.State);
+
+            AssertReplay(request, report.Expression!, report.Domain);
+            AssertReplay(request, report.Expression!, report.Range);
+            AssertReplay(request, report.Expression!, report.Parity);
+            AssertReplay(request, report.Expression!, report.Zeros);
+            AssertReplay(request, report.Expression!, report.YIntercept);
+            AssertReplay(request, report.Expression!, report.Minima);
+            AssertReplay(request, report.Expression!, report.Maxima);
+            AssertReplay(request, report.Expression!, report.InflectionPoints);
+            AssertReplay(request, report.Expression!, report.VerticalAsymptotes);
+            AssertReplay(request, report.Expression!, report.HorizontalAsymptotes);
+            AssertReplay(request, report.Expression!, report.ObliqueAsymptotes);
+            AssertReplay(request, report.Expression!, report.Monotonicity);
+            AssertReplay(request, report.Expression!, report.Period);
+        }
+
+        AnalysisRequest mutationRequest = Request(grammar[0], AnalysisFeatures.Range);
+        AnalysisReport mutationReport = AnalysisEngine.Analyze(mutationRequest);
+        RealSet range = AssertProved(mutationReport.Range);
+        var certificate = Assert.IsType<TheoremProofCertificate>(mutationReport.Range.Certificate);
+        TheoremProofCertificate changedParameters = certificate with
+        {
+            Parameters = certificate.Parameters.Add("mutated")
+        };
+        Assert.False(CertificateChecker.Check(
+            mutationRequest,
+            mutationReport.Expression!,
+            ProofOutcome<RealSet>.Proved(range, changedParameters)));
+    }
+
+    [Fact]
+    public void NonRadianShiftedTrigValuesRemainUnknownWithoutUnitAwareExactValues()
+    {
+        InputExpression argument = Subtract(
+            Multiply(Number(2), Variable()),
+            Number(1));
+        var request = new AnalysisRequest(
+            Function("tan", argument),
+            AnalysisFeatures.Parity | AnalysisFeatures.YIntercept,
+            AngleUnit.Degrees,
+            "x",
+            static () => true);
+
+        AnalysisReport report = AnalysisEngine.Analyze(request);
+
+        Assert.Equal(ProofState.Unknown, report.Parity.State);
+        Assert.Equal(UnknownReason.UnsupportedFragment, report.Parity.UnknownReason);
+        Assert.Equal(ProofState.Unknown, report.YIntercept.State);
+        Assert.Equal(UnknownReason.UnsupportedFragment, report.YIntercept.UnknownReason);
+    }
+
+    [Fact]
+    public void VariablePowerDomainUsesGenericIntegerPreimageMetadata()
+    {
+        InputExpression x = Variable();
+        InputExpression expression = Power(Function("sin", x), Function("tan", x));
+        AnalysisRequest request = Request(expression, AnalysisFeatures.Domain);
+        AnalysisReport report = AnalysisEngine.Analyze(request);
+        RealSet domain = AssertProved(report.Domain);
+
+        var union = Assert.IsType<UnionSet>(domain);
+        Assert.Single(union.Operands.OfType<PeriodicIntervalSet>());
+        Assert.Equal(2, union.Operands.OfType<IntegerLatticeSet>().Count());
+        Assert.All(
+            union.Operands.OfType<IntegerLatticeSet>(),
+            family => Assert.Contains("arctan", family.Expression, StringComparison.Ordinal));
+        AssertReplay(request, report.Expression!, report.Domain);
+    }
+
+    [Fact]
+    public void VariablePowerProvesWindowsKnownEmptyFeatures()
+    {
+        InputExpression x = Variable();
+        InputExpression expression = Power(Function("sin", x), Function("tan", x));
+        AnalysisRequest request = Request(
+            expression,
+            AnalysisFeatures.Zeros |
+            AnalysisFeatures.YIntercept |
+            AnalysisFeatures.HorizontalAsymptotes);
+        AnalysisReport report = AnalysisEngine.Analyze(request);
+
+        Assert.True(AssertProved(report.Zeros).IsEmpty);
+        Assert.False(AssertProved(report.YIntercept).HasValue);
+        Assert.Empty(AssertProved(report.HorizontalAsymptotes));
+        AssertReplay(request, report.Expression!, report.Zeros);
+        AssertReplay(request, report.Expression!, report.YIntercept);
+        AssertReplay(request, report.Expression!, report.HorizontalAsymptotes);
+    }
+
+    [Fact]
+    public void EmptyAndIsolatedDomainsAreNotConfusedWithUnknown()
+    {
+        AnalysisReport empty = AnalysisEngine.Analyze(Request(
+            Divide(Number(0), Number(0)),
+            AnalysisFeatures.All));
+        Assert.True(AssertProved(empty.Domain).IsEmpty);
+        Assert.True(AssertProved(empty.Range).IsEmpty);
+        Assert.True(AssertProved(empty.Zeros).IsEmpty);
+        Assert.Empty(AssertProved(empty.Minima));
+        Assert.Empty(AssertProved(empty.Monotonicity));
+
+        InputExpression isolatedExpression = Function(
+            "sqrt",
+            Negate(Power(Variable(), 2)));
+        AnalysisReport isolated = AnalysisEngine.Analyze(Request(
+            isolatedExpression,
+            AnalysisFeatures.All));
+        Assert.IsType<PointSet>(AssertProved(isolated.Domain));
+        Assert.IsType<PointSet>(AssertProved(isolated.Range));
+        Assert.Empty(AssertProved(isolated.Minima));
+        Assert.Empty(AssertProved(isolated.Maxima));
+        Assert.Empty(AssertProved(isolated.Monotonicity));
+    }
+
+    [Fact]
+    public void EndpointsPlateausPolesAndRepeatedRootsFollowLogicalDefinitions()
+    {
+        AnalysisReport squareRoot = AnalysisEngine.Analyze(Request(
+            Function("sqrt", Variable()),
+            AnalysisFeatures.Minima | AnalysisFeatures.Maxima | AnalysisFeatures.Monotonicity));
+        Assert.Single(AssertProved(squareRoot.Minima));
+        Assert.Empty(AssertProved(squareRoot.Maxima));
+
+        AnalysisReport plateau = AnalysisEngine.Analyze(Request(
+            Number(3),
+            AnalysisFeatures.Minima | AnalysisFeatures.Maxima | AnalysisFeatures.Monotonicity));
+        Assert.Empty(AssertProved(plateau.Minima));
+        Assert.Empty(AssertProved(plateau.Maxima));
+        Assert.Equal(Monotonicity.Constant, Assert.Single(AssertProved(plateau.Monotonicity)).Direction);
+
+        InputExpression hole = Divide(
+            Power(Subtract(Variable(), Number(1)), 2),
+            Subtract(Variable(), Number(1)));
+        AnalysisReport repeated = AnalysisEngine.Analyze(Request(
+            hole,
+            AnalysisFeatures.Domain | AnalysisFeatures.Zeros | AnalysisFeatures.VerticalAsymptotes));
+        Assert.False(AssertProved(repeated.Domain).IsEmpty);
+        Assert.True(AssertProved(repeated.Zeros).IsEmpty);
+        Assert.Empty(AssertProved(repeated.VerticalAsymptotes));
+    }
+
+    [Fact]
+    public void AlgebraicRootsRemainExactWithoutRadicalFormatting()
+    {
+        InputExpression polynomial = Subtract(
+            Subtract(Power(Variable(), 3), Variable()),
+            Number(1));
+        AnalysisReport report = AnalysisEngine.Analyze(Request(
+            polynomial,
+            AnalysisFeatures.Zeros));
+        var roots = Assert.IsType<PointSet>(AssertProved(report.Zeros));
+        Assert.IsType<AlgebraicReal>(Assert.Single(roots.Points));
+    }
+
+    [Fact]
+    public void SparseMultivariateArithmeticRemainsExactAndBudgeted()
+    {
+        var budget = new ResourceBudget();
+        SparseMultivariatePolynomial polynomial = SparseMultivariatePolynomial.Create(
+            2,
+            [
+                new(new Monomial([2, 0]), 1),
+                new(new Monomial([1, 1]), 3),
+                new(new Monomial([0, 1]), -1)
+            ],
+            budget);
+
+        Assert.Equal(2, polynomial.TotalDegree);
+        Assert.Equal(
+            new BigRational(29),
+            polynomial.Evaluate([new BigRational(2), new BigRational(5)], budget));
+
+        SparseMultivariatePolynomial derivative = polynomial.Differentiate(0, budget);
+        Assert.Equal(
+            new BigRational(19),
+            derivative.Evaluate([new BigRational(2), new BigRational(5)], budget));
+
+        SparseMultivariatePolynomial squared = polynomial.Multiply(polynomial, budget);
+        Assert.Equal(4, squared.TotalDegree);
+        Assert.Equal(
+            new BigRational(841),
+            squared.Evaluate([new BigRational(2), new BigRational(5)], budget));
+    }
+
+    [Fact]
+    public void CooperEliminationProvesEqualityAndUnitBoundProjections()
+    {
+        var budget = new ResourceBudget();
+        var equality = new PresburgerComparison(
+            LinearIntegerExpression.From(0, ("n", 2), ("x", -1)),
+            IntegerRelation.Equal);
+
+        Assert.True(CooperEliminator.TryEliminateExists(
+            "n",
+            equality,
+            budget,
+            out PresburgerFormula equalityProjection));
+        var divisibility = Assert.IsType<PresburgerDivisibility>(equalityProjection);
+        Assert.Equal(new BigInteger(2), divisibility.Divisor);
+        Assert.Equal(new BigInteger(-1), divisibility.Expression.Coefficient("x"));
+
+        PresburgerFormula bounds = PresburgerNormalizer.And(
+        [
+            new PresburgerComparison(
+                LinearIntegerExpression.From(0, ("n", -1), ("x", 1)),
+                IntegerRelation.LessOrEqual),
+            new PresburgerComparison(
+                LinearIntegerExpression.From(0, ("n", 1), ("y", -1)),
+                IntegerRelation.LessOrEqual)
+        ]);
+        Assert.True(CooperEliminator.TryEliminateExists(
+            "n",
+            bounds,
+            budget,
+            out PresburgerFormula boundProjection));
+        var projectedBound = Assert.IsType<PresburgerComparison>(boundProjection);
+        Assert.Equal(new BigInteger(1), projectedBound.Expression.Coefficient("x"));
+        Assert.Equal(new BigInteger(-1), projectedBound.Expression.Coefficient("y"));
+        Assert.Equal(BigInteger.Zero, projectedBound.Expression.Constant);
+    }
+
+    [Fact]
+    public void DeterministicLimitsReturnUnknownAndCancellationNeverPublishes()
+    {
+        InputExpression excessiveDegree = Power(Variable(), 257);
+        AnalysisReport degreeReport = AnalysisEngine.Analyze(Request(
+            excessiveDegree,
+            AnalysisFeatures.All));
+        Assert.Equal(ProofState.Unknown, degreeReport.Domain.State);
+        Assert.Equal(UnknownReason.BudgetExceeded, degreeReport.Domain.UnknownReason);
+
+        BigInteger huge = BigInteger.One << (AnalysisLimits.CoefficientBits + 1);
+        AnalysisReport coefficientReport = AnalysisEngine.Analyze(Request(
+            Multiply(Number(new BigRational(huge)), Variable()),
+            AnalysisFeatures.All));
+        Assert.Equal(UnknownReason.BudgetExceeded, coefficientReport.Domain.UnknownReason);
+
+        var cellBudget = new ResourceBudget();
+        Assert.Throws<BudgetExceededException>(() => cellBudget.AddCells(AnalysisLimits.Cells + 1));
+
+        AnalysisRequest cancelled = new(
+            Variable(),
+            AnalysisFeatures.All,
+            AngleUnit.Radians,
+            "x",
+            static () => false);
+        Assert.Throws<AnalysisCancelledException>(() => AnalysisEngine.Analyze(cancelled));
+    }
+
+    private static void AssertReplay<T>(
+        AnalysisRequest request,
+        SemanticExpression expression,
+        ProofOutcome<T> outcome)
+    {
+        if (outcome.State != ProofState.Proved)
+        {
+            Assert.Equal(ProofState.Unknown, outcome.State);
+            Assert.Null(outcome.Certificate);
+            return;
+        }
+
+        Assert.NotNull(outcome.Certificate);
+        Assert.True(CertificateChecker.Check(request, expression, outcome));
+    }
+
+    private static T AssertProved<T>(ProofOutcome<T> outcome)
+    {
+        Assert.Equal(ProofState.Proved, outcome.State);
+        Assert.NotNull(outcome.Value);
+        return outcome.Value;
+    }
+
+    private static AnalysisRequest Request(
+        InputExpression expression,
+        AnalysisFeatures features) =>
+        new(expression, features, AngleUnit.Radians, "x", static () => true);
+
+    private static SemanticExpression Build(InputExpression expression) =>
+        new SemanticGraphBuilder(new ResourceBudget()).Build(expression);
+
+    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+
+    private static InputExpression Number(int value) => Number(new BigRational(value));
+
+    private static InputExpression Number(BigRational value) => InputExpression.Number(value, Source);
+
+    private static InputExpression Add(InputExpression left, InputExpression right) =>
+        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+
+    private static InputExpression Subtract(InputExpression left, InputExpression right) =>
+        InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+
+    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
+        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+
+    private static InputExpression Divide(InputExpression left, InputExpression right) =>
+        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+
+    private static InputExpression Power(InputExpression basis, int exponent) =>
+        Power(basis, Number(exponent));
+
+    private static InputExpression Power(InputExpression basis, InputExpression exponent) =>
+        InputExpression.Binary(InputExpressionKind.Power, basis, exponent, Source);
+
+    private static InputExpression Negate(InputExpression value) =>
+        InputExpression.Unary(InputExpressionKind.Negate, value, Source);
+
+    private static InputExpression Function(string name, params InputExpression[] arguments) =>
+        InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+
+    private static bool Evaluate(
+        PolynomialFormula formula,
+        BigRational value,
+        ResourceBudget budget)
+    {
+        ImmutableArray<UnivariatePolynomial> atoms = PolynomialFormulaConverter.Atoms(formula);
+        var signs = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (UnivariatePolynomial polynomial in atoms)
+        {
+            signs.Add(polynomial.Canonical, polynomial.Evaluate(value, budget).Sign);
+        }
+
+        return PolynomialFormulaConverter.Evaluate(formula, signs);
+    }
+
+    private static bool TryEvaluate(
+        InputExpression expression,
+        BigRational variable,
+        out BigRational value)
+    {
+        switch (expression.Kind)
+        {
+            case InputExpressionKind.Constant:
+                value = expression.Constant;
+                return true;
+            case InputExpressionKind.Variable:
+                value = variable;
+                return true;
+            case InputExpressionKind.Negate:
+                if (TryEvaluate(expression.Arguments[0], variable, out BigRational negated))
+                {
+                    value = -negated;
+                    return true;
+                }
+
+                break;
+            case InputExpressionKind.Add:
+            case InputExpressionKind.Multiply:
+            case InputExpressionKind.Divide:
+                if (TryEvaluate(expression.Arguments[0], variable, out BigRational left) &&
+                    TryEvaluate(expression.Arguments[1], variable, out BigRational right) &&
+                    (expression.Kind != InputExpressionKind.Divide || !right.IsZero))
+                {
+                    value = expression.Kind switch
+                    {
+                        InputExpressionKind.Add => left + right,
+                        InputExpressionKind.Multiply => left * right,
+                        InputExpressionKind.Divide => left / right,
+                        _ => throw new InvalidOperationException()
+                    };
+                    return true;
+                }
+
+                break;
+        }
+
+        value = default;
+        return false;
     }
 }

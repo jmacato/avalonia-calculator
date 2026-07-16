@@ -11,8 +11,7 @@ namespace GraphingImpl;
 
 internal sealed record PreparedEquationGeometry(
     CompiledGraphEquation Definition,
-    SampledCurve? Curve,
-    InequalityMesh? Inequality,
+    SampledCurve Boundary,
     InequalityHatchGrid InequalityHatch);
 
 internal readonly record struct InequalityHatchGrid(
@@ -86,11 +85,11 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
         {
             lock (_lock)
             {
-                if (_frame is null && _prepared is not null)
+                if (_frame is null &&
+                    _prepared is not null &&
+                    _prepared.Viewport == EffectiveViewportLocked())
                 {
-                    _frame = BuildFrame(
-                        _prepared,
-                        stale: _prepared.Viewport != EffectiveViewportLocked());
+                    _frame = BuildFrame(_prepared);
                 }
 
                 return _frame;
@@ -115,7 +114,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
 
             _width = width;
             _height = height;
-            InvalidateGeometryLocked(transformExisting: true);
+            InvalidateGeometryLocked();
         }
 
         return GraphStatus.Ok;
@@ -138,7 +137,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
 
             _dpiX = dpiX;
             _dpiY = dpiY;
-            RebuildFrameFromPreparedLocked(stale: _prepared?.Viewport != EffectiveViewportLocked());
+            RebuildFrameFromPreparedLocked();
         }
 
         return GraphStatus.Ok;
@@ -239,26 +238,15 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
         for (int equationIndex = 0; equationIndex < prepared.Equations.Length; equationIndex++)
         {
             PreparedEquationGeometry geometry = prepared.Equations[equationIndex];
-            if (geometry.Curve is not null)
+            foreach (SampledComponent component in geometry.Boundary.Components)
             {
-                foreach (SampledComponent component in geometry.Curve.Components)
-                {
-                    SearchComponent(
-                        component.Points,
-                        geometry.Definition.Kind,
-                        viewport,
-                        target,
-                        equationIndex,
-                        ref best);
-                }
-            }
-
-            if (geometry.Inequality is not null)
-            {
-                foreach (ImmutableArray<GraphPoint> contour in geometry.Inequality.Contours)
-                {
-                    SearchContour(contour, viewport, target, equationIndex, ref best);
-                }
+                SearchComponent(
+                    component.Points,
+                    geometry.Definition.Kind,
+                    viewport,
+                    target,
+                    equationIndex,
+                    ref best);
             }
         }
 
@@ -300,7 +288,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
 
             _xRange = x;
             _yRange = y;
-            InvalidateGeometryLocked(transformExisting: true);
+            InvalidateGeometryLocked();
         }
 
         return GraphStatus.Ok;
@@ -346,7 +334,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
             double yOffset = ratioY * _yRange.Length * 0.5;
             _xRange = new AxisRange(_xRange.Minimum + xOffset, _xRange.Maximum + xOffset);
             _yRange = new AxisRange(_yRange.Minimum + yOffset, _yRange.Maximum + yOffset);
-            InvalidateGeometryLocked(transformExisting: true);
+            InvalidateGeometryLocked();
         }
 
         return GraphStatus.Ok;
@@ -361,7 +349,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
             ThrowIfDisposed();
             _xRange = x;
             _yRange = y;
-            InvalidateGeometryLocked(transformExisting: true);
+            InvalidateGeometryLocked();
         }
 
         return GraphStatus.Ok;
@@ -395,7 +383,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
             ThrowIfDisposed();
             _xRange = x;
             _yRange = y;
-            InvalidateGeometryLocked(transformExisting: true);
+            InvalidateGeometryLocked();
         }
 
         return GraphStatus.Ok;
@@ -417,7 +405,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
                 _prepared.Snapshot.Revision == snapshot.Revision &&
                 _prepared.Viewport == viewport)
             {
-                _frame ??= BuildFrame(_prepared, stale: false);
+                _frame ??= BuildFrame(_prepared);
                 return GraphStatus.Ok;
             }
 
@@ -468,7 +456,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
 
             _prepared = prepared;
             ClearEquationCommandCacheLocked();
-            _frame = BuildFrame(prepared, stale: false);
+            _frame = BuildFrame(prepared);
         }
 
         return GraphStatus.Ok;
@@ -534,10 +522,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
         {
             ThrowIfDisposed();
             _snapshot = snapshot;
-            _prepared = null;
-            _frame = null;
-            ClearEquationCommandCacheLocked();
-            InvalidateGeometryLocked(transformExisting: false);
+            InvalidateGeometryLocked();
         }
     }
 
@@ -581,39 +566,22 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
                     break;
                 }
 
-                if (definition.Kind == GraphEquationKind.Inequality)
-                {
-                    InequalityMesh mesh = SampleInequality(
+                SampledCurve boundary = SampleBoundary(
+                    definition,
+                    values,
+                    viewport,
+                    Math.Min(MaximumVerticesPerEquation, remaining),
+                    cancellationToken);
+                InequalityHatchGrid hatch = definition.IsInequality
+                    ? SampleInequalityHatch(
                         definition,
                         values,
                         viewport,
-                        Math.Min(MaximumVerticesPerEquation, remaining),
-                        cancellationToken);
-                    InequalityHatchGrid hatch = SampleInequalityHatch(
-                        definition,
-                        values,
-                        viewport,
-                        cancellationToken);
-                    totalVertices += mesh.VertexCount;
-                    missing |= mesh.HasMissingData;
-                    geometries.Add(new PreparedEquationGeometry(definition, null, mesh, hatch));
-                }
-                else
-                {
-                    SampledCurve curve = SampleCurve(
-                        definition,
-                        values,
-                        viewport,
-                        Math.Min(MaximumVerticesPerEquation, remaining),
-                        cancellationToken);
-                    totalVertices += curve.VertexCount;
-                    missing |= curve.HasMissingData;
-                    geometries.Add(new PreparedEquationGeometry(
-                        definition,
-                        curve,
-                        null,
-                        InequalityHatchGrid.Empty));
-                }
+                        cancellationToken)
+                    : InequalityHatchGrid.Empty;
+                totalVertices += boundary.VertexCount;
+                missing |= boundary.HasMissingData;
+                geometries.Add(new PreparedEquationGeometry(definition, boundary, hatch));
             }
         }
         finally
@@ -625,7 +593,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
         return new PreparedGraph(snapshot, viewport, geometries.ToImmutable(), missing);
     }
 
-    private SampledCurve SampleCurve(
+    private SampledCurve SampleBoundary(
         CompiledGraphEquation definition,
         double[] values,
         SamplingViewport viewport,
@@ -636,7 +604,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
         if (definition.Kind == GraphEquationKind.Implicit)
         {
             return ImplicitCurveTracer.Trace(
-                (x, y) => EvaluateImplicit(definition, values, x, y, trigMode),
+                (x, y) => EvaluateBoundaryField(definition, values, x, y, trigMode),
                 viewport,
                 new ImplicitTraceOptions(MaximumVertices: maximumVertices),
                 cancellationToken);
@@ -654,7 +622,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
                 SetVariable(values, definition.XIndex, parameter);
             }
 
-            EvaluationValue result = definition.Program.Evaluate(values, trigMode);
+            EvaluationValue result = definition.BoundaryProgram.Evaluate(values, trigMode);
             return result.IsFinite
                 ? new CurveSample(
                     parameter,
@@ -674,54 +642,12 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
             cancellationToken);
     }
 
-    private InequalityMesh SampleInequality(
-        CompiledGraphEquation definition,
-        double[] values,
-        SamplingViewport viewport,
-        int maximumVertices,
-        CancellationToken cancellationToken)
-    {
-        EvalTrigUnitMode trigMode = _evaluationOptions.GetTrigUnitMode();
-        bool Predicate(double value) => definition.Relation switch
-        {
-            RelationKind.Less => value < 0,
-            RelationKind.LessOrEqual => value <= 0,
-            RelationKind.Greater => value > 0,
-            RelationKind.GreaterOrEqual => value >= 0,
-            _ => false
-        };
-
-        int columns = Math.Clamp((int)(_width / 8), 32, 128);
-        int rows = Math.Clamp((int)(_height / 8), 32, 128);
-        // Rendering consumes only the stitched boundary; filled cell polygons
-        // would retain thousands of arrays without ever reaching a draw command.
-        return MarchingSquares.BuildContours(
-            (x, y) => EvaluateImplicit(definition, values, x, y, trigMode),
-            Predicate,
-            viewport,
-            columns,
-            rows,
-            maximumVertices,
-            cancellationToken);
-    }
-
-    private GraphFrame BuildFrame(PreparedGraph prepared, bool stale)
+    private GraphFrame BuildFrame(PreparedGraph prepared)
     {
         SamplingViewport viewport = EffectiveViewportLocked();
-        ImmutableArray<GraphFrameCommand> settledCommands = GetContentCommandsLocked(prepared);
-        ImmutableArray<GraphFrameCommand> commands;
-        if (prepared.Viewport == viewport)
+        if (prepared.Viewport != viewport)
         {
-            commands = settledCommands;
-        }
-        else
-        {
-            commands =
-            [
-                new PushCoordinateTransformCommand(CoordinateTransform(prepared.Viewport, viewport)),
-                new CommandGroupCommand(settledCommands),
-                new PopCoordinateTransformCommand()
-            ];
+            throw new InvalidOperationException("Prepared graph geometry must match the current viewport.");
         }
 
         return new GraphFrame(
@@ -731,9 +657,8 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
             _dpiY,
             prepared.Snapshot.Revision,
             _options.GetBackColor(),
-            commands,
-            prepared.HasMissingData || stale,
-            stale);
+            GetContentCommandsLocked(prepared),
+            prepared.HasMissingData);
     }
 
     private ImmutableArray<GraphFrameCommand> GetContentCommandsLocked(PreparedGraph prepared)
@@ -782,14 +707,6 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
         _contentCommandSource = null;
         _contentCommands = ImmutableArray<GraphFrameCommand>.Empty;
     }
-
-    private static GraphCoordinateTransform CoordinateTransform(
-        SamplingViewport source,
-        SamplingViewport target) => new(
-        target.Width * source.XRange.Length / (source.Width * target.XRange.Length),
-        target.Height * source.YRange.Length / (source.Height * target.YRange.Length),
-        (source.XRange.Minimum - target.XRange.Minimum) * target.Width / target.XRange.Length,
-        (target.YRange.Maximum - source.YRange.Maximum) * target.Height / target.YRange.Length);
 
     private void AppendGridAndAxes(
         ImmutableArray<GraphFrameCommand>.Builder commands,
@@ -878,19 +795,18 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
             float width = selected
                 ? equationOptions.GetSelectedEquationLineWidth()
                 : equationOptions.GetLineWidth();
-            var linePaint = new GraphPaint(color, width, equationOptions.GetLineStyle());
 
-            if (geometry.Inequality is not null)
+            if (geometry.Definition.IsInequality)
             {
                 LineStyle boundaryStyle = geometry.Definition.Relation is RelationKind.Less or RelationKind.Greater
                     ? LineStyle.Dash
                     : LineStyle.Solid;
                 var boundaryPaint = new GraphPaint(color, width, boundaryStyle);
-                foreach (ImmutableArray<GraphPoint> contour in geometry.Inequality.Contours)
+                foreach (SampledComponent component in geometry.Boundary.Components)
                 {
-                    if (contour.Length >= 2)
+                    if (component.Points.Length >= 2)
                     {
-                        GraphPath path = ToScreenPath(contour, viewport, isClosed: false);
+                        GraphPath path = ToScreenPath(component.Points, viewport, isClosed: false);
                         // Calculator emits the inequality boundary through both
                         // inequality graph parts. Replaying both paths preserves
                         // its antialiasing and selected-width appearance.
@@ -904,14 +820,11 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
                     geometry.InequalityHatch,
                     prepared.Viewport,
                     color);
-            }
-
-            if (geometry.Curve is null)
-            {
                 continue;
             }
 
-            foreach (SampledComponent component in geometry.Curve.Components)
+            var linePaint = new GraphPaint(color, width, equationOptions.GetLineStyle());
+            foreach (SampledComponent component in geometry.Boundary.Components)
             {
                 if (component.Points.Length < 2)
                 {
@@ -986,7 +899,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
             {
                 double sampleY = row * viewport.Height / latticeIntervals;
                 GraphPoint point = viewport.ToUser(sampleX, sampleY);
-                double result = EvaluateImplicit(definition, values, point.X, point.Y, trigMode);
+                double result = EvaluateRegion(definition, values, point.X, point.Y, trigMode);
                 if (!IsInequalitySatisfied(definition.Relation, result))
                 {
                     continue;
@@ -1262,26 +1175,19 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
                 _yRange = candidate;
             }
 
-            InvalidateGeometryLocked(transformExisting: true);
+            InvalidateGeometryLocked();
         }
 
         return GraphStatus.Ok;
     }
 
-    private void InvalidateGeometryLocked(bool transformExisting)
+    private void InvalidateGeometryLocked()
     {
         _generation++;
         CancelSamplingLocked();
-        if (!transformExisting)
-        {
-            _prepared = null;
-        }
-
-        // Range changes can arrive much faster than the compositor paints. Keep
-        // the sampled user-space geometry and rebuild its screen-space preview
-        // lazily for the next actual frame instead of allocating one frame for
-        // every queued wheel or pointer event.
+        _prepared = null;
         _frame = null;
+        ClearEquationCommandCacheLocked();
     }
 
     private void CancelSamplingLocked()
@@ -1315,9 +1221,11 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
         samplingCancellation.Dispose();
     }
 
-    private void RebuildFrameFromPreparedLocked(bool stale)
+    private void RebuildFrameFromPreparedLocked()
     {
-        _frame = _prepared is null ? null : BuildFrame(_prepared, stale);
+        _frame = _prepared is not null && _prepared.Viewport == EffectiveViewportLocked()
+            ? BuildFrame(_prepared)
+            : null;
     }
 
     private SamplingViewport EffectiveViewportLocked()
@@ -1376,19 +1284,6 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
         _ => double.NaN
     };
 
-    private static void SearchContour(
-        ImmutableArray<GraphPoint> points,
-        SamplingViewport viewport,
-        GraphPoint target,
-        int equationIndex,
-        ref ClosestCandidate best)
-    {
-        for (int index = 1; index < points.Length; index++)
-        {
-            SearchSegment(points[index - 1], points[index], double.NaN, double.NaN, viewport, target, equationIndex, ref best);
-        }
-    }
-
     private static void SearchSegment(
         GraphPoint userLeft,
         GraphPoint userRight,
@@ -1443,7 +1338,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
         return new GraphPath(screenPoints.MoveToImmutable(), isClosed);
     }
 
-    private static double EvaluateImplicit(
+    private static double EvaluateBoundaryField(
         CompiledGraphEquation definition,
         double[] values,
         double x,
@@ -1452,7 +1347,22 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
     {
         SetVariable(values, definition.XIndex, x);
         SetVariable(values, definition.YIndex, y);
-        EvaluationValue result = definition.Program.Evaluate(values, trigMode);
+        EvaluationValue result = definition.BoundaryProgram.Evaluate(values, trigMode);
+        return result.IsFinite ? result.Value : double.NaN;
+    }
+
+    private static double EvaluateRegion(
+        CompiledGraphEquation definition,
+        double[] values,
+        double x,
+        double y,
+        EvalTrigUnitMode trigMode)
+    {
+        SetVariable(values, definition.XIndex, x);
+        SetVariable(values, definition.YIndex, y);
+        ExpressionProgram regionProgram = definition.RegionProgram ??
+            throw new InvalidOperationException("A region evaluator is required for an inequality.");
+        EvaluationValue result = regionProgram.Evaluate(values, trigMode);
         return result.IsFinite ? result.Value : double.NaN;
     }
 

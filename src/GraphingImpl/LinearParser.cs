@@ -332,6 +332,13 @@ internal sealed class LinearParser
 
     private static string NormalizeFunctionName(string name) => name.ToLowerInvariant() switch
     {
+        // Keep aliases out of the syntax tree so evaluation and every
+        // symbolic analyzer operate on the same canonical function names.
+        "arcsin" => "asin",
+        "arccos" => "acos",
+        "arctan" => "atan",
+        "sgn" => "sign",
+        "ceiling" => "ceil",
         "sum" or "plus" => "sum",
         "subtract" or "minus" => "subtract",
         "product" or "times" => "product",

@@ -12,7 +12,7 @@ namespace CalculatorApp.Controls;
 
 /// <summary>
 /// Read-only mathematical layout used where the native app uses a read-only
-/// MathRichEditBox. CSharpMath supplies TeX layout while the embedded Noto Sans
+/// MathRichEditBox. CSharpMath supplies TeX layout while the embedded XCharter
 /// Math face supplies the OpenType MATH metrics and Avalonia renders the glyphs.
 /// </summary>
 public sealed class MathExpressionView : MathView
@@ -44,17 +44,17 @@ public sealed class MathExpressionView : MathView
     private static GlyphTypeface[] LoadMathTypefaces()
     {
         var family = new FontFamily(
-            "avares://Calculator/Assets/Fonts/NotoSansMath#Noto Sans Math");
+            "avares://Calculator/Assets/Fonts/XCharterMath#XCharter Math");
         if (!FontManager.Current.TryGetGlyphTypeface(new Typeface(family), out GlyphTypeface? typeface))
         {
-            throw new InvalidDataException("The embedded Noto Sans Math font could not be loaded.");
+            throw new InvalidDataException("The embedded XCharter Math font could not be loaded.");
         }
 
         if (!typeface.PlatformTypeface.TryGetTable(
                 new OpenTypeTag('M', 'A', 'T', 'H'),
                 out _))
         {
-            throw new InvalidDataException("The embedded Noto Sans Math font has no OpenType MATH table.");
+            throw new InvalidDataException("The embedded XCharter Math font has no OpenType MATH table.");
         }
 
         return [typeface];
@@ -78,11 +78,22 @@ internal static class GraphMathExpressionFormatter
             ["sec"] = "sec",
             ["csc"] = "csc",
             ["cot"] = "cot",
+            ["asin"] = "arcsin",
+            ["arcsin"] = "arcsin",
+            ["acos"] = "arccos",
+            ["arccos"] = "arccos",
+            ["atan"] = "arctan",
+            ["arctan"] = "arctan",
             ["sinh"] = "sinh",
             ["cosh"] = "cosh",
             ["tanh"] = "tanh",
             ["log"] = "log",
-            ["ln"] = "ln"
+            ["ln"] = "ln",
+            ["exp"] = "exp",
+            ["min"] = "min",
+            ["max"] = "max",
+            ["sign"] = "operatorname{sgn}",
+            ["sgn"] = "operatorname{sgn}"
         };
 
     public static string ToLaTeX(string expression)
@@ -158,11 +169,25 @@ internal static class GraphMathExpressionFormatter
                 case '∩':
                     result.Append(@"\cap ");
                     break;
+                case '∨':
+                    result.Append(@"\lor ");
+                    break;
+                case '∧':
+                    result.Append(@"\land ");
+                    break;
+                case '∖':
+                    result.Append(@"\setminus ");
+                    break;
                 case '∅':
                     result.Append(@"\varnothing ");
                     break;
                 case '°':
                     result.Append(@"^{\circ}");
+                    break;
+                case '*':
+                    // The graph engine normalizes implicit products to '*'.
+                    // OfficeMath displays those adjacent factors without a
+                    // multiplication glyph (for example, sin(x)tan(x)).
                     break;
                 default:
                     result.Append(current);
@@ -267,6 +292,21 @@ internal static class GraphMathExpressionFormatter
             if (identifier.Equals("abs", StringComparison.OrdinalIgnoreCase))
             {
                 result.Append(@"\left|").Append(ToLaTeX(argument)).Append(@"\right|");
+                index = closingParenthesis;
+                return;
+            }
+
+            if (identifier.Equals("floor", StringComparison.OrdinalIgnoreCase))
+            {
+                result.Append(@"\left\lfloor ").Append(ToLaTeX(argument)).Append(@"\right\rfloor ");
+                index = closingParenthesis;
+                return;
+            }
+
+            if (identifier.Equals("ceil", StringComparison.OrdinalIgnoreCase) ||
+                identifier.Equals("ceiling", StringComparison.OrdinalIgnoreCase))
+            {
+                result.Append(@"\left\lceil ").Append(ToLaTeX(argument)).Append(@"\right\rceil ");
                 index = closingParenthesis;
                 return;
             }

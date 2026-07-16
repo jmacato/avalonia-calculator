@@ -53,10 +53,20 @@
       <Setter Property="MinHeight" Value="22" />
       <Setter Property="HorizontalAlignment" Value="Left" />
       <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="FontSize" Value="16" />
+      <!-- CSharpMath measures this property in typographic points. 11pt
+           reproduces the 14-DIP OfficeMath ink bounds with XCharter. -->
+      <Setter Property="FontSize" Value="11" />
       <Setter Property="IsTabStop" Value="False" />
       <Setter Property="TextColor" Value="{DynamicResource TextFillColorPrimary}" />
       <Setter Property="TextAlignment" Value="TopLeft" />
+    </Style>
+    <!-- WinUI fully hides an auto-hidden scrollbar. Avalonia's Fluent theme
+         leaves its narrow panning thumb visible until the bar expands. -->
+    <Style Selector="ScrollViewer.kgfScroller /template/ ScrollBar /template/ Thumb">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ScrollViewer.kgfScroller /template/ ScrollBar[IsExpanded=true] /template/ Thumb">
+      <Setter Property="Background" Value="{DynamicResource ScrollBarThumbBackgroundColor}" />
     </Style>
   </UserControl.Styles>
 
@@ -67,7 +77,9 @@
         <ItemsControl ItemsSource="{CompiledBinding DisplayItems}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="x:String">
-              <controls:MathExpressionView Classes="kgfMath" Expression="{Binding}" />
+              <controls:MathExpressionView Margin="1,2,0,0"
+                                           Classes="kgfMath"
+                                           Expression="{Binding}" />
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
@@ -82,6 +94,7 @@
             <DataTemplate x:DataType="vm:GridDisplayItems">
               <Grid ColumnDefinitions="Auto,Auto" VerticalAlignment="Center">
                 <controls:MathExpressionView MinWidth="64"
+                                             Margin="1,2,0,0"
                                              Classes="kgfMath"
                                              Expression="{CompiledBinding Expression}" />
                 <TextBlock Grid.Column="1"
@@ -119,12 +132,13 @@
   <Grid RowDefinitions="Auto,Auto,*"
         AutomationProperties.Name="Function analysis">
     <Border MinHeight="48"
-            Margin="4,0"
+            Margin="5,0,4,0"
             Background="{DynamicResource TextControlBackground}"
             CornerRadius="{DynamicResource ControlCornerRadius}">
       <Grid ColumnDefinitions="Auto,*">
         <Button x:Name="BackButton"
                 Classes="kgfBackButton"
+                MinWidth="76"
                 VerticalAlignment="Stretch"
                 HorizontalContentAlignment="Center"
                 VerticalContentAlignment="Center"
@@ -152,21 +166,23 @@
         <controls:MathExpressionView Grid.Column="1"
                                      Margin="10,0,6,0"
                                      HorizontalAlignment="Stretch"
-                                     VerticalAlignment="Center"
+                                     VerticalAlignment="Stretch"
                                      Classes="kgfMath"
-                                     FontSize="18"
-                                     Expression="{CompiledBinding AnalysisExpression}" />
+                                     FontSize="10"
+                                     TextAlignment="Left"
+                                     Expression="{CompiledBinding Expression}" />
       </Grid>
     </Border>
 
     <TextBlock Grid.Row="1"
-               Margin="12,12,10,0"
+               Margin="13,12,10,0"
                FontSize="20"
                FontWeight="Medium"
                Text="{utils:ResourceString Name=KeyGraphFeaturesLabel.Text}" />
 
     <ScrollViewer Grid.Row="2"
-                  Padding="12,0,10,12"
+                  Classes="kgfScroller"
+                  Padding="13,9,10,12"
                   IsVisible="{CompiledBinding AnalysisItemsVisible}"
                   VerticalScrollBarVisibility="Auto">
       <ItemsControl ItemTemplate="{StaticResource KGFTemplateSelector}"
@@ -174,7 +190,7 @@
     </ScrollViewer>
 
     <TextBlock Grid.Row="2"
-               Margin="12,10,10,0"
+               Margin="13,10,10,0"
                IsVisible="{CompiledBinding AnalysisErrorVisible}"
                FontSize="14"
                Text="{CompiledBinding AnalysisErrorString}"

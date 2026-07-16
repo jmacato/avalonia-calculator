@@ -132,6 +132,34 @@ public sealed class NativeGraphFrameParityTests
     }
 
     [Fact]
+    public void ZoomedOutExplicitInequalityReusesTheStandaloneCurveBoundary()
+    {
+        RenderedGraph standalone = Render(
+            "sin(x)*log(x)",
+            xMin: -128,
+            xMax: 128,
+            yMin: -8,
+            yMax: 8);
+        RenderedGraph inequality = Render(
+            "sin(x)*log(x)<y",
+            xMin: -128,
+            xMax: 128,
+            yMin: -8,
+            yMax: 8);
+
+        AssertInequalityReusesBoundary(standalone.Frame, inequality.Frame);
+    }
+
+    [Fact]
+    public void ImplicitInequalityReusesTheEqualityContour()
+    {
+        RenderedGraph equality = Render("x^2+y^2=16");
+        RenderedGraph inequality = Render("x^2+y^2<16");
+
+        AssertInequalityReusesBoundary(equality.Frame, inequality.Frame);
+    }
+
+    [Fact]
     public void PngExportUsesPhysicalDpiAndExactAliasedCrossPixels()
     {
         var blue = new GraphPaint(NativeBlue, 1, LineStyle.Solid, AntiAlias: false);
@@ -308,7 +336,13 @@ public sealed class NativeGraphFrameParityTests
         AssertPoint(shortContour[^1], -0.996585889746418, 0.6662114519661889);
     }
 
-    private static RenderedGraph Render(string formula, bool selected = false)
+    private static RenderedGraph Render(
+        string formula,
+        bool selected = false,
+        double xMin = -7.7,
+        double xMax = 7.7,
+        double yMin = -11.1236797274276,
+        double yMax = 11.1236797274276)
     {
         IMathSolver solver = MathSolver.CreateMathSolver();
         solver.ParsingOptions().SetFormatType(FormatType.Linear);
@@ -326,9 +360,7 @@ public sealed class NativeGraphFrameParityTests
         IGraphRenderer renderer = graph.GetRenderer();
         Assert.Equal(GraphStatus.Ok, renderer.SetGraphSize(NativeWidth, NativeHeight));
         Assert.Equal(GraphStatus.Ok, renderer.SetDpi(192, 192));
-        Assert.Equal(
-            GraphStatus.Ok,
-            renderer.SetDisplayRanges(-7.7, 7.7, -11.1236797274276, 11.1236797274276));
+        Assert.Equal(GraphStatus.Ok, renderer.SetDisplayRanges(xMin, xMax, yMin, yMax));
         Assert.Equal(GraphStatus.Ok, renderer.PrepareGraph());
         GraphFrame frame = renderer.CurrentFrame ?? throw new InvalidOperationException("Renderer did not publish a frame.");
         return new RenderedGraph(graph, equation, renderer, frame);
@@ -338,6 +370,24 @@ public sealed class NativeGraphFrameParityTests
         .OfType<StrokePathCommand>()
         .Where(IsBlueStroke)
         .ToArray();
+
+    private static void AssertInequalityReusesBoundary(GraphFrame standalone, GraphFrame inequality)
+    {
+        StrokePathCommand[] standaloneBoundary = BlueStrokes(standalone);
+        StrokePathCommand[] inequalityBoundary = BlueStrokes(inequality);
+        Assert.NotEmpty(standaloneBoundary);
+        Assert.Equal(standaloneBoundary.Length * 2, inequalityBoundary.Length);
+        for (int index = 0; index < standaloneBoundary.Length; index++)
+        {
+            GraphPath expected = standaloneBoundary[index].Path;
+            GraphPath first = inequalityBoundary[index * 2].Path;
+            GraphPath second = inequalityBoundary[(index * 2) + 1].Path;
+            Assert.Equal(expected.IsClosed, first.IsClosed);
+            Assert.Equal(expected.IsClosed, second.IsClosed);
+            Assert.Equal(expected.Points, first.Points);
+            Assert.Equal(first.Points, second.Points);
+        }
+    }
 
     private static bool IsBlueStroke(GraphFrameCommand command) =>
         command is StrokePathCommand stroke && IsBlueStroke(stroke);

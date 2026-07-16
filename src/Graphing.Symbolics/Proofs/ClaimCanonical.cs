@@ -1,0 +1,63 @@
+using System.Collections.Immutable;
+
+namespace Graphing.Symbolics;
+
+internal static class ClaimCanonical
+{
+    public static string ForObject(object value) => value switch
+    {
+        RealSet set => set.Canonical,
+        FunctionParity parity => For(parity),
+        Periodicity periodicity => For(periodicity),
+        OptionalValue<ExactReal> optional => For(optional),
+        ImmutableArray<FeaturePoint> points => For(points),
+        ImmutableArray<Asymptote> asymptotes => For(asymptotes),
+        ImmutableArray<MonotoneRegion> regions => For(regions),
+        _ => throw new ArgumentOutOfRangeException(nameof(value))
+    };
+
+    public static string For<T>(T value) => value switch
+    {
+        RealSet set => set.Canonical,
+        FunctionParity parity => "parity:" + (int)parity,
+        Periodicity periodicity => Periodicity(periodicity),
+        OptionalValue<ExactReal> optional => Optional(optional),
+        ImmutableArray<FeaturePoint> points =>
+            $"feature-points[{string.Join(',', points.Select(FeaturePoint))}]",
+        ImmutableArray<Asymptote> asymptotes =>
+            $"asymptotes[{string.Join(',', asymptotes.Select(Asymptote))}]",
+        ImmutableArray<MonotoneRegion> regions =>
+            $"monotonicity[{string.Join(',', regions.Select(MonotoneRegion))}]",
+        _ => throw new ArgumentOutOfRangeException(nameof(value))
+    };
+
+    private static string Optional(OptionalValue<ExactReal> value) => value.HasValue
+        ? "some:" + ExactRealCanonical.Format(value.Value!)
+        : "none";
+
+    private static string Periodicity(Periodicity value) =>
+        $"periodicity:{(int)value.Kind}:{(value.FundamentalPeriod is null ? "none" : ExactRealCanonical.Format(value.FundamentalPeriod))}";
+
+    private static string FeaturePoint(FeaturePoint point) =>
+        $"point[{RealFamily(point.X)},{ExactRealCanonical.Format(point.Y)}]";
+
+    private static string Asymptote(Asymptote asymptote) =>
+        $"asymptote[{(int)asymptote.Orientation},{RealFamily(asymptote.Coordinate)},{Maybe(asymptote.Slope)},{Maybe(asymptote.Intercept)}]";
+
+    private static string MonotoneRegion(MonotoneRegion region) =>
+        $"region[{region.Region.Canonical},{(int)region.Direction}]";
+
+    private static string RealFamily(RealFamily family) => family switch
+    {
+        SingletonReal singleton => "single:" + ExactRealCanonical.Format(singleton.Value),
+        PeriodicReal periodic =>
+            $"periodic:{ExactRealCanonical.Format(periodic.Offset)}:{ExactRealCanonical.Format(periodic.Period)}:{periodic.Parameter}:{periodic.Constraint.Canonical}",
+        LatticeReal lattice =>
+            $"lattice:{lattice.Expression}:{string.Join(',', lattice.Parameters)}:{string.Join(',', lattice.Predicates)}",
+        _ => throw new ArgumentOutOfRangeException(nameof(family))
+    };
+
+    private static string Maybe(ExactReal? value) => value is null
+        ? "none"
+        : ExactRealCanonical.Format(value);
+}

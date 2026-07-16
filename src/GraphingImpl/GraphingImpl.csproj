@@ -12,6 +12,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CalcManagerManaged\CalcManagerPort\CalcManagerPort.csproj" />
+    <ProjectReference Include="..\Graphing.Symbolics\Graphing.Symbolics.csproj" />
     <ProjectReference Include="..\GraphingInterfaces\GraphingInterfaces.csproj" />
     <ProjectReference Include="..\GraphingRaster.Skia\GraphingRaster.Skia.csproj" />
     <ProjectReference Include="..\JsMath.Port\JsMath.Port.csproj" />

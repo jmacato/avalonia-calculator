@@ -97,7 +97,7 @@ internal static class ExpressionSerializer
     {
         return node.Kind switch
         {
-            AstKind.Number => node.Number.ToString("R", CultureInfo.InvariantCulture),
+            AstKind.Number => node.Number.ToString(),
             AstKind.Variable => invariant ? InvariantVariable(node.Name, expression) : node.Name,
             AstKind.Negate => $"Negate[{Formula(node.Children[0], expression, invariant)}]",
             AstKind.Add => FormulaBinary("Sum", node, expression, invariant),
@@ -168,7 +168,7 @@ internal static class ExpressionSerializer
         switch (node.Kind)
         {
             case AstKind.Number:
-                Element(builder, prefix, "mn", node.Number.ToString("R", CultureInfo.InvariantCulture));
+                Element(builder, prefix, "mn", node.Number.ToString());
                 return;
             case AstKind.Variable:
                 Element(builder, prefix, "mi", node.Name);
@@ -229,7 +229,7 @@ internal static class ExpressionSerializer
         int precedence = Precedence(node.Kind);
         string text = node.Kind switch
         {
-            AstKind.Number => node.Number.ToString("R", CultureInfo.InvariantCulture),
+            AstKind.Number => node.Number.ToString(),
             AstKind.Variable when node.Name.Equals("pi", StringComparison.OrdinalIgnoreCase) => "\\pi",
             AstKind.Variable => node.Name,
             AstKind.Negate => "-" + Latex(node.Children[0], expression, precedence),
@@ -269,9 +269,9 @@ internal static class ExpressionSerializer
         _ => string.Empty
     };
 
-    private static string FormatNumber(double value, LocalizationType localization)
+    private static string FormatNumber(ExactRational value, LocalizationType localization)
     {
-        string result = value.ToString("R", CultureInfo.InvariantCulture);
+        string result = value.ToString();
         return localization == LocalizationType.DecimalCommaAndListSemicolon
             ? result.Replace('.', ',')
             : result;

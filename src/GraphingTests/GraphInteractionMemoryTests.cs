@@ -6,7 +6,7 @@ namespace GraphingTests;
 public sealed class GraphInteractionMemoryTests
 {
     [Fact]
-    public void RapidRangeChangesAreCoalescedUntilAFrameIsRequested()
+    public void RapidRangeChangesAreCoalescedUntilTheCurrentViewportIsDrawn()
     {
         IMathSolver solver = MathSolver.CreateMathSolver();
         solver.ParsingOptions().SetFormatType(FormatType.Linear);
@@ -41,10 +41,30 @@ public sealed class GraphInteractionMemoryTests
             interactionBytes < 64 * 1_024,
             $"Range changes allocated {interactionBytes:N0} bytes before a frame was requested.");
 
-        GraphFrame preview = Assert.IsType<GraphFrame>(renderer.CurrentFrame);
-        Assert.NotSame(settled, preview);
-        Assert.True(preview.IsStale);
-        Assert.Equal(GraphStatus.Ok, renderer.PrepareGraph());
-        Assert.False(Assert.IsType<GraphFrame>(renderer.CurrentFrame).IsStale);
+        Assert.Null(renderer.CurrentFrame);
+
+        var target = new CaptureDrawingTarget();
+        Assert.Equal(GraphStatus.Ok, renderer.Draw(target, out bool hasSomeMissingData));
+        GraphFrame interaction = Assert.IsType<GraphFrame>(target.Frame);
+        Assert.Same(interaction, renderer.CurrentFrame);
+        Assert.NotSame(settled, interaction);
+        Assert.False(interaction.IsStale);
+        Assert.Equal(interaction.HasSomeMissingData, hasSomeMissingData);
+        Assert.DoesNotContain(interaction.Commands, command => command is PushCoordinateTransformCommand);
+    }
+
+    private sealed class CaptureDrawingTarget : IGraphDrawingTarget
+    {
+        public GraphFrame? Frame { get; private set; }
+
+        public void BeginFrame(GraphFrame frame) => Frame = frame;
+
+        public void Draw(GraphFrameCommand command)
+        {
+        }
+
+        public void EndFrame()
+        {
+        }
     }
 }

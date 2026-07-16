@@ -9,25 +9,32 @@ internal enum GraphEquationKind
 {
     ExplicitY,
     InverseX,
-    Implicit,
-    Inequality
+    Implicit
 }
 
 internal sealed record CompiledGraphEquation(
     uint EquationId,
     GraphEquationKind Kind,
     RelationKind Relation,
-    ExpressionProgram Program,
-    AstNode Syntax,
+    ExpressionProgram BoundaryProgram,
+    ExpressionProgram? RegionProgram,
+    AstNode BoundarySyntax,
     int XIndex,
     int YIndex,
     SourceSpan Span)
 {
+    public bool IsInequality => Relation is
+        RelationKind.Less or
+        RelationKind.LessOrEqual or
+        RelationKind.Greater or
+        RelationKind.GreaterOrEqual;
+
     public static CompiledGraphEquation Create(EquationAst equation, ImmutableArray<string> symbols)
     {
         int xIndex = IndexOf(symbols, "x");
         int yIndex = IndexOf(symbols, "y");
-        AstNode programNode;
+        AstNode boundaryNode;
+        AstNode? regionNode = null;
         GraphEquationKind kind;
 
         if (equation.Relation == RelationKind.None)
@@ -38,65 +45,87 @@ internal sealed record CompiledGraphEquation(
             }
 
             kind = GraphEquationKind.ExplicitY;
-            programNode = equation.Left;
-        }
-        else if (equation.Relation == RelationKind.Equal && equation.Right is not null)
-        {
-            if (IsVariable(equation.Left, "y"))
-            {
-                kind = GraphEquationKind.ExplicitY;
-                programNode = equation.Right;
-            }
-            else if (IsVariable(equation.Right, "y"))
-            {
-                kind = GraphEquationKind.ExplicitY;
-                programNode = equation.Left;
-            }
-            else if (IsVariable(equation.Left, "x"))
-            {
-                kind = GraphEquationKind.InverseX;
-                programNode = equation.Right;
-            }
-            else if (IsVariable(equation.Right, "x"))
-            {
-                kind = GraphEquationKind.InverseX;
-                programNode = equation.Left;
-            }
-            else
-            {
-                kind = GraphEquationKind.Implicit;
-                programNode = Difference(equation.Left, equation.Right, equation.Span);
-            }
+            boundaryNode = equation.Left;
         }
         else if (equation.Right is not null)
         {
-            kind = GraphEquationKind.Inequality;
-            programNode = Difference(equation.Left, equation.Right, equation.Span);
+            AstNode difference = Difference(equation.Left, equation.Right, equation.Span);
+            if (!TryGetExplicitBoundary(equation.Left, equation.Right, out kind, out boundaryNode))
+            {
+                kind = GraphEquationKind.Implicit;
+                boundaryNode = difference;
+            }
+
+            if (equation.Relation is
+                RelationKind.Less or
+                RelationKind.LessOrEqual or
+                RelationKind.Greater or
+                RelationKind.GreaterOrEqual)
+            {
+                regionNode = difference;
+            }
         }
         else
         {
             throw Unsupported(equation, "The graph relation is incomplete.");
         }
 
-        if (kind == GraphEquationKind.ExplicitY && yIndex >= 0 && ContainsVariable(programNode, "y"))
-        {
-            throw Unsupported(equation, "An explicit y graph cannot reference y on its right-hand side.");
-        }
-
-        if (kind == GraphEquationKind.InverseX && xIndex >= 0 && ContainsVariable(programNode, "x"))
-        {
-            throw Unsupported(equation, "An inverse x graph cannot reference x on its right-hand side.");
-        }
+        ExpressionProgram boundaryProgram = ExpressionProgram.Compile(boundaryNode, symbols);
+        ExpressionProgram? regionProgram = regionNode is null
+            ? null
+            : ReferenceEquals(boundaryNode, regionNode)
+                ? boundaryProgram
+                : ExpressionProgram.Compile(regionNode, symbols);
 
         return new CompiledGraphEquation(
             equation.EquationId,
             kind,
             equation.Relation,
-            ExpressionProgram.Compile(programNode, symbols),
-            programNode,
+            boundaryProgram,
+            regionProgram,
+            boundaryNode,
             xIndex,
             yIndex,
             equation.Span);
+    }
+
+    private static bool TryGetExplicitBoundary(
+        AstNode left,
+        AstNode right,
+        out GraphEquationKind kind,
+        out AstNode boundary)
+    {
+        if (IsVariable(left, "y") && !ContainsVariable(right, "y"))
+        {
+            kind = GraphEquationKind.ExplicitY;
+            boundary = right;
+            return true;
+        }
+
+        if (IsVariable(right, "y") && !ContainsVariable(left, "y"))
+        {
+            kind = GraphEquationKind.ExplicitY;
+            boundary = left;
+            return true;
+        }
+
+        if (IsVariable(left, "x") && !ContainsVariable(right, "x"))
+        {
+            kind = GraphEquationKind.InverseX;
+            boundary = right;
+            return true;
+        }
+
+        if (IsVariable(right, "x") && !ContainsVariable(left, "x"))
+        {
+            kind = GraphEquationKind.InverseX;
+            boundary = left;
+            return true;
+        }
+
+        kind = default;
+        boundary = null!;
+        return false;
     }
 
     private static int IndexOf(ImmutableArray<string> symbols, string name)

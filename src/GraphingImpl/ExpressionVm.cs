@@ -1069,7 +1069,7 @@ internal sealed class ExpressionProgram
             switch (node.Kind)
             {
                 case AstKind.Number:
-                    Push(new VmInstruction(VmOpCode.Constant, node.Number));
+                    Push(new VmInstruction(VmOpCode.Constant, node.Number.ToDouble()));
                     return;
                 case AstKind.Variable:
                     EmitVariable(node);

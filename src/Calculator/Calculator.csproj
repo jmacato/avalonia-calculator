@@ -189,7 +189,7 @@
     <AvaloniaXaml Include="Controls\HistoryMemoryStyles.xaml" />
     <AvaloniaXaml Include="Views\MainPage.xaml" />
     <AvaloniaResource Include="Assets\Fonts\Hind2\**\*.ttf" />
-    <AvaloniaResource Include="Assets\Fonts\NotoSansMath\**\*.ttf" />
+    <AvaloniaResource Include="Assets\Fonts\XCharterMath\**\*.otf" />
     <AvaloniaResource Include="Assets\CalculatorIcons.ttf" />
     <AvaloniaResource Include="Assets\CalculatorAppList.targetsize-20.png" />
     <EmbeddedResource Include="Resources\*.resx" />

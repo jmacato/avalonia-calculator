@@ -34,11 +34,11 @@ internal enum RelationKind
 internal sealed record AstNode(
     AstKind Kind,
     SourceSpan Span,
-    double Number,
+    ExactRational Number,
     string Name,
     ImmutableArray<AstNode> Children)
 {
-    public static AstNode NumberNode(double value, SourceSpan span) =>
+    public static AstNode NumberNode(ExactRational value, SourceSpan span) =>
         new(AstKind.Number, span, value, string.Empty, ImmutableArray<AstNode>.Empty);
 
     public static AstNode VariableNode(string name, SourceSpan span) =>
@@ -89,7 +89,7 @@ internal sealed class AstFactory
 
     public int NodeCount => _nodeCount;
 
-    public AstNode Number(double value, SourceSpan span)
+    public AstNode Number(ExactRational value, SourceSpan span)
     {
         CountNode(span);
         return AstNode.NumberNode(value, span);

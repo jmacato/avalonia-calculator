@@ -86,7 +86,8 @@ internal sealed class LatexConverter
             "sqrt" => ConvertRoot(),
             "operatorname" => ReadRequiredGroup(),
             "sin" or "cos" or "tan" or "cot" or "sec" or "csc" or
-            "asin" or "acos" or "atan" or "sinh" or "cosh" or "tanh" or
+            "asin" or "acos" or "atan" or "arcsin" or "arccos" or "arctan" or
+            "sinh" or "cosh" or "tanh" or
             "ln" or "log" or "exp" or "min" or "max" => command,
             "pi" => "pi",
             "infty" => "infinity",
