@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Collections.Immutable;
+using System.Numerics;
 using Graphing;
 using Graphing.Renderer;
 using GraphingRaster.Skia;
@@ -97,16 +98,16 @@ public sealed class NativeGraphFrameParityTests
     {
         RenderedGraph strict = Render("y>x", selected: true);
         RenderedGraph inclusive = Render("y>=x");
-        MarkerCommand[] strictMarkers = strict.Frame.Commands.OfType<MarkerCommand>().ToArray();
-        MarkerCommand[] inclusiveMarkers = inclusive.Frame.Commands.OfType<MarkerCommand>().ToArray();
+        HatchGridCommand strictHatch = Assert.Single(strict.Frame.Commands.OfType<HatchGridCommand>());
+        HatchGridCommand inclusiveHatch = Assert.Single(inclusive.Frame.Commands.OfType<HatchGridCommand>());
 
-        Assert.Equal(1673, strictMarkers.Length);
-        Assert.Equal(1673, inclusiveMarkers.Length);
-        Assert.Equal(
-            strictMarkers.Select(marker => marker.Center),
-            inclusiveMarkers.Select(marker => marker.Center));
-        Assert.All(strictMarkers, AssertNativeHatchMarker);
-        Assert.All(inclusiveMarkers, AssertNativeHatchMarker);
+        Assert.Equal(1673, strictHatch.Occupancy.Sum(word => BitOperations.PopCount(word)));
+        Assert.Equal(1673, inclusiveHatch.Occupancy.Sum(word => BitOperations.PopCount(word)));
+        Assert.True(strictHatch.Occupancy.SequenceEqual(inclusiveHatch.Occupancy));
+        AssertNativeHatch(strictHatch);
+        AssertNativeHatch(inclusiveHatch);
+        Assert.Empty(strict.Frame.Commands.OfType<MarkerCommand>());
+        Assert.Empty(inclusive.Frame.Commands.OfType<MarkerCommand>());
         Assert.Empty(strict.Frame.Commands.OfType<FillPathCommand>());
         Assert.Empty(inclusive.Frame.Commands.OfType<FillPathCommand>());
 
@@ -141,7 +142,7 @@ public sealed class NativeGraphFrameParityTests
             192,
             1,
             new Color(255, 255, 255),
-            [new MarkerCommand(new GraphPoint(10, 10), 1, GraphMarkerShape.Cross, blue)]);
+            [new HatchGridCommand([2UL], 2, 20, 20, 1, blue)]);
 
         byte[] png = SkiaGraphFrameRasterizer.EncodePng(frame).ToArray();
         Assert.Equal(40, BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16, 4)));
@@ -229,6 +230,84 @@ public sealed class NativeGraphFrameParityTests
         Assert.Equal(7.7, contour[^1].Y, 10);
     }
 
+    [Fact]
+    public void ContourOnlyMeshingPreservesBoundariesWithoutRetainingFillCells()
+    {
+        var viewport = new SamplingViewport(
+            new AxisRange(-7.7, 7.7),
+            new AxisRange(-11.1, 11.1),
+            NativeWidth,
+            NativeHeight);
+        ImplicitEvaluator evaluator = (x, y) => Math.Sin(12 * x) + Math.Sin(9 * y);
+
+        InequalityMesh full = MarchingSquares.Build(
+            evaluator,
+            value => value > 0,
+            viewport,
+            columns: 73,
+            rows: 106,
+            maximumVertices: 65_536,
+            cancellationToken: TestContext.Current.CancellationToken);
+        InequalityMesh contoursOnly = MarchingSquares.BuildContours(
+            evaluator,
+            value => value > 0,
+            viewport,
+            columns: 73,
+            rows: 106,
+            maximumVertices: 65_536,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Empty(contoursOnly.FilledPolygons);
+        Assert.Equal(full.EvaluationCount, contoursOnly.EvaluationCount);
+        Assert.Equal(full.Contours.Length, contoursOnly.Contours.Length);
+        for (int index = 0; index < full.Contours.Length; index++)
+        {
+            Assert.Equal(full.Contours[index], contoursOnly.Contours[index]);
+        }
+    }
+
+    [Fact]
+    public void SpatialStitcherPreservesReverseSegmentPriorityAtAmbiguousJunctions()
+    {
+        // This low-resolution surface has two endpoints within the stitch
+        // tolerance. The original reverse scan chooses the later segment and
+        // tests its A endpoint first; the spatial index must preserve that
+        // deterministic ordering rather than depend on hash-bucket traversal.
+        double[] c =
+        [
+            2.3310765802539306,
+            3.322560388279409,
+            -1.68154023107213,
+            1.3519500816948478,
+            1.7044826698044702,
+            1.7484990906661837,
+            -2.197549860085151,
+            -2.9083885768933166,
+            1.405922478719578,
+            -1.1320270733591293
+        ];
+        var viewport = new SamplingViewport(
+            new AxisRange(-3, 3),
+            new AxisRange(-2, 2),
+            320,
+            240);
+
+        InequalityMesh mesh = MarchingSquares.BuildContours(
+            (x, y) => c[0] + (c[1] * x) + (c[2] * y) + (c[3] * x * y) +
+                      (c[4] * x * x) + (c[5] * y * y) +
+                      (c[6] * Math.Sin(c[7] * x)) + (c[8] * Math.Cos(c[9] * y)),
+            value => value > 0,
+            viewport,
+            columns: 3,
+            rows: 15,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal([21, 3], mesh.Contours.Select(contour => contour.Length));
+        ImmutableArray<GraphPoint> shortContour = mesh.Contours[1];
+        AssertPoint(shortContour[0], -0.9966470121371801, 0.6666666666666665);
+        AssertPoint(shortContour[^1], -0.996585889746418, 0.6662114519661889);
+    }
+
     private static RenderedGraph Render(string formula, bool selected = false)
     {
         IMathSolver solver = MathSolver.CreateMathSolver();
@@ -294,17 +373,16 @@ public sealed class NativeGraphFrameParityTests
         }
     }
 
-    private static void AssertNativeHatchMarker(MarkerCommand marker)
+    private static void AssertNativeHatch(HatchGridCommand hatch)
     {
-        Assert.Equal(GraphMarkerShape.Cross, marker.Shape);
-        Assert.Equal(1, marker.Radius);
-        Assert.Equal(NativeBlue, marker.Fill.Color);
-        Assert.Equal(1, marker.Fill.StrokeWidth);
-        Assert.Equal(LineStyle.Solid, marker.Fill.LineStyle);
-        Assert.False(marker.Fill.AntiAlias);
-        Assert.Null(marker.Stroke);
-        Assert.Equal(Math.Floor(marker.Center.X), marker.Center.X);
-        Assert.Equal(Math.Floor(marker.Center.Y), marker.Center.Y);
+        Assert.Equal(58, hatch.LatticeIntervals);
+        Assert.Equal(NativeWidth, hatch.Width);
+        Assert.Equal(NativeHeight, hatch.Height);
+        Assert.Equal(1, hatch.Radius);
+        Assert.Equal(NativeBlue, hatch.Paint.Color);
+        Assert.Equal(1, hatch.Paint.StrokeWidth);
+        Assert.Equal(LineStyle.Solid, hatch.Paint.LineStyle);
+        Assert.False(hatch.Paint.AntiAlias);
     }
 
     private static void AssertPoint(GraphPoint actual, double expectedX, double expectedY)

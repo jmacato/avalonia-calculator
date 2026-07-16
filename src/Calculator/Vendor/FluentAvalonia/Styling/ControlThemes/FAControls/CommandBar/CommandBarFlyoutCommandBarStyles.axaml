@@ -23,6 +23,11 @@
     <Thickness x:Key="CommandBarFlyoutBorderDownThemeThickness">1,0,1,1</Thickness>
     <Thickness x:Key="CommandBarFlyoutAppBarButtonInnerBorderMargin">2</Thickness>
     <Thickness x:Key="CommandBarFlyoutAppBarEllipsisButtonInnerBorderMargin">2,2,6,2</Thickness>
+    <!-- These two resources normally come from the full CommandBar themes.
+         Keep the text-edit flyout self-contained when Calculator prunes those
+         otherwise-unused NativeAOT roots. -->
+    <Thickness x:Key="AppBarButtonInnerBorderOverflowMargin">4,0,4,0</Thickness>
+    <x:Double x:Key="AppBarExpandButtonCircleDiameter">6</x:Double>
 
     <!-- 
     NOTE: TEMPLATE CHANGED FROM WINUI VERSION

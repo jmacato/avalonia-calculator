@@ -88,7 +88,11 @@ public sealed record SamplingOptions
     public static SamplingOptions Settled { get; } = new();
 }
 
-public sealed record SampledComponent(ImmutableArray<CurveSample> Points);
+/// <summary>
+/// Settled components retain only finite coordinates. Sampling parameters and
+/// failure states are transient and would otherwise double the live point data.
+/// </summary>
+public sealed record SampledComponent(ImmutableArray<GraphPoint> Points);
 
 public sealed record SampledCurve(
     ImmutableArray<SampledComponent> Components,

@@ -11,7 +11,8 @@
              x:CompileBindings="True"
              AutomationProperties.AutomationId="HistoryList"
              FlowDirection="LeftToRight"
-             Loaded="OnLoaded">
+             Loaded="OnLoaded"
+             Unloaded="OnUnloaded">
   <UserControl.Resources>
     <fa:FAPathIconSource x:Key="DeleteSymbol"
                          Data="{StaticResource Win11DeleteIconGeometry}" />

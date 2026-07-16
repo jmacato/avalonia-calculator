@@ -152,13 +152,9 @@
             <Button x:Name="GraphSettingsButton"
                     Margin="4"
                     Classes="graphCommand"
-                    AutomationProperties.Name="{utils:ResourceString Name='GraphOptionsHeading.Text'}">
+                    AutomationProperties.Name="{utils:ResourceString Name='GraphOptionsHeading.Text'}"
+                    Click="OnGraphSettingsClicked">
               <TextBlock Classes="graphCommandIcon" Text="&#xE3B4;" />
-              <Button.Flyout>
-                <Flyout Opened="OnGraphSettingsOpened">
-                  <local:GraphingSettings x:Name="GraphSettingsControl" />
-                </Flyout>
-              </Button.Flyout>
             </Button>
           </StackPanel>
         </Border>
@@ -219,18 +215,15 @@
           Grid.Row="1"
           Grid.Column="1"
           RowDefinitions="*,2.2*">
-      <local:EquationInputArea x:Name="EquationInputAreaControl"
-                               Margin="0,4,0,0"
-                               EquationFormatRequested="OnEquationFormatRequested"
-                               KeyGraphFeaturesRequested="OnKeyGraphFeaturesRequested" />
-      <local:GraphingNumPad x:Name="GraphingNumPad"
-                            Grid.Row="1"
-                            MaxHeight="400"
-                            Margin="2,0,2,2" />
-      <local:KeyGraphFeaturesPanel x:Name="KeyGraphFeaturesControl"
-                                   Grid.RowSpan="2"
-                                   IsVisible="False"
-                                   KeyGraphFeaturesClosed="OnKeyGraphFeaturesClosed" />
+      <Border x:Name="EquationInputHost"
+              Margin="0,4,0,0" />
+      <Border x:Name="GraphingNumPadHost"
+              Grid.Row="1"
+              MaxHeight="400"
+              Margin="2,0,2,2" />
+      <Border x:Name="KeyGraphFeaturesHost"
+              Grid.RowSpan="2"
+              IsVisible="False" />
     </Grid>
   </Grid>
 </UserControl>

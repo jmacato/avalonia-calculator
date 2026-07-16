@@ -44,6 +44,7 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
     private SKCanvas? _canvas;
     private SKData? _png;
     private int _clipDepth;
+    private GraphCoordinateTransform? _coordinateTransform;
     private bool _ended;
 
     public void BeginFrame(GraphFrame frame)
@@ -75,6 +76,7 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
         _canvas.Clear(ToSkia(frame.Background));
         _canvas.Scale((float)scaleX, (float)scaleY);
         _clipDepth = 0;
+        _coordinateTransform = null;
         _ended = false;
     }
 
@@ -92,7 +94,7 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
             case PushClipCommand push:
                 canvas.Save();
                 _clipDepth++;
-                canvas.ClipRect(ToSkia(push.Clip), SKClipOperation.Intersect, antialias: false);
+                canvas.ClipRect(ToSkia(Transform(push.Clip, _coordinateTransform)), SKClipOperation.Intersect, antialias: false);
                 break;
             case PopClipCommand:
                 if (_clipDepth <= 0)
@@ -103,21 +105,44 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
                 canvas.Restore();
                 _clipDepth--;
                 break;
+            case PushCoordinateTransformCommand push:
+                if (_coordinateTransform is not null)
+                {
+                    throw new InvalidOperationException("Nested graph coordinate transforms are not supported.");
+                }
+
+                _coordinateTransform = push.Transform;
+                break;
+            case PopCoordinateTransformCommand:
+                if (_coordinateTransform is null)
+                {
+                    throw new InvalidOperationException("The graph frame contains an unbalanced coordinate transform pop.");
+                }
+
+                _coordinateTransform = null;
+                break;
+            case CommandGroupCommand group:
+                foreach (GraphFrameCommand child in group.Commands)
+                {
+                    Draw(child);
+                }
+
+                break;
             case StrokePathCommand stroke:
                 if (stroke.Paint.LineStyle == LineStyle.Dash)
                 {
-                    DrawDashedPath(canvas, stroke.Path, stroke.Paint);
+                    DrawDashedPath(canvas, stroke.Path, stroke.Paint, _coordinateTransform);
                 }
                 else
                 {
-                    using SKPath path = ToSkia(stroke.Path);
+                    using SKPath path = ToSkia(stroke.Path, _coordinateTransform);
                     using SKPaint paint = ToStrokePaint(stroke.Paint);
                     canvas.DrawPath(path, paint);
                 }
 
                 break;
             case FillPathCommand fill:
-                using (SKPath path = ToSkia(fill.Path))
+                using (SKPath path = ToSkia(fill.Path, _coordinateTransform))
                 using (SKPaint paint = ToFillPaint(fill.Paint))
                 {
                     canvas.DrawPath(path, paint);
@@ -125,13 +150,16 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
 
                 break;
             case MarkerCommand marker:
-                DrawMarker(canvas, marker);
+                DrawMarker(canvas, marker, _coordinateTransform);
+                break;
+            case HatchGridCommand hatch:
+                DrawHatchGrid(canvas, hatch, _coordinateTransform);
                 break;
             case GlyphBackgroundCommand background:
-                DrawGlyphBackground(canvas, background);
+                DrawGlyphBackground(canvas, background, _coordinateTransform);
                 break;
             case GlyphCommand glyph:
-                DrawGlyph(canvas, glyph);
+                DrawGlyph(canvas, glyph, _coordinateTransform);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(command));
@@ -146,6 +174,8 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
             canvas.Restore();
             _clipDepth--;
         }
+
+        _coordinateTransform = null;
 
         canvas.Flush();
         using SKImage image = _surface!.Snapshot();
@@ -170,12 +200,16 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private static void DrawMarker(SKCanvas canvas, MarkerCommand marker)
+    private static void DrawMarker(
+        SKCanvas canvas,
+        MarkerCommand marker,
+        GraphCoordinateTransform? transform)
     {
         using SKPaint fill = ToFillPaint(marker.Fill);
         using SKPaint? stroke = marker.Stroke is { } strokePaint ? ToStrokePaint(strokePaint) : null;
-        float x = (float)marker.Center.X;
-        float y = (float)marker.Center.Y;
+        GraphPoint center = Transform(marker.Center, transform);
+        float x = (float)center.X;
+        float y = (float)center.Y;
         float radius = marker.Radius;
         switch (marker.Shape)
         {
@@ -239,7 +273,54 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
         }
     }
 
-    private static void DrawDashedPath(SKCanvas canvas, GraphPath path, GraphPaint graphPaint)
+    private static void DrawHatchGrid(
+        SKCanvas canvas,
+        HatchGridCommand hatch,
+        GraphCoordinateTransform? transform)
+    {
+        if (hatch.LatticeIntervals < 2 || hatch.Occupancy.IsDefaultOrEmpty)
+        {
+            return;
+        }
+
+        using SKPaint paint = ToFillPaint(hatch.Paint);
+        float halfStroke = hatch.Paint.StrokeWidth * 0.5f;
+        float radius = hatch.Radius;
+        for (int column = 0; column < hatch.LatticeIntervals; column++)
+        {
+            double x = Math.Floor(column * hatch.Width / hatch.LatticeIntervals);
+            for (int row = 1; row < hatch.LatticeIntervals; row++)
+            {
+                if (!hatch.IsOccupied(column, row))
+                {
+                    continue;
+                }
+
+                double y = Math.Floor(row * hatch.Height / hatch.LatticeIntervals);
+                GraphPoint center = Transform(new GraphPoint(x, y), transform);
+                float centerX = (float)center.X;
+                float centerY = (float)center.Y;
+                canvas.DrawRect(new SKRect(
+                    centerX - radius - halfStroke,
+                    centerY - halfStroke,
+                    centerX + radius + halfStroke,
+                    centerY + halfStroke),
+                    paint);
+                canvas.DrawRect(new SKRect(
+                    centerX - halfStroke,
+                    centerY - radius - halfStroke,
+                    centerX + halfStroke,
+                    centerY + radius + halfStroke),
+                    paint);
+            }
+        }
+    }
+
+    private static void DrawDashedPath(
+        SKCanvas canvas,
+        GraphPath path,
+        GraphPaint graphPaint,
+        GraphCoordinateTransform? transform)
     {
         if (path.Points.Length < 2)
         {
@@ -252,14 +333,14 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
         double remaining = interval;
         bool drawing = true;
         SKPath? dash = new();
-        GraphPoint current = path.Points[0];
+        GraphPoint current = Transform(path.Points[0], transform);
         dash.MoveTo((float)current.X, (float)current.Y);
         bool dashHasLine = false;
         using SKPaint paint = ToStrokePaint(graphPaint with { LineStyle = LineStyle.Solid });
         int segmentCount = path.IsClosed ? path.Points.Length : path.Points.Length - 1;
         for (int segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++)
         {
-            GraphPoint target = path.Points[(segmentIndex + 1) % path.Points.Length];
+            GraphPoint target = Transform(path.Points[(segmentIndex + 1) % path.Points.Length], transform);
             double dx = target.X - current.X;
             double dy = target.Y - current.Y;
             double segmentRemaining = Math.Sqrt((dx * dx) + (dy * dy));
@@ -323,18 +404,25 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
         dash?.Dispose();
     }
 
-    private static void DrawGlyph(SKCanvas canvas, GlyphCommand glyph)
+    private static void DrawGlyph(
+        SKCanvas canvas,
+        GlyphCommand glyph,
+        GraphCoordinateTransform? transform)
     {
         using SKTypeface typeface = Typeface(glyph);
         using var font = new SKFont(typeface, glyph.FontSize);
         using SKPaint paint = ToFillPaint(glyph.Paint);
         float width = font.MeasureText(glyph.Text);
-        float x = AlignedX(glyph, width);
+        GraphPoint origin = Transform(glyph.Origin, transform);
+        float x = AlignedX(glyph.Alignment, (float)origin.X, width);
 
-        canvas.DrawText(glyph.Text, x, (float)glyph.Origin.Y + glyph.FontSize, font, paint);
+        canvas.DrawText(glyph.Text, x, (float)origin.Y + glyph.FontSize, font, paint);
     }
 
-    private static void DrawGlyphBackground(SKCanvas canvas, GlyphBackgroundCommand background)
+    private static void DrawGlyphBackground(
+        SKCanvas canvas,
+        GlyphBackgroundCommand background,
+        GraphCoordinateTransform? transform)
     {
         GlyphCommand glyph = background.Glyph;
         using SKTypeface typeface = Typeface(glyph);
@@ -342,9 +430,10 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
         float width = font.MeasureText(glyph.Text);
         SKFontMetrics metrics = font.Metrics;
         float height = metrics.Descent - metrics.Ascent + metrics.Leading;
-        float x = AlignedX(glyph, width);
+        GraphPoint origin = Transform(glyph.Origin, transform);
+        float x = AlignedX(glyph.Alignment, (float)origin.X, width);
         using SKPaint paint = ToFillPaint(background.Paint);
-        canvas.DrawRect(x, (float)glyph.Origin.Y, width, height, paint);
+        canvas.DrawRect(x, (float)origin.Y, width, height, paint);
     }
 
     private static SKTypeface Typeface(GlyphCommand glyph) =>
@@ -353,14 +442,14 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
             glyph.FontStyle == GraphFontStyle.Italic ? SKFontStyle.Italic : SKFontStyle.Normal)
         ?? SKTypeface.Default;
 
-    private static float AlignedX(GlyphCommand glyph, float width) => glyph.Alignment switch
+    private static float AlignedX(GraphTextAlignment alignment, float originX, float width) => alignment switch
     {
-        GraphTextAlignment.Center => (float)glyph.Origin.X - (width * 0.5f),
-        GraphTextAlignment.End => (float)glyph.Origin.X - width,
-        _ => (float)glyph.Origin.X
+        GraphTextAlignment.Center => originX - (width * 0.5f),
+        GraphTextAlignment.End => originX - width,
+        _ => originX
     };
 
-    private static SKPath ToSkia(GraphPath graphPath)
+    private static SKPath ToSkia(GraphPath graphPath, GraphCoordinateTransform? transform)
     {
         var path = new SKPath();
         if (graphPath.Points.IsEmpty)
@@ -368,11 +457,11 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
             return path;
         }
 
-        GraphPoint first = graphPath.Points[0];
+        GraphPoint first = Transform(graphPath.Points[0], transform);
         path.MoveTo((float)first.X, (float)first.Y);
         for (int index = 1; index < graphPath.Points.Length; index++)
         {
-            GraphPoint point = graphPath.Points[index];
+            GraphPoint point = Transform(graphPath.Points[index], transform);
             path.LineTo((float)point.X, (float)point.Y);
         }
 
@@ -382,6 +471,28 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
         }
 
         return path;
+    }
+
+    private static GraphPoint Transform(
+        GraphPoint point,
+        GraphCoordinateTransform? transform) => transform?.Transform(point) ?? point;
+
+    private static GraphRect Transform(
+        GraphRect rectangle,
+        GraphCoordinateTransform? transform)
+    {
+        if (transform is not { } coordinateTransform)
+        {
+            return rectangle;
+        }
+
+        GraphPoint topLeft = coordinateTransform.Transform(new GraphPoint(rectangle.X, rectangle.Y));
+        GraphPoint bottomRight = coordinateTransform.Transform(new GraphPoint(rectangle.Right, rectangle.Bottom));
+        return new GraphRect(
+            Math.Min(topLeft.X, bottomRight.X),
+            Math.Min(topLeft.Y, bottomRight.Y),
+            Math.Abs(bottomRight.X - topLeft.X),
+            Math.Abs(bottomRight.Y - topLeft.Y));
     }
 
     private static SKPaint ToStrokePaint(GraphPaint paint)

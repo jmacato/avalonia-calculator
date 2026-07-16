@@ -13,6 +13,7 @@
              Focusable="True"
              KeyDown="OnKeyDown"
              Loaded="OnLoaded"
+             Unloaded="OnUnloaded"
              SizeChanged="OnSizeChanged">
   <UserControl.Resources>
     <DataTemplate x:Key="Operand" x:DataType="vmcommon:DisplayExpressionToken">
@@ -204,19 +205,22 @@
 
       <!-- The original Programmer radix display shares this row with the
            Scientific angle controls. -->
-      <local:CalculatorScientificAngleButtons x:Name="ScientificAngleButtons"
-                                              Grid.Row="3"
-                                              IsVisible="{CompiledBinding IsScientific}" />
-      <local:CalculatorProgrammerOperators x:Name="ProgrammerOperators"
-                                           Grid.Row="3"
-                                           IsVisible="{CompiledBinding IsProgrammer}" />
+      <Grid x:Name="ScientificAngleButtonsHost"
+            Grid.Row="3"
+            IsEnabled="{CompiledBinding IsScientific}"
+            IsVisible="{CompiledBinding IsScientific}" />
+      <Grid x:Name="ProgrammerOperatorsHost"
+            Grid.Row="3"
+            IsEnabled="{CompiledBinding IsProgrammer}"
+            IsVisible="{CompiledBinding IsProgrammer}" />
 
       <!-- The Programmer input-mode/word-size control intentionally shares the
            memory row. The original VisualState hides MC/MR/M+/M- and moves MS. -->
-      <local:CalculatorProgrammerDisplayPanel x:Name="ProgrammerDisplayPanel"
-                                              Grid.Row="4"
-                                              Margin="3,0"
-                                              IsVisible="{CompiledBinding IsProgrammer}" />
+      <Grid x:Name="ProgrammerDisplayPanelHost"
+            Grid.Row="4"
+            Margin="3,0"
+            IsEnabled="{CompiledBinding IsProgrammer}"
+            IsVisible="{CompiledBinding IsProgrammer}" />
 
       <Grid x:Name="MemoryPanel"
             Grid.Row="4"

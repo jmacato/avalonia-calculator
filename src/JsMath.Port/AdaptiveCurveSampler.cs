@@ -286,9 +286,10 @@ public static class AdaptiveCurveSampler
     {
         private readonly CurveEvaluator _evaluator;
         private readonly CancellationToken _cancellationToken;
-        private readonly Dictionary<long, CurveSample> _cache = new();
         private readonly List<SampledComponent> _components = [];
-        private readonly List<CurveSample> _current = [];
+        private readonly List<GraphPoint> _current = [];
+        private double _lastParameter = double.NaN;
+        private int _evaluationCount;
         private int _vertexCount;
 
         public SamplingContext(
@@ -315,13 +316,7 @@ public static class AdaptiveCurveSampler
 
         public CurveSample Evaluate(double parameter)
         {
-            long key = BitConverter.DoubleToInt64Bits(parameter);
-            if (_cache.TryGetValue(key, out CurveSample cached))
-            {
-                return cached;
-            }
-
-            if (_cache.Count >= Options.MaximumEvaluations)
+            if (_evaluationCount >= Options.MaximumEvaluations)
             {
                 BudgetExceeded = true;
                 HasMissingData = true;
@@ -330,6 +325,7 @@ public static class AdaptiveCurveSampler
 
             _cancellationToken.ThrowIfCancellationRequested();
             CurveSample result = _evaluator(parameter);
+            _evaluationCount++;
             if (result.Parameter != parameter)
             {
                 result = result with { Parameter = parameter };
@@ -344,7 +340,6 @@ public static class AdaptiveCurveSampler
                         : SampleState.Undefined);
             }
 
-            _cache.Add(key, result);
             return result;
         }
 
@@ -357,8 +352,8 @@ public static class AdaptiveCurveSampler
 
             if (_current.Count > 0)
             {
-                CurveSample previous = _current[^1];
-                if (previous.Parameter == point.Parameter && previous.X == point.X && previous.Y == point.Y)
+                GraphPoint previous = _current[^1];
+                if (_lastParameter == point.Parameter && previous.X == point.X && previous.Y == point.Y)
                 {
                     return;
                 }
@@ -371,7 +366,8 @@ public static class AdaptiveCurveSampler
                 return;
             }
 
-            _current.Add(point);
+            _current.Add(new GraphPoint(point.X, point.Y));
+            _lastParameter = point.Parameter;
             _vertexCount++;
         }
 
@@ -383,6 +379,7 @@ public static class AdaptiveCurveSampler
             }
 
             _current.Clear();
+            _lastParameter = double.NaN;
         }
 
         public SampledCurve Build()
@@ -390,7 +387,7 @@ public static class AdaptiveCurveSampler
             Break();
             return new SampledCurve(
                 _components.ToImmutableArray(),
-                _cache.Count,
+                _evaluationCount,
                 _vertexCount,
                 HasMissingData || _cancellationToken.IsCancellationRequested,
                 BudgetExceeded);

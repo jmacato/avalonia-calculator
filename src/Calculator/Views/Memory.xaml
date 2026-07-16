@@ -9,7 +9,8 @@
              x:DataType="model:StandardCalculatorViewModel"
              x:CompileBindings="True"
              FlowDirection="LeftToRight"
-             Loaded="OnLoaded">
+             Loaded="OnLoaded"
+             Unloaded="OnUnloaded">
   <Grid x:Name="LayoutGrid">
     <Grid.RowDefinitions>
       <RowDefinition Height="*" />

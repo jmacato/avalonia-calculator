@@ -38,16 +38,14 @@ public static class ImplicitCurveTracer
         {
             cancellationToken.ThrowIfCancellationRequested();
             GraphPoint seedScreen = viewport.ToScreen(seed.X, seed.Y);
-            var nearby = new List<(GraphPoint Point, int Value)>();
-            seedIndex.Query(new GraphRect(seedScreen.X - 3, seedScreen.Y - 3, 6, 6), nearby);
-            if (nearby.Count > 0)
+            if (seedIndex.Any(new GraphRect(seedScreen.X - 3, seedScreen.Y - 3, 6, 6)))
             {
                 continue;
             }
 
-            List<CurveSample> forward = TraceDirection(
+            List<GraphPoint> forward = TraceDirection(
                 function, seed, 1, viewport, options, ref evaluations, ref missing, cancellationToken);
-            List<CurveSample> backward = TraceDirection(
+            List<GraphPoint> backward = TraceDirection(
                 function, seed, -1, viewport, options, ref evaluations, ref missing, cancellationToken);
 
             backward.Reverse();
@@ -69,7 +67,7 @@ public static class ImplicitCurveTracer
                 missing = true;
             }
 
-            foreach (CurveSample point in backward)
+            foreach (GraphPoint point in backward)
             {
                 seedIndex.Insert(viewport.ToScreen(point.X, point.Y), components.Count);
             }
@@ -155,7 +153,7 @@ public static class ImplicitCurveTracer
         return seeds;
     }
 
-    private static List<CurveSample> TraceDirection(
+    private static List<GraphPoint> TraceDirection(
         ImplicitEvaluator function,
         GraphPoint seed,
         int direction,
@@ -165,7 +163,7 @@ public static class ImplicitCurveTracer
         ref bool missing,
         CancellationToken cancellationToken)
     {
-        var points = new List<CurveSample> { new(0, seed.X, seed.Y, SampleState.Finite) };
+        var points = new List<GraphPoint> { seed };
         GraphPoint current = seed;
         GraphPoint? initialTangent = null;
         double userStep = options.StepInPixels * Math.Min(
@@ -190,8 +188,8 @@ public static class ImplicitCurveTracer
             }
             else if (points.Count > 1)
             {
-                CurveSample previous = points[^1];
-                CurveSample beforePrevious = points[^2];
+                GraphPoint previous = points[^1];
+                GraphPoint beforePrevious = points[^2];
                 double vx = previous.X - beforePrevious.X;
                 double vy = previous.Y - beforePrevious.Y;
                 if ((vx * tangent.X) + (vy * tangent.Y) < 0)
@@ -241,7 +239,7 @@ public static class ImplicitCurveTracer
             }
 
             current = corrected;
-            points.Add(new CurveSample(step, current.X, current.Y, SampleState.Finite));
+            points.Add(current);
 
             if (points.Count > 8)
             {
@@ -261,7 +259,7 @@ public static class ImplicitCurveTracer
                                      (closingTangent.Y * initialTangent.Value.Y);
                         if (dot >= options.LoopDirectionDot)
                         {
-                            points.Add(new CurveSample(step + 1, seed.X, seed.Y, SampleState.Finite));
+                            points.Add(seed);
                             break;
                         }
                     }

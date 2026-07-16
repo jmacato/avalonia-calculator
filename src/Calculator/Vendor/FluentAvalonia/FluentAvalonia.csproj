@@ -19,11 +19,46 @@
     <!-- Avalonia.Controls.DataGrid 12.1 emits unavoidable trim/AOT warnings. Calculator
          does not use DataGrid, so omit FluentAvalonia's optional DataGrid theme. -->
     <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\DataGrid\**\*.axaml" />
+    <!-- Calculator does not use the optional color controls; omitting their theme also
+         keeps Avalonia.Controls.ColorPicker out of the browser AOT closure. -->
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\ColorPicker\**\*.axaml" />
+    <!-- Keep only the FluentAvalonia controls Calculator actually instantiates. The
+         full gallery theme otherwise roots every optional control in NativeAOT. -->
+    <AvaloniaXaml Remove="Styling\ControlThemes\FAControls\**\*.axaml" />
+    <AvaloniaXaml Include="Styling\ControlThemes\FAControls\NavigationView\**\*.axaml" />
+    <AvaloniaXaml Include="Styling\ControlThemes\FAControls\SettingsExpander\**\*.axaml" />
+    <AvaloniaXaml Include="Styling\ControlThemes\FAControls\CommandBar\CommandBarFlyoutCommandBarStyles.axaml" />
+    <AvaloniaXaml Include="Styling\ControlThemes\FAControls\ProgressRingStyles.axaml" />
+    <!-- Calculator's authored views do not use these optional Avalonia control
+         themes, so do not compile them into the vendored theme assembly. -->
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\AutoCompleteBoxStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\WindowNotificationManagerStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\CarouselStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\ButtonSpinnerStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\GridSplitterStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\DropDownButtonStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\CaptionButtonStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\NotificationCardStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\ProgressBarStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\SplitButtonStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\TabStripStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\TreeViewStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\NumericUpDownStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\ManagedFileChooserStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\DatePickerStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\TimePickerStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\TitleBarStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\TransitioningContentControlStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\RefreshControlStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\PipsPagerStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\GroupBoxStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\Page\**\*.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\CommandBarStyles.axaml" />
+    <AvaloniaXaml Remove="Styling\ControlThemes\BasicControls\WindowDecorations.axaml" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" />
-    <PackageReference Include="Avalonia.Controls.ColorPicker" />
     <PackageReference Include="Avalonia.Skia" />
     <PackageReference Include="MicroCom.CodeGenerator.MSBuild" PrivateAssets="All" />
     <PackageReference Include="MicroCom.Runtime" />

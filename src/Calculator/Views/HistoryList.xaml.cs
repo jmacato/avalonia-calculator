@@ -19,6 +19,8 @@ public sealed partial class HistoryList : UserControl
     public static readonly StyledProperty<GridLength> RowHeightProperty =
         AvaloniaProperty.Register<HistoryList, GridLength>(nameof(RowHeight), default);
 
+    private HistoryViewModel? _subscribedModel;
+
     public HistoryList()
     {
         InitializeComponent();
@@ -59,13 +61,40 @@ public sealed partial class HistoryList : UserControl
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
-        if (Model is not { } model)
+        SubscribeToModel();
+    }
+
+    private void OnUnloaded(object? sender, RoutedEventArgs e)
+    {
+        SetSubscribedModel(null);
+    }
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        SubscribeToModel();
+    }
+
+    private void SubscribeToModel() => SetSubscribedModel(Model);
+
+    private void SetSubscribedModel(HistoryViewModel? model)
+    {
+        if (ReferenceEquals(_subscribedModel, model))
         {
             return;
         }
 
-        model.PropertyChanged -= OnModelPropertyChanged;
-        model.PropertyChanged += OnModelPropertyChanged;
+        if (_subscribedModel is not null)
+        {
+            _subscribedModel.PropertyChanged -= OnModelPropertyChanged;
+        }
+
+        _subscribedModel = model;
+        if (_subscribedModel is not null)
+        {
+            _subscribedModel.PropertyChanged += OnModelPropertyChanged;
+        }
+
         UpdateState();
     }
 

@@ -111,10 +111,12 @@ public partial class ApplicationViewModel : ViewModelBase
         _ = height;
 
         IsAlwaysOnTop = !IsAlwaysOnTop;
-        if (MainWindow.CurrentInstance is { } window)
+#if !CALCULATOR_BROWSER
+        if (App.RootView is Avalonia.Controls.Window window)
         {
             window.Topmost = IsAlwaysOnTop;
         }
+#endif
 
         SetDisplayNormalAlwaysOnTopOption();
     }

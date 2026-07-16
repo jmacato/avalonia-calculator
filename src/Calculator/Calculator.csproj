@@ -25,6 +25,15 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(CalculatorBrowserBuild)' == 'true'">
+    <DefineConstants>$(DefineConstants);CALCULATOR_BROWSER</DefineConstants>
+    <!-- Keep the browser-flavored assembly isolated from normal desktop builds.
+         This also avoids two project instances racing over the same outputs in
+         a solution/CI build that contains both front ends. -->
+    <IntermediateOutputPath>obj/browser/$(Configuration)/</IntermediateOutputPath>
+    <OutputPath>bin/browser/$(Configuration)/</OutputPath>
+  </PropertyGroup>
+
   <!-- Port the original source tree incrementally. Add files here only after their
        existing implementation has been translated away from WinUI/WinRT. -->
   <ItemGroup>
@@ -49,7 +58,8 @@
     <Compile Include="Controls\SwipeItemInvokedEventArgs.cs" />
     <Compile Include="Controls\SwipeItems.cs" />
     <Compile Include="Controls\SupplementaryItemsControl.cs" />
-    <Compile Include="MainWindow.xaml.cs" />
+    <Compile Include="MainWindow.xaml.cs"
+             Condition="'$(CalculatorBrowserBuild)' != 'true'" />
     <Compile Include="Views\Calculator.xaml.cs" />
     <Compile Include="Views\CalculatorStandardOperators.xaml.cs" />
     <Compile Include="Views\CalculatorScientificOperators.xaml.cs" />
@@ -73,7 +83,8 @@
     <Compile Include="Views\NumberPad.xaml.cs" />
     <Compile Include="Views\OperatorsPanel.xaml.cs" />
     <Compile Include="Views\SupplementaryResults.xaml.cs" />
-    <Compile Include="Views\TitleBar.xaml.cs" />
+    <Compile Include="Views\TitleBar.xaml.cs"
+             Condition="'$(CalculatorBrowserBuild)' != 'true'" />
     <Compile Include="Views\MainPage.xaml.cs" />
     <Compile Include="Selectors\NavViewMenuItemTemplateSelector.cs" />
     <Compile Include="Selectors\KeyGraphFeaturesTemplateSelector.cs" />
@@ -146,7 +157,8 @@
     <AvaloniaXaml Remove="**\*.axaml" />
     <AvaloniaXaml Remove="**\*.xaml" />
     <AvaloniaXaml Include="App.xaml" />
-    <AvaloniaXaml Include="MainWindow.xaml" />
+    <AvaloniaXaml Include="MainWindow.xaml"
+                  Condition="'$(CalculatorBrowserBuild)' != 'true'" />
     <AvaloniaXaml Include="Views\Calculator.xaml" />
     <AvaloniaXaml Include="Views\CalculatorStandardOperators.xaml" />
     <AvaloniaXaml Include="Views\CalculatorScientificOperators.xaml" />
@@ -170,7 +182,8 @@
     <AvaloniaXaml Include="Views\NumberPad.xaml" />
     <AvaloniaXaml Include="Views\OperatorsPanel.xaml" />
     <AvaloniaXaml Include="Views\SupplementaryResults.xaml" />
-    <AvaloniaXaml Include="Views\TitleBar.xaml" />
+    <AvaloniaXaml Include="Views\TitleBar.xaml"
+                  Condition="'$(CalculatorBrowserBuild)' != 'true'" />
     <AvaloniaXaml Include="Views\DelighterUnitStyles.xaml" />
     <AvaloniaXaml Include="Controls\SwipeControlStyles.xaml" />
     <AvaloniaXaml Include="Controls\HistoryMemoryStyles.xaml" />
@@ -189,11 +202,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\GraphControl\GraphControl.csproj" />
+    <ProjectReference Include="..\GraphControl\GraphControl.csproj"
+                      GlobalPropertiesToRemove="CalculatorBrowserBuild" />
     <ProjectReference Include="..\CalcManagerManaged\CalcManagerPort\CalcManagerPort.csproj"
-                      GlobalPropertiesToRemove="PublishAot;PublishTrimmed;SelfContained;RuntimeIdentifier" />
-    <ProjectReference Include="Vendor\FluentAvalonia\FluentAvalonia.csproj" />
-    <ProjectReference Include="Vendor\Avalonia.Labs.Lottie\Avalonia.Labs.Lottie.csproj" />
-    <ProjectReference Include="Vendor\CSharpMath\CSharpMath.Avalonia\CSharpMath.Avalonia.csproj" />
+                      GlobalPropertiesToRemove="PublishAot;PublishTrimmed;SelfContained;RuntimeIdentifier;CalculatorBrowserBuild" />
+    <ProjectReference Include="Vendor\FluentAvalonia\FluentAvalonia.csproj"
+                      GlobalPropertiesToRemove="CalculatorBrowserBuild" />
+    <ProjectReference Include="Vendor\CSharpMath\CSharpMath.Avalonia\CSharpMath.Avalonia.csproj"
+                      GlobalPropertiesToRemove="CalculatorBrowserBuild" />
   </ItemGroup>
 </Project>

@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Globalization;
@@ -11,7 +12,17 @@ namespace GraphingImpl;
 internal sealed record PreparedEquationGeometry(
     CompiledGraphEquation Definition,
     SampledCurve? Curve,
-    InequalityMesh? Inequality);
+    InequalityMesh? Inequality,
+    InequalityHatchGrid InequalityHatch);
+
+internal readonly record struct InequalityHatchGrid(
+    ImmutableArray<ulong> Occupancy,
+    int LatticeIntervals)
+{
+    public static InequalityHatchGrid Empty { get; } = new(
+        ImmutableArray<ulong>.Empty,
+        0);
+}
 
 internal sealed record PreparedGraph(
     GraphSnapshot Snapshot,
@@ -23,6 +34,24 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
 {
     private const double MinimumRangeLength = 1e-12;
     private const double MaximumRangeLength = 1e12;
+    private const int MaximumRetainedVertices = 65_536;
+    private const int MaximumVerticesPerEquation = 16_384;
+    private static readonly string[] TickFormats =
+    [
+        "0",
+        "0.#",
+        "0.##",
+        "0.###",
+        "0.####",
+        "0.#####",
+        "0.######",
+        "0.#######",
+        "0.########",
+        "0.#########",
+        "0.##########",
+        "0.###########",
+        "0.############"
+    ];
     private readonly Lock _lock = new();
     private readonly ManagedGraphingOptions _options;
     private readonly EvaluationOptions _evaluationOptions;
@@ -34,9 +63,13 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
     private float _dpiX = 96;
     private float _dpiY = 96;
     private long _generation;
-    private CancellationTokenSource _samplingCancellation = new();
+    private CancellationTokenSource? _samplingCancellation;
     private PreparedGraph? _prepared;
     private GraphFrame? _frame;
+    private PreparedGraph? _equationCommandSource;
+    private ImmutableArray<GraphFrameCommand> _equationCommands = ImmutableArray<GraphFrameCommand>.Empty;
+    private PreparedGraph? _contentCommandSource;
+    private ImmutableArray<GraphFrameCommand> _contentCommands = ImmutableArray<GraphFrameCommand>.Empty;
     private bool _disposed;
 
     public ManagedGraphRenderer(ManagedGraphingOptions options, EvaluationOptions evaluationOptions)
@@ -53,6 +86,13 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
         {
             lock (_lock)
             {
+                if (_frame is null && _prepared is not null)
+                {
+                    _frame = BuildFrame(
+                        _prepared,
+                        stale: _prepared.Viewport != EffectiveViewportLocked());
+                }
+
                 return _frame;
             }
         }
@@ -91,9 +131,14 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
         lock (_lock)
         {
             ThrowIfDisposed();
+            if (_dpiX == dpiX && _dpiY == dpiY)
+            {
+                return GraphStatus.Ok;
+            }
+
             _dpiX = dpiX;
             _dpiY = dpiY;
-            RebuildFrameFromPreparedLocked(stale: false);
+            RebuildFrameFromPreparedLocked(stale: _prepared?.Viewport != EffectiveViewportLocked());
         }
 
         return GraphStatus.Ok;
@@ -198,7 +243,13 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
             {
                 foreach (SampledComponent component in geometry.Curve.Components)
                 {
-                    SearchComponent(component.Points, viewport, target, equationIndex, ref best);
+                    SearchComponent(
+                        component.Points,
+                        geometry.Definition.Kind,
+                        viewport,
+                        target,
+                        equationIndex,
+                        ref best);
                 }
             }
 
@@ -355,6 +406,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
         GraphSnapshot snapshot;
         SamplingViewport viewport;
         long generation;
+        CancellationTokenSource samplingCancellation;
         CancellationToken cancellationToken;
         lock (_lock)
         {
@@ -370,34 +422,52 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
             }
 
             generation = _generation;
-            cancellationToken = _samplingCancellation.Token;
+            CancelSamplingLocked();
+            samplingCancellation = new CancellationTokenSource();
+            _samplingCancellation = samplingCancellation;
+            cancellationToken = samplingCancellation.Token;
         }
 
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         ulong maximumMilliseconds = _options.GetMaxExecutionTime();
+        CancellationTokenSource? timeout = null;
+        CancellationToken effectiveCancellationToken = cancellationToken;
         if (maximumMilliseconds > 0)
         {
+            timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(TimeSpan.FromMilliseconds(Math.Min(maximumMilliseconds, int.MaxValue)));
+            effectiveCancellationToken = timeout.Token;
         }
 
         PreparedGraph prepared;
         try
         {
-            prepared = SampleSnapshot(snapshot, viewport, timeout.Token);
+            prepared = SampleSnapshot(snapshot, viewport, effectiveCancellationToken);
         }
         catch (OperationCanceledException)
         {
+            ReleaseSampling(samplingCancellation);
             return cancellationToken.IsCancellationRequested ? GraphStatus.Cancelled : GraphStatus.Timeout;
+        }
+        catch
+        {
+            ReleaseSampling(samplingCancellation);
+            throw;
+        }
+        finally
+        {
+            timeout?.Dispose();
         }
 
         lock (_lock)
         {
+            ReleaseSamplingLocked(samplingCancellation);
             if (_disposed || generation != _generation || snapshot.Revision != _snapshot.Revision)
             {
                 return GraphStatus.Cancelled;
             }
 
             _prepared = prepared;
+            ClearEquationCommandCacheLocked();
             _frame = BuildFrame(prepared, stale: false);
         }
 
@@ -451,10 +521,10 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
             }
 
             _disposed = true;
-            _samplingCancellation.Cancel();
-            _samplingCancellation.Dispose();
+            CancelSamplingLocked();
             _frame = null;
             _prepared = null;
+            ClearEquationCommandCacheLocked();
         }
     }
 
@@ -466,6 +536,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
             _snapshot = snapshot;
             _prepared = null;
             _frame = null;
+            ClearEquationCommandCacheLocked();
             InvalidateGeometryLocked(transformExisting: false);
         }
     }
@@ -479,7 +550,11 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
                 return;
             }
 
-            RebuildFrameFromPreparedLocked(stale: _prepared?.Viewport != EffectiveViewportLocked());
+            ClearEquationCommandCacheLocked();
+            // A theme/style update commonly changes several options back to
+            // back. Invalidate once and rebuild lazily for the next requested
+            // frame instead of materializing every intermediate style state.
+            _frame = null;
         }
     }
 
@@ -489,33 +564,61 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
         CancellationToken cancellationToken)
     {
         var geometries = ImmutableArray.CreateBuilder<PreparedEquationGeometry>(snapshot.Definitions.Length);
+        double[] values = ArrayPool<double>.Shared.Rent(Math.Max(1, snapshot.Values.Length));
         int totalVertices = 0;
         bool missing = false;
-        for (int index = 0; index < snapshot.Definitions.Length; index++)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            CompiledGraphEquation definition = snapshot.Definitions[index];
-            int remaining = Math.Max(2, 262_144 - totalVertices);
-            if (remaining <= 2)
+            for (int index = 0; index < snapshot.Definitions.Length; index++)
             {
-                missing = true;
-                break;
-            }
+                cancellationToken.ThrowIfCancellationRequested();
+                snapshot.Values.AsSpan().CopyTo(values);
+                CompiledGraphEquation definition = snapshot.Definitions[index];
+                int remaining = Math.Max(2, MaximumRetainedVertices - totalVertices);
+                if (remaining <= 2)
+                {
+                    missing = true;
+                    break;
+                }
 
-            if (definition.Kind == GraphEquationKind.Inequality)
-            {
-                InequalityMesh mesh = SampleInequality(definition, snapshot, viewport, remaining, cancellationToken);
-                totalVertices += mesh.VertexCount;
-                missing |= mesh.HasMissingData;
-                geometries.Add(new PreparedEquationGeometry(definition, null, mesh));
+                if (definition.Kind == GraphEquationKind.Inequality)
+                {
+                    InequalityMesh mesh = SampleInequality(
+                        definition,
+                        values,
+                        viewport,
+                        Math.Min(MaximumVerticesPerEquation, remaining),
+                        cancellationToken);
+                    InequalityHatchGrid hatch = SampleInequalityHatch(
+                        definition,
+                        values,
+                        viewport,
+                        cancellationToken);
+                    totalVertices += mesh.VertexCount;
+                    missing |= mesh.HasMissingData;
+                    geometries.Add(new PreparedEquationGeometry(definition, null, mesh, hatch));
+                }
+                else
+                {
+                    SampledCurve curve = SampleCurve(
+                        definition,
+                        values,
+                        viewport,
+                        Math.Min(MaximumVerticesPerEquation, remaining),
+                        cancellationToken);
+                    totalVertices += curve.VertexCount;
+                    missing |= curve.HasMissingData;
+                    geometries.Add(new PreparedEquationGeometry(
+                        definition,
+                        curve,
+                        null,
+                        InequalityHatchGrid.Empty));
+                }
             }
-            else
-            {
-                SampledCurve curve = SampleCurve(definition, snapshot, viewport, Math.Min(65_536, remaining), cancellationToken);
-                totalVertices += curve.VertexCount;
-                missing |= curve.HasMissingData;
-                geometries.Add(new PreparedEquationGeometry(definition, curve, null));
-            }
+        }
+        finally
+        {
+            ArrayPool<double>.Shared.Return(values, clearArray: false);
         }
 
         missing |= geometries.Count != snapshot.Definitions.Length;
@@ -524,12 +627,11 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
 
     private SampledCurve SampleCurve(
         CompiledGraphEquation definition,
-        GraphSnapshot snapshot,
+        double[] values,
         SamplingViewport viewport,
         int maximumVertices,
         CancellationToken cancellationToken)
     {
-        double[] values = snapshot.Values.ToArray();
         EvalTrigUnitMode trigMode = _evaluationOptions.GetTrigUnitMode();
         if (definition.Kind == GraphEquationKind.Implicit)
         {
@@ -574,12 +676,11 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
 
     private InequalityMesh SampleInequality(
         CompiledGraphEquation definition,
-        GraphSnapshot snapshot,
+        double[] values,
         SamplingViewport viewport,
         int maximumVertices,
         CancellationToken cancellationToken)
     {
-        double[] values = snapshot.Values.ToArray();
         EvalTrigUnitMode trigMode = _evaluationOptions.GetTrigUnitMode();
         bool Predicate(double value) => definition.Relation switch
         {
@@ -592,7 +693,9 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
 
         int columns = Math.Clamp((int)(_width / 8), 32, 128);
         int rows = Math.Clamp((int)(_height / 8), 32, 128);
-        return MarchingSquares.Build(
+        // Rendering consumes only the stitched boundary; filled cell polygons
+        // would retain thousands of arrays without ever reaching a draw command.
+        return MarchingSquares.BuildContours(
             (x, y) => EvaluateImplicit(definition, values, x, y, trigMode),
             Predicate,
             viewport,
@@ -605,13 +708,22 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
     private GraphFrame BuildFrame(PreparedGraph prepared, bool stale)
     {
         SamplingViewport viewport = EffectiveViewportLocked();
-        var commands = ImmutableArray.CreateBuilder<GraphFrameCommand>();
-        var labels = ImmutableArray.CreateBuilder<GlyphCommand>();
-        commands.Add(new PushClipCommand(new GraphRect(0, 0, viewport.Width, viewport.Height)));
-        AppendGridAndAxes(commands, labels, viewport);
-        AppendEquationGeometry(commands, prepared, viewport);
-        commands.AddRange(labels);
-        commands.Add(new PopClipCommand());
+        ImmutableArray<GraphFrameCommand> settledCommands = GetContentCommandsLocked(prepared);
+        ImmutableArray<GraphFrameCommand> commands;
+        if (prepared.Viewport == viewport)
+        {
+            commands = settledCommands;
+        }
+        else
+        {
+            commands =
+            [
+                new PushCoordinateTransformCommand(CoordinateTransform(prepared.Viewport, viewport)),
+                new CommandGroupCommand(settledCommands),
+                new PopCoordinateTransformCommand()
+            ];
+        }
+
         return new GraphFrame(
             _width,
             _height,
@@ -619,9 +731,65 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
             _dpiY,
             prepared.Snapshot.Revision,
             _options.GetBackColor(),
-            commands.ToImmutable(),
-            prepared.HasMissingData || stale);
+            commands,
+            prepared.HasMissingData || stale,
+            stale);
     }
+
+    private ImmutableArray<GraphFrameCommand> GetContentCommandsLocked(PreparedGraph prepared)
+    {
+        if (ReferenceEquals(_contentCommandSource, prepared))
+        {
+            return _contentCommands;
+        }
+
+        var commands = ImmutableArray.CreateBuilder<GraphFrameCommand>();
+        var labels = ImmutableArray.CreateBuilder<GlyphCommand>();
+        commands.Add(new PushClipCommand(new GraphRect(
+            0,
+            0,
+            prepared.Viewport.Width,
+            prepared.Viewport.Height)));
+        AppendGridAndAxes(commands, labels, prepared.Viewport);
+        commands.AddRange(GetEquationCommandsLocked(prepared));
+        commands.AddRange(labels);
+        commands.Add(new PopClipCommand());
+        _contentCommands = commands.ToImmutable();
+        _contentCommandSource = prepared;
+        _equationCommandSource = null;
+        _equationCommands = ImmutableArray<GraphFrameCommand>.Empty;
+        return _contentCommands;
+    }
+
+    private ImmutableArray<GraphFrameCommand> GetEquationCommandsLocked(PreparedGraph prepared)
+    {
+        if (ReferenceEquals(_equationCommandSource, prepared))
+        {
+            return _equationCommands;
+        }
+
+        var commands = ImmutableArray.CreateBuilder<GraphFrameCommand>();
+        AppendEquationGeometry(commands, prepared, prepared.Viewport);
+        _equationCommands = commands.ToImmutable();
+        _equationCommandSource = prepared;
+        return _equationCommands;
+    }
+
+    private void ClearEquationCommandCacheLocked()
+    {
+        _equationCommandSource = null;
+        _equationCommands = ImmutableArray<GraphFrameCommand>.Empty;
+        _contentCommandSource = null;
+        _contentCommands = ImmutableArray<GraphFrameCommand>.Empty;
+    }
+
+    private static GraphCoordinateTransform CoordinateTransform(
+        SamplingViewport source,
+        SamplingViewport target) => new(
+        target.Width * source.XRange.Length / (source.Width * target.XRange.Length),
+        target.Height * source.YRange.Length / (source.Height * target.YRange.Length),
+        (source.XRange.Minimum - target.XRange.Minimum) * target.Width / target.XRange.Length,
+        (target.YRange.Maximum - source.YRange.Maximum) * target.Height / target.YRange.Length);
 
     private void AppendGridAndAxes(
         ImmutableArray<GraphFrameCommand>.Builder commands,
@@ -731,7 +899,11 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
                     }
                 }
 
-                AppendInequalityHatch(commands, prepared.Snapshot, geometry.Definition, viewport, color);
+                AppendInequalityHatch(
+                    commands,
+                    geometry.InequalityHatch,
+                    prepared.Viewport,
+                    color);
             }
 
             if (geometry.Curve is null)
@@ -747,16 +919,16 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
                 }
 
                 commands.Add(new StrokePathCommand(
-                    new GraphPath(component.Points.Select(point => viewport.ToScreen(point.X, point.Y))),
+                    ToScreenPath(component.Points, viewport, isClosed: false),
                     linePaint));
-                AppendFeatureMarkers(commands, component, viewport, color);
+                AppendFeatureMarkers(commands, component.Points, viewport, color);
             }
         }
     }
 
     private void AppendFeatureMarkers(
         ImmutableArray<GraphFrameCommand>.Builder commands,
-        SampledComponent component,
+        ImmutableArray<GraphPoint> points,
         SamplingViewport viewport,
         Color equationColor)
     {
@@ -765,10 +937,10 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
             return;
         }
 
-        for (int index = 1; index < component.Points.Length; index++)
+        for (int index = 1; index < points.Length; index++)
         {
-            CurveSample left = component.Points[index - 1];
-            CurveSample right = component.Points[index];
+            GraphPoint left = points[index - 1];
+            GraphPoint right = points[index];
             if (_options.GetMarkZeros() && left.Y * right.Y <= 0 && left.Y != right.Y)
             {
                 double amount = -left.Y / (right.Y - left.Y);
@@ -795,25 +967,24 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
         }
     }
 
-    private void AppendInequalityHatch(
-        ImmutableArray<GraphFrameCommand>.Builder commands,
-        GraphSnapshot snapshot,
+    private InequalityHatchGrid SampleInequalityHatch(
         CompiledGraphEquation definition,
+        double[] values,
         SamplingViewport viewport,
-        Color color)
+        CancellationToken cancellationToken)
     {
         const int latticeIntervals = 58;
-        double[] values = snapshot.Values.ToArray();
         EvalTrigUnitMode trigMode = _evaluationOptions.GetTrigUnitMode();
-        var paint = new GraphPaint(color, 1, LineStyle.Solid, AntiAlias: false);
+        int sampleCount = latticeIntervals * (latticeIntervals - 1);
+        var occupancy = ImmutableArray.CreateBuilder<ulong>((sampleCount + 63) / 64);
+        occupancy.Count = occupancy.Capacity;
         for (int column = 0; column < latticeIntervals; column++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             double sampleX = column * viewport.Width / latticeIntervals;
-            double screenX = Math.Floor(sampleX);
             for (int row = 1; row < latticeIntervals; row++)
             {
                 double sampleY = row * viewport.Height / latticeIntervals;
-                double screenY = Math.Floor(sampleY);
                 GraphPoint point = viewport.ToUser(sampleX, sampleY);
                 double result = EvaluateImplicit(definition, values, point.X, point.Y, trigMode);
                 if (!IsInequalitySatisfied(definition.Relation, result))
@@ -821,13 +992,33 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
                     continue;
                 }
 
-                commands.Add(new MarkerCommand(
-                    new GraphPoint(screenX, screenY),
-                    1,
-                    GraphMarkerShape.Cross,
-                    paint));
+                int bitIndex = (column * (latticeIntervals - 1)) + row - 1;
+                occupancy[bitIndex >> 6] |= 1UL << (bitIndex & 63);
             }
         }
+
+        return new InequalityHatchGrid(occupancy.MoveToImmutable(), latticeIntervals);
+    }
+
+    private static void AppendInequalityHatch(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        InequalityHatchGrid hatch,
+        SamplingViewport sourceViewport,
+        Color color)
+    {
+        if (hatch.Occupancy.IsDefaultOrEmpty)
+        {
+            return;
+        }
+
+        var paint = new GraphPaint(color, 1, LineStyle.Solid, AntiAlias: false);
+        commands.Add(new HatchGridCommand(
+            hatch.Occupancy,
+            hatch.LatticeIntervals,
+            sourceViewport.Width,
+            sourceViewport.Height,
+            1,
+            paint));
     }
 
     private static bool IsInequalitySatisfied(RelationKind relation, double value) =>
@@ -1080,17 +1271,48 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
     private void InvalidateGeometryLocked(bool transformExisting)
     {
         _generation++;
-        _samplingCancellation.Cancel();
-        _samplingCancellation.Dispose();
-        _samplingCancellation = new CancellationTokenSource();
-        if (transformExisting)
+        CancelSamplingLocked();
+        if (!transformExisting)
         {
-            RebuildFrameFromPreparedLocked(stale: true);
+            _prepared = null;
         }
-        else
+
+        // Range changes can arrive much faster than the compositor paints. Keep
+        // the sampled user-space geometry and rebuild its screen-space preview
+        // lazily for the next actual frame instead of allocating one frame for
+        // every queued wheel or pointer event.
+        _frame = null;
+    }
+
+    private void CancelSamplingLocked()
+    {
+        CancellationTokenSource? cancellation = _samplingCancellation;
+        _samplingCancellation = null;
+        if (cancellation is null)
         {
-            _frame = null;
+            return;
         }
+
+        cancellation.Cancel();
+        cancellation.Dispose();
+    }
+
+    private void ReleaseSampling(CancellationTokenSource samplingCancellation)
+    {
+        lock (_lock)
+        {
+            ReleaseSamplingLocked(samplingCancellation);
+        }
+    }
+
+    private void ReleaseSamplingLocked(CancellationTokenSource samplingCancellation)
+    {
+        if (ReferenceEquals(_samplingCancellation, samplingCancellation))
+        {
+            _samplingCancellation = null;
+        }
+
+        samplingCancellation.Dispose();
     }
 
     private void RebuildFrameFromPreparedLocked(bool stale)
@@ -1122,7 +1344,8 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
     }
 
     private static void SearchComponent(
-        ImmutableArray<CurveSample> points,
+        ImmutableArray<GraphPoint> points,
+        GraphEquationKind kind,
         SamplingViewport viewport,
         GraphPoint target,
         int equationIndex,
@@ -1130,21 +1353,28 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
     {
         for (int index = 1; index < points.Length; index++)
         {
-            CurveSample left = points[index - 1];
-            CurveSample right = points[index];
-            GraphPoint userLeft = new(left.X, left.Y);
-            GraphPoint userRight = new(right.X, right.Y);
+            GraphPoint userLeft = points[index - 1];
+            GraphPoint userRight = points[index];
+            double parameterLeft = TraceParameter(kind, userLeft);
+            double parameterRight = TraceParameter(kind, userRight);
             SearchSegment(
                 userLeft,
                 userRight,
-                left.Parameter,
-                right.Parameter,
+                parameterLeft,
+                parameterRight,
                 viewport,
                 target,
                 equationIndex,
                 ref best);
         }
     }
+
+    private static double TraceParameter(GraphEquationKind kind, GraphPoint point) => kind switch
+    {
+        GraphEquationKind.ExplicitY => point.X,
+        GraphEquationKind.InverseX => point.Y,
+        _ => double.NaN
+    };
 
     private static void SearchContour(
         ImmutableArray<GraphPoint> points,
@@ -1202,7 +1432,16 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
     private static GraphPath ToScreenPath(
         ImmutableArray<GraphPoint> points,
         SamplingViewport viewport,
-        bool isClosed) => new(points.Select(point => viewport.ToScreen(point.X, point.Y)), isClosed);
+        bool isClosed)
+    {
+        var screenPoints = ImmutableArray.CreateBuilder<GraphPoint>(points.Length);
+        foreach (GraphPoint point in points)
+        {
+            screenPoints.Add(viewport.ToScreen(point.X, point.Y));
+        }
+
+        return new GraphPath(screenPoints.MoveToImmutable(), isClosed);
+    }
 
     private static double EvaluateImplicit(
         CompiledGraphEquation definition,
@@ -1254,7 +1493,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IDisposable
     private static string FormatTick(double value, double step)
     {
         int decimals = Math.Clamp((int)Math.Ceiling(-Math.Log10(step)), 0, 12);
-        return value.ToString(decimals == 0 ? "0" : $"0.{new string('#', decimals)}", CultureInfo.InvariantCulture);
+        return value.ToString(TickFormats[decimals], CultureInfo.InvariantCulture);
     }
 
     private static double Hypotenuse(double first, double second)

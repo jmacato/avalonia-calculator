@@ -7,13 +7,40 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WasmEnableThreads>true</WasmEnableThreads>
+    <EmccStackSize>1MB</EmccStackSize>
+    <EmccMaximumHeapSize>209715200</EmccMaximumHeapSize>
+    <InvariantTimezone>true</InvariantTimezone>
+    <RunAOTCompilation Condition="'$(Configuration)' == 'Release'">true</RunAOTCompilation>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Avalonia.Browser" Version="12.1.0" />
+  <PropertyGroup Condition="'$(CollectAotProfile)' == 'true'">
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <WasmEnableThreads>false</WasmEnableThreads>
+    <WasmProfilers>aot</WasmProfilers>
+    <EnableDiagnostics>false</EnableDiagnostics>
+    <DefineConstants>$(DefineConstants);COLLECT_AOT_PROFILE</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'">
+    <WasmAotProfilePath>$(MSBuildThisFileDirectory)Profiles/Calculator.aotprofile</WasmAotProfilePath>
+    <WasmDedup>true</WasmDedup>
+    <WasmRunWasmOpt>true</WasmRunWasmOpt>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'">
+    <WasmOptConfigurationFlags Include="-O2" />
+    <WasmOptConfigurationFlags Include="--merge-similar-functions" />
+    <WasmOptConfigurationFlags Include="--duplicate-function-elimination" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Calculator\Calculator.csproj" />
+    <PackageReference Include="Avalonia.Browser" Version="9999.0.0-localbuild" />
+    <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" Condition="'$(WasmEnableThreads)' == 'true'" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Calculator\Calculator.csproj"
+                      AdditionalProperties="CalculatorBrowserBuild=true" />
   </ItemGroup>
 </Project>

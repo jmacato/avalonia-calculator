@@ -13,9 +13,11 @@ public sealed partial class App : Application
 {
     public static ISettingsStore SettingsStore { get; set; } = new InMemorySettingsStore();
 
-    public static MainWindow? Window { get; private set; }
     public static Control? RootView { get; private set; }
+#if !CALCULATOR_BROWSER
+    public static MainWindow? Window { get; private set; }
     public static Action<MainWindow>? DesktopWindowCreated { get; set; }
+#endif
 
     public override void Initialize()
     {
@@ -24,6 +26,7 @@ public sealed partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+#if !CALCULATOR_BROWSER
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             Window = new MainWindow();
@@ -31,7 +34,9 @@ public sealed partial class App : Application
             desktop.MainWindow = Window;
             DesktopWindowCreated?.Invoke(Window);
         }
-        else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
+        else
+#endif
+        if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
             RootView = new MainPage();
             singleViewPlatform.MainView = RootView;

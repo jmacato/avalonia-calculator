@@ -48,6 +48,8 @@ public sealed class PointQuadtree<T>
         Query(_root, area, results);
     }
 
+    public bool Any(GraphRect area) => Any(_root, area);
+
     private void Insert(Node node, Entry entry, int depth)
     {
         if (node.Children is null && (node.Entries.Count < _bucketSize || depth >= _maximumDepth))
@@ -59,12 +61,12 @@ public sealed class PointQuadtree<T>
         if (node.Children is null)
         {
             Split(node);
-            Entry[] existing = node.Entries.ToArray();
-            node.Entries.Clear();
-            foreach (Entry item in existing)
+            foreach (Entry item in node.Entries)
             {
                 Insert(FindChild(node, item.Point), item, depth + 1);
             }
+
+            node.Entries.Clear();
         }
 
         Insert(FindChild(node, entry.Point), entry, depth + 1);
@@ -94,6 +96,37 @@ public sealed class PointQuadtree<T>
         {
             Query(child, area, results);
         }
+    }
+
+    private static bool Any(Node node, GraphRect area)
+    {
+        if (!Intersects(node.Bounds, area))
+        {
+            return false;
+        }
+
+        foreach (Entry entry in node.Entries)
+        {
+            if (Contains(area, entry.Point))
+            {
+                return true;
+            }
+        }
+
+        if (node.Children is null)
+        {
+            return false;
+        }
+
+        foreach (Node child in node.Children)
+        {
+            if (Any(child, area))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void Split(Node node)

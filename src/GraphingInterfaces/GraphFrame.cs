@@ -11,7 +11,11 @@ public enum GraphCommandKind
     FillPath = 3,
     Marker = 4,
     Glyph = 5,
-    GlyphBackground = 6
+    GlyphBackground = 6,
+    PushCoordinateTransform = 7,
+    PopCoordinateTransform = 8,
+    CommandGroup = 9,
+    HatchGrid = 10
 }
 
 public enum GraphMarkerShape
@@ -41,6 +45,21 @@ public readonly record struct GraphPaint(
     LineStyle LineStyle = LineStyle.Solid,
     bool AntiAlias = true);
 
+/// <summary>
+/// Transforms command coordinates while leaving device-sized paint properties
+/// such as stroke widths, marker radii and font sizes unchanged.
+/// </summary>
+public readonly record struct GraphCoordinateTransform(
+    double ScaleX,
+    double ScaleY,
+    double OffsetX,
+    double OffsetY)
+{
+    public GraphPoint Transform(GraphPoint point) => new(
+        (point.X * ScaleX) + OffsetX,
+        (point.Y * ScaleY) + OffsetY);
+}
+
 public sealed record GraphPath
 {
     public GraphPath(IEnumerable<GraphPoint> points, bool isClosed = false)
@@ -67,6 +86,15 @@ public sealed record PushClipCommand(GraphRect Clip)
 public sealed record PopClipCommand()
     : GraphFrameCommand(GraphCommandKind.PopClip);
 
+public sealed record PushCoordinateTransformCommand(GraphCoordinateTransform Transform)
+    : GraphFrameCommand(GraphCommandKind.PushCoordinateTransform);
+
+public sealed record PopCoordinateTransformCommand()
+    : GraphFrameCommand(GraphCommandKind.PopCoordinateTransform);
+
+public sealed record CommandGroupCommand(ImmutableArray<GraphFrameCommand> Commands)
+    : GraphFrameCommand(GraphCommandKind.CommandGroup);
+
 public sealed record StrokePathCommand(GraphPath Path, GraphPaint Paint)
     : GraphFrameCommand(GraphCommandKind.StrokePath);
 
@@ -80,6 +108,34 @@ public sealed record MarkerCommand(
     GraphPaint Fill,
     GraphPaint? Stroke = null)
     : GraphFrameCommand(GraphCommandKind.Marker);
+
+/// <summary>
+/// A compact occupancy grid for Calculator's inequality cross hatch. One bit
+/// replaces one retained marker command while preserving the native lattice.
+/// </summary>
+public sealed record HatchGridCommand(
+    ImmutableArray<ulong> Occupancy,
+    int LatticeIntervals,
+    double Width,
+    double Height,
+    float Radius,
+    GraphPaint Paint)
+    : GraphFrameCommand(GraphCommandKind.HatchGrid)
+{
+    public bool IsOccupied(int column, int row)
+    {
+        int rowsPerColumn = LatticeIntervals - 1;
+        if ((uint)column >= (uint)LatticeIntervals || row <= 0 || row >= LatticeIntervals)
+        {
+            return false;
+        }
+
+        int bitIndex = (column * rowsPerColumn) + row - 1;
+        int wordIndex = bitIndex >> 6;
+        return (uint)wordIndex < (uint)Occupancy.Length &&
+               (Occupancy[wordIndex] & (1UL << (bitIndex & 63))) != 0;
+    }
+}
 
 public sealed record GlyphCommand(
     string Text,
@@ -114,7 +170,31 @@ public sealed class GraphFrame
         long revision,
         Color background,
         IEnumerable<GraphFrameCommand> commands,
-        bool hasSomeMissingData = false)
+        bool hasSomeMissingData = false,
+        bool isStale = false)
+        : this(
+            width,
+            height,
+            dpiX,
+            dpiY,
+            revision,
+            background,
+            commands.ToImmutableArray(),
+            hasSomeMissingData,
+            isStale)
+    {
+    }
+
+    public GraphFrame(
+        uint width,
+        uint height,
+        float dpiX,
+        float dpiY,
+        long revision,
+        Color background,
+        ImmutableArray<GraphFrameCommand> commands,
+        bool hasSomeMissingData = false,
+        bool isStale = false)
     {
         if (!float.IsFinite(dpiX) || dpiX <= 0 || !float.IsFinite(dpiY) || dpiY <= 0)
         {
@@ -127,8 +207,9 @@ public sealed class GraphFrame
         DpiY = dpiY;
         Revision = revision;
         Background = background;
-        Commands = commands.ToImmutableArray();
+        Commands = commands.IsDefault ? ImmutableArray<GraphFrameCommand>.Empty : commands;
         HasSomeMissingData = hasSomeMissingData;
+        IsStale = isStale;
     }
 
     public uint Width { get; }
@@ -146,6 +227,8 @@ public sealed class GraphFrame
     public ImmutableArray<GraphFrameCommand> Commands { get; }
 
     public bool HasSomeMissingData { get; }
+
+    public bool IsStale { get; }
 }
 
 public interface IGraphDrawingTarget

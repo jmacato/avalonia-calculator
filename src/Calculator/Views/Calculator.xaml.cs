@@ -15,10 +15,16 @@ namespace CalculatorApp;
 public sealed partial class Calculator : UserControl
 {
     private StandardCalculatorViewModel? _subscribedModel;
+    private HistoryViewModel? _subscribedHistoryModel;
+    private StandardCalculatorViewModel? _subscribedMemoryModel;
     private HistoryList? _historyList;
     private Memory? _memory;
+    private CalculatorScientificAngleButtons? _scientificAngleButtons;
+    private CalculatorProgrammerOperators? _programmerOperators;
+    private CalculatorProgrammerDisplayPanel? _programmerDisplayPanel;
     private bool _isLastFlyoutHistory;
     private bool _isLastFlyoutMemory;
+    private bool _isLoaded;
     private OpenFlyout _openFlyout;
 
     public Calculator()
@@ -38,16 +44,32 @@ public sealed partial class Calculator : UserControl
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
+        _isLoaded = true;
         SubscribeToModel();
-        EnsureHistoryAndMemoryControls();
+        EnsureModeControls();
         ApplyResponsiveLayout();
         Focus();
+    }
+
+    private void OnUnloaded(object? sender, RoutedEventArgs e)
+    {
+        _isLoaded = false;
+        CloseFullScreenFlyout(restoreFocus: false);
+        DetachHistoryControl();
+        DetachMemoryControl();
+        UnsubscribeFromModel();
     }
 
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+        if (!_isLoaded)
+        {
+            return;
+        }
+
         SubscribeToModel();
+        EnsureModeControls();
         ApplyResponsiveLayout();
     }
 
@@ -61,10 +83,10 @@ public sealed partial class Calculator : UserControl
         if (_subscribedModel is { } oldModel)
         {
             oldModel.PropertyChanged -= OnCalcPropertyChanged;
-            oldModel.HistoryVM.HistoryItemClicked -= OnHistoryItemClicked;
-            oldModel.HistoryVM.HideHistoryClicked -= OnHideHistoryClicked;
-            oldModel.HideMemoryClicked -= OnHideMemoryClicked;
         }
+
+        DeactivateHistoryControl();
+        DeactivateMemoryControl();
 
         _subscribedModel = Model;
         if (_subscribedModel is not { } model)
@@ -83,10 +105,7 @@ public sealed partial class Calculator : UserControl
         }
 
         model.PropertyChanged += OnCalcPropertyChanged;
-        model.HistoryVM.HistoryItemClicked += OnHistoryItemClicked;
-        model.HistoryVM.HideHistoryClicked += OnHideHistoryClicked;
-        model.HideMemoryClicked += OnHideMemoryClicked;
-        EnsureHistoryAndMemoryControls();
+        ReactivateAttachedControls();
         AutomationProperties.SetName(
             HistoryButton,
             AppResourceProvider.GetInstance().GetResourceString("HistoryButton_Open"));
@@ -94,6 +113,18 @@ public sealed partial class Calculator : UserControl
             MemoryButton,
             AppResourceProvider.GetInstance().GetResourceString("MemoryButton_Open"));
         UpdateErrorState(model.IsInError);
+    }
+
+    private void UnsubscribeFromModel()
+    {
+        if (_subscribedModel is { } model)
+        {
+            model.PropertyChanged -= OnCalcPropertyChanged;
+        }
+
+        DeactivateHistoryControl();
+        DeactivateMemoryControl();
+        _subscribedModel = null;
     }
 
     private void OnHistoryItemClicked(HistoryItemViewModel item)
@@ -118,6 +149,7 @@ public sealed partial class Calculator : UserControl
                  or nameof(StandardCalculatorViewModel.IsProgrammer)
                  or nameof(StandardCalculatorViewModel.IsMemoryEmpty))
         {
+            EnsureModeControls();
             ApplyResponsiveLayout();
         }
     }
@@ -128,14 +160,163 @@ public sealed partial class Calculator : UserControl
         UpdateOpenFlyoutHeight();
     }
 
-    private void EnsureHistoryAndMemoryControls()
+    private HistoryList EnsureHistoryControl()
     {
         _historyList ??= new HistoryList();
-        _memory ??= new Memory();
+        ActivateHistoryControl();
+        return _historyList;
+    }
 
-        _historyList.DataContext = Model?.HistoryVM;
-        _memory.DataContext = Model;
-        _memory.IsErrorVisualState = Model?.IsInError == true;
+    private Memory EnsureMemoryControl()
+    {
+        _memory ??= new Memory();
+        ActivateMemoryControl();
+        return _memory;
+    }
+
+    private void ActivateHistoryControl()
+    {
+        if (_historyList is null)
+        {
+            return;
+        }
+
+        HistoryViewModel? model = Model?.HistoryVM;
+        if (!ReferenceEquals(_subscribedHistoryModel, model))
+        {
+            if (_subscribedHistoryModel is { } oldModel)
+            {
+                oldModel.HistoryItemClicked -= OnHistoryItemClicked;
+                oldModel.HideHistoryClicked -= OnHideHistoryClicked;
+            }
+
+            _subscribedHistoryModel = model;
+            if (model is not null)
+            {
+                model.HistoryItemClicked += OnHistoryItemClicked;
+                model.HideHistoryClicked += OnHideHistoryClicked;
+            }
+        }
+
+        _historyList.DataContext = model;
+    }
+
+    private void ActivateMemoryControl()
+    {
+        if (_memory is null)
+        {
+            return;
+        }
+
+        StandardCalculatorViewModel? model = Model;
+        if (!ReferenceEquals(_subscribedMemoryModel, model))
+        {
+            if (_subscribedMemoryModel is { } oldModel)
+            {
+                oldModel.HideMemoryClicked -= OnHideMemoryClicked;
+            }
+
+            _subscribedMemoryModel = model;
+            if (model is not null)
+            {
+                model.HideMemoryClicked += OnHideMemoryClicked;
+            }
+        }
+
+        _memory.DataContext = model;
+        _memory.IsErrorVisualState = model?.IsInError == true;
+    }
+
+    private void DeactivateHistoryControl()
+    {
+        if (_subscribedHistoryModel is { } model)
+        {
+            model.HistoryItemClicked -= OnHistoryItemClicked;
+            model.HideHistoryClicked -= OnHideHistoryClicked;
+            _subscribedHistoryModel = null;
+        }
+
+        if (_historyList is not null)
+        {
+            _historyList.DataContext = null;
+        }
+    }
+
+    private void DeactivateMemoryControl()
+    {
+        if (_subscribedMemoryModel is { } model)
+        {
+            model.HideMemoryClicked -= OnHideMemoryClicked;
+            _subscribedMemoryModel = null;
+        }
+
+        if (_memory is not null)
+        {
+            _memory.DataContext = null;
+        }
+    }
+
+    private void ReactivateAttachedControls()
+    {
+        if (ReferenceEquals(DockHistoryHolder.Child, _historyList)
+            || ReferenceEquals(HistoryFlyoutHolder.Content, _historyList))
+        {
+            ActivateHistoryControl();
+        }
+
+        if (ReferenceEquals(DockMemoryHolder.Child, _memory)
+            || ReferenceEquals(MemoryFlyoutHolder.Content, _memory))
+        {
+            ActivateMemoryControl();
+        }
+    }
+
+    private void EnsureModeControls()
+    {
+        if (Model is { IsScientific: true })
+        {
+            EnsureScientificControls();
+        }
+        else if (Model is { IsProgrammer: true })
+        {
+            EnsureProgrammerControls();
+        }
+    }
+
+    private void EnsureScientificControls()
+    {
+        OpsPanel.EnsureScientificOps();
+        if (_scientificAngleButtons is not null)
+        {
+            return;
+        }
+
+        _scientificAngleButtons = new CalculatorScientificAngleButtons();
+        ScientificAngleButtonsHost.Children.Add(_scientificAngleButtons);
+        _scientificAngleButtons.IsErrorVisualState = Model?.IsInError == true;
+    }
+
+    private void EnsureProgrammerControls()
+    {
+        OpsPanel.EnsureProgrammerRadixOps();
+
+        if (_programmerOperators is null)
+        {
+            _programmerOperators = new CalculatorProgrammerOperators();
+            ProgrammerOperatorsHost.Children.Add(_programmerOperators);
+        }
+
+        if (_programmerDisplayPanel is null)
+        {
+            _programmerDisplayPanel = new CalculatorProgrammerDisplayPanel();
+            ProgrammerDisplayPanelHost.Children.Add(_programmerDisplayPanel);
+            _programmerDisplayPanel.IsErrorVisualState = Model?.IsInError == true;
+        }
+
+        if (Model is { } model)
+        {
+            _programmerOperators.SetRadixButton(model.CurrentRadixType);
+        }
     }
 
     private void ToggleHistoryFlyout(object? sender, RoutedEventArgs e)
@@ -172,13 +353,13 @@ public sealed partial class Calculator : UserControl
 
     private void OpenHistoryFlyout()
     {
-        EnsureHistoryAndMemoryControls();
         CloseFullScreenFlyout(restoreFocus: false);
         DetachHistoryControl();
 
-        _historyList!.SetDockedLayout(false);
-        _historyList.RowHeight = new GridLength(NumpadPanel.Bounds.Height);
-        HistoryFlyoutHolder.Content = _historyList;
+        HistoryList historyList = EnsureHistoryControl();
+        historyList.SetDockedLayout(false);
+        historyList.RowHeight = new GridLength(NumpadPanel.Bounds.Height);
+        HistoryFlyoutHolder.Content = historyList;
         HistoryFlyoutHolder.IsVisible = true;
         MemoryFlyoutHolder.IsVisible = false;
         FullScreenFlyoutOverlay.IsVisible = true;
@@ -189,18 +370,18 @@ public sealed partial class Calculator : UserControl
         AutomationProperties.SetName(
             HistoryButton,
             AppResourceProvider.GetInstance().GetResourceString("HistoryButton_Close"));
-        _historyList.ScrollToBottom();
+        historyList.ScrollToBottom();
     }
 
     private void OpenMemoryFlyout()
     {
-        EnsureHistoryAndMemoryControls();
         CloseFullScreenFlyout(restoreFocus: false);
         DetachMemoryControl();
 
-        _memory!.SetDockedLayout(false);
-        _memory.RowHeight = new GridLength(NumpadPanel.Bounds.Height);
-        MemoryFlyoutHolder.Content = _memory;
+        Memory memory = EnsureMemoryControl();
+        memory.SetDockedLayout(false);
+        memory.RowHeight = new GridLength(NumpadPanel.Bounds.Height);
+        MemoryFlyoutHolder.Content = memory;
         MemoryFlyoutHolder.IsVisible = true;
         HistoryFlyoutHolder.IsVisible = false;
         FullScreenFlyoutOverlay.IsVisible = true;
@@ -220,11 +401,13 @@ public sealed partial class Calculator : UserControl
 
         if (ReferenceEquals(HistoryFlyoutHolder.Content, _historyList))
         {
+            DeactivateHistoryControl();
             HistoryFlyoutHolder.Content = null;
         }
 
         if (ReferenceEquals(MemoryFlyoutHolder.Content, _memory))
         {
+            DeactivateMemoryControl();
             MemoryFlyoutHolder.Content = null;
         }
 
@@ -286,22 +469,40 @@ public sealed partial class Calculator : UserControl
 
     private void AttachHistoryToDock()
     {
-        EnsureHistoryAndMemoryControls();
+        DetachMemoryControl();
+        if (_historyList is not null
+            && ReferenceEquals(DockHistoryHolder.Child, _historyList))
+        {
+            ActivateHistoryControl();
+            return;
+        }
+
         DetachHistoryControl();
-        _historyList!.SetDockedLayout(true);
-        DockHistoryHolder.Child = _historyList;
+        HistoryList historyList = EnsureHistoryControl();
+        historyList.SetDockedLayout(true);
+        DockHistoryHolder.Child = historyList;
     }
 
     private void AttachMemoryToDock()
     {
-        EnsureHistoryAndMemoryControls();
+        DetachHistoryControl();
+        if (_memory is not null
+            && ReferenceEquals(DockMemoryHolder.Child, _memory))
+        {
+            ActivateMemoryControl();
+            return;
+        }
+
         DetachMemoryControl();
-        _memory!.SetDockedLayout(true);
-        DockMemoryHolder.Child = _memory;
+        Memory memory = EnsureMemoryControl();
+        memory.SetDockedLayout(true);
+        DockMemoryHolder.Child = memory;
     }
 
     private void DetachHistoryControl()
     {
+        DeactivateHistoryControl();
+
         if (ReferenceEquals(DockHistoryHolder.Child, _historyList))
         {
             DockHistoryHolder.Child = null;
@@ -315,6 +516,8 @@ public sealed partial class Calculator : UserControl
 
     private void DetachMemoryControl()
     {
+        DeactivateMemoryControl();
+
         if (ReferenceEquals(DockMemoryHolder.Child, _memory))
         {
             DockMemoryHolder.Child = null;
@@ -323,6 +526,36 @@ public sealed partial class Calculator : UserControl
         if (ReferenceEquals(MemoryFlyoutHolder.Content, _memory))
         {
             MemoryFlyoutHolder.Content = null;
+        }
+    }
+
+    private void DetachHistoryFromDock()
+    {
+        if (_historyList is not null
+            && ReferenceEquals(DockHistoryHolder.Child, _historyList))
+        {
+            DockHistoryHolder.Child = null;
+        }
+
+        if (_historyList is not null
+            && !ReferenceEquals(HistoryFlyoutHolder.Content, _historyList))
+        {
+            DeactivateHistoryControl();
+        }
+    }
+
+    private void DetachMemoryFromDock()
+    {
+        if (_memory is not null
+            && ReferenceEquals(DockMemoryHolder.Child, _memory))
+        {
+            DockMemoryHolder.Child = null;
+        }
+
+        if (_memory is not null
+            && !ReferenceEquals(MemoryFlyoutHolder.Content, _memory))
+        {
+            DeactivateMemoryControl();
         }
     }
 
@@ -434,20 +667,6 @@ public sealed partial class Calculator : UserControl
         if (dockVisible)
         {
             CloseFullScreenFlyout(restoreFocus: false);
-            if (programmer)
-            {
-                if (ReferenceEquals(DockHistoryHolder.Child, _historyList))
-                {
-                    DockHistoryHolder.Child = null;
-                }
-            }
-            else
-            {
-                AttachHistoryToDock();
-            }
-
-            AttachMemoryToDock();
-
             if (programmer || _isLastFlyoutMemory)
             {
                 DockTabs.SelectedItem = MemoryTab;
@@ -456,18 +675,13 @@ public sealed partial class Calculator : UserControl
             {
                 DockTabs.SelectedItem = HistoryTab;
             }
+
+            AttachSelectedDockControl();
         }
         else
         {
-            if (ReferenceEquals(DockHistoryHolder.Child, _historyList))
-            {
-                DockHistoryHolder.Child = null;
-            }
-
-            if (ReferenceEquals(DockMemoryHolder.Child, _memory))
-            {
-                DockMemoryHolder.Child = null;
-            }
+            DetachHistoryFromDock();
+            DetachMemoryFromDock();
         }
 
         bool canRecall = !model.IsMemoryEmpty && !model.IsInError;
@@ -478,8 +692,15 @@ public sealed partial class Calculator : UserControl
     private void UpdateErrorState(bool isError)
     {
         OpsPanel.IsErrorVisualState = isError;
-        ScientificAngleButtons.IsErrorVisualState = isError;
-        ProgrammerDisplayPanel.IsErrorVisualState = isError;
+        if (_scientificAngleButtons is not null)
+        {
+            _scientificAngleButtons.IsErrorVisualState = isError;
+        }
+
+        if (_programmerDisplayPanel is not null)
+        {
+            _programmerDisplayPanel.IsErrorVisualState = isError;
+        }
         if (_memory is not null)
         {
             _memory.IsErrorVisualState = isError;
@@ -575,6 +796,36 @@ public sealed partial class Calculator : UserControl
         {
             _isLastFlyoutMemory = false;
             _isLastFlyoutHistory = true;
+        }
+
+        if (DockPanel?.IsVisible == true)
+        {
+            AttachSelectedDockControl();
+        }
+    }
+
+    private void AttachSelectedDockControl()
+    {
+        if (Model is null)
+        {
+            DetachHistoryControl();
+            DetachMemoryControl();
+            return;
+        }
+
+        if (ReferenceEquals(DockTabs.SelectedItem, MemoryTab))
+        {
+            AttachMemoryToDock();
+        }
+        else if (ReferenceEquals(DockTabs.SelectedItem, HistoryTab)
+                 && Model is { IsProgrammer: false })
+        {
+            AttachHistoryToDock();
+        }
+        else
+        {
+            DetachHistoryControl();
+            DetachMemoryControl();
         }
     }
 

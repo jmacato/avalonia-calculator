@@ -23,6 +23,10 @@ public sealed partial class GraphingCalculator : UserControl
 {
     private const double SmallStateWidth = 800;
     private GraphingCalculatorViewModel? _model;
+    private EquationInputArea? _equationInputAreaControl;
+    private KeyGraphFeaturesPanel? _keyGraphFeaturesControl;
+    private GraphingSettings? _graphSettingsControl;
+    private Flyout? _graphSettingsFlyout;
 
     public GraphingCalculator()
     {
@@ -31,12 +35,26 @@ public sealed partial class GraphingCalculator : UserControl
         GraphingControl.GraphPlotted += OnGraphPlotted;
         GraphingControl.TracingValueChanged += OnTracingValueChanged;
         GraphingControl.VariablesUpdated += OnVariablesUpdated;
-        GraphSettingsControl.GraphThemeSettingChanged += _ => UpdateGraphTheme();
         ActualThemeVariantChanged += (_, _) => UpdateGraphTheme();
         UpdateGraphTheme();
     }
 
-    public void SetDefaultFocus() => EquationInputAreaControl.SetDefaultFocus();
+    public void SetDefaultFocus()
+    {
+        if (Bounds.Width <= 0)
+        {
+            return;
+        }
+
+        bool graphOnly = Bounds.Width < SmallStateWidth && SwitchModeToggleButton.IsChecked != true;
+        if (graphOnly)
+        {
+            GraphingControl.Focus();
+            return;
+        }
+
+        EnsureEquationUi().SetDefaultFocus();
+    }
 
     protected override void OnDataContextChanged(EventArgs e)
     {
@@ -60,7 +78,6 @@ public sealed partial class GraphingCalculator : UserControl
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
         ApplyResponsiveLayout();
-        GraphSettingsControl.SetGrapher(GraphingControl);
         SynchronizeGraphEquations();
         SynchronizeVariables();
         SetDefaultFocus();
@@ -74,7 +91,7 @@ public sealed partial class GraphingCalculator : UserControl
         UpdateSwitchModeAccessibility();
         if (SwitchModeToggleButton.IsChecked == true)
         {
-            EquationInputAreaControl.SetDefaultFocus();
+            EnsureEquationUi().SetDefaultFocus();
         }
         else
         {
@@ -129,14 +146,24 @@ public sealed partial class GraphingCalculator : UserControl
 
     private void OnGraphViewChanged(object? sender, GraphViewChangedReason reason)
     {
-        GraphSettingsControl.Model.InitRanges();
+        _graphSettingsControl?.Model.InitRanges();
         UpdateGraphAutomationName();
     }
 
     private void OnGraphPlotted(object? sender, EventArgs e) => UpdateGraphAutomationName();
 
-    private void OnGraphSettingsOpened(object? sender, EventArgs e) =>
-        GraphSettingsControl.SetGrapher(GraphingControl);
+    private void OnGraphSettingsClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_graphSettingsFlyout?.IsOpen == true)
+        {
+            _graphSettingsFlyout.Hide();
+            return;
+        }
+
+        GraphingSettings settings = EnsureGraphSettings();
+        settings.SetGrapher(GraphingControl);
+        (_graphSettingsFlyout ??= new Flyout { Content = settings }).ShowAt(GraphSettingsButton);
+    }
 
     private void OnEquationFormatRequested(object? sender, MathRichEditBoxFormatRequest e)
     {
@@ -156,18 +183,27 @@ public sealed partial class GraphingCalculator : UserControl
         }
 
         equation.PopulateKeyGraphFeatures(info);
-        KeyGraphFeaturesControl.DataContext = equation;
-        KeyGraphFeaturesControl.IsVisible = true;
-        EquationInputAreaControl.IsVisible = false;
-        GraphingNumPad.IsVisible = false;
+        KeyGraphFeaturesPanel panel = EnsureKeyGraphFeaturesPanel();
+        panel.DataContext = equation;
+        KeyGraphFeaturesHost.IsVisible = true;
+        EquationInputHost.IsVisible = false;
+        GraphingNumPadHost.IsVisible = false;
     }
 
     private void OnKeyGraphFeaturesClosed(object? sender, RoutedEventArgs e)
     {
-        KeyGraphFeaturesControl.IsVisible = false;
-        EquationInputAreaControl.IsVisible = true;
-        GraphingNumPad.IsVisible = true;
-        EquationInputAreaControl.SetDefaultFocus();
+        KeyGraphFeaturesHost.IsVisible = false;
+        if (_keyGraphFeaturesControl is not null)
+        {
+            // Keep the lightweight panel shell for reuse, but release the
+            // equation, generated item containers and math layouts while the
+            // analysis view is closed.
+            _keyGraphFeaturesControl.DataContext = null;
+        }
+
+        EquationInputHost.IsVisible = true;
+        GraphingNumPadHost.IsVisible = true;
+        _equationInputAreaControl?.SetDefaultFocus();
     }
 
     private async void OnCopyGraphClicked(object? sender, RoutedEventArgs e)
@@ -203,6 +239,10 @@ public sealed partial class GraphingCalculator : UserControl
 
         bool small = Bounds.Width < SmallStateWidth;
         bool equationMode = SwitchModeToggleButton.IsChecked == true;
+        if (!small || equationMode)
+        {
+            EnsureEquationUi();
+        }
 
         SwitchModeToggleButton.IsVisible = small;
         Grid.SetColumn(LeftGrid, 0);
@@ -235,7 +275,8 @@ public sealed partial class GraphingCalculator : UserControl
 
     private void UpdateGraphTheme()
     {
-        if (GraphSettingsControl.IsMatchAppTheme && IsAppThemeDark())
+        bool matchAppTheme = _graphSettingsControl?.IsMatchAppTheme ?? App.SettingsStore.Current.GraphThemeMatchApp;
+        if (matchAppTheme && IsAppThemeDark())
         {
             GraphingControl.GraphBackground = AvaloniaColor.FromRgb(0x20, 0x20, 0x20);
             GraphingControl.AxesColor = AvaloniaColor.FromRgb(0xE0, 0xE0, 0xE0);
@@ -269,4 +310,55 @@ public sealed partial class GraphingCalculator : UserControl
 
         return Application.Current?.PlatformSettings?.GetColorValues().ThemeVariant == PlatformThemeVariant.Dark;
     }
+
+    private EquationInputArea EnsureEquationUi()
+    {
+        if (_equationInputAreaControl is not null)
+        {
+            return _equationInputAreaControl;
+        }
+
+        // Keep these direct constructors: they are both linker-visible for NativeAOT
+        // and avoid loading the sizeable editor/numpad XAML while narrow graph mode
+        // has the entire right pane hidden.
+        var inputArea = new EquationInputArea();
+        var numPad = new GraphingNumPad();
+        inputArea.EquationFormatRequested += OnEquationFormatRequested;
+        inputArea.KeyGraphFeaturesRequested += OnKeyGraphFeaturesRequested;
+        _equationInputAreaControl = inputArea;
+        EquationInputHost.Child = inputArea;
+        GraphingNumPadHost.Child = numPad;
+        return inputArea;
+    }
+
+    private KeyGraphFeaturesPanel EnsureKeyGraphFeaturesPanel()
+    {
+        if (_keyGraphFeaturesControl is not null)
+        {
+            return _keyGraphFeaturesControl;
+        }
+
+        // This view owns MathExpressionView instances and the math font. Do not
+        // construct either until analysis has actually been requested.
+        var panel = new KeyGraphFeaturesPanel();
+        panel.KeyGraphFeaturesClosed += OnKeyGraphFeaturesClosed;
+        _keyGraphFeaturesControl = panel;
+        KeyGraphFeaturesHost.Child = panel;
+        return panel;
+    }
+
+    private GraphingSettings EnsureGraphSettings()
+    {
+        if (_graphSettingsControl is not null)
+        {
+            return _graphSettingsControl;
+        }
+
+        var settings = new GraphingSettings();
+        settings.GraphThemeSettingChanged += OnGraphThemeSettingChanged;
+        _graphSettingsControl = settings;
+        return settings;
+    }
+
+    private void OnGraphThemeSettingChanged(bool _) => UpdateGraphTheme();
 }

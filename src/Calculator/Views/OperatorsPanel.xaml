@@ -9,14 +9,16 @@
     <local:CalculatorStandardOperators x:Name="StandardOperators"
                                        IsEnabled="{CompiledBinding IsStandard}"
                                        IsVisible="{CompiledBinding IsStandard}" />
-    <local:CalculatorScientificOperators x:Name="ScientificOperators"
-                                         IsEnabled="{CompiledBinding IsScientific}"
-                                         IsVisible="{CompiledBinding IsScientific}" />
-    <local:CalculatorProgrammerBitFlipPanel x:Name="BitFlipPanel"
-                                            IsEnabled="{CompiledBinding IsBinaryBitFlippingEnabled}"
-                                            IsVisible="{CompiledBinding IsBinaryBitFlippingEnabled}" />
-    <local:CalculatorProgrammerRadixOperators x:Name="ProgrammerRadixOperators"
-                                              IsEnabled="{CompiledBinding IsProgrammer}"
-                                              IsVisible="{CompiledBinding AreProgrammerRadixOperatorsVisible}" />
+    <!-- Avalonia has no x:Load equivalent. Keep lightweight hosts in the
+         initial tree and construct each mode-specific panel on first use. -->
+    <Grid x:Name="ScientificOperatorsHost"
+          IsEnabled="{CompiledBinding IsScientific}"
+          IsVisible="{CompiledBinding IsScientific}" />
+    <Grid x:Name="BitFlipPanelHost"
+          IsEnabled="{CompiledBinding IsBinaryBitFlippingEnabled}"
+          IsVisible="{CompiledBinding IsBinaryBitFlippingEnabled}" />
+    <Grid x:Name="ProgrammerRadixOperatorsHost"
+          IsEnabled="{CompiledBinding IsProgrammer}"
+          IsVisible="{CompiledBinding AreProgrammerRadixOperatorsVisible}" />
   </Grid>
 </UserControl>

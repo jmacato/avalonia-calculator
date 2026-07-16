@@ -4,6 +4,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using CalculatorApp.ViewModel.Common;
 using GraphControl;
 
@@ -65,6 +66,7 @@ public sealed partial class EquationViewModel : ViewModelBase
     private KeyGraphFeaturesInfo? _analysis;
     private string _analysisErrorString = string.Empty;
     private bool _analysisErrorVisible;
+    private ImmutableSolidColorBrush? _lineBrush;
 
     public EquationViewModel(Equation equation, int functionLabelIndex, Color color, int colorIndex)
     {
@@ -132,7 +134,7 @@ public sealed partial class EquationViewModel : ViewModelBase
         set => GraphEquation.LineColor = value;
     }
 
-    public IBrush LineBrush => new SolidColorBrush(LineColor);
+    public IBrush LineBrush => _lineBrush ??= new ImmutableSolidColorBrush(LineColor);
 
     public bool IsLineEnabled
     {
@@ -409,6 +411,7 @@ public sealed partial class EquationViewModel : ViewModelBase
         }
         else if (e.PropertyName == nameof(Equation.LineColor))
         {
+            _lineBrush = null;
             OnPropertyChanged(nameof(LineBrush));
         }
         else if (e.PropertyName == nameof(Equation.IsLineEnabled))

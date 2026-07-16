@@ -2,14 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Calculator</title>
-  <link rel="stylesheet" href="./app.css">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./app.css?v=20260716-2355">
 </head>
 <body>
   <div id="out">
-    <div class="avalonia-splash">Calculator</div>
+    <div class="avalonia-splash splash" id="splash">
+      <div class="splash-content">
+        <div class="splash-title">Calculator</div>
+        <div class="splash-progress"
+             role="progressbar"
+             aria-label="Loading Calculator"
+             aria-valuemin="0"
+             aria-valuemax="100"
+             aria-valuenow="0">
+          <div class="splash-progress-fill"></div>
+        </div>
+        <div class="splash-status" role="status" aria-live="polite">Starting</div>
+      </div>
+    </div>
   </div>
-  <script type="module" src="./main.js"></script>
+  <script type="module" src="./main.js?v=20260716-2355"></script>
 </body>
 </html>
