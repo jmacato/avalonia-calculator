@@ -1,4 +1,3 @@
-// ReSharper disable InconsistentNaming
 namespace CalcManagerManaged.Interop;
 
 internal enum Command

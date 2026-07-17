@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 using System.Globalization;
 using CalculatorApp.Services.Settings;
 using CalculatorApp.ViewModel.Common;
@@ -8,13 +7,6 @@ using GraphControl;
 using Graphing;
 
 namespace CalculatorApp.ViewModel;
-
-public sealed class GraphLineWidthChoice
-{
-    public required double Width { get; init; }
-
-    public required string AutomationName { get; init; }
-}
 
 public sealed partial class GraphingSettingsViewModel : ViewModelBase
 {
@@ -35,9 +27,7 @@ public sealed partial class GraphingSettingsViewModel : ViewModelBase
     private double _yMaxValue;
     private int _selectedLineWidthIndex = 1;
     private bool _isMatchAppTheme;
-
-    public GraphingSettingsViewModel()
-        : this(App.SettingsStore)
+    public GraphingSettingsViewModel() : this(App.SettingsStore)
     {
     }
 
@@ -45,29 +35,25 @@ public sealed partial class GraphingSettingsViewModel : ViewModelBase
     {
         _settingsStore = settingsStore;
         _isMatchAppTheme = settingsStore.Current.GraphThemeMatchApp;
-        AppResourceProvider resources = AppResourceProvider.GetInstance();
-        AvailableLineWidths =
-        [
-            new GraphLineWidthChoice
-            {
-                Width = 1,
-                AutomationName = resources.GetResourceString("SmallLineWidthAutomationName")
-            },
-            new GraphLineWidthChoice
-            {
-                Width = 2,
-                AutomationName = resources.GetResourceString("MediumLineWidthAutomationName")
-            },
-            new GraphLineWidthChoice
-            {
-                Width = 3,
-                AutomationName = resources.GetResourceString("LargeLineWidthAutomationName")
-            },
-            new GraphLineWidthChoice
-            {
-                Width = 4,
-                AutomationName = resources.GetResourceString("ExtraLargeLineWidthAutomationName")
-            }
+        AppResourceProvider resources = AppResourceProvider.Instance;
+        AvailableLineWidths = [new GraphLineWidthChoice
+        {
+            Width = 1,
+            AutomationName = resources.GetResourceString("SmallLineWidthAutomationName")
+        }, new GraphLineWidthChoice
+        {
+            Width = 2,
+            AutomationName = resources.GetResourceString("MediumLineWidthAutomationName")
+        }, new GraphLineWidthChoice
+        {
+            Width = 3,
+            AutomationName = resources.GetResourceString("LargeLineWidthAutomationName")
+        }, new GraphLineWidthChoice
+        {
+            Width = 4,
+            AutomationName = resources.GetResourceString("ExtraLargeLineWidthAutomationName")
+        }
+
         ];
     }
 
@@ -98,7 +84,7 @@ public sealed partial class GraphingSettingsViewModel : ViewModelBase
 
             _settingsStore.Update(settings => settings with { GraphThemeMatchApp = value });
             OnPropertyChanged(nameof(IsAlwaysLightTheme));
-            GraphThemeSettingChanged?.Invoke(value);
+            GraphThemeSettingChanged?.Invoke(this, new GraphThemeSettingChangedEventArgs(value));
         }
     }
 
@@ -114,56 +100,21 @@ public sealed partial class GraphingSettingsViewModel : ViewModelBase
         }
     }
 
-    public event Action<bool>? GraphThemeSettingChanged;
-
-    public Grapher? Graph
-    {
-        get => _graph;
-        private set => SetProperty(ref _graph, value);
-    }
-
-    public string XMin
-    {
-        get => _xMin;
-        set => SetRangeValue(ref _xMin, value, ref _xMinValue, ref _xMinError, nameof(XMin), nameof(XMinError));
-    }
-
-    public string XMax
-    {
-        get => _xMax;
-        set => SetRangeValue(ref _xMax, value, ref _xMaxValue, ref _xMaxError, nameof(XMax), nameof(XMaxError));
-    }
-
-    public string YMin
-    {
-        get => _yMin;
-        set => SetRangeValue(ref _yMin, value, ref _yMinValue, ref _yMinError, nameof(YMin), nameof(YMinError));
-    }
-
-    public string YMax
-    {
-        get => _yMax;
-        set => SetRangeValue(ref _yMax, value, ref _yMaxValue, ref _yMaxError, nameof(YMax), nameof(YMaxError));
-    }
-
+    public event EventHandler<GraphThemeSettingChangedEventArgs>? GraphThemeSettingChanged;
+    public Grapher? Graph { get => _graph; private set => SetProperty(ref _graph, value); }
+    public string XMin { get => _xMin; set => SetRangeValue(ref _xMin, value, ref _xMinValue, ref _xMinError, nameof(XMin), nameof(XMinError)); }
+    public string XMax { get => _xMax; set => SetRangeValue(ref _xMax, value, ref _xMaxValue, ref _xMaxError, nameof(XMax), nameof(XMaxError)); }
+    public string YMin { get => _yMin; set => SetRangeValue(ref _yMin, value, ref _yMinValue, ref _yMinError, nameof(YMin), nameof(YMinError)); }
+    public string YMax { get => _yMax; set => SetRangeValue(ref _yMax, value, ref _yMaxValue, ref _yMaxError, nameof(YMax), nameof(YMaxError)); }
     public bool XMinError => _xMinError;
-
     public bool XMaxError => _xMaxError;
-
     public bool YMinError => _yMinError;
-
     public bool YMaxError => _yMaxError;
-
     public bool XError => !_xMinError && !_xMaxError && _xMinValue >= _xMaxValue;
-
     public bool YError => !_yMinError && !_yMaxError && _yMinValue >= _yMaxValue;
-
     public bool XMinHasError => XMinError || XError;
-
     public bool XMaxHasError => XMaxError || XError;
-
     public bool YMinHasError => YMinError || YError;
-
     public bool YMaxHasError => YMaxError || YError;
 
     public bool TrigModeRadians
@@ -216,15 +167,17 @@ public sealed partial class GraphingSettingsViewModel : ViewModelBase
 
         InitRanges();
         RaiseTrigProperties();
-        int widthIndex = AvailableLineWidths
-            .Select((choice, index) => (choice, index))
-            .OrderBy(pair => Math.Abs(pair.choice.Width - grapher.LineWidth))
-            .First().index;
+        int widthIndex = AvailableLineWidths.Select((choice, index) => (choice, index)).OrderBy(pair => Math.Abs(pair.choice.Width - grapher.LineWidth)).First().index;
         if (_selectedLineWidthIndex != widthIndex)
         {
             _selectedLineWidthIndex = widthIndex;
             OnPropertyChanged(nameof(SelectedLineWidthIndex));
         }
+    }
+
+    public void ClearGrapher()
+    {
+        Graph = null;
     }
 
     public void InitRanges()
@@ -252,13 +205,7 @@ public sealed partial class GraphingSettingsViewModel : ViewModelBase
         RaiseRangeErrorProperties();
     }
 
-    private void SetRangeValue(
-        ref string field,
-        string? value,
-        ref double numericField,
-        ref bool errorField,
-        string propertyName,
-        string errorPropertyName)
+    private void SetRangeValue(ref string field, string? value, ref double numericField, ref bool errorField, string propertyName, string errorPropertyName)
     {
         value ??= string.Empty;
         if (!SetProperty(ref field, value, propertyName))
@@ -266,8 +213,7 @@ public sealed partial class GraphingSettingsViewModel : ViewModelBase
             return;
         }
 
-        bool parsed = double.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out double number) ||
-            double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out number);
+        bool parsed = double.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out double number) || double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out number);
         errorField = !parsed || !double.IsFinite(number);
         if (!errorField)
         {
@@ -289,7 +235,6 @@ public sealed partial class GraphingSettingsViewModel : ViewModelBase
     }
 
     private bool HasError() => _xMinError || _xMaxError || _yMinError || _yMaxError || XError || YError;
-
     private void RaiseTrigProperties()
     {
         OnPropertyChanged(nameof(TrigModeRadians));

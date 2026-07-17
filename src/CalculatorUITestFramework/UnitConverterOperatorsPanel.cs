@@ -6,11 +6,12 @@ namespace CalculatorUITestFramework
 {
     public class UnitConverterOperatorsPanel
     {
-        private WindowsDriver<WindowsElement> session => CalculatorDriver.Instance.CalculatorSession;
-        public NumberPad NumberPad = new NumberPad();
-        public WindowsElement ClearButton => this.session.TryFindElementByAccessibilityId("ClearEntryButtonPos0");
-        public WindowsElement BackSpaceButton => this.session.TryFindElementByAccessibilityId("BackSpaceButtonSmall");
-        public WindowsElement Units1 => this.session.TryFindElementByAccessibilityId("Units1");
-        public WindowsElement Units2 => this.session.TryFindElementByAccessibilityId("Units2");
+        private readonly CalculatorDriver driver = CalculatorDriver.Instance;
+        private WindowsDriver<WindowsElement> Session => driver.CalculatorSession;
+        public NumberPad NumberPad { get; } = new();
+        public WindowsElement ClearButton => Session.TryFindElementByAccessibilityId("ClearEntryButtonPos0");
+        public WindowsElement BackSpaceButton => Session.TryFindElementByAccessibilityId("BackSpaceButtonSmall");
+        public WindowsElement Units1 => Session.TryFindElementByAccessibilityId("Units1");
+        public WindowsElement Units2 => Session.TryFindElementByAccessibilityId("Units2");
     }
 }

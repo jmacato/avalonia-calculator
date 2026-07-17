@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 //#pragma once
-
 //#include  "CalcManager/CalculatorManager.h"
 //#include  "Common/Automation/NarratorAnnouncement.h"
 //#include  "Common/CalculatorDisplay.h"
@@ -15,20 +13,11 @@ using CalculatorApp.ViewModel.Common;
 
 namespace CalculatorApp.ViewModel
 {
-
-
-    public
-        delegate void HideHistoryClickedHandler();
-    public
-        delegate void HistoryItemClickedHandler(CalculatorApp.ViewModel.HistoryItemViewModel e);
-
     public partial class HistoryViewModel : INotifyPropertyChanged
     {
         // public:
-
         // Implementation of INotifyPropertyChanged
         public event PropertyChangedEventHandler? PropertyChanged;
-
         internal void RaisePropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -41,18 +30,18 @@ namespace CalculatorApp.ViewModel
             {
                 return m_Items;
             }
+
             private set
             {
                 if (m_Items != value)
                 {
                     m_Items = value;
-                    RaisePropertyChanged("Items");
+                    RaisePropertyChanged(nameof(Items));
                 }
             }
         }
 
         private ObservableCollection<HistoryItemViewModel> m_Items = new();
-
         // OBSERVABLE_PROPERTY_RW(bool, AreHistoryShortcutsEnabled);
         public bool AreHistoryShortcutsEnabled
         {
@@ -60,18 +49,18 @@ namespace CalculatorApp.ViewModel
             {
                 return m_AreHistoryShortcutsEnabled;
             }
+
             set
             {
                 if (m_AreHistoryShortcutsEnabled != value)
                 {
                     m_AreHistoryShortcutsEnabled = value;
-                    RaisePropertyChanged("AreHistoryShortcutsEnabled");
+                    RaisePropertyChanged(nameof(AreHistoryShortcutsEnabled));
                 }
             }
         }
 
         private bool m_AreHistoryShortcutsEnabled;
-
         // OBSERVABLE_PROPERTY_R(CalculatorApp.ViewModel.Common.Automation.NarratorAnnouncement, HistoryAnnouncement);
         public CalculatorApp.ViewModel.Common.Automation.NarratorAnnouncement? HistoryAnnouncement
         {
@@ -79,18 +68,18 @@ namespace CalculatorApp.ViewModel
             {
                 return m_HistoryAnnouncement;
             }
+
             private set
             {
                 if (m_HistoryAnnouncement != value)
                 {
                     m_HistoryAnnouncement = value;
-                    RaisePropertyChanged("HistoryAnnouncement");
+                    RaisePropertyChanged(nameof(HistoryAnnouncement));
                 }
             }
         }
 
         private CalculatorApp.ViewModel.Common.Automation.NarratorAnnouncement? m_HistoryAnnouncement;
-
         // COMMAND_FOR_METHOD(HideCommand, HistoryViewModel.OnHideCommand);
         public ICommand HideCommand
         {
@@ -100,12 +89,12 @@ namespace CalculatorApp.ViewModel
                 {
                     donotuse_HideCommand = new DelegateCommand(OnHideCommand);
                 }
+
                 return donotuse_HideCommand;
             }
         }
 
         private ICommand? donotuse_HideCommand;
-
         // COMMAND_FOR_METHOD(ClearCommand, HistoryViewModel.OnClearCommand);
         public ICommand ClearCommand
         {
@@ -115,6 +104,7 @@ namespace CalculatorApp.ViewModel
                 {
                     donotuse_ClearCommand = new DelegateCommand(OnClearCommand);
                 }
+
                 return donotuse_ClearCommand;
             }
         }
@@ -132,10 +122,9 @@ namespace CalculatorApp.ViewModel
         //
         // void OnHideCommand( object   e);
         // void OnClearCommand( object   e);
-
         // events that are created
-        public event HideHistoryClickedHandler? HideHistoryClicked;
-        public event HistoryItemClickedHandler? HistoryItemClicked;
+        public event EventHandler? HideHistoryClicked;
+        public event EventHandler<HistoryItemClickedEventArgs>? HistoryItemClicked;
         // void ShowItem( CalculatorApp.ViewModel.HistoryItemViewModel   e);
         // void DeleteItem( CalculatorApp.ViewModel.HistoryItemViewModel   e);
         // void ReloadHistory( CalculatorApp.ViewModel.Common.ViewMode currentMode);
@@ -143,8 +132,6 @@ namespace CalculatorApp.ViewModel
         // internal : HistoryViewModel( CalculationManager.CalculatorManager* calculatorManager);
         // void SetCalculatorDisplay(Common.CalculatorDisplay& calculatorDisplay);
         // ulong GetMaxItemSize();
-
-
         // private:
         CalculationManager.CalculatorManager m_calculatorManager;
         CalculationManager.CalculatorMode m_currentMode;

@@ -1,36 +1,24 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 using CalcEngine;
 using CalculationManager;
 using uint32_t = System.UInt32;
 using int32_t = System.Int32;
-using PNUMBER = CalcEngine.RatPak.NUMBER;
-using PRAT = CalcEngine.RatPak.RAT;
+using PNUMBER = CalcEngine.RatPakNUMBER;
+using PRAT = CalcEngine.RatPakRAT;
 using wchar_t = char;
 using wstring_view = string;
-using wstring = string;
+using WString = string;
 using size_t = int;
 using System.Linq;
 
 namespace CalcEngine;
 
-public partial class CalcNumSec
-{
-    public void Clear()
-    {
-        value = string.Empty;
-        m_isNegative = false;
-    }
-}
-
-public partial class CalcInput
+internal sealed partial class CalcInput
 {
     const int MAX_STRLEN = 84;
-
     const int C_NUM_MAX_DIGITS = MAX_STRLEN;
     const int C_EXP_MAX_DIGITS = 4;
-
     public void Clear()
     {
         m_base.Clear();
@@ -72,13 +60,11 @@ public partial class CalcInput
         return true;
     }
 
-    public bool TryAddDigit(uint value, uint32_t radix, bool isIntegerMode, wstring_view maxNumStr, int32_t
-        wordBitWidth, int maxDigits)
+    public bool TryAddDigit(uint value, uint32_t radix, bool isIntegerMode, wstring_view maxNumStr, int32_t wordBitWidth, int maxDigits)
     {
         // Convert from an integer into a character
         // This includes both normal digits and alpha 'digits' for radixes > 10
         var chDigit = (wchar_t)((value < 10) ? ('0' + value) : ('A' + value - 10));
-
         CalcNumSec pNumSec;
         size_t maxCount;
         if (m_hasExponent)
@@ -123,7 +109,6 @@ public partial class CalcInput
         if (isIntegerMode && pNumSec.value.Length == maxCount && !m_hasExponent)
         {
             bool allowExtraDigit = false;
-
             if (radix == 8)
             {
                 switch (wordBitWidth % 3)
@@ -132,7 +117,6 @@ public partial class CalcInput
                         // in 16 or 64bit word size, if the first digit is a 1 we can enter 6 (16bit) or 22 (64bit) digits
                         allowExtraDigit = (pNumSec.value.First() == '1');
                         break;
-
                     case 2:
                         // in 8 or 32bit word size, if the first digit is a 3 or less we can enter 3 (8bit) or 11 (32bit) digits
                         allowExtraDigit = (pNumSec.value.First() <= '3');
@@ -148,15 +132,13 @@ public partial class CalcInput
                     // If cmpResult > 0:
                     // eg. max is "127", and the current number is "20". first digit itself says we are out.
                     // Additional digit is not possible
-
                     // If cmpResult < 0:
                     // Success case. eg. max is "127", and current number is say "11". The second digit '1' being <
                     // corresponding digit '2', means all digits are possible to append, like 119 will still be < 127
-
                     // If cmpResult == 0:
                     // Undecided still. The case when max is "127", and current number is "12". Look for the new number being 7 or less to allow
-                    // var cmpResult = pNumSec.value.compare(0, wstring::npos, maxNumStr, 0, pNumSec.value.Length);
-                    var cmpResult = string.Compare(pNumSec.value, 0, maxNumStr, 0, pNumSec.value.Length);
+                    // var cmpResult = pNumSec.value.compare(0, WString::npos, maxNumStr, 0, pNumSec.value.Length);
+                    var cmpResult = string.Compare(pNumSec.value, 0, maxNumStr, 0, pNumSec.value.Length, StringComparison.Ordinal);
                     if (cmpResult < 0)
                     {
                         allowExtraDigit = true;
@@ -204,7 +186,6 @@ public partial class CalcInput
         m_decPtIndex = m_base.value.Length;
         m_base.value += m_decSymbol;
         m_hasDecimal = true;
-
         return true;
     }
 
@@ -217,7 +198,6 @@ public partial class CalcInput
     {
         // For compatibility, add a trailing dec point to base num if it doesn't have one
         TryAddDecimalPt();
-
         if (m_hasExponent) // Already entering exponent
         {
             return false;
@@ -249,7 +229,6 @@ public partial class CalcInput
             if (!m_base.IsEmpty())
             {
                 m_base.value = m_base.value[..^1];
-
                 if (m_base.value == "0")
                 {
                     m_base.value = m_base.value[..^1];
@@ -275,7 +254,6 @@ public partial class CalcInput
         if (m_decSymbol != decSymbol)
         {
             m_decSymbol = decSymbol;
-
             if (m_hasDecimal)
             {
                 // Change to new decimal pt
@@ -292,17 +270,15 @@ public partial class CalcInput
         return m_base.IsEmpty() && !m_hasExponent && m_exponent.IsEmpty() && !m_hasDecimal;
     }
 
-    public wstring ToString(uint32_t radix)
+    public WString ToString(uint32_t radix)
     {
-        wstring result = string.Empty;
+        WString result = string.Empty;
         ;
-
         // In theory both the base and exponent could be C_NUM_MAX_DIGITS long.
         if ((m_base.value.Length > MAX_STRLEN) || (m_hasExponent && m_exponent.value.Length > MAX_STRLEN))
         {
             return result;
         }
-
 
         if (m_base.IsNegative())
         {
@@ -328,7 +304,6 @@ public partial class CalcInput
 
             result += ((radix == 10) ? 'e' : '^');
             result += (m_exponent.IsNegative() ? '-' : '+');
-
             if (m_exponent.IsEmpty())
             {
                 result += '0';
@@ -350,7 +325,11 @@ public partial class CalcInput
 
     public Rational ToRational(RatPak ratPak, uint32_t radix, int32_t precision)
     {
-        PRAT rat = ratPak.StringToRat(m_base.IsNegative(), m_base.value, m_exponent.IsNegative(), m_exponent.value,
+        PRAT? rat = ratPak.StringToRat(
+            m_base.IsNegative(),
+            m_base.value,
+            m_exponent.IsNegative(),
+            m_exponent.value,
             radix,
             precision);
         if (rat == null)
@@ -359,10 +338,7 @@ public partial class CalcInput
         }
 
         var ret = new Rational(ratPak, rat);
-
-
-        ratPak.destroyrat(ref rat);
-
+        RatPak.destroyrat(ref rat);
         return ret;
     }
 }

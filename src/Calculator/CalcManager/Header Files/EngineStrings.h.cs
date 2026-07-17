@@ -21,11 +21,11 @@
 // #include <string_view>
 // #include <unordered_map>
 
-public static class EngineStrings
+internal static class EngineStrings
 {
     public const int IDS_ERRORS_FIRST = 99;
 
-// This is the list of error strings corresponding to SCERR_DIVIDEZERO..
+    // This is the list of error strings corresponding to SCERR_DIVIDEZERO..
 
     public const int IDS_DIVBYZERO = IDS_ERRORS_FIRST;
     public const int IDS_DOMAIN = IDS_ERRORS_FIRST + 1;
@@ -40,7 +40,7 @@ public static class EngineStrings
 
     public const int CSTRINGSENGMAX = IDS_INSUFFICIENT_DATA + 1;
 
-// Arithmetic expression evaluator error strings
+    // Arithmetic expression evaluator error strings
     public const int IDS_ERR_UNK_CH = CSTRINGSENGMAX + 1;
     public const int IDS_ERR_UNK_FN = CSTRINGSENGMAX + 2;
     public const int IDS_ERR_UNEX_NUM = CSTRINGSENGMAX + 3;
@@ -52,7 +52,7 @@ public static class EngineStrings
     public const int IDS_ERR_INPUT_OVERFLOW = CSTRINGSENGMAX + 9;
     public const int IDS_ERR_OUTPUT_OVERFLOW = CSTRINGSENGMAX + 10;
 
-// Resource keys for CEngineStrings.resw
+    // Resource keys for CEngineStrings.resw
     public const string SIDS_PLUS_MINUS = "0";
     public const string SIDS_CLEAR = "1";
     public const string SIDS_CE = "2";
@@ -164,7 +164,7 @@ public static class EngineStrings
 
     public const string SIDS_INSUFFICIENT_DATA = "109";
 
-// 110 is skipped by CSTRINGSENGMAX
+    // 110 is skipped by CSTRINGSENGMAX
     public const string SIDS_ERR_UNK_CH = "111";
     public const string SIDS_ERR_UNK_FN = "112";
     public const string SIDS_ERR_UNEX_NUM = "113";
@@ -209,7 +209,7 @@ public static class EngineStrings
     public const string SIDS_CUBEROOT = "CubeRoot";
     public const string SIDS_PROGRAMMER_MOD = "ProgrammerMod";
 
-// Include the resource key ID from above into this vector to load it into memory for the engine to use
+    // Include the resource key ID from above into this vector to load it into memory for the engine to use
     internal static string[] g_sids =
     {
         SIDS_PLUS_MINUS,

@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 using OpCode = uint;
 using uint64_t = ulong;
 using System.Diagnostics;
@@ -8,60 +7,48 @@ using CalcEngine;
 using UnitConversionManager;
 using uint32_t = System.UInt32;
 using int32_t = System.Int32;
-using PNUMBER = CalcEngine.RatPak.NUMBER;
-using PRAT = CalcEngine.RatPak.RAT;
+using PNUMBER = CalcEngine.RatPakNUMBER;
+using PRAT = CalcEngine.RatPakRAT;
 using size_t = ulong;
 using wchar_t = char;
 using wstring_view = string;
-using wstring = string;
-using CategorySelectionInitializer =
-    (System.Collections.Generic.List<UnitConversionManager.Unit>, UnitConversionManager.Unit,
-    UnitConversionManager.Unit);
+using WString = string;
+using CategorySelectionInitializer = (System.Collections.Generic.List<UnitConversionManager.Unit>, UnitConversionManager.Unit, UnitConversionManager.Unit);
 using Command = CalculationManager.Command;
-using CategoryToUnitVectorMap =
-    System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<UnitConversionManager.Unit>>;
+using CategoryToUnitVectorMap = System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<UnitConversionManager.Unit>>;
 using System.Collections.Generic;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
 
-
 namespace UnitConversionManager;
 
-public partial class UnitConverter : IUnitConverter //, public std::enable_shared_from_this<UnitConverter>
+internal sealed partial class UnitConverter : IUnitConverter //, public std::enable_shared_from_this<UnitConverter>
 {
     const uint32_t EXPECTEDSERIALIZEDCATEGORYTOKENCOUNT = 3U;
     const uint32_t EXPECTEDSERIALIZEDUNITTOKENCOUNT = 6U;
-    const uint32_t EXPECTEDSTATEDATATOKENCOUNT = 5U;
-    const uint32_t EXPECTEDMAPCOMPONENTTOKENCOUNT = 2U;
-
     const uint32_t MAXIMUMDIGITSALLOWED = 15U;
     const uint32_t OPTIMALDIGITSALLOWED = 7U;
-
     const wchar_t LEFTESCAPECHAR = '{';
     const wchar_t RIGHTESCAPECHAR = '}';
-
     const double OPTIMALDECIMALALLOWED = 1e-6; // pow(10, -1 * (OPTIMALDIGITSALLOWED - 1));
     const double MINIMUMDECIMALALLOWED = 1e-14; // pow(10, -1 * (MAXIMUMDIGITSALLOWED - 1));
-
-    Dictionary<wchar_t, wstring> quoteConversions = new();
-    Dictionary<wstring, wchar_t> unquoteConversions = new();
-
+    Dictionary<wchar_t, WString> quoteConversions = new();
+    Dictionary<WString, wchar_t> unquoteConversions = new();
     /// <summary>
     /// Constructor, sets up all the variables and requires a configLoader
     /// </summary>
-    /// <param name="dataLoader">An instance of the IConverterDataLoader interface which we use to read in category/unit names and conversion data</param>
-    public UnitConverter(IConverterDataLoader dataLoader)
-        : this(dataLoader, null)
+    /// <param name = "dataLoader">An instance of the IConverterDataLoader interface which we use to read in category/unit names and conversion data</param>
+    public UnitConverter(IConverterDataLoader dataLoader) : this(dataLoader, null)
     {
     }
 
     /// <summary>
     /// Constructor, sets up all the variables and requires two configLoaders
     /// </summary>
-    /// <param name="dataLoader">An instance of the IConverterDataLoader interface which we use to read in category/unit names and conversion data</param>
-    /// <param name="currencyDataLoader">An instance of the IConverterDataLoader interface, specialized for loading currency data from an internet service</param>
-    public UnitConverter(IConverterDataLoader dataLoader, IConverterDataLoader currencyDataLoader)
+    /// <param name = "dataLoader">An instance of the IConverterDataLoader interface which we use to read in category/unit names and conversion data</param>
+    /// <param name = "currencyDataLoader">An instance of the IConverterDataLoader interface, specialized for loading currency data from an internet service</param>
+    public UnitConverter(IConverterDataLoader dataLoader, IConverterDataLoader? currencyDataLoader)
     {
         m_dataLoader = dataLoader;
         m_currencyDataLoader = currencyDataLoader;
@@ -114,7 +101,7 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
     /// Sets the current category in use by this converter,
     /// and returns a list of unit types that exist under the given category.
     /// </summary>
-    /// <param name="input">Category struct which we are setting</param>
+    /// <param name = "input">Category struct which we are setting</param>
     public CategorySelectionInitializer SetCurrentCategory(Category input)
     {
         if (m_currencyDataLoader != null && m_currencyDataLoader.SupportsCategory(input))
@@ -129,7 +116,7 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
             {
                 foreach (var unit in m_categoryToUnits[m_currentCategory.id])
                 {
-                    unit.isConversionSource =   (unit.id == m_fromType.id);
+                    unit.isConversionSource = (unit.id == m_fromType.id);
                     unit.isConversionTarget = (unit.id == m_toType.id);
                 }
 
@@ -142,7 +129,6 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
             }
 
             newUnitList = m_categoryToUnits[input.id].ToList();
-             
         }
 
         InitializeSelectedUnits();
@@ -161,8 +147,8 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
     /// Sets the current unit types to be used, indicates a likely change in the
     /// display values, so we re-calculate and callback the updated values
     /// </summary>
-    /// <param name="fromType">Unit struct which the user is modifying</param>
-    /// <param name="toType">Unit struct we are converting to</param>
+    /// <param name = "fromType">Unit struct which the user is modifying</param>
+    /// <param name = "toType">Unit struct we are converting to</param>
     public void SetCurrentUnitTypes(Unit fromType, Unit toType)
     {
         if (!CheckLoad())
@@ -178,7 +164,6 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
         m_fromType = fromType;
         m_toType = toType;
         Calculate();
-
         UpdateCurrencySymbols();
     }
 
@@ -188,13 +173,13 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
     /// originally the current field. We swap appropriate values,
     /// but do not callback, as values have not changed.
     /// </summary>
-    /// <param name="newValue">
-    /// wstring representing the value user had in the field they've just activated.
+    /// <param name = "newValue">
+    /// WString representing the value user had in the field they've just activated.
     /// We use this to handle cases where the front-end may choose to trim more digits
     /// than we have been storing internally, in which case appending will not function
     /// as expected without the use of this parameter.
     /// </param>
-    public void SwitchActive(wstring newValue)
+    public void SwitchActive(WString newValue)
     {
         if (!CheckLoad())
         {
@@ -203,17 +188,13 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
 
         (m_fromType, m_toType) = (m_toType, m_fromType);
         (m_currentHasDecimal, m_returnHasDecimal) = (m_returnHasDecimal, m_currentHasDecimal);
-
         m_returnDisplay = m_currentDisplay;
         m_currentDisplay = newValue;
-        m_currentHasDecimal = (m_currentDisplay.IndexOf('.') != -1);
+        m_currentHasDecimal = m_currentDisplay.Contains('.', StringComparison.Ordinal);
         m_switchedActive = true;
-
-        if (m_currencyDataLoader != null && m_vmCurrencyCallback != null)
+        if (m_currencyDataLoader is ICurrencyConverterDataLoader currencyDataLoader && m_vmCurrencyCallback is not null)
         {
-            ICurrencyConverterDataLoader currencyDataLoader = GetCurrencyConverterDataLoader();
-            (wstring, wstring) currencyRatios = currencyDataLoader.GetCurrencyRatioEquality(m_fromType, m_toType);
-
+            (WString, WString) currencyRatios = currencyDataLoader.GetCurrencyRatioEquality(m_fromType, m_toType);
             m_vmCurrencyCallback.CurrencyRatiosCallback(currencyRatios.Item1, currencyRatios.Item2);
         }
     }
@@ -223,21 +204,16 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
         return m_switchedActive;
     }
 
-    public wstring CategoryToString(Category c, wstring_view delimiter)
+    public WString CategoryToString(Category c, wstring_view delimiter)
     {
-        return Quote((c.id.ToString()))
-               + (delimiter)
-               + (Quote((c.supportsNegative.ToString())))
-               + (delimiter)
-               + (Quote(c.name))
-               + (delimiter);
+        return Quote((c.id.ToString(System.Globalization.CultureInfo.CurrentCulture))) + (delimiter) + (Quote((c.supportsNegative.ToString()))) + (delimiter) + (Quote(c.name)) + (delimiter);
     }
 
-    public List<wstring> StringToVector(wstring_view w, wstring_view delimiter, bool addRemainder = false)
+    public static List<WString> StringToVector(wstring_view w, wstring_view delimiter, bool addRemainder = false)
     {
-        var delimiterIndex = w.IndexOf(delimiter);
+        var delimiterIndex = w.IndexOf(delimiter, StringComparison.Ordinal);
         var startIndex = 0;
-        List<wstring> serializedTokens = new List<wstring>();
+        List<WString> serializedTokens = new List<WString>();
         while (delimiterIndex != -1)
         {
             serializedTokens.Add(w.Substring(startIndex, delimiterIndex - startIndex));
@@ -254,28 +230,17 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
         return serializedTokens;
     }
 
-    wstring UnitToString(Unit u, wstring_view delimiter)
+    WString UnitToString(Unit u, wstring_view delimiter)
     {
-        return Quote(u.id.ToString())
-               + (delimiter)
-               + (Quote(u.name))
-               + (delimiter)
-               + (Quote(u.abbreviation))
-               + (delimiter)
-               + (u.isConversionSource.ToString())
-               + (delimiter)
-               + (u.isConversionTarget.ToString())
-               + (delimiter)
-               + (u.isWhimsical.ToString())
-               + (delimiter);
+        return Quote(u.id.ToString(System.Globalization.CultureInfo.CurrentCulture)) + (delimiter) + (Quote(u.name)) + (delimiter) + (Quote(u.abbreviation)) + (delimiter) + (u.isConversionSource.ToString()) + (delimiter) + (u.isConversionTarget.ToString()) + (delimiter) + (u.isWhimsical.ToString()) + (delimiter);
     }
 
     Unit StringToUnit(wstring_view w)
     {
-        List<wstring> tokenList = StringToVector(w, ";");
+        List<WString> tokenList = StringToVector(w, ";");
         Debug.Assert(tokenList.Count == EXPECTEDSERIALIZEDUNITTOKENCOUNT);
         Unit serializedUnit = new Unit();
-        serializedUnit.id = int.Parse(Unquote(tokenList[0]));
+        serializedUnit.id = int.Parse(Unquote(tokenList[0]), System.Globalization.CultureInfo.CurrentCulture);
         serializedUnit.name = Unquote(tokenList[1]);
         serializedUnit.accessibleName = serializedUnit.name;
         serializedUnit.abbreviation = Unquote(tokenList[2]);
@@ -287,10 +252,10 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
 
     Category StringToCategory(wstring_view w)
     {
-        List<wstring> tokenList = StringToVector(w, ";");
+        List<WString> tokenList = StringToVector(w, ";");
         Debug.Assert(tokenList.Count == EXPECTEDSERIALIZEDCATEGORYTOKENCOUNT);
         Category serializedCategory = new();
-        serializedCategory.id = int.Parse(Unquote(tokenList[0]));
+        serializedCategory.id = int.Parse(Unquote(tokenList[0]), System.Globalization.CultureInfo.CurrentCulture);
         serializedCategory.supportsNegative = (tokenList[1] == "1");
         serializedCategory.name = Unquote(tokenList[2]);
         return serializedCategory;
@@ -299,7 +264,7 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
     /// <summary>
     /// De-Serializes the data in the converter from a string
     /// </summary>
-    /// <param name="userPreferences">wstring_view holding the serialized data. If it does not have expected number of parameters, we will ignore it</param>
+    /// <param name = "userPreferences">wstring_view holding the serialized data. If it does not have expected number of parameters, we will ignore it</param>
     public void RestoreUserPreferences(wstring_view userPreferences)
     {
         if (string.IsNullOrEmpty(userPreferences))
@@ -307,7 +272,7 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
             return;
         }
 
-        List<wstring> outerTokens = StringToVector(userPreferences, "|");
+        List<WString> outerTokens = StringToVector(userPreferences, "|");
         if (outerTokens.Count != 3)
         {
             return;
@@ -316,7 +281,6 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
         var fromType = StringToUnit(outerTokens[0]);
         var toType = StringToUnit(outerTokens[1]);
         m_currentCategory = StringToCategory(outerTokens[2]);
-
         // Only restore from the saved units if they are valid in the current available units.
         if (m_categoryToUnits.TryGetValue(m_currentCategory.id, out var curUnits))
         {
@@ -335,26 +299,20 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
     /// <summary>
     /// Serializes the Category and Associated Units in the converter and returns it as a string
     /// </summary>
-    public wstring SaveUserPreferences()
+    public WString SaveUserPreferences()
     {
         var delimiter = ";";
         var pipe = "|";
-        return UnitToString(m_fromType, delimiter)
-               + (pipe)
-               + (UnitToString(m_toType, delimiter))
-               + (pipe)
-               + (CategoryToString(m_currentCategory, delimiter))
-               + (pipe);
+        return UnitToString(m_fromType, delimiter) + (pipe) + (UnitToString(m_toType, delimiter)) + (pipe) + (CategoryToString(m_currentCategory, delimiter)) + (pipe);
     }
 
     /// <summary>
     /// Sanitizes the input string, escape quoting any symbols we rely on for our delimiters, and returns the sanitized string.
     /// </summary>
-    /// <param name="s">wstring_view to be sanitized</param>
+    /// <param name = "s">wstring_view to be sanitized</param>
     public string Quote(string s)
     {
         string quotedString = "";
-
         // Iterate over the delimiter characters we need to quote
         foreach (var ch in s)
         {
@@ -374,13 +332,12 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
     /// <summary>
     /// Unsanitizes the sanitized input string, returning it to its original contents before we had quoted it.
     /// </summary>
-    /// <param name="s">wstring_view to be unsanitized</param>
+    /// <param name = "s">wstring_view to be unsanitized</param>
     public string Unquote(string s)
     {
         string quotedSubString;
         string unquotedString = "";
         int cursor = 0;
-
         while (cursor < s.Length)
         {
             if (s[cursor] == LEFTESCAPECHAR)
@@ -417,7 +374,7 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
     /// <summary>
     /// Handles inputs to the converter from the view-model, corresponding to a given button or keyboard press
     /// </summary>
-    /// <param name="command">Command enum representing the command that was entered</param>
+    /// <param name = "command">Command enum representing the command that was entered</param>
     public void SendCommand(Command command)
     {
         if (!CheckLoad())
@@ -438,53 +395,69 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
         else
         {
             clearFront = (m_currentDisplay == "0");
-            clearBack =
-                ((m_currentHasDecimal && m_currentDisplay.Length - 1 >= MAXIMUMDIGITSALLOWED)
-                 || (!m_currentHasDecimal && m_currentDisplay.Length >= MAXIMUMDIGITSALLOWED));
+            clearBack = ((m_currentHasDecimal && m_currentDisplay.Length - 1 >= MAXIMUMDIGITSALLOWED) || (!m_currentHasDecimal && m_currentDisplay.Length >= MAXIMUMDIGITSALLOWED));
         }
 
+        _ = HandleConverterCommandGroup1(command) || HandleConverterCommandGroup2(command, ref clearFront, ref clearBack);
+        if (clearFront)
+        {
+            m_currentDisplay = m_currentDisplay[1..]; // Remove the first character
+        }
+
+        if (clearBack)
+        {
+            m_currentDisplay = m_currentDisplay[..^1];
+            m_vmCallback?.MaxDigitsReached();
+        }
+
+        Calculate();
+    }
+
+    private bool HandleConverterCommandGroup1(global::UnitConversionManager.Command command)
+    {
         switch (command)
         {
             case Command.Zero:
                 m_currentDisplay += '0';
                 break;
-
             case Command.One:
                 m_currentDisplay += '1';
                 break;
-
             case Command.Two:
                 m_currentDisplay += '2';
                 break;
-
             case Command.Three:
                 m_currentDisplay += '3';
                 break;
-
             case Command.Four:
                 m_currentDisplay += '4';
                 break;
-
             case Command.Five:
                 m_currentDisplay += '5';
                 break;
-
             case Command.Six:
                 m_currentDisplay += '6';
                 break;
-
             case Command.Seven:
                 m_currentDisplay += '7';
                 break;
-
             case Command.Eight:
                 m_currentDisplay += '8';
                 break;
-
             case Command.Nine:
                 m_currentDisplay += '9';
                 break;
+            default:
+                return false;
+        }
 
+        return true;
+    }
+
+    private bool HandleConverterCommandGroup2(global::UnitConversionManager.Command command, ref bool clearFront, ref bool clearBack)
+    {
+        switch (command)
+        {
             case Command.Decimal:
                 clearFront = false;
                 clearBack = false;
@@ -495,7 +468,6 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
                 }
 
                 break;
-
             case Command.Backspace:
                 clearFront = false;
                 clearBack = false;
@@ -515,7 +487,6 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
                 }
 
                 break;
-
             case Command.Negate:
                 clearFront = false;
                 clearBack = false;
@@ -532,42 +503,28 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
                 }
 
                 break;
-
             case Command.Clear:
                 clearFront = false;
                 clearBack = false;
                 ClearValues();
                 break;
-
             case Command.Reset:
                 clearFront = false;
                 clearBack = false;
                 ClearValues();
                 ResetCategoriesAndRatios();
                 break;
-
             default:
                 break;
         }
 
-        if (clearFront)
-        {
-            m_currentDisplay = m_currentDisplay[1..]; // Remove the first character
-        }
-
-        if (clearBack)
-        {
-            m_currentDisplay = m_currentDisplay[..^1];
-            m_vmCallback.MaxDigitsReached();
-        }
-
-        Calculate();
+        return true;
     }
 
     /// <summary>
     /// Sets the callback interface to send display update calls to
     /// </summary>
-    /// <param name="newCallback">instance of IDisplayCallback interface that receives our update calls</param>
+    /// <param name = "newCallback">instance of IDisplayCallback interface that receives our update calls</param>
     public void SetViewModelCallback(IUnitConverterVMCallback newCallback)
     {
         m_vmCallback = newCallback;
@@ -580,7 +537,6 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
     public void SetViewModelCurrencyCallback(IViewModelCurrencyCallback newCallback)
     {
         m_vmCurrencyCallback = newCallback;
-
         var currencyDataLoader = GetCurrencyConverterDataLoader();
         if (currencyDataLoader != null)
         {
@@ -590,9 +546,8 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
 
     public async Task<(bool, string)> RefreshCurrencyRatios()
     {
-        ICurrencyConverterDataLoader currencyDataLoader = GetCurrencyConverterDataLoader();
+        ICurrencyConverterDataLoader? currencyDataLoader = GetCurrencyConverterDataLoader();
         Task<bool> loadDataResult;
-
         if (currencyDataLoader != null)
         {
             loadDataResult = currencyDataLoader.TryLoadDataFromWebOverrideAsync();
@@ -602,9 +557,8 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
             loadDataResult = Task.FromResult(false);
         }
 
-        bool didLoad = await loadDataResult;
+        bool didLoad = await loadDataResult.ConfigureAwait(false);
         string timestamp = "";
-
         if (currencyDataLoader != null)
         {
             timestamp = currencyDataLoader.GetCurrencyTimestamp();
@@ -613,17 +567,17 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
         return (didLoad, timestamp);
     }
 
-    ICurrencyConverterDataLoader GetCurrencyConverterDataLoader()
+    ICurrencyConverterDataLoader? GetCurrencyConverterDataLoader()
     {
-        return (ICurrencyConverterDataLoader)(m_currencyDataLoader);
+        return m_currencyDataLoader as ICurrencyConverterDataLoader;
     }
 
     /// <summary>
     /// Converts a double value into another unit type
     /// </summary>
-    /// <param name="value">double input value to convert</param>
-    /// <param name="conversionData">offset and ratio to use</param>
-    double Convert(double value, ConversionData conversionData)
+    /// <param name = "value">double input value to convert</param>
+    /// <param name = "conversionData">offset and ratio to use</param>
+    static double Convert(double value, ConversionData conversionData)
     {
         if (conversionData.offsetFirst)
         {
@@ -638,14 +592,14 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
     /// <summary>
     /// Calculates the suggested values for the current display value and returns them as a vector
     /// </summary>
-    List<(wstring, Unit)> CalculateSuggested()
+    List<(WString, Unit)> CalculateSuggested()
     {
         if (m_currencyDataLoader != null && m_currencyDataLoader.SupportsCategory(m_currentCategory))
         {
             return new();
         }
 
-        List<(wstring, Unit)> returnVector = [];
+        List<(WString, Unit)> returnVector = [];
         List<SuggestedValueIntermediate> intermediateVector = [];
         List<SuggestedValueIntermediate> intermediateWhimsicalVector = [];
         var ratios = m_ratioMap[m_fromType];
@@ -654,7 +608,7 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
         {
             if (cur.Key != m_fromType && cur.Key != m_toType)
             {
-                double convertedValue = Convert(double.Parse(m_currentDisplay), cur.Value);
+                double convertedValue = Convert(double.Parse(m_currentDisplay, System.Globalization.CultureInfo.CurrentCulture), cur.Value);
                 var newEntry = new SuggestedValueIntermediate();
                 newEntry.magnitude = Math.Log10(convertedValue);
                 newEntry.value = convertedValue;
@@ -667,7 +621,6 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
         }
 
         // Sort the resulting list by absolute magnitude, breaking ties by choosing the positive value
-
         intermediateVector.Sort((first, second) =>
         {
             if (Math.Abs(first.magnitude) == Math.Abs(second.magnitude))
@@ -679,7 +632,6 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
                 return Math.Abs(first.magnitude).CompareTo(Math.Abs(second.magnitude)); // Ascending
             }
         });
-
         // sort(intermediateVector.begin(), intermediateVector.end(), [](SuggestedValueIntermediate first, SuggestedValueIntermediate second) {
         //     if (abs(first.magnitude) == abs(second.magnitude))
         //     {
@@ -690,11 +642,10 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
         //         return abs(first.magnitude) < abs(second.magnitude);
         //     }
         // });
-
         // Now that the list is sorted, iterate over it and populate the return vector with properly rounded and formatted return strings
         foreach (var entry in intermediateVector)
         {
-            wstring roundedString;
+            WString roundedString;
             if (Math.Abs(entry.value) < 100)
             {
                 roundedString = NumberFormattingUtils.RoundSignificantDigits(entry.value, 2U);
@@ -708,7 +659,7 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
                 roundedString = NumberFormattingUtils.RoundSignificantDigits(entry.value, 0U);
             }
 
-            if (double.Parse(roundedString) != 0.0 || m_currentCategory.supportsNegative)
+            if (double.Parse(roundedString, System.Globalization.CultureInfo.CurrentCulture) != 0.0 || m_currentCategory.supportsNegative)
             {
                 NumberFormattingUtils.TrimTrailingZeros(ref roundedString);
                 returnVector.Add((roundedString, entry.type));
@@ -728,13 +679,11 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
                 return Math.Abs(first.magnitude).CompareTo(Math.Abs(second.magnitude));
             }
         });
-
         // Now that the list is sorted, iterate over it and populate the return vector with properly rounded and formatted return strings
-        List<(wstring, Unit)> whimsicalReturnVector = [];
-
+        List<(WString, Unit)> whimsicalReturnVector = [];
         foreach (var entry in intermediateWhimsicalVector)
         {
-            wstring roundedString;
+            WString roundedString;
             if (Math.Abs(entry.value) < 100)
             {
                 roundedString = NumberFormattingUtils.RoundSignificantDigits(entry.value, 2U);
@@ -749,7 +698,7 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
             }
 
             // How to work out which is the best whimsical value to add to the vector?
-            if (double.Parse(roundedString) != 0.0)
+            if (double.Parse(roundedString, System.Globalization.CultureInfo.CurrentCulture) != 0.0)
             {
                 NumberFormattingUtils.TrimTrailingZeros(ref roundedString);
                 whimsicalReturnVector.Add((roundedString, entry.type));
@@ -778,7 +727,6 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
         }
 
         m_currentCategory = m_categories[0];
-
         m_categoryToUnits.Clear();
         m_ratioMap.Clear();
         bool readyCategoryFound = false;
@@ -795,7 +743,6 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
 
             List<Unit> units = activeDataLoader.GetOrderedUnits(category);
             m_categoryToUnits.Add(category.id, units);
-
             // Just because the units are empty, doesn't mean the user can't select this category,
             // we just want to make sure we don't let an unready category be the default.
             if (units.Count != 0)
@@ -839,11 +786,10 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
     /// </summary>
     void InitializeSelectedUnits()
     {
-        if (m_categoryToUnits.Count() == 0)
+        if (m_categoryToUnits.Count == 0)
         {
             return;
         }
-
 
         if (!m_categoryToUnits.TryGetValue(m_currentCategory.id, out var itr))
         {
@@ -857,7 +803,6 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
             // Check if they have been, and if so, do not override restored units.
             bool isFromUnitValid = m_fromType != Unit.EMPTY_UNIT && curUnits.Contains(m_fromType);
             bool isToUnitValid = m_toType != Unit.EMPTY_UNIT && curUnits.Contains(m_toType);
-
             if (isFromUnitValid && isToUnitValid)
             {
                 return;
@@ -923,12 +868,8 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
         }
 
         var conversionTable = m_ratioMap[m_fromType];
-
         var convertTo = conversionTable.Where(x => x.Key.id == m_toType.id).FirstOrDefault().Value;
-
-
-        if (AnyUnitIsEmpty()  || convertTo is null || convertTo?.ratio == 1.0 && convertTo?.offset == 0.0)
-
+        if (AnyUnitIsEmpty() || convertTo.ratio == 1.0 && convertTo.offset == 0.0)
         {
             m_returnDisplay = m_currentDisplay;
             m_returnHasDecimal = m_currentHasDecimal;
@@ -936,12 +877,9 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
         }
         else
         {
-            double currentValue = double.Parse(m_currentDisplay);
-
-            double returnValue = convertTo is { } ? Convert(currentValue, convertTo) : throw new Exception("convertTo became null somehow.");
-
-            var isCurrencyConverter = m_currencyDataLoader != null &&
-                                      m_currencyDataLoader.SupportsCategory(this.m_currentCategory);
+            double currentValue = double.Parse(m_currentDisplay, System.Globalization.CultureInfo.CurrentCulture);
+            double returnValue = Convert(currentValue, convertTo);
+            var isCurrencyConverter = m_currencyDataLoader != null && m_currencyDataLoader.SupportsCategory(this.m_currentCategory);
             if (isCurrencyConverter)
             {
                 // We don't need to trim the value when it's a currency.
@@ -951,8 +889,7 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
             else
             {
                 uint numPreDecimal = NumberFormattingUtils.GetNumberDigitsWholeNumberPart(returnValue);
-                if (numPreDecimal > MAXIMUMDIGITSALLOWED ||
-                    (returnValue != 0 && Math.Abs(returnValue) < MINIMUMDECIMALALLOWED))
+                if (numPreDecimal > MAXIMUMDIGITSALLOWED || (returnValue != 0 && Math.Abs(returnValue) < MINIMUMDECIMALALLOWED))
                 {
                     m_returnDisplay = NumberFormattingUtils.ToScientificNumber(returnValue);
                 }
@@ -968,8 +905,7 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
                     {
                         // Fewer digits are needed following the decimal if the number is large,
                         // we calculate the number of decimals necessary based on the number of digits in the integer part.
-                        var numberDigits = Math.Max(OPTIMALDIGITSALLOWED,
-                            Math.Min(MAXIMUMDIGITSALLOWED, currentNumberSignificantDigits));
+                        var numberDigits = Math.Max(OPTIMALDIGITSALLOWED, Math.Min(MAXIMUMDIGITSALLOWED, currentNumberSignificantDigits));
                         precision = numberDigits > numPreDecimal ? numberDigits - numPreDecimal : 0;
                     }
 
@@ -977,7 +913,7 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
                     NumberFormattingUtils.TrimTrailingZeros(ref m_returnDisplay);
                 }
 
-                m_returnHasDecimal = (m_returnDisplay.IndexOf('.') != -1);
+                m_returnHasDecimal = m_returnDisplay.Contains('.', StringComparison.Ordinal);
             }
         }
 
@@ -986,12 +922,10 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
 
     void UpdateCurrencySymbols()
     {
-        if (m_currencyDataLoader != null && m_vmCurrencyCallback != null)
+        if (m_currencyDataLoader is ICurrencyConverterDataLoader currencyDataLoader && m_vmCurrencyCallback is not null)
         {
-            var currencyDataLoader = GetCurrencyConverterDataLoader();
             var currencySymbols = currencyDataLoader.GetCurrencySymbols(m_fromType, m_toType);
             var currencyRatios = currencyDataLoader.GetCurrencyRatioEquality(m_fromType, m_toType);
-
             m_vmCurrencyCallback.CurrencySymbolsCallback(currencySymbols.Item1, currencySymbols.Item2);
             m_vmCurrencyCallback.CurrencyRatiosCallback(currencyRatios.Item1, currencyRatios.Item2);
         }
@@ -999,7 +933,7 @@ public partial class UnitConverter : IUnitConverter //, public std::enable_share
 
     void UpdateViewModel()
     {
-        m_vmCallback.DisplayCallback(m_currentDisplay, m_returnDisplay);
-        m_vmCallback.SuggestedValueCallback(CalculateSuggested());
+        m_vmCallback?.DisplayCallback(m_currentDisplay, m_returnDisplay);
+        m_vmCallback?.SuggestedValueCallback(CalculateSuggested());
     }
 }

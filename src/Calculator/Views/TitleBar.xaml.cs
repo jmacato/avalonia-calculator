@@ -36,6 +36,7 @@ public sealed partial class TitleBar : UserControl
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
+        System.ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
         if (change.Property == IsAlwaysOnTopModeProperty)
         {

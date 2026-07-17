@@ -37,7 +37,9 @@ internal sealed class CalculatorManagerDisplayTester : ICalcDisplay
         m_isError = isError;
     }
 
-    public void SetExpressionDisplay(IList<(string, int)> tokens, IList<IExpressionCommand> commands)
+    public void SetExpressionDisplay(
+        IReadOnlyList<(string, int)> tokens,
+        IReadOnlyList<IExpressionCommand> commands)
     {
         m_expression = "";
 

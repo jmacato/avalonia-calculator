@@ -1,44 +1,33 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 // #pragma  once
-
 // #include  "Utils.h"
-
 using System.Collections.Generic;
 using System.Globalization;
 using Windows.UI.Xaml;
 
-
 namespace CalculatorApp.ViewModel.Common;
-
-public static class LocalizationServiceProperties
-{
-    public static string DefaultCurrencyCode = "USD";
-}
-
-public enum LanguageFontType
-{
-    UIText,
-    UICaption,
-};
 
 public partial class LocalizationService : DependencyObject
 {
-    public static readonly DependencyProperty FontTypeProperty =
-        DependencyProperty.RegisterAttached(
-            "FontType",
-            typeof(LanguageFontType),
-            typeof(LocalizationService),
-            new PropertyMetadata(LanguageFontType.UIText, OnFontTypePropertyChanged));
-
+    public static readonly DependencyProperty FontTypeProperty = DependencyProperty.RegisterAttached("FontType", typeof(LanguageFontType), typeof(LocalizationService), new PropertyMetadata(LanguageFontType.UIText, OnFontTypePropertyChanged));
     public static LanguageFontType GetFontType(DependencyObject target)
     {
+        if (target is null)
+        {
+            throw new ArgumentNullException(nameof(target));
+        }
+
         return (LanguageFontType)target.GetValue(FontTypeProperty);
     }
 
     public static void SetFontType(DependencyObject target, LanguageFontType value)
     {
+        if (target is null)
+        {
+            throw new ArgumentNullException(nameof(target));
+        }
+
         target.SetValue(FontTypeProperty, value);
     }
 
@@ -47,21 +36,24 @@ public partial class LocalizationService : DependencyObject
         OnFontTypePropertyChanged(sender, (LanguageFontType)args.OldValue, (LanguageFontType)args.NewValue);
     }
 
-
-    public static readonly DependencyProperty FontSizeProperty =
-        DependencyProperty.RegisterAttached(
-            "FontSize",
-            typeof(double),
-            typeof(LocalizationService),
-            new PropertyMetadata(default(double), OnFontSizePropertyChanged));
-
+    public static readonly DependencyProperty FontSizeProperty = DependencyProperty.RegisterAttached("FontSize", typeof(double), typeof(LocalizationService), new PropertyMetadata(default(double), OnFontSizePropertyChanged));
     public static double GetFontSize(DependencyObject target)
     {
+        if (target is null)
+        {
+            throw new ArgumentNullException(nameof(target));
+        }
+
         return (double)target.GetValue(FontSizeProperty);
     }
 
     public static void SetFontSize(DependencyObject target, double value)
     {
+        if (target is null)
+        {
+            throw new ArgumentNullException(nameof(target));
+        }
+
         target.SetValue(FontSizeProperty, value);
     }
 
@@ -69,7 +61,6 @@ public partial class LocalizationService : DependencyObject
     {
         OnFontSizePropertyChanged(sender, (double)args.OldValue, (double)args.NewValue);
     }
-
 
     // static LocalizationService  GetInstance();
     // Windows.UI.Xaml.FlowDirection GetFlowDirection();
@@ -88,7 +79,6 @@ public partial class LocalizationService : DependencyObject
     //          string  calendarIdentifier,
     //          string  clockIdentifier);
     // Windows.Globalization.NumberFormatting.CurrencyFormatter  GetRegionalSettingsAwareCurrencyFormatter();
-
     // internal:
     //     static void OverrideWithLanguage(   string   language);
     //     void Sort(List<string>& source);
@@ -103,7 +93,6 @@ public partial class LocalizationService : DependencyObject
     //             return coll.compare(str1.Begin(), str1.End(), str2.Begin(), str2.End()) < 0;
     //         });
     //     }
-
     //     static string  GetNarratorReadableToken(string  rawToken);
     //     static string  GetNarratorReadableString(string  rastring);
     //
@@ -125,18 +114,15 @@ public partial class LocalizationService : DependencyObject
     //     static void UpdateFontFamilyAndSize(Windows.UI.Xaml.DependencyObject  target);
     //
     //     static unordered_map<string, string> GetTokenToReadableNameMap();
-
-    static LocalizationService s_singletonInstance;
-
+    static LocalizationService? s_singletonInstance;
     Windows.Globalization.Fonts.LanguageFontGroup m_fontGroup;
-    string m_language;
+    string m_language = string.Empty;
     Windows.UI.Xaml.FlowDirection m_flowDirection;
     bool m_overrideFontApiValues;
-    string m_fontFamilyOverride;
+    string m_fontFamilyOverride = string.Empty;
     bool m_isLanguageOverrided;
     Windows.UI.Text.FontWeight m_fontWeightOverride;
     double m_uiTextFontScaleFactorOverride;
-
     double m_uiCaptionFontScaleFactorOverride;
     CultureInfo m_locale;
 };

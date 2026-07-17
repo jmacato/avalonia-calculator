@@ -9,13 +9,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace CalculatorApp.ViewModel.Common;
 
-public partial class CopyPasteManager
+public static partial class CopyPasteManager
 {
     const string PasteErrorString = "NoOp";
 
@@ -119,9 +120,16 @@ public partial class CopyPasteManager
             // Validate the pasted expression based on calculator mode
             return ValidatePasteExpression(pastedText, mode, modeType, programmerNumberBase, bitLengthType);
         }
-        catch (Exception)
+        catch (UnauthorizedAccessException)
         {
-            // Handle clipboard access failures or other errors
+            return string.Empty;
+        }
+        catch (COMException)
+        {
+            return string.Empty;
+        }
+        catch (InvalidOperationException)
+        {
             return string.Empty;
         }
     }
@@ -148,12 +156,12 @@ public partial class CopyPasteManager
         if (pastedText.Length > MaxPasteableLength)
         {
             // return NoOp to indicate don't paste anything.
-            TraceLogger.GetInstance().LogError(mode, "CopyPasteManager.ValidatePasteExpression", "PastedExpressionSizeGreaterThanMaxAllowed");
+            TraceLogger.LogError(mode, "CopyPasteManager.ValidatePasteExpression", "PastedExpressionSizeGreaterThanMaxAllowed");
             return PasteErrorString;
         }
 
         // Get english translated expression
-        String englishString = LocalizationSettings.GetInstance().GetEnglishValueFromLocalizedDigits(pastedText);
+        String englishString = LocalizationSettings.Instance.GetEnglishValueFromLocalizedDigits(pastedText);
 
         // Removing the spaces, comma separator from the pasteExpression to allow pasting of expressions like 1  +     2+1,333
         var pasteExpression = (RemoveUnwantedCharsFromString(englishString));
@@ -182,7 +190,7 @@ public partial class CopyPasteManager
         // validate each operand with patterns for different modes
         if (!ExpressionRegExMatch(operands, mode, modeType, programmerNumberBase, bitLengthType))
         {
-            TraceLogger.GetInstance().LogError(mode, "CopyPasteManager.ValidatePasteExpression", "InvalidExpressionForPresentMode");
+            TraceLogger.LogError(mode, "CopyPasteManager.ValidatePasteExpression", "InvalidExpressionForPresentMode");
             return PasteErrorString;
         }
 
@@ -199,22 +207,7 @@ public partial class CopyPasteManager
         bool isPreviousOpenParen = false;
         bool isPreviousOperator = false;
 
-        string validCharacterSet;
-        switch (mode)
-        {
-            case ViewMode.Standard:
-                validCharacterSet = c_validStandardCharacterSet;
-                break;
-            case ViewMode.Scientific:
-                validCharacterSet = c_validScientificCharacterSet;
-                break;
-            case ViewMode.Programmer:
-                validCharacterSet = c_validProgrammerCharacterSet;
-                break;
-            default:
-                validCharacterSet = c_validBasicCharacterSet;
-                break;
-        }
+        string validCharacterSet = GetValidCharacterSet(mode);
 
         // This will have the exponent length
         int expLength = 0;
@@ -230,7 +223,7 @@ public partial class CopyPasteManager
 
             if (operands.Count >= MaxOperandCount)
             {
-                TraceLogger.GetInstance().LogError(mode, "CopyPasteManager.ExtractOperands", "OperandCountGreaterThanMaxCount");
+                TraceLogger.LogError(mode, "CopyPasteManager.ExtractOperands", "OperandCountGreaterThanMaxCount");
                 operands.Clear();
                 return operands;
             }
@@ -244,7 +237,7 @@ public partial class CopyPasteManager
                     // to disallow pasting of 1e+12345 as 1e+1234, max exponent that can be pasted is 9999.
                     if (expLength > MaxExponentLength)
                     {
-                        TraceLogger.GetInstance().LogError(mode, "CopyPasteManager.ExtractOperands", "ExponentLengthGreaterThanMaxLength");
+                        TraceLogger.LogError(mode, "CopyPasteManager.ExtractOperands", "ExponentLengthGreaterThanMaxLength");
                         operands.Clear();
                         return operands;
                     }
@@ -299,6 +292,17 @@ public partial class CopyPasteManager
         }
 
         return operands;
+    }
+
+    static string GetValidCharacterSet(ViewMode mode)
+    {
+        return mode switch
+        {
+            ViewMode.Standard => c_validStandardCharacterSet,
+            ViewMode.Scientific => c_validScientificCharacterSet,
+            ViewMode.Programmer => c_validProgrammerCharacterSet,
+            _ => c_validBasicCharacterSet
+        };
     }
 
     static bool ExpressionRegExMatch(
@@ -359,14 +363,14 @@ public partial class CopyPasteManager
                 var operandValue = SanitizeOperand(operand);
 
                 // If an operand exceeds the maximum length allowed, break and return.
-                if (OperandLength(operandValue, mode, modeType, programmerNumberBase) > maxOperandLengthAndValue.maxLength)
+                if (OperandLength(operandValue, mode, modeType, programmerNumberBase) > maxOperandLengthAndValue.MaxLength)
                 {
                     expMatched = false;
                     break;
                 }
 
                 // If maxOperandValue is set and the operandValue exceeds it, break and return.
-                if (maxOperandLengthAndValue.maxValue != 0)
+                if (maxOperandLengthAndValue.MaxValue != 0)
                 {
                     var operandAsULL = TryOperandToULL(operandValue, programmerNumberBase);
                     if (operandAsULL == null)
@@ -378,8 +382,8 @@ public partial class CopyPasteManager
 
                     // Calculate how much we exceed the maxValue.
                     // In case we exceed it for 1 only, and working with negative number - that's a corner case for max signed values (e.g. -32768)
-                    bool isOverflow = operandAsULL.Value > maxOperandLengthAndValue.maxValue;
-                    bool isMaxNegativeValue = operandAsULL.Value - 1 == maxOperandLengthAndValue.maxValue;
+                    bool isOverflow = operandAsULL.Value > maxOperandLengthAndValue.MaxValue;
+                    bool isMaxNegativeValue = operandAsULL.Value - 1 == maxOperandLengthAndValue.MaxValue;
                     if (isOverflow && !(isNegativeValue && isMaxNegativeValue))
                     {
                         expMatched = false;
@@ -398,17 +402,17 @@ public partial class CopyPasteManager
     {
         int defaultMaxOperandLength = 0;
         ulong defaultMaxValue = 0;
-        CopyPasteMaxOperandLengthAndValue res;
+        CopyPasteMaxOperandLengthAndValue res = new();
         if (mode == ViewMode.Standard)
         {
-            res.maxLength = MaxStandardOperandLength;
-            res.maxValue = defaultMaxValue;
+            res.MaxLength = MaxStandardOperandLength;
+            res.MaxValue = defaultMaxValue;
             return res;
         }
         else if (mode == ViewMode.Scientific)
         {
-            res.maxLength = MaxScientificOperandLength;
-            res.maxValue = defaultMaxValue;
+            res.MaxLength = MaxScientificOperandLength;
+            res.MaxValue = defaultMaxValue;
             return res;
         }
         else if (mode == ViewMode.Programmer)
@@ -416,16 +420,16 @@ public partial class CopyPasteManager
             uint bitLength = 0;
             switch (bitLengthType)
             {
-                case BitLength.BitLengthQWord:
+                case BitLength.QuadWord:
                     bitLength = 64;
                     break;
-                case BitLength.BitLengthDWord:
+                case BitLength.DoubleWord:
                     bitLength = 32;
                     break;
-                case BitLength.BitLengthWord:
+                case BitLength.Word:
                     bitLength = 16;
                     break;
-                case BitLength.BitLengthByte:
+                case BitLength.Byte:
                     bitLength = 8;
                     break;
             }
@@ -457,19 +461,19 @@ public partial class CopyPasteManager
             }
             //ulong  maxValue = ulong.MaxValue >> (MaxProgrammerBitLength - (bitLength - signBit));
 
-            res.maxLength = maxLength;
-            res.maxValue = maxValue;
+            res.MaxLength = maxLength;
+            res.MaxValue = maxValue;
             return res;
         }
         else if (modeType == CategoryGroupType.Converter)
         {
-            res.maxLength = MaxConverterInputLength;
-            res.maxValue = defaultMaxValue;
+            res.MaxLength = MaxConverterInputLength;
+            res.MaxValue = defaultMaxValue;
             return res;
         }
 
-        res.maxLength = (uint)defaultMaxOperandLength;
-        res.maxValue = defaultMaxValue;
+        res.MaxLength = (uint)defaultMaxOperandLength;
+        res.MaxValue = defaultMaxValue;
         return res;
     }
 
@@ -510,12 +514,12 @@ public partial class CopyPasteManager
             return Convert.ToUInt64(operand, intBase);
 
         }
-        catch (Exception e)
+        catch (FormatException)
         {
-            // Do nothin.
         }
-
-
+        catch (OverflowException)
+        {
+        }
         //    string.intype size = 0;
         //    try
         //    {
@@ -628,7 +632,7 @@ public partial class CopyPasteManager
                 continue;
             }
 
-            if (operandUpper.EndsWith(suffix)) //.compare(operandUpper.Length - suffix.Length, suffix.Length, suffix) == 0)
+            if (operandUpper.EndsWith(suffix, StringComparison.Ordinal)) //.compare(operandUpper.Length - suffix.Length, suffix.Length, suffix) == 0)
             {
                 len -= suffix.Length;
                 break;
@@ -643,7 +647,7 @@ public partial class CopyPasteManager
                 continue;
             }
 
-            if (operandUpper.StartsWith(prefix))// .compare(0, prefix.Length, prefix) == 0)
+            if (operandUpper.StartsWith(prefix, StringComparison.Ordinal))// .compare(0, prefix.Length, prefix) == 0)
             {
                 len -= prefix.Length;
                 break;
@@ -680,11 +684,11 @@ public partial class CopyPasteManager
     (char)160   // Non-breaking space
         };
 
-        input = CalculatorApp.ViewModel.Common.LocalizationSettings.GetInstance().RemoveGroupSeparators(input);
+        input = CalculatorApp.ViewModel.Common.LocalizationSettings.Instance.RemoveGroupSeparators(input);
         return new String((input.ToCharArray().Where(x => !unwantedChars.Contains(x)).ToArray()));
     }
 
-  public static  bool IsErrorMessage(String message)
+    public static bool IsErrorMessage(String message)
     {
         return message == PasteErrorString;
     }

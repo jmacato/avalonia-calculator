@@ -10,7 +10,8 @@ public class TypesettingContext<TFont, TGlyph>(
     IGlyphBoundsProvider<TFont, TGlyph> glyphBoundsProvider,
     IGlyphFinder<TFont, TGlyph> glyphFinder,
     FontMathTable<TFont, TGlyph> mathTable)
-    where TFont : IFont<TGlyph> {
+    where TFont : IFont<TGlyph>
+{
     public IGlyphBoundsProvider<TFont, TGlyph> GlyphBoundsProvider { get; } = glyphBoundsProvider;
     public IGlyphFinder<TFont, TGlyph> GlyphFinder { get; } = glyphFinder;
     public FontMathTable<TFont, TGlyph> MathTable { get; } = mathTable;

@@ -34,33 +34,25 @@ using Microsoft.UI.Xaml.Media;
 
 namespace CalculatorApp.ViewModel.Common;
 
-public partial class LocalizationService : DependencyObject
+internal sealed partial class LocalizationService : DependencyObject
 {
-    static ReaderWriterLockSlim s_locServiceInstanceLock = new ReaderWriterLockSlim();
+    // LocalizationService  s_singletonInstance = null;
 
-// LocalizationService  s_singletonInstance = null;
-
-// Resources for the engine use numbers as keys. It's inconvenient, but also difficult to
-// change given that the engine heavily relies on perfect ordering of certain elements.
-// The key for open parenthesis, '(', is "48".
+    // Resources for the engine use numbers as keys. It's inconvenient, but also difficult to
+    // change given that the engine heavily relies on perfect ordering of certain elements.
+    // The key for open parenthesis, '(', is "48".
     const string s_openParenResourceKey = "48";
 
     public static LocalizationService GetInstance()
     {
-        if (s_singletonInstance == null)
+        LocalizationService? instance = Volatile.Read(ref s_singletonInstance);
+        if (instance == null)
         {
-            // Writer lock for the static maps
-            using var lockscope = new WriterLockScope(s_locServiceInstanceLock);
-
-            // reader_writer_lock.scoped_lock lock(s_locServiceInstanceLock);
-
-            if (s_singletonInstance == null)
-            {
-                s_singletonInstance = new LocalizationService(null);
-            }
+            LocalizationService created = new LocalizationService(null);
+            instance = Interlocked.CompareExchange(ref s_singletonInstance, created, null) ?? created;
         }
 
-        return s_singletonInstance;
+        return instance;
     }
 
     /// <summary>
@@ -70,30 +62,41 @@ public partial class LocalizationService : DependencyObject
     /// <remarks>
     /// Should only be used for test purpose
     /// </remarks>
+    static
+    /// <summary>
+    /// Replace (or create) the single instance of this singleton class by one with the language passed as parameter
+    /// </summary>
+    /// <param name="language">RFC-5646 identifier of the language to use</param>
+    /// <remarks>
+    /// Should only be used for test purpose
+    /// </remarks>
     void OverrideWithLanguage(string language)
     {
-        s_singletonInstance = new LocalizationService(language);
+        Volatile.Write(ref s_singletonInstance, new LocalizationService(language));
     }
 
     /// <summary>
     /// Constructor
     /// </summary>
     /// <param name="overridedLanguage">RFC-5646 identifier of the language to use, if null, will use the current language of the system</param>
-    public LocalizationService(string overridedLanguage)
+    public LocalizationService(string? overridedLanguage)
     {
         m_isLanguageOverrided = overridedLanguage != null;
-        m_language = m_isLanguageOverrided ? (overridedLanguage) : ApplicationLanguages.Languages[0];
-/*
-    TODO ResourceContext.GetForViewIndependentUse and ResourceContext.GetForViewIndependentUse do not exist in Windows App SDK
-    Use your ResourceManager instance to create a ResourceContext as below. If you already have a ResourceManager instance,
-    replace the new instance created below with correct instance.
-    Read: https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/mrtcore
-*/
+        m_language = overridedLanguage
+            ?? (ApplicationLanguages.Languages.Count > 0
+                ? ApplicationLanguages.Languages[0]
+                : CultureInfo.CurrentUICulture.Name);
+        /*
+            TODO ResourceContext.GetForViewIndependentUse and ResourceContext.GetForViewIndependentUse do not exist in Windows App SDK
+            Use your ResourceManager instance to create a ResourceContext as below. If you already have a ResourceManager instance,
+            replace the new instance created below with correct instance.
+            Read: https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/mrtcore
+        */
         m_flowDirection = new Microsoft.Windows.ApplicationModel.Resources.ResourceManager().CreateResourceContext().QualifierValues["LayoutDirection"]
                           != "LTR"
             ? FlowDirection.RightToLeft
             : FlowDirection.LeftToRight;
-        string localeName = (m_language);
+        string? localeName = (m_language);
         localeName += ".UTF8";
 
         // try
@@ -124,13 +127,13 @@ public partial class LocalizationService : DependencyObject
 
             // Additional encoding-specific operations can go here if needed
         }
-        catch (Exception)
+        catch (CultureNotFoundException)
         {
             // Fall back to current culture if there's an error
             m_locale = CultureInfo.CurrentCulture;
         }
 
-        var resourceLoader = AppResourceProvider.GetInstance();
+        var resourceLoader = AppResourceProvider.Instance;
         m_fontFamilyOverride = resourceLoader.GetResourceString("LocalizedFontFamilyOverride");
 
         String reserved = "RESERVED_FOR_FONTLOC";
@@ -150,66 +153,67 @@ public partial class LocalizationService : DependencyObject
             Debug.Assert(localizedUICaptionFontSizeFactorOverride != reserved);
 
             m_fontWeightOverride = ParseFontWeight(localizedFontWeightOverride);
-            m_uiTextFontScaleFactorOverride = double.Parse(localizedUITextFontSizeFactorOverride);
-            m_uiCaptionFontScaleFactorOverride = double.Parse(localizedUICaptionFontSizeFactorOverride);
+            m_uiTextFontScaleFactorOverride = double.Parse(localizedUITextFontSizeFactorOverride, System.Globalization.CultureInfo.CurrentCulture);
+            m_uiCaptionFontScaleFactorOverride = double.Parse(localizedUICaptionFontSizeFactorOverride, System.Globalization.CultureInfo.CurrentCulture);
         }
 
         m_fontGroup = new LanguageFontGroup(m_language);
     }
 
+    static
     FontWeight ParseFontWeight(String fontWeight)
     {
-        string weight = fontWeight.ToLowerInvariant();
+        string weight = fontWeight.ToUpperInvariant();
         // transform(weight.begin(), weight.end(), weight.begin(), towlower);
         // fontWeight = new  weight.c_str());
 
-        if (weight == "black")
+        if (weight == "BLACK")
         {
             return FontWeights.Black;
         }
-        else if (weight == "bold")
+        else if (weight == "BOLD")
         {
             return FontWeights.Bold;
         }
-        else if (weight == "extrablack")
+        else if (weight == "EXTRABLACK")
         {
             return FontWeights.ExtraBlack;
         }
-        else if (weight == "extrabold")
+        else if (weight == "EXTRABOLD")
         {
             return FontWeights.ExtraBold;
         }
-        else if (weight == "extralight")
+        else if (weight == "EXTRALIGHT")
         {
             return FontWeights.ExtraLight;
         }
-        else if (weight == "light")
+        else if (weight == "LIGHT")
         {
             return FontWeights.Light;
         }
-        else if (weight == "medium")
+        else if (weight == "MEDIUM")
         {
             return FontWeights.Medium;
         }
-        else if (weight == "norma")
+        else if (weight == "NORMAL")
         {
             return FontWeights.Normal;
         }
-        else if (weight == "semibold")
+        else if (weight == "SEMIBOLD")
         {
             return FontWeights.SemiBold;
         }
-        else if (weight == "semilight")
+        else if (weight == "SEMILIGHT")
         {
             return FontWeights.SemiLight;
         }
-        else if (weight == "thin")
+        else if (weight == "THIN")
         {
             return FontWeights.Thin;
         }
         else
         {
-            throw new ArgumentException(nameof(fontWeight));
+            throw new ArgumentException("The font weight is not recognized.", nameof(fontWeight));
         }
     }
 
@@ -218,7 +222,7 @@ public partial class LocalizationService : DependencyObject
         return m_flowDirection;
     }
 
-  public  bool IsRtlLayout()
+    public bool IsRtlLayout()
     {
         return m_flowDirection == FlowDirection.RightToLeft;
     }
@@ -257,7 +261,7 @@ public partial class LocalizationService : DependencyObject
             case LanguageFontType.UICaption:
                 return m_fontGroup.UICaptionFont;
             default:
-                throw new ArgumentException(nameof(fontType));
+                throw new ArgumentException("The language font type is not recognized.", nameof(fontType));
         }
     }
 
@@ -412,8 +416,8 @@ public partial class LocalizationService : DependencyObject
         }
     }
 
-// If successful, returns a formatter that respects the user's regional format settings,
-// as configured by running intl.cpl.
+    // If successful, returns a formatter that respects the user's regional format settings,
+    // as configured by running intl.cpl.
     public DecimalFormatter GetRegionalSettingsAwareDecimalFormatter()
     {
         IReadOnlyList<String> languageIdentifiers = GetLanguageIdentifiers();
@@ -425,10 +429,10 @@ public partial class LocalizationService : DependencyObject
         return new DecimalFormatter();
     }
 
-// If successful, returns a formatter that respects the user's regional format settings,
-// as configured by running intl.cpl.
-//
-// This helper function creates a DateTimeFormatter with a TwentyFour hour clock
+    // If successful, returns a formatter that respects the user's regional format settings,
+    // as configured by running intl.cpl.
+    //
+    // This helper function creates a DateTimeFormatter with a TwentyFour hour clock
     public DateTimeFormatter GetRegionalSettingsAwareDateTimeFormatter(String format)
     {
         IReadOnlyList<String> languageIdentifiers = GetLanguageIdentifiers();
@@ -471,7 +475,7 @@ public partial class LocalizationService : DependencyObject
         var currencyFormatter = new CurrencyFormatter(userCurrency, languageIdentifiers,
             GlobalizationPreferences.HomeGeographicRegion);
 
-        int fractionDigits = LocalizationSettings.GetInstance().GetCurrencyTrailingDigits();
+        int fractionDigits = LocalizationSettings.Instance.CurrencyTrailingDigits;
         currencyFormatter.FractionDigits = fractionDigits;
 
         return currencyFormatter;
@@ -529,38 +533,29 @@ public partial class LocalizationService : DependencyObject
             return new List<string> { m_language };
         }
 
-        try
+        // Get the current culture in a cross-platform way.
+        string localeString = m_locale.Name;
+
+        // Remove any potential suffix after underscore if needed.
+        int underscorePos = localeString.IndexOf('_', StringComparison.Ordinal);
+        if (underscorePos >= 0)
         {
-            // Get the current culture in a cross-platform way
-            string localeString = m_locale.Name;
-
-            // Remove any potential suffix after underscore if needed
-            int underscorePos = localeString.IndexOf('_');
-            if (underscorePos >= 0)
-            {
-                localeString = localeString.Substring(0, underscorePos);
-            }
-
-            // Validate if the locale is well-formed
-            if (Language.IsWellFormed(localeString))
-            {
-                return new List<string> { localeString };
-            }
-
-            // Fallback to common language tag format if needed
-            return new List<string> { m_locale.TwoLetterISOLanguageName };
+            localeString = localeString.Substring(0, underscorePos);
         }
-        catch (Exception)
+
+        // Validate if the locale is well-formed.
+        if (Language.IsWellFormed(localeString))
         {
-            // Fallback to invariant culture or a default
-            return new List<string> { "en" }; // Default to English or another appropriate default
+            return new List<string> { localeString };
         }
+
+        return new List<string> { m_locale.TwoLetterISOLanguageName };
     }
-// Resources for the engine use numbers as keys. It's inconvenient, but also difficult to
-        // change given that the engine heavily relies on perfect ordering of certain elements.
-        // To compromise, we'll declare a map from engine resource key to automation name from the
-        // standard project resources.
-       static  List<(string, string)> s_parenEngineKeyResourceMap = new()
+    // Resources for the engine use numbers as keys. It's inconvenient, but also difficult to
+    // change given that the engine heavily relies on perfect ordering of certain elements.
+    // To compromise, we'll declare a map from engine resource key to automation name from the
+    // standard project resources.
+    static List<(string, string)> s_parenEngineKeyResourceMap = new()
         {
             // Sine permutations
             ("67", "SineDegrees"),
@@ -633,7 +628,7 @@ public partial class LocalizationService : DependencyObject
 
 
 
-        static List<(string, string)> s_noParenEngineKeyResourceMap = new()
+    static List<(string, string)> s_noParenEngineKeyResourceMap = new()
         {
             // Programmer mode functions
             ("9", "LeftShift"),
@@ -649,7 +644,7 @@ public partial class LocalizationService : DependencyObject
 
 
         Dictionary<string, string> tokenToReadableNameMap = new();
-        var resProvider = AppResourceProvider.GetInstance();
+        var resProvider = AppResourceProvider.Instance;
 
         string openParen = resProvider.GetCEngineString((s_openParenResourceKey));
 
@@ -691,13 +686,13 @@ public partial class LocalizationService : DependencyObject
         }
 
 
-        var openParen = AppResourceProvider.GetInstance().GetCEngineString((s_openParenResourceKey));
+        var openParen = AppResourceProvider.Instance.GetCEngineString((s_openParenResourceKey));
         return (itr) + " " + openParen;
     }
 
     public static String GetNarratorReadableString(String rastring)
     {
-        string readableString = "";
+        System.ArgumentNullException.ThrowIfNull(rastring); string readableString = "";
         string asstring = rastring;
         foreach (var c in asstring)
         {
@@ -709,11 +704,9 @@ public partial class LocalizationService : DependencyObject
 
     public void Sort<T>(List<T> source, Func<T, string> keySelector)
     {
-        if (source == null)
-            throw new ArgumentNullException(nameof(source));
+        ArgumentNullException.ThrowIfNull(source);
 
-        if (keySelector == null)
-            throw new ArgumentNullException(nameof(keySelector));
+        ArgumentNullException.ThrowIfNull(keySelector);
 
         // Get the CompareInfo from the current culture
         CompareInfo compareInfo = m_locale.CompareInfo;

@@ -7,7 +7,7 @@ namespace CalculatorApp.ViewModel.Tests
     public class UtilitiesTests
     {
         [TestMethod]
-        public void NoCoreWindowOnThread_WindowIdIsNegative1()
+        public void NoCoreWindowOnThreadReturnsNegativeOne()
         {
             Assert.AreEqual(-1, Utilities.GetWindowId());
         }

@@ -1,4 +1,5 @@
-﻿using Avalonia;
+using Avalonia;
+using Avalonia.Controls;
 
 namespace FluentAvalonia.UI.Controls;
 
@@ -12,19 +13,19 @@ public sealed class FASettingsExpanderTemplateSettings : AvaloniaObject
     /// <summary>
     /// Defines the <see cref="Icon"/> property
     /// </summary>
-    public static readonly StyledProperty<FAIconElement> IconProperty =
-        AvaloniaProperty.Register<FASettingsExpanderTemplateSettings, FAIconElement>(nameof(Icon));
+    public static readonly StyledProperty<Control?> IconProperty =
+        AvaloniaProperty.Register<FASettingsExpanderTemplateSettings, Control?>(nameof(Icon));
 
     /// <summary>
     /// Defines the <see cref="ActionIcon"/> property
     /// </summary>
-    public static readonly StyledProperty<FAIconElement> ActionIconProperty =
-        AvaloniaProperty.Register<FASettingsExpanderTemplateSettings, FAIconElement>(nameof(ActionIcon));
+    public static readonly StyledProperty<Control?> ActionIconProperty =
+        AvaloniaProperty.Register<FASettingsExpanderTemplateSettings, Control?>(nameof(ActionIcon));
 
     /// <summary>
     /// Defines the FAIconElement to be used for the SettingsExpander
     /// </summary>
-    public FAIconElement Icon
+    public Control? Icon
     {
         get => GetValue(IconProperty);
         set => SetValue(IconProperty, value);
@@ -33,7 +34,7 @@ public sealed class FASettingsExpanderTemplateSettings : AvaloniaObject
     /// <summary>
     /// Defines the FAIconElement to be used for the SettingsExpander ActionIcon
     /// </summary>
-    public FAIconElement ActionIcon
+    public Control? ActionIcon
     {
         get => GetValue(ActionIconProperty);
         set => SetValue(ActionIconProperty, value);

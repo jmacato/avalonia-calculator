@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -13,24 +12,35 @@ using CalculatorApp.ViewModel;
 
 namespace CalculatorApp;
 
-public sealed partial class EquationInputArea : UserControl
+public sealed partial class EquationInputArea : UserControl, IDisposable
 {
     private GraphingCalculatorViewModel? _model;
     private MathRichEditBox? _lastFocusedEditor;
+    private int _disposed;
 
     public EquationInputArea()
     {
         InitializeComponent();
     }
 
-    public event EventHandler<EquationViewModel>? KeyGraphFeaturesRequested;
+    public event EventHandler<KeyGraphFeaturesRequestedEventArgs>? KeyGraphFeaturesRequested;
 
-    public event EventHandler<MathRichEditBoxFormatRequest>? EquationFormatRequested;
+    public event EventHandler<MathRichEditBoxFormatRequestEventArgs>? EquationFormatRequested;
 
     public void SetDefaultFocus()
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         Dispatcher.UIThread.Post(() =>
         {
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                return;
+            }
+
             EquationTextBox? first = EquationInputList.GetVisualDescendants()
                 .OfType<EquationTextBox>()
                 .FirstOrDefault();
@@ -40,8 +50,18 @@ public sealed partial class EquationInputArea : UserControl
 
     public void FocusEquationTextBox(EquationViewModel equation)
     {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
         Dispatcher.UIThread.Post(() =>
         {
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                return;
+            }
+
             EquationTextBox? row = FindEquationRow(equation);
             row?.BringIntoView();
             row?.FocusTextBox();
@@ -93,7 +113,7 @@ public sealed partial class EquationInputArea : UserControl
         }
     }
 
-    private void OnEquationSubmitted(object? sender, MathRichEditBoxSubmission e)
+    private void OnEquationSubmitted(object? sender, MathRichEditBoxSubmissionEventArgs e)
     {
         if (_model is null || sender is not EquationTextBox row || row.DataContext is not EquationViewModel equation)
         {
@@ -107,7 +127,7 @@ public sealed partial class EquationInputArea : UserControl
         }
     }
 
-    private void OnEquationFormatRequested(object? sender, MathRichEditBoxFormatRequest e) =>
+    private void OnEquationFormatRequested(object? sender, MathRichEditBoxFormatRequestEventArgs e) =>
         EquationFormatRequested?.Invoke(sender, e);
 
     private void OnRemoveButtonClicked(object? sender, RoutedEventArgs e)
@@ -128,7 +148,7 @@ public sealed partial class EquationInputArea : UserControl
     {
         if (sender is EquationTextBox { DataContext: EquationViewModel equation })
         {
-            KeyGraphFeaturesRequested?.Invoke(this, equation);
+            KeyGraphFeaturesRequested?.Invoke(this, new KeyGraphFeaturesRequestedEventArgs(equation));
         }
     }
 
@@ -140,20 +160,11 @@ public sealed partial class EquationInputArea : UserControl
         }
     }
 
-    private void OnEquationGotFocus(object? sender, FocusChangedEventArgs e)
+    private void OnEquationEditorFocused(object? sender, EventArgs e)
     {
-        if (sender is EquationTextBox { DataContext: EquationViewModel equation } row)
+        if (sender is EquationTextBox row)
         {
             _lastFocusedEditor = row.Editor;
-            equation.IsSelected = true;
-        }
-    }
-
-    private static void OnEquationLostFocus(object? sender, FocusChangedEventArgs e)
-    {
-        if (sender is EquationTextBox { DataContext: EquationViewModel equation })
-        {
-            equation.IsSelected = false;
         }
     }
 
@@ -163,78 +174,6 @@ public sealed partial class EquationInputArea : UserControl
         {
             _lastFocusedEditor ??= row.Editor;
         }
-    }
-
-    private static void OnVariableTextBoxGotFocus(object? sender, FocusChangedEventArgs e)
-    {
-        if (sender is TextBox textBox)
-        {
-            textBox.SelectAll();
-        }
-    }
-
-    private static void OnVariableTextBoxLostFocus(object? sender, FocusChangedEventArgs e)
-    {
-        if (sender is TextBox textBox)
-        {
-            SubmitVariableTextBox(textBox);
-        }
-    }
-
-    private static void OnVariableTextBoxKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter && sender is TextBox textBox)
-        {
-            SubmitVariableTextBox(textBox);
-            e.Handled = true;
-        }
-    }
-
-    private static void SubmitVariableTextBox(TextBox textBox)
-    {
-        if (textBox.DataContext is not VariableViewModel variable)
-        {
-            return;
-        }
-
-        double fallback;
-        Action<double> update;
-        switch (textBox.Name)
-        {
-            case "ValueTextBox":
-                fallback = variable.Value;
-                update = value => variable.Value = value;
-                break;
-            case "MinTextBox":
-                fallback = variable.Min;
-                update = value => variable.Min = value;
-                break;
-            case "MaxTextBox":
-                fallback = variable.Max;
-                update = value => variable.Max = value;
-                break;
-            case "StepTextBox":
-                fallback = variable.Step;
-                update = value => variable.Step = value > 0 ? value : fallback;
-                break;
-            default:
-                return;
-        }
-
-        double value = double.TryParse(
-            textBox.Text,
-            NumberStyles.Float,
-            CultureInfo.CurrentCulture,
-            out double parsed)
-                ? parsed
-                : fallback;
-        if (!double.IsFinite(value) || (textBox.Name == "StepTextBox" && value <= 0))
-        {
-            value = fallback;
-        }
-
-        update(value);
-        textBox.Text = value.ToString("G6", CultureInfo.CurrentCulture);
     }
 
     private void OnVariableAreaClicked(object? sender, RoutedEventArgs e)
@@ -285,4 +224,24 @@ public sealed partial class EquationInputArea : UserControl
         EquationInputList.GetVisualDescendants()
             .OfType<EquationTextBox>()
             .FirstOrDefault(row => ReferenceEquals(row.DataContext, equation));
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        if (_model is not null)
+        {
+            _model.InputRequested -= OnInputRequested;
+            _model = null;
+        }
+
+        _lastFocusedEditor = null;
+        KeyGraphFeaturesRequested = null;
+        EquationFormatRequested = null;
+        DataContext = null;
+        GC.SuppressFinalize(this);
+    }
 }

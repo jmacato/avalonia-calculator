@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Automation;
@@ -12,7 +11,7 @@ using CalculatorApp.ViewModel.Common;
 
 namespace CalculatorApp;
 
-public sealed partial class Calculator : UserControl
+public sealed partial class Calculator : UserControl, IDisposable
 {
     private StandardCalculatorViewModel? _subscribedModel;
     private HistoryViewModel? _subscribedHistoryModel;
@@ -25,8 +24,8 @@ public sealed partial class Calculator : UserControl
     private bool _isLastFlyoutHistory;
     private bool _isLastFlyoutMemory;
     private bool _isLoaded;
-    private OpenFlyout _openFlyout;
-
+    private CalculatorOpenFlyout _openFlyout;
+    private int _disposed;
     public Calculator()
     {
         InitializeComponent();
@@ -60,6 +59,22 @@ public sealed partial class Calculator : UserControl
         UnsubscribeFromModel();
     }
 
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        _isLoaded = false;
+        CloseFullScreenFlyout(restoreFocus: false);
+        DetachHistoryControl();
+        DetachMemoryControl();
+        UnsubscribeFromModel();
+        DataContext = null;
+        GC.SuppressFinalize(this);
+    }
+
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
@@ -87,7 +102,6 @@ public sealed partial class Calculator : UserControl
 
         DeactivateHistoryControl();
         DeactivateMemoryControl();
-
         _subscribedModel = Model;
         if (_subscribedModel is not { } model)
         {
@@ -106,12 +120,8 @@ public sealed partial class Calculator : UserControl
 
         model.PropertyChanged += OnCalcPropertyChanged;
         ReactivateAttachedControls();
-        AutomationProperties.SetName(
-            HistoryButton,
-            AppResourceProvider.GetInstance().GetResourceString("HistoryButton_Open"));
-        AutomationProperties.SetName(
-            MemoryButton,
-            AppResourceProvider.GetInstance().GetResourceString("MemoryButton_Open"));
+        AutomationProperties.SetName(HistoryButton, AppResourceProvider.Instance.GetResourceString("HistoryButton_Open"));
+        AutomationProperties.SetName(MemoryButton, AppResourceProvider.Instance.GetResourceString("MemoryButton_Open"));
         UpdateErrorState(model.IsInError);
     }
 
@@ -127,27 +137,34 @@ public sealed partial class Calculator : UserControl
         _subscribedModel = null;
     }
 
-    private void OnHistoryItemClicked(HistoryItemViewModel item)
+    private void OnHistoryItemClicked(object? sender, HistoryItemClickedEventArgs e)
     {
-        Model?.SelectHistoryItem(item);
+        _ = sender;
+        Model?.SelectHistoryItem(e.Item);
         CloseFullScreenFlyout();
         Focus();
     }
 
-    private void OnHideHistoryClicked() => CloseFullScreenFlyout();
+    private void OnHideHistoryClicked(object? sender, EventArgs e)
+    {
+        _ = sender;
+        _ = e;
+        CloseFullScreenFlyout();
+    }
 
-    private void OnHideMemoryClicked() => CloseFullScreenFlyout();
-
+    private void OnHideMemoryClicked(object? sender, EventArgs e)
+    {
+        _ = sender;
+        _ = e;
+        CloseFullScreenFlyout();
+    }
     private void OnCalcPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == StandardCalculatorViewModel.IsInErrorPropertyName && Model is { } model)
         {
             UpdateErrorState(model.IsInError);
         }
-        else if (e.PropertyName is nameof(StandardCalculatorViewModel.IsStandard)
-                 or nameof(StandardCalculatorViewModel.IsScientific)
-                 or nameof(StandardCalculatorViewModel.IsProgrammer)
-                 or nameof(StandardCalculatorViewModel.IsMemoryEmpty))
+        else if (e.PropertyName is nameof(StandardCalculatorViewModel.IsStandard) or nameof(StandardCalculatorViewModel.IsScientific) or nameof(StandardCalculatorViewModel.IsProgrammer) or nameof(StandardCalculatorViewModel.IsMemoryEmpty))
         {
             EnsureModeControls();
             ApplyResponsiveLayout();
@@ -258,14 +275,12 @@ public sealed partial class Calculator : UserControl
 
     private void ReactivateAttachedControls()
     {
-        if (ReferenceEquals(DockHistoryHolder.Child, _historyList)
-            || ReferenceEquals(HistoryFlyoutHolder.Content, _historyList))
+        if (ReferenceEquals(DockHistoryHolder.Child, _historyList) || ReferenceEquals(HistoryFlyoutHolder.Content, _historyList))
         {
             ActivateHistoryControl();
         }
 
-        if (ReferenceEquals(DockMemoryHolder.Child, _memory)
-            || ReferenceEquals(MemoryFlyoutHolder.Content, _memory))
+        if (ReferenceEquals(DockMemoryHolder.Child, _memory) || ReferenceEquals(MemoryFlyoutHolder.Content, _memory))
         {
             ActivateMemoryControl();
         }
@@ -299,7 +314,6 @@ public sealed partial class Calculator : UserControl
     private void EnsureProgrammerControls()
     {
         OpsPanel.EnsureProgrammerRadixOps();
-
         if (_programmerOperators is null)
         {
             _programmerOperators = new CalculatorProgrammerOperators();
@@ -326,7 +340,7 @@ public sealed partial class Calculator : UserControl
             return;
         }
 
-        if (_openFlyout == OpenFlyout.History)
+        if (_openFlyout == CalculatorOpenFlyout.History)
         {
             CloseFullScreenFlyout();
             return;
@@ -342,7 +356,7 @@ public sealed partial class Calculator : UserControl
             return;
         }
 
-        if (_openFlyout == OpenFlyout.Memory)
+        if (_openFlyout == CalculatorOpenFlyout.Memory)
         {
             CloseFullScreenFlyout();
             return;
@@ -355,7 +369,6 @@ public sealed partial class Calculator : UserControl
     {
         CloseFullScreenFlyout(restoreFocus: false);
         DetachHistoryControl();
-
         HistoryList historyList = EnsureHistoryControl();
         historyList.SetDockedLayout(false);
         historyList.RowHeight = new GridLength(NumpadPanel.Bounds.Height);
@@ -363,13 +376,11 @@ public sealed partial class Calculator : UserControl
         HistoryFlyoutHolder.IsVisible = true;
         MemoryFlyoutHolder.IsVisible = false;
         FullScreenFlyoutOverlay.IsVisible = true;
-        _openFlyout = OpenFlyout.History;
+        _openFlyout = CalculatorOpenFlyout.History;
         _isLastFlyoutHistory = true;
         _isLastFlyoutMemory = false;
         EnableCalculatorControls(false);
-        AutomationProperties.SetName(
-            HistoryButton,
-            AppResourceProvider.GetInstance().GetResourceString("HistoryButton_Close"));
+        AutomationProperties.SetName(HistoryButton, AppResourceProvider.Instance.GetResourceString("HistoryButton_Close"));
         historyList.ScrollToBottom();
     }
 
@@ -377,7 +388,6 @@ public sealed partial class Calculator : UserControl
     {
         CloseFullScreenFlyout(restoreFocus: false);
         DetachMemoryControl();
-
         Memory memory = EnsureMemoryControl();
         memory.SetDockedLayout(false);
         memory.RowHeight = new GridLength(NumpadPanel.Bounds.Height);
@@ -385,20 +395,17 @@ public sealed partial class Calculator : UserControl
         MemoryFlyoutHolder.IsVisible = true;
         HistoryFlyoutHolder.IsVisible = false;
         FullScreenFlyoutOverlay.IsVisible = true;
-        _openFlyout = OpenFlyout.Memory;
+        _openFlyout = CalculatorOpenFlyout.Memory;
         _isLastFlyoutHistory = false;
         _isLastFlyoutMemory = true;
         EnableCalculatorControls(false);
-        AutomationProperties.SetName(
-            MemoryButton,
-            AppResourceProvider.GetInstance().GetResourceString("MemoryButton_Close"));
+        AutomationProperties.SetName(MemoryButton, AppResourceProvider.Instance.GetResourceString("MemoryButton_Close"));
     }
 
     private void CloseFullScreenFlyout(bool restoreFocus = true)
     {
-        OpenFlyout closing = _openFlyout;
-        _openFlyout = OpenFlyout.None;
-
+        CalculatorOpenFlyout closing = _openFlyout;
+        _openFlyout = CalculatorOpenFlyout.None;
         if (ReferenceEquals(HistoryFlyoutHolder.Content, _historyList))
         {
             DeactivateHistoryControl();
@@ -415,24 +422,18 @@ public sealed partial class Calculator : UserControl
         MemoryFlyoutHolder.IsVisible = false;
         FullScreenFlyoutOverlay.IsVisible = false;
         EnableCalculatorControls(true);
-
-        AutomationProperties.SetName(
-            HistoryButton,
-            AppResourceProvider.GetInstance().GetResourceString("HistoryButton_Open"));
-        AutomationProperties.SetName(
-            MemoryButton,
-            AppResourceProvider.GetInstance().GetResourceString("MemoryButton_Open"));
-
+        AutomationProperties.SetName(HistoryButton, AppResourceProvider.Instance.GetResourceString("HistoryButton_Open"));
+        AutomationProperties.SetName(MemoryButton, AppResourceProvider.Instance.GetResourceString("MemoryButton_Open"));
         if (!restoreFocus)
         {
             return;
         }
 
-        if (closing == OpenFlyout.History && HistoryButton.IsVisible && HistoryButton.IsEnabled)
+        if (closing == CalculatorOpenFlyout.History && HistoryButton.IsVisible && HistoryButton.IsEnabled)
         {
             HistoryButton.Focus();
         }
-        else if (closing == OpenFlyout.Memory && MemoryButton.IsVisible && MemoryButton.IsEnabled)
+        else if (closing == CalculatorOpenFlyout.Memory && MemoryButton.IsVisible && MemoryButton.IsEnabled)
         {
             MemoryButton.Focus();
         }
@@ -447,11 +448,11 @@ public sealed partial class Calculator : UserControl
     private void UpdateOpenFlyoutHeight()
     {
         GridLength numpadHeight = new(Math.Max(0, NumpadPanel.Bounds.Height));
-        if (_openFlyout == OpenFlyout.History && _historyList is not null)
+        if (_openFlyout == CalculatorOpenFlyout.History && _historyList is not null)
         {
             _historyList.RowHeight = numpadHeight;
         }
-        else if (_openFlyout == OpenFlyout.Memory && _memory is not null)
+        else if (_openFlyout == CalculatorOpenFlyout.Memory && _memory is not null)
         {
             _memory.RowHeight = numpadHeight;
         }
@@ -470,8 +471,7 @@ public sealed partial class Calculator : UserControl
     private void AttachHistoryToDock()
     {
         DetachMemoryControl();
-        if (_historyList is not null
-            && ReferenceEquals(DockHistoryHolder.Child, _historyList))
+        if (_historyList is not null && ReferenceEquals(DockHistoryHolder.Child, _historyList))
         {
             ActivateHistoryControl();
             return;
@@ -486,8 +486,7 @@ public sealed partial class Calculator : UserControl
     private void AttachMemoryToDock()
     {
         DetachHistoryControl();
-        if (_memory is not null
-            && ReferenceEquals(DockMemoryHolder.Child, _memory))
+        if (_memory is not null && ReferenceEquals(DockMemoryHolder.Child, _memory))
         {
             ActivateMemoryControl();
             return;
@@ -502,7 +501,6 @@ public sealed partial class Calculator : UserControl
     private void DetachHistoryControl()
     {
         DeactivateHistoryControl();
-
         if (ReferenceEquals(DockHistoryHolder.Child, _historyList))
         {
             DockHistoryHolder.Child = null;
@@ -517,7 +515,6 @@ public sealed partial class Calculator : UserControl
     private void DetachMemoryControl()
     {
         DeactivateMemoryControl();
-
         if (ReferenceEquals(DockMemoryHolder.Child, _memory))
         {
             DockMemoryHolder.Child = null;
@@ -531,14 +528,12 @@ public sealed partial class Calculator : UserControl
 
     private void DetachHistoryFromDock()
     {
-        if (_historyList is not null
-            && ReferenceEquals(DockHistoryHolder.Child, _historyList))
+        if (_historyList is not null && ReferenceEquals(DockHistoryHolder.Child, _historyList))
         {
             DockHistoryHolder.Child = null;
         }
 
-        if (_historyList is not null
-            && !ReferenceEquals(HistoryFlyoutHolder.Content, _historyList))
+        if (_historyList is not null && !ReferenceEquals(HistoryFlyoutHolder.Content, _historyList))
         {
             DeactivateHistoryControl();
         }
@@ -546,14 +541,12 @@ public sealed partial class Calculator : UserControl
 
     private void DetachMemoryFromDock()
     {
-        if (_memory is not null
-            && ReferenceEquals(DockMemoryHolder.Child, _memory))
+        if (_memory is not null && ReferenceEquals(DockMemoryHolder.Child, _memory))
         {
             DockMemoryHolder.Child = null;
         }
 
-        if (_memory is not null
-            && !ReferenceEquals(MemoryFlyoutHolder.Content, _memory))
+        if (_memory is not null && !ReferenceEquals(MemoryFlyoutHolder.Content, _memory))
         {
             DeactivateMemoryControl();
         }
@@ -573,11 +566,25 @@ public sealed partial class Calculator : UserControl
 
         double width = Bounds.Width;
         double height = Bounds.Height;
+        bool dockVisible = ApplyDockColumnLayout(width, height);
+        ApplyModeRowLayout(model, out bool programmer, out bool scientific);
 
-        bool fixedHistoryWidth = (width >= 1024 && height >= 768)
-                                 || (width >= 768 && height >= 1366);
+        // The WinUI ResultsM trigger is mode-specific: Standard=1,
+        // Scientific=544, Programmer=640. ResultsL always begins at 800.
+        ApplyResultRowLayout(height, programmer, scientific);
+
+        ApplyMemoryAndDockLayout(programmer, dockVisible);
+
+        bool canRecall = !model.IsMemoryEmpty && !model.IsInError;
+        ClearMemoryButton.IsEnabled = canRecall;
+        MemRecall.IsEnabled = canRecall;
+    }
+
+    private bool ApplyDockColumnLayout(double width, double height)
+    {
+        bool fixedHistoryWidth = (width >= 1024 && height >= 768) ||
+                                 (width >= 768 && height >= 1366);
         bool dockVisible = width >= 560;
-
         DockPanel.IsVisible = dockVisible;
         if (fixedHistoryWidth)
         {
@@ -586,8 +593,6 @@ public sealed partial class Calculator : UserControl
         }
         else if (dockVisible)
         {
-            // These are the exact 320*:240* WinUI state values. The history
-            // column retains the original 320px maximum.
             LayoutRoot.ColumnDefinitions[0].Width = new GridLength(320, GridUnitType.Star);
             LayoutRoot.ColumnDefinitions[1].Width = new GridLength(240, GridUnitType.Star);
         }
@@ -597,96 +602,74 @@ public sealed partial class Calculator : UserControl
             LayoutRoot.ColumnDefinitions[1].Width = new GridLength(0);
         }
 
-        bool programmer = model.IsProgrammer;
-        bool scientific = model.IsScientific;
+        return dockVisible;
+    }
 
-        if (programmer)
-        {
-            model.IsDecimalEnabled = false;
-            CalculatorPanel.RowDefinitions[3].Height = new GridLength(96, GridUnitType.Star);
-            CalculatorPanel.RowDefinitions[3].MinHeight = 96;
-            CalculatorPanel.RowDefinitions[5].Height = new GridLength(268, GridUnitType.Star);
-        }
-        else if (scientific)
-        {
-            model.IsDecimalEnabled = true;
-            CalculatorPanel.RowDefinitions[3].Height = new GridLength(32, GridUnitType.Star);
-            CalculatorPanel.RowDefinitions[3].MinHeight = 32;
-            CalculatorPanel.RowDefinitions[5].Height = new GridLength(276, GridUnitType.Star);
-        }
-        else
-        {
-            model.IsDecimalEnabled = true;
-            CalculatorPanel.RowDefinitions[3].Height = new GridLength(0);
-            CalculatorPanel.RowDefinitions[3].MinHeight = 0;
-            CalculatorPanel.RowDefinitions[5].Height = new GridLength(308, GridUnitType.Star);
-        }
+    private void ApplyModeRowLayout(
+        StandardCalculatorViewModel model,
+        out bool programmer,
+        out bool scientific)
+    {
+        programmer = model.IsProgrammer;
+        scientific = model.IsScientific;
+        model.IsDecimalEnabled = !programmer;
 
-        // The WinUI ResultsM trigger is mode-specific: Standard=1,
-        // Scientific=544, Programmer=640. ResultsL always begins at 800.
+        (double inputHeight, double keypadHeight) = programmer
+            ? (96, 268)
+            : scientific
+                ? (32, 276)
+                : (0, 308);
+        CalculatorPanel.RowDefinitions[3].Height = new GridLength(inputHeight, GridUnitType.Star);
+        CalculatorPanel.RowDefinitions[3].MinHeight = inputHeight;
+        CalculatorPanel.RowDefinitions[5].Height = new GridLength(keypadHeight, GridUnitType.Star);
+    }
+
+    private void ApplyResultRowLayout(double height, bool programmer, bool scientific)
+    {
         double mediumResultThreshold = programmer ? 640 : scientific ? 544 : 1;
-        if (height >= 800)
+        (double fontSize, double minimumHeight, double rowHeight) = height switch
         {
-            Results.MaxFontSize = 72;
-            CalculatorPanel.RowDefinitions[2].MinHeight = 108;
-            CalculatorPanel.RowDefinitions[2].Height = new GridLength(72, GridUnitType.Star);
-        }
-        else if (height >= mediumResultThreshold)
-        {
-            Results.MaxFontSize = 46;
-            CalculatorPanel.RowDefinitions[2].MinHeight = 72;
-            CalculatorPanel.RowDefinitions[2].Height = new GridLength(72, GridUnitType.Star);
-        }
-        else
-        {
-            Results.MaxFontSize = 26;
-            CalculatorPanel.RowDefinitions[2].MinHeight = 42;
-            CalculatorPanel.RowDefinitions[2].Height = new GridLength(42, GridUnitType.Star);
-        }
+            >= 800 => (72, 108, 72),
+            _ when height >= mediumResultThreshold => (46, 72, 72),
+            _ => (26, 42, 42)
+        };
+        Results.MaxFontSize = fontSize;
+        CalculatorPanel.RowDefinitions[2].MinHeight = minimumHeight;
+        CalculatorPanel.RowDefinitions[2].Height = new GridLength(rowHeight, GridUnitType.Star);
+    }
 
+    private void ApplyMemoryAndDockLayout(bool programmer, bool dockVisible)
+    {
         ClearMemoryButton.IsVisible = !programmer;
         MemRecall.IsVisible = !programmer;
         MemPlus.IsVisible = !programmer;
         MemMinus.IsVisible = !programmer;
-        MemoryPanel.ColumnDefinitions[4].Width = programmer
-            ? new GridLength(0.01, GridUnitType.Star)
-            : new GridLength(1, GridUnitType.Star);
-        MemoryPanel.ColumnDefinitions[5].Width = programmer
-            ? new GridLength(1, GridUnitType.Star)
-            : new GridLength(0.01, GridUnitType.Star);
-        MemoryPanel.ColumnDefinitions[6].Width = dockVisible
-            ? new GridLength(0)
-            : new GridLength(1, GridUnitType.Star);
+        MemoryPanel.ColumnDefinitions[4].Width = programmer ? new GridLength(0.01, GridUnitType.Star) : new GridLength(1, GridUnitType.Star);
+        MemoryPanel.ColumnDefinitions[5].Width = programmer ? new GridLength(1, GridUnitType.Star) : new GridLength(0.01, GridUnitType.Star);
+        MemoryPanel.ColumnDefinitions[6].Width = dockVisible ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         Grid.SetColumn(MemButton, programmer ? 5 : 4);
         Grid.SetColumn(MemoryButton, 6);
-
         HistoryButton.IsVisible = !programmer && !dockVisible;
         MemoryButton.IsVisible = !dockVisible;
         HistoryTab.IsVisible = !programmer;
-
-        if (dockVisible)
-        {
-            CloseFullScreenFlyout(restoreFocus: false);
-            if (programmer || _isLastFlyoutMemory)
-            {
-                DockTabs.SelectedItem = MemoryTab;
-            }
-            else if (_isLastFlyoutHistory || DockTabs.SelectedItem is null)
-            {
-                DockTabs.SelectedItem = HistoryTab;
-            }
-
-            AttachSelectedDockControl();
-        }
-        else
+        if (!dockVisible)
         {
             DetachHistoryFromDock();
             DetachMemoryFromDock();
+            return;
         }
 
-        bool canRecall = !model.IsMemoryEmpty && !model.IsInError;
-        ClearMemoryButton.IsEnabled = canRecall;
-        MemRecall.IsEnabled = canRecall;
+        CloseFullScreenFlyout(restoreFocus: false);
+        if (programmer || _isLastFlyoutMemory)
+        {
+            DockTabs.SelectedItem = MemoryTab;
+        }
+        else if (_isLastFlyoutHistory || DockTabs.SelectedItem is null)
+        {
+            DockTabs.SelectedItem = HistoryTab;
+        }
+
+        AttachSelectedDockControl();
     }
 
     private void UpdateErrorState(bool isError)
@@ -701,10 +684,12 @@ public sealed partial class Calculator : UserControl
         {
             _programmerDisplayPanel.IsErrorVisualState = isError;
         }
+
         if (_memory is not null)
         {
             _memory.IsErrorVisualState = isError;
         }
+
         MemPlus.IsEnabled = !isError;
         MemMinus.IsEnabled = !isError;
         MemButton.IsEnabled = !isError;
@@ -718,7 +703,7 @@ public sealed partial class Calculator : UserControl
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (_openFlyout != OpenFlyout.None && e.Key == Key.Escape)
+        if (_openFlyout != CalculatorOpenFlyout.None && e.Key == Key.Escape)
         {
             CloseFullScreenFlyout();
             e.Handled = true;
@@ -730,10 +715,7 @@ public sealed partial class Calculator : UserControl
             return;
         }
 
-        bool commandModifier = OperatingSystem.IsMacOS()
-            ? e.KeyModifiers.HasFlag(KeyModifiers.Meta)
-            : e.KeyModifiers.HasFlag(KeyModifiers.Control);
-
+        bool commandModifier = OperatingSystem.IsMacOS() ? e.KeyModifiers.HasFlag(KeyModifiers.Meta) : e.KeyModifiers.HasFlag(KeyModifiers.Control);
         if (commandModifier && e.Key == Key.C)
         {
             model.CopyCommand.Execute(null);
@@ -748,32 +730,31 @@ public sealed partial class Calculator : UserControl
             return;
         }
 
-        NumbersAndOperatorsEnum operation = e.Key switch
+        CalculatorButtonId operation = e.Key switch
         {
-            Key.D0 or Key.NumPad0 => NumbersAndOperatorsEnum.Zero,
-            Key.D1 or Key.NumPad1 => NumbersAndOperatorsEnum.One,
-            Key.D2 or Key.NumPad2 => NumbersAndOperatorsEnum.Two,
-            Key.D3 or Key.NumPad3 => NumbersAndOperatorsEnum.Three,
-            Key.D4 or Key.NumPad4 => NumbersAndOperatorsEnum.Four,
-            Key.D5 or Key.NumPad5 => NumbersAndOperatorsEnum.Five,
-            Key.D6 or Key.NumPad6 => NumbersAndOperatorsEnum.Six,
-            Key.D7 or Key.NumPad7 => NumbersAndOperatorsEnum.Seven,
-            Key.D8 or Key.NumPad8 => NumbersAndOperatorsEnum.Eight,
-            Key.D9 or Key.NumPad9 => NumbersAndOperatorsEnum.Nine,
-            Key.Add => NumbersAndOperatorsEnum.Add,
-            Key.Subtract => NumbersAndOperatorsEnum.Subtract,
-            Key.Multiply => NumbersAndOperatorsEnum.Multiply,
-            Key.Divide => NumbersAndOperatorsEnum.Divide,
-            Key.Decimal or Key.OemPeriod or Key.OemComma => NumbersAndOperatorsEnum.Decimal,
-            Key.Back => NumbersAndOperatorsEnum.Backspace,
-            Key.Escape => NumbersAndOperatorsEnum.Clear,
-            Key.Enter => NumbersAndOperatorsEnum.Equals,
-            _ => NumbersAndOperatorsEnum.None
+            Key.D0 or Key.NumPad0 => CalculatorButtonId.Zero,
+            Key.D1 or Key.NumPad1 => CalculatorButtonId.One,
+            Key.D2 or Key.NumPad2 => CalculatorButtonId.Two,
+            Key.D3 or Key.NumPad3 => CalculatorButtonId.Three,
+            Key.D4 or Key.NumPad4 => CalculatorButtonId.Four,
+            Key.D5 or Key.NumPad5 => CalculatorButtonId.Five,
+            Key.D6 or Key.NumPad6 => CalculatorButtonId.Six,
+            Key.D7 or Key.NumPad7 => CalculatorButtonId.Seven,
+            Key.D8 or Key.NumPad8 => CalculatorButtonId.Eight,
+            Key.D9 or Key.NumPad9 => CalculatorButtonId.Nine,
+            Key.Add => CalculatorButtonId.Add,
+            Key.Subtract => CalculatorButtonId.Subtract,
+            Key.Multiply => CalculatorButtonId.Multiply,
+            Key.Divide => CalculatorButtonId.Divide,
+            Key.Decimal or Key.OemPeriod or Key.OemComma => CalculatorButtonId.DecimalSeparator,
+            Key.Back => CalculatorButtonId.Backspace,
+            Key.Escape => CalculatorButtonId.Clear,
+            Key.Enter => CalculatorButtonId.Equals,
+            _ => CalculatorButtonId.None
         };
-
-        if (operation != NumbersAndOperatorsEnum.None)
+        if (operation != CalculatorButtonId.None)
         {
-            model.ButtonPressed.Execute(new CalculatorButtonPressedEventArgs(string.Empty, operation));
+            model.ButtonPressed.Execute(new CalculatorButtonCommandParameter(string.Empty, operation));
             e.Handled = true;
         }
     }
@@ -817,8 +798,7 @@ public sealed partial class Calculator : UserControl
         {
             AttachMemoryToDock();
         }
-        else if (ReferenceEquals(DockTabs.SelectedItem, HistoryTab)
-                 && Model is { IsProgrammer: false })
+        else if (ReferenceEquals(DockTabs.SelectedItem, HistoryTab) && Model is { IsProgrammer: false })
         {
             AttachHistoryToDock();
         }
@@ -827,12 +807,5 @@ public sealed partial class Calculator : UserControl
             DetachHistoryControl();
             DetachMemoryControl();
         }
-    }
-
-    private enum OpenFlyout
-    {
-        None,
-        History,
-        Memory,
     }
 }

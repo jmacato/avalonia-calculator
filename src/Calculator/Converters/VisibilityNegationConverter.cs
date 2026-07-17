@@ -13,7 +13,7 @@ namespace CalculatorApp
         /// Value converter that translates Visible to Collapsed and vice versa
         /// </summary>
         [Windows.Foundation.Metadata.WebHostHidden]
-        public sealed class VisibilityNegationConverter : Microsoft.UI.Xaml.Data.IValueConverter
+        internal sealed class VisibilityNegationConverter : Microsoft.UI.Xaml.Data.IValueConverter
         {
             public object Convert(object value, Type targetType, object parameter, string language)
             {

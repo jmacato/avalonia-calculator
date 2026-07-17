@@ -99,7 +99,7 @@ public static class ImplicitCurveTracer
         options.LoopDistanceFactor <= 0 ? 0.09 : options.LoopDistanceFactor,
         options.LoopDirectionDot is <= 0 or > 1 ? 0.99 : options.LoopDirectionDot);
 
-    private static IEnumerable<GraphPoint> FindSeeds(
+    private static List<GraphPoint> FindSeeds(
         ImplicitEvaluator function,
         SamplingViewport viewport,
         ImplicitTraceOptions options,

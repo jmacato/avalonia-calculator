@@ -16,6 +16,7 @@ public sealed partial class CalculatorProgrammerBitFlipPanel : UserControl
 {
     private readonly FlipButtons[] _flipButtons;
     private bool _updatingCheckedStates;
+    private StandardCalculatorViewModel? _subscribedModel;
 
     public CalculatorProgrammerBitFlipPanel()
     {
@@ -27,21 +28,33 @@ public sealed partial class CalculatorProgrammerBitFlipPanel : UserControl
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
-        if (Model is not { } model)
+        SetSubscribedModel(Model);
+        if (_subscribedModel is not { } model)
         {
             return;
         }
 
-        model.PropertyChanged -= OnModelPropertyChanged;
-        model.PropertyChanged += OnModelPropertyChanged;
         UpdateCheckedStates(true);
     }
 
-    private void OnUnloaded(object? sender, RoutedEventArgs e)
+    private void OnUnloaded(object? sender, RoutedEventArgs e) => SetSubscribedModel(null);
+
+    private void SetSubscribedModel(StandardCalculatorViewModel? model)
     {
-        if (Model is { } model)
+        if (ReferenceEquals(_subscribedModel, model))
         {
-            model.PropertyChanged -= OnModelPropertyChanged;
+            return;
+        }
+
+        if (_subscribedModel is not null)
+        {
+            _subscribedModel.PropertyChanged -= OnModelPropertyChanged;
+        }
+
+        _subscribedModel = model;
+        if (_subscribedModel is not null)
+        {
+            _subscribedModel.PropertyChanged += OnModelPropertyChanged;
         }
     }
 
@@ -118,7 +131,7 @@ public sealed partial class CalculatorProgrammerBitFlipPanel : UserControl
 
     private string GenerateAutomationPropertiesName(int position, bool value)
     {
-        var resources = AppResourceProvider.GetInstance();
+        var resources = AppResourceProvider.Instance;
         string bitPosition;
         if (position == 0)
         {
@@ -144,10 +157,10 @@ public sealed partial class CalculatorProgrammerBitFlipPanel : UserControl
 
     private static int GetIndexOfLastBit(BitLength length) => length switch
     {
-        BitLength.BitLengthQWord => 63,
-        BitLength.BitLengthDWord => 31,
-        BitLength.BitLengthWord => 15,
-        BitLength.BitLengthByte => 7,
+        BitLength.SixtyFourBits => 63,
+        BitLength.ThirtyTwoBits => 31,
+        BitLength.SixteenBits => 15,
+        BitLength.EightBits => 7,
         _ => -1
     };
 }

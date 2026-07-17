@@ -6,11 +6,15 @@ namespace CSharpMath.Display.Displays;
 
 using FrontEnd;
 /// <summary>Corresponds to MTCTLineDisplay in iOSMath.</summary>
-public class TextRunDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph> where TFont : IFont<TGlyph> {
+public class TextRunDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph> where TFont : IFont<TGlyph>
+{
     public TextRunDisplay(
         AttributedGlyphRun<TFont, TGlyph> run,
         Range range,
-        TypesettingContext<TFont, TGlyph> context) {
+        TypesettingContext<TFont, TGlyph> context)
+    {
+        System.ArgumentNullException.ThrowIfNull(context);
+        System.ArgumentNullException.ThrowIfNull(run);
         var font = run.Font;
         Run = run;
         Range = range;
@@ -30,7 +34,9 @@ public class TextRunDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph> where TFont
     public float Descent { get; }
     public PointF Position { get; set; }
     public bool HasScript { get; set; }
-    public void Draw(IGraphicsContext<TFont, TGlyph> context) {
+    public void Draw(IGraphicsContext<TFont, TGlyph> context)
+    {
+        System.ArgumentNullException.ThrowIfNull(context);
         this.DrawBackground(context);
         context.SaveState();
         context.DrawGlyphRunWithOffset(Run, Position, TextColor);

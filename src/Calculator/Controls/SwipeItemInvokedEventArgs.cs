@@ -3,7 +3,6 @@
 //
 // Ported from microsoft-ui-xaml SwipeControl.idl at
 // commit 3cae15f071f1ab8565f9a7592dbf27f04bafe651.
-
 namespace CalculatorApp.Controls;
 
 public sealed class SwipeItemInvokedEventArgs : EventArgs
@@ -15,7 +14,3 @@ public sealed class SwipeItemInvokedEventArgs : EventArgs
 
     public SwipeControl SwipeControl { get; }
 }
-
-public delegate void SwipeItemInvokedEventHandler(
-    SwipeItem sender,
-    SwipeItemInvokedEventArgs e);

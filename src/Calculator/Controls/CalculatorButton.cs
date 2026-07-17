@@ -12,8 +12,8 @@ namespace CalculatorApp.Controls;
 
 public sealed class CalculatorButton : Button
 {
-    public static readonly StyledProperty<NumbersAndOperatorsEnum> ButtonIdProperty =
-        AvaloniaProperty.Register<CalculatorButton, NumbersAndOperatorsEnum>(nameof(ButtonId));
+    public static readonly StyledProperty<CalculatorButtonId> ButtonIdProperty =
+        AvaloniaProperty.Register<CalculatorButton, CalculatorButtonId>(nameof(ButtonId));
 
     public static readonly StyledProperty<string> AuditoryFeedbackProperty =
         AvaloniaProperty.Register<CalculatorButton, string>(nameof(AuditoryFeedback), string.Empty);
@@ -41,7 +41,7 @@ public sealed class CalculatorButton : Button
         UpdateCommandParameter();
     }
 
-    public NumbersAndOperatorsEnum ButtonId
+    public CalculatorButtonId ButtonId
     {
         get => GetValue(ButtonIdProperty);
         set => SetValue(ButtonIdProperty, value);
@@ -91,6 +91,7 @@ public sealed class CalculatorButton : Button
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
+        System.ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
         if (change.Property == ButtonIdProperty || change.Property == AuditoryFeedbackProperty)
         {
@@ -115,8 +116,19 @@ public sealed class CalculatorButton : Button
         }
     }
 
+    protected override void OnGotFocus(FocusChangedEventArgs e)
+    {
+        base.OnGotFocus(e);
+        if (ButtonId == CalculatorButtonId.OpenParenthesis &&
+            DataContext is StandardCalculatorViewModel calculator)
+        {
+            calculator.SetOpenParenthesisCountNarratorAnnouncement();
+        }
+    }
+
     protected override void OnKeyDown(KeyEventArgs e)
     {
+        System.ArgumentNullException.ThrowIfNull(e);
         if (e.Key != Key.Enter)
         {
             base.OnKeyDown(e);
@@ -125,6 +137,7 @@ public sealed class CalculatorButton : Button
 
     protected override void OnKeyUp(KeyEventArgs e)
     {
+        System.ArgumentNullException.ThrowIfNull(e);
         if (e.Key != Key.Enter)
         {
             base.OnKeyUp(e);
@@ -133,6 +146,6 @@ public sealed class CalculatorButton : Button
 
     private void UpdateCommandParameter()
     {
-        CommandParameter = new CalculatorButtonPressedEventArgs(AuditoryFeedback, ButtonId);
+        CommandParameter = new CalculatorButtonCommandParameter(AuditoryFeedback, ButtonId);
     }
 }

@@ -1,5 +1,4 @@
-﻿using Avalonia;
-using Avalonia.Controls.Documents;
+using Avalonia;
 
 namespace FluentAvalonia.UI.Controls;
 
@@ -18,7 +17,7 @@ public class FASymbolIconSource : FAIconSource
     /// Defines the <see cref="FontSize"/> property
     /// </summary>
     public static readonly StyledProperty<double> FontSizeProperty =
-       TextElement.FontSizeProperty.AddOwner<FASymbolIconSource>();
+        FASymbolIcon.FontSizeProperty.AddOwner<FASymbolIconSource>();
 
     /// <summary>
     /// Gets or sets the <see cref="FluentAvalonia.UI.Controls.FASymbol"/> this icon displays

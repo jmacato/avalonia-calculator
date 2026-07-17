@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using CalculatorApp.ViewModel;
@@ -9,20 +8,11 @@ namespace CalculatorApp;
 
 public sealed partial class CalculatorProgrammerRadixOperators : UserControl
 {
-    private enum BitShiftMode
-    {
-        Arithmetic,
-        Logical,
-        RotateCircular,
-        RotateCarry
-    }
-
     private bool _isErrorVisualState;
-
     public CalculatorProgrammerRadixOperators()
     {
         InitializeComponent();
-        SetBitShiftMode(BitShiftMode.Arithmetic);
+        SetBitShiftMode(CalculatorProgrammerRadixOperatorsBitShiftMode.Arithmetic);
     }
 
     public StandardCalculatorViewModel? Model => DataContext as StandardCalculatorViewModel;
@@ -43,11 +33,6 @@ public sealed partial class CalculatorProgrammerRadixOperators : UserControl
         }
     }
 
-    private void OpenParenthesisButton_GotFocus(object? sender, RoutedEventArgs e)
-    {
-        Model?.SetOpenParenthesisCountNarratorAnnouncement();
-    }
-
     private void FlyoutButton_Clicked(object? sender, RoutedEventArgs e)
     {
         BitwiseButton.FlyoutMenu?.Hide();
@@ -57,46 +42,38 @@ public sealed partial class CalculatorProgrammerRadixOperators : UserControl
     {
         var mode = sender switch
         {
-            RadioButton button when ReferenceEquals(button, LogicalShiftButton) => BitShiftMode.Logical,
-            RadioButton button when ReferenceEquals(button, RotateCircularButton) => BitShiftMode.RotateCircular,
-            RadioButton button when ReferenceEquals(button, RotateCarryShiftButton) => BitShiftMode.RotateCarry,
-            _ => BitShiftMode.Arithmetic
+            RadioButton button when ReferenceEquals(button, LogicalShiftButton) => CalculatorProgrammerRadixOperatorsBitShiftMode.Logical,
+            RadioButton button when ReferenceEquals(button, RotateCircularButton) => CalculatorProgrammerRadixOperatorsBitShiftMode.RotateCircular,
+            RadioButton button when ReferenceEquals(button, RotateCarryShiftButton) => CalculatorProgrammerRadixOperatorsBitShiftMode.RotateCarry,
+            _ => CalculatorProgrammerRadixOperatorsBitShiftMode.Arithmetic
         };
-
         SetBitShiftMode(mode);
         string resourceKey = mode switch
         {
-            BitShiftMode.Logical => "logicalShiftButtonSelected",
-            BitShiftMode.RotateCircular => "rotateCircularButtonSelected",
-            BitShiftMode.RotateCarry => "rotateCarryShiftButtonSelected",
+            CalculatorProgrammerRadixOperatorsBitShiftMode.Logical => "logicalShiftButtonSelected",
+            CalculatorProgrammerRadixOperatorsBitShiftMode.RotateCircular => "rotateCircularButtonSelected",
+            CalculatorProgrammerRadixOperatorsBitShiftMode.RotateCarry => "rotateCarryShiftButtonSelected",
             _ => "arithmeticShiftButtonSelected"
         };
-        Model?.SetBitshiftRadioButtonCheckedAnnouncement(
-            ViewModel.Common.AppResourceProvider.GetInstance().GetResourceString(resourceKey));
+        Model?.SetBitshiftRadioButtonCheckedAnnouncement(ViewModel.Common.AppResourceProvider.Instance.GetResourceString(resourceKey));
         BitShiftButton.FlyoutMenu?.Hide();
     }
 
-    private void SetBitShiftMode(BitShiftMode mode)
+    private void SetBitShiftMode(CalculatorProgrammerRadixOperatorsBitShiftMode mode)
     {
-        LshButton.IsVisible = mode == BitShiftMode.Arithmetic;
-        RshButton.IsVisible = mode == BitShiftMode.Arithmetic;
-        LshLogicalButton.IsVisible = mode == BitShiftMode.Logical;
-        RshLogicalButton.IsVisible = mode == BitShiftMode.Logical;
-        RolButton.IsVisible = mode == BitShiftMode.RotateCircular;
-        RorButton.IsVisible = mode == BitShiftMode.RotateCircular;
-        RolCarryButton.IsVisible = mode == BitShiftMode.RotateCarry;
-        RorCarryButton.IsVisible = mode == BitShiftMode.RotateCarry;
+        LshButton.IsVisible = mode == CalculatorProgrammerRadixOperatorsBitShiftMode.Arithmetic;
+        RshButton.IsVisible = mode == CalculatorProgrammerRadixOperatorsBitShiftMode.Arithmetic;
+        LshLogicalButton.IsVisible = mode == CalculatorProgrammerRadixOperatorsBitShiftMode.Logical;
+        RshLogicalButton.IsVisible = mode == CalculatorProgrammerRadixOperatorsBitShiftMode.Logical;
+        RolButton.IsVisible = mode == CalculatorProgrammerRadixOperatorsBitShiftMode.RotateCircular;
+        RorButton.IsVisible = mode == CalculatorProgrammerRadixOperatorsBitShiftMode.RotateCircular;
+        RolCarryButton.IsVisible = mode == CalculatorProgrammerRadixOperatorsBitShiftMode.RotateCarry;
+        RorCarryButton.IsVisible = mode == CalculatorProgrammerRadixOperatorsBitShiftMode.RotateCarry;
     }
 
     private void SetControlsEnabled(bool enabled)
     {
-        Control[] controls =
-        [
-            BitwiseButton, BitShiftButton, AndButton, OrButton, NotButton, NandButton, NorButton, XorButton,
-            LshButton, RshButton, LshLogicalButton, RshLogicalButton, RolButton, RorButton, RolCarryButton, RorCarryButton,
-            OpenParenthesisButton, CloseParenthesisButton, ModButton, DivideButton, MultiplyButton, MinusButton, PlusButton,
-            NegateButton, AButton, BButton, CButton, DButton, EButton, FButton
-        ];
+        Control[] controls = [BitwiseButton, BitShiftButton, AndButton, OrButton, NotButton, NandButton, NorButton, XorButton, LshButton, RshButton, LshLogicalButton, RshLogicalButton, RolButton, RorButton, RolCarryButton, RorCarryButton, OpenParenthesisButton, CloseParenthesisButton, ModButton, DivideButton, MultiplyButton, MinusButton, PlusButton, NegateButton, AButton, BButton, CButton, DButton, EButton, FButton];
         foreach (Control control in controls)
         {
             control.IsEnabled = enabled;

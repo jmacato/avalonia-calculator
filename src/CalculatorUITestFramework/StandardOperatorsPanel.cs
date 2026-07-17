@@ -10,22 +10,23 @@ namespace CalculatorUITestFramework
     /// </summary>
     public class StandardOperatorsPanel
     {
-        private WindowsDriver<WindowsElement> session => CalculatorDriver.Instance.CalculatorSession;
-        public NumberPad NumberPad = new NumberPad();
+        private readonly CalculatorDriver driver = CalculatorDriver.Instance;
+        private WindowsDriver<WindowsElement> Session => driver.CalculatorSession;
+        public NumberPad NumberPad { get; } = new();
 
-        public WindowsElement PercentButton => this.session.TryFindElementByAccessibilityId("percentButton");
-        public WindowsElement SquareRootButton => this.session.TryFindElementByAccessibilityId("squareRootButton");
-        public WindowsElement XPower2Button => this.session.TryFindElementByAccessibilityId("xpower2Button");
-        public WindowsElement XPower3Button => this.session.TryFindElementByAccessibilityId("xpower3Button");
-        public WindowsElement InvertButton => this.session.TryFindElementByAccessibilityId("invertButton");
-        public WindowsElement DivideButton => this.session.TryFindElementByAccessibilityId("divideButton");
-        public WindowsElement MultiplyButton => this.session.TryFindElementByAccessibilityId("multiplyButton");
-        public WindowsElement MinusButton => this.session.TryFindElementByAccessibilityId("minusButton");
-        public WindowsElement PlusButton => this.session.TryFindElementByAccessibilityId("plusButton");
-        public WindowsElement EqualButton => this.session.TryFindElementByAccessibilityId("equalButton");
-        public WindowsElement ClearEntryButton => this.session.TryFindElementByAccessibilityId("clearEntryButton");
-        public WindowsElement ClearButton => this.session.TryFindElementByAccessibilityId("clearButton");
-        public WindowsElement BackSpaceButton => this.session.TryFindElementByAccessibilityId("backSpaceButton");
-        public WindowsElement NegateButton => this.session.TryFindElementByAccessibilityId("negateButton");
+        public WindowsElement PercentButton => Session.TryFindElementByAccessibilityId("percentButton");
+        public WindowsElement SquareRootButton => Session.TryFindElementByAccessibilityId("squareRootButton");
+        public WindowsElement XPower2Button => Session.TryFindElementByAccessibilityId("xpower2Button");
+        public WindowsElement XPower3Button => Session.TryFindElementByAccessibilityId("xpower3Button");
+        public WindowsElement InvertButton => Session.TryFindElementByAccessibilityId("invertButton");
+        public WindowsElement DivideButton => Session.TryFindElementByAccessibilityId("divideButton");
+        public WindowsElement MultiplyButton => Session.TryFindElementByAccessibilityId("multiplyButton");
+        public WindowsElement MinusButton => Session.TryFindElementByAccessibilityId("minusButton");
+        public WindowsElement PlusButton => Session.TryFindElementByAccessibilityId("plusButton");
+        public WindowsElement EqualButton => Session.TryFindElementByAccessibilityId("equalButton");
+        public WindowsElement ClearEntryButton => Session.TryFindElementByAccessibilityId("clearEntryButton");
+        public WindowsElement ClearButton => Session.TryFindElementByAccessibilityId("clearButton");
+        public WindowsElement BackSpaceButton => Session.TryFindElementByAccessibilityId("backSpaceButton");
+        public WindowsElement NegateButton => Session.TryFindElementByAccessibilityId("negateButton");
     }
 }

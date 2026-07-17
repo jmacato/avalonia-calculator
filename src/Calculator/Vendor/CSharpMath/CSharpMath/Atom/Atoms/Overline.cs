@@ -3,7 +3,8 @@ using System.Text;
 namespace CSharpMath.Atom.Atoms;
 
 /// <summary>An overlined atom</summary>
-public sealed class Overline(MathList innerList) : MathAtom, IMathListContainer {
+public sealed class Overline(MathList innerList) : MathAtom, IMathListContainer
+{
     public MathList InnerList { get; } = innerList;
 
     System.Collections.Generic.IEnumerable<MathList> IMathListContainer.InnerLists =>

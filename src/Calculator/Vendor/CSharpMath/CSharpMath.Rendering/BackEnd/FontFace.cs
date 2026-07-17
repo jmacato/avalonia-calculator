@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Concurrent;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Avalonia;
 using Avalonia.Media;
 using HarfBuzzSharp;
@@ -11,18 +11,16 @@ using HarfBuzzFont = HarfBuzzSharp.Font;
 
 namespace CSharpMath.Rendering.BackEnd;
 
-internal sealed class FontFace
+internal sealed class FontFace : IDisposable
 {
-    private static readonly ConditionalWeakTable<GlyphTypeface, FontFace> s_cache = new();
     private readonly ConcurrentDictionary<ushort, Rect> _inkBounds = new();
     private readonly Face _harfBuzzFace;
     private readonly HarfBuzzFont _harfBuzzFont;
-
+    private int _disposed;
     private FontFace(GlyphTypeface typeface)
     {
         Typeface = typeface;
         DesignEmHeight = typeface.Metrics.DesignEmHeight;
-
         if (!typeface.PlatformTypeface.TryGetStream(out Stream? stream))
         {
             throw new InvalidDataException($"The font '{typeface.FamilyName}' does not expose its font data.");
@@ -39,181 +37,76 @@ internal sealed class FontFace
         HasMathData = HarfBuzzMath.HasData(_harfBuzzFace.Handle);
     }
 
-    internal static FontFace Get(GlyphTypeface typeface) =>
-        s_cache.GetValue(typeface, static value => new FontFace(value));
-
+    // HarfBuzz fonts carry mutable native scale/cache state. A face therefore
+    // belongs to one MathPainter instead of being shared by every math view in
+    // the process; sharing allowed a retiring view to corrupt a newly measured
+    // view during rapid equation changes.
+    internal static FontFace Get(GlyphTypeface typeface) => new(typeface);
     internal GlyphTypeface Typeface { get; }
-
     internal float DesignEmHeight { get; }
-
     internal bool HasMathData { get; }
 
-    internal ushort FindGlyph(int codepoint) =>
-        Typeface.CharacterToGlyphMap.TryGetGlyph(codepoint, out ushort glyphId) ? glyphId : (ushort)0;
+    internal ushort FindGlyph(int codepoint)
+        => Typeface.CharacterToGlyphMap.TryGetGlyph(codepoint, out ushort glyphId)
+            ? glyphId
+            : (ushort)0;
 
     internal float GetAdvance(ushort glyphId)
     {
         if (!Typeface.TryGetHorizontalGlyphAdvance(glyphId, out ushort advance))
         {
-            throw new InvalidDataException(
-                $"The font '{Typeface.FamilyName}' has no horizontal advance for glyph {glyphId}.");
+            throw new InvalidDataException($"The font '{Typeface.FamilyName}' has no horizontal advance for glyph {glyphId}.");
         }
 
         return advance;
     }
 
-    internal Rect GetInkBounds(ushort glyphId) =>
-        _inkBounds.GetOrAdd(glyphId, CreateInkBounds);
+    internal Rect GetInkBounds(ushort glyphId)
+        => _inkBounds.GetOrAdd(glyphId, CreateInkBounds);
 
     private Rect CreateInkBounds(ushort glyphId)
     {
         var glyphInfo = new AvaloniaGlyphInfo(glyphId, 0, GetAdvance(glyphId));
-        using var glyphRun = new GlyphRun(
-            Typeface,
-            DesignEmHeight,
-            ReadOnlyMemory<char>.Empty,
-            new[] { glyphInfo },
-            new Point(0, 0));
+        using var glyphRun = new GlyphRun(Typeface, DesignEmHeight, ReadOnlyMemory<char>.Empty, new[] { glyphInfo }, new Point(0, 0));
         return glyphRun.InkBounds;
     }
 
     internal int GetConstant(OpenTypeMathConstant constant) =>
-        HarfBuzzMath.GetConstant(_harfBuzzFont.Handle, constant);
+        WithHarfBuzzFont(handle => HarfBuzzMath.GetConstant(handle, constant));
 
     internal int GetItalicCorrection(ushort glyphId) =>
-        HarfBuzzMath.GetItalicCorrection(_harfBuzzFont.Handle, glyphId);
+        WithHarfBuzzFont(handle => HarfBuzzMath.GetItalicCorrection(handle, glyphId));
 
     internal int GetTopAccentAttachment(ushort glyphId) =>
-        HarfBuzzMath.GetTopAccentAttachment(_harfBuzzFont.Handle, glyphId);
+        WithHarfBuzzFont(handle => HarfBuzzMath.GetTopAccentAttachment(handle, glyphId));
 
     internal int GetMinConnectorOverlap(Direction direction) =>
-        HarfBuzzMath.GetMinConnectorOverlap(_harfBuzzFont.Handle, direction);
+        WithHarfBuzzFont(handle => HarfBuzzMath.GetMinConnectorOverlap(handle, direction));
 
     internal OpenTypeMathGlyphVariant[] GetVariants(ushort glyphId, Direction direction) =>
-        HarfBuzzMath.GetVariants(_harfBuzzFont.Handle, glyphId, direction);
+        WithHarfBuzzFont(handle => HarfBuzzMath.GetVariants(handle, glyphId, direction));
 
     internal OpenTypeMathGlyphPart[] GetAssembly(ushort glyphId, Direction direction) =>
-        HarfBuzzMath.GetAssembly(_harfBuzzFont.Handle, glyphId, direction);
-}
+        WithHarfBuzzFont(handle => HarfBuzzMath.GetAssembly(handle, glyphId, direction));
 
-internal static unsafe partial class HarfBuzzMath
-{
-    private const string LibraryName = "libHarfBuzzSharp";
-
-    internal static bool HasData(IntPtr face) => hb_ot_math_has_data(face) != 0;
-
-    internal static int GetConstant(IntPtr font, OpenTypeMathConstant constant) =>
-        hb_ot_math_get_constant(font, constant);
-
-    internal static int GetItalicCorrection(IntPtr font, uint glyph) =>
-        hb_ot_math_get_glyph_italics_correction(font, glyph);
-
-    internal static int GetTopAccentAttachment(IntPtr font, uint glyph) =>
-        hb_ot_math_get_glyph_top_accent_attachment(font, glyph);
-
-    internal static int GetMinConnectorOverlap(IntPtr font, Direction direction) =>
-        hb_ot_math_get_min_connector_overlap(font, direction);
-
-    internal static OpenTypeMathGlyphVariant[] GetVariants(
-        IntPtr font,
-        uint glyph,
-        Direction direction)
+    private TResult WithHarfBuzzFont<TResult>(Func<IntPtr, TResult> action)
     {
-        uint count = 0;
-        uint total = hb_ot_math_get_glyph_variants(font, glyph, direction, 0, &count, null);
-        if (total == 0)
-        {
-            return [];
-        }
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
-        var variants = new OpenTypeMathGlyphVariant[checked((int)total)];
-        count = total;
-        fixed (OpenTypeMathGlyphVariant* variantsPointer = variants)
-        {
-            hb_ot_math_get_glyph_variants(font, glyph, direction, 0, &count, variantsPointer);
-        }
-
-        if (count != total)
-        {
-            Array.Resize(ref variants, checked((int)count));
-        }
-
-        return variants;
+        return action(_harfBuzzFont.Handle);
     }
 
-    internal static OpenTypeMathGlyphPart[] GetAssembly(
-        IntPtr font,
-        uint glyph,
-        Direction direction)
+    ~FontFace() => Dispose();
+
+    public void Dispose()
     {
-        uint count = 0;
-        int italicCorrection;
-        uint total = hb_ot_math_get_glyph_assembly(
-            font,
-            glyph,
-            direction,
-            0,
-            &count,
-            null,
-            &italicCorrection);
-        if (total == 0)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
-            return [];
+            return;
         }
 
-        var parts = new OpenTypeMathGlyphPart[checked((int)total)];
-        count = total;
-        fixed (OpenTypeMathGlyphPart* partsPointer = parts)
-        {
-            hb_ot_math_get_glyph_assembly(
-                font,
-                glyph,
-                direction,
-                0,
-                &count,
-                partsPointer,
-                &italicCorrection);
-        }
-
-        if (count != total)
-        {
-            Array.Resize(ref parts, checked((int)count));
-        }
-
-        return parts;
+        _harfBuzzFont.Dispose();
+        _harfBuzzFace.Dispose();
+        GC.SuppressFinalize(this);
     }
-
-    [LibraryImport(LibraryName)]
-    private static partial int hb_ot_math_has_data(IntPtr face);
-
-    [LibraryImport(LibraryName)]
-    private static partial int hb_ot_math_get_constant(IntPtr font, OpenTypeMathConstant constant);
-
-    [LibraryImport(LibraryName)]
-    private static partial int hb_ot_math_get_glyph_italics_correction(IntPtr font, uint glyph);
-
-    [LibraryImport(LibraryName)]
-    private static partial int hb_ot_math_get_glyph_top_accent_attachment(IntPtr font, uint glyph);
-
-    [LibraryImport(LibraryName)]
-    private static partial int hb_ot_math_get_min_connector_overlap(IntPtr font, Direction direction);
-
-    [LibraryImport(LibraryName)]
-    private static partial uint hb_ot_math_get_glyph_variants(
-        IntPtr font,
-        uint glyph,
-        Direction direction,
-        uint startOffset,
-        uint* variantsCount,
-        OpenTypeMathGlyphVariant* variants);
-
-    [LibraryImport(LibraryName)]
-    private static partial uint hb_ot_math_get_glyph_assembly(
-        IntPtr font,
-        uint glyph,
-        Direction direction,
-        uint startOffset,
-        uint* partsCount,
-        OpenTypeMathGlyphPart* parts,
-        int* italicsCorrection);
 }

@@ -1354,7 +1354,6 @@ public class RatPak
     // SIGN returns the sign of the rational
     static int32_t SIGN(PRAT prat) => prat._pp._sign * prat._pq._sign;
 
-    // ReSharper disable once RedundantAssignment
     static void createrat([NotNull] ref PRAT? y) => y = _createrat();
 
     public static RAT createrat() => _createrat();

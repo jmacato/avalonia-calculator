@@ -2,13 +2,12 @@
 // Licensed under the MIT License.
 
 
-// ReSharper disable once CheckNamespace
 
 using System;
 
 namespace CalcEngine;
 
-public partial class Rational
+internal sealed partial class Rational
 {
     // Default Base/Radix to use for Rational calculations
     // RatPack calculations currently support up to Base64.
@@ -67,7 +66,7 @@ public partial class Rational
         friend bool operator<=(Rational const& lhs, Rational const& rhs);
         friend bool operator>=(Rational const& lhs, Rational const& rhs);
 
-        std::wstring ToString(uint32_t radix, NumberFormat format, int32_t precision) const;
+        std::WString ToString(uint32_t radix, RatPakNumberFormat format, int32_t precision) const;
         uint64_t ToUInt64_t() const;
 
     private:

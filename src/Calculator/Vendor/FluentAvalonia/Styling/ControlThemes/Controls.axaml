@@ -42,21 +42,12 @@
                 
                 
                 
-                <!-- Calculator uses NavigationView, SettingsExpander and ProgressRing only.
-                     Keeping the vendored theme surface scoped to those controls prevents
-                     every optional FluentAvalonia template from becoming a Wasm root. -->
+                <!-- Calculator uses the shared NavigationView resources, SettingsExpander,
+                     and ProgressRing. The application navigation itself uses Avalonia's
+                     SplitView and ListBox controls. -->
                 <MergeResourceInclude Source="/Styling/ControlThemes/FAControls/NavigationView/NavigationViewSharedStyles.axaml" />
-                <MergeResourceInclude Source="/Styling/ControlThemes/FAControls/NavigationView/NavigationViewBackButtonStyles.axaml" />
-                <MergeResourceInclude Source="/Styling/ControlThemes/FAControls/NavigationView/NavigationViewItemHeaderStyles.axaml" />
-                <MergeResourceInclude Source="/Styling/ControlThemes/FAControls/NavigationView/NavigationViewItemSeparatorStyles.axaml" />
-                <MergeResourceInclude Source="/Styling/ControlThemes/FAControls/NavigationView/NavigationViewItemPresenterStyles.axaml" />
-                <MergeResourceInclude Source="/Styling/ControlThemes/FAControls/NavigationView/NavigationViewItemStyles.axaml" />
-                <MergeResourceInclude Source="/Styling/ControlThemes/FAControls/NavigationView/NavigationViewStyles.axaml" />
                 <MergeResourceInclude Source="/Styling/ControlThemes/FAControls/SettingsExpander/SettingsExpanderStyles.axaml" />
                 <MergeResourceInclude Source="/Styling/ControlThemes/FAControls/SettingsExpander/SettingsExpanderItemStyles.axaml" />
-                <!-- TextBoxStyles uses FATextCommandBarFlyout for every editable
-                     field, so retain its compact command-bar template. -->
-                <MergeResourceInclude Source="/Styling/ControlThemes/FAControls/CommandBar/CommandBarFlyoutCommandBarStyles.axaml" />
                 <MergeResourceInclude Source="/Styling/ControlThemes/FAControls/ProgressRingStyles.axaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>

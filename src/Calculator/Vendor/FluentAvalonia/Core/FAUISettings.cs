@@ -1,41 +1,18 @@
-﻿using System;
-using System.Runtime.CompilerServices;
-using FluentAvalonia.Interop;
+using System.Threading;
 
 namespace FluentAvalonia.Core;
 
 /// <summary>
 /// Provides settings related to the behavior of UI elements, like animation, etc.
 /// </summary>
-public class FAUISettings
+public static class FAUISettings
 {
-    static FAUISettings()
-    {
-        s_Instance = new FAUISettings();
-    }
-
     /// <summary>
     /// Checks whether animations are enabled or have been disabled
     /// </summary>
     public static bool AreAnimationsEnabled()
     {
-        return s_Instance._areAnimationsEnabled;
-    }
-
-    /// <summary>
-    /// Gets whether the TabView should display the preview popup when reordering
-    /// </summary>
-    public static bool UseTabViewDragReorderPreview()
-    {
-        return s_Instance._useTabViewDragReorderPreview;
-    }
-
-    /// <summary>
-    /// Sets whether the TabView should display the preview popup when reordering
-    /// </summary>
-    public static void SetUseTabViewDragReorderPreview(bool use)
-    {
-        s_Instance._useTabViewDragReorderPreview = use;
+        return Volatile.Read(ref s_animationsEnabled) != 0;
     }
 
     /// <summary>
@@ -43,32 +20,8 @@ public class FAUISettings
     /// </summary>
     public static void SetAnimationsEnabledAtAppLevel(bool isEnabled)
     {
-        s_Instance._areAnimationsEnabled = isEnabled;
+        Volatile.Write(ref s_animationsEnabled, isEnabled ? 1 : 0);
     }
 
-    /// <summary>
-    /// Gets the minimum size required for a drag-drop operation
-    /// </summary>
-    public static void GetSystemDragSize(double scaling, out double cxDrag, out double cyDrag)
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            GetWin32DragSize(scaling, out cxDrag, out cyDrag);
-        }
-        else
-        {
-            cxDrag = 4 * scaling;
-            cyDrag = 4 * scaling;
-        }        
-    }
-
-    private static void GetWin32DragSize(double scaling, out double cxDrag, out double cyDrag)
-    {
-        cxDrag = Win32Interop.GetSystemMetricsWithFallback(68, (uint)Math.Round(96 * scaling));
-        cyDrag = Win32Interop.GetSystemMetricsWithFallback(69, (uint)Math.Round(96 * scaling));
-    }
-
-    private static readonly FAUISettings s_Instance;
-    private bool _areAnimationsEnabled = true;
-    private bool _useTabViewDragReorderPreview = true;
+    private static int s_animationsEnabled = 1;
 }

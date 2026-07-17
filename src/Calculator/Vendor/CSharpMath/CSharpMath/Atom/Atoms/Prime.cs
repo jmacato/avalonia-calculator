@@ -1,16 +1,19 @@
 namespace CSharpMath.Atom.Atoms;
 
-public sealed class Prime(int length) : MathAtom(PrimeOfLength(length)) {
+public sealed class Prime(int length) : MathAtom(PrimeOfLength(length))
+{
     public int Length { get; } = length;
     public override bool ScriptsAllowed => true;
     public new Prime Clone(bool finalize) => (Prime)base.Clone(finalize);
     protected override MathAtom CloneInside(bool finalize) => new Prime(Length);
-    private static string PrimeOfLength(int length) {
+    private static string PrimeOfLength(int length)
+    {
         if (length <= 0)
             throw new System.ArgumentOutOfRangeException(
                 nameof(length), length, "Only positive length is allowed.");
         var sb = new System.Text.StringBuilder();
-        Append: switch (length) {
+    Append: switch (length)
+        {
             //glyphs are already superscripted
             //pick appropriate codepoint depending on number of primes
             case 1: sb.Append('\u2032'); break;

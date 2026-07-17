@@ -13,7 +13,7 @@ using System.Text.RegularExpressions;
 namespace CalculatorUITests
 {
     [TestClass]
-    public class StandardModeFunctionalTests
+    public sealed class StandardModeFunctionalTests
     {
         private static readonly StandardCalculatorPage page = new StandardCalculatorPage();
 
@@ -71,7 +71,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void MouseInput_AddSubtractClearClearEntryTwoThree()
+        public void MouseInputAddSubtractClearClearEntryTwoThree()
         {
             //Verifies the +, -, CE, C, 2, and 3 button
             page.StandardOperators.NumberPad.Num2Button.Click();
@@ -89,12 +89,12 @@ namespace CalculatorUITests
             page.StandardOperators.ClearEntryButton.Click();
             Assert.AreEqual("0", page.CalculatorResults.GetCalculatorResultText()); //verifies the CE button
             page.StandardOperators.ClearButton.Click();
-            page.CalculatorResults.IsResultsExpressionClear(); //verifies the C button
+            CalculatorResults.IsResultsExpressionClear(); //verifies the C button
         }
 
         [TestMethod]
         [Priority(0)]
-        public void MouseInput_MultiplyDivideEqualFourFiveSix()
+        public void MouseInputMultiplyDivideEqualFourFiveSix()
         {
             //Verifies the multiplication, and division, and the x, ÷, equal, 4, 5, and 6 button
             page.StandardOperators.NumberPad.Num4Button.Click();
@@ -115,7 +115,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void MouseInput_InvertSquaredSevenEightNine()
+        public void MouseInputInvertSquaredSevenEightNine()
         {
             //Verifies the invert, squared, 7, 8, and 9 button
             page.StandardOperators.NumberPad.Num7Button.Click();
@@ -136,7 +136,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void MouseInput_PercentSquareRootBackspaceDecimalNegateOneZero()
+        public void MouseInputPercentSquareRootBackspaceDecimalNegateOneZero()
         {
             //Verifies the %, square root, backspace, decimal, negate, 1, and 0 button
             page.StandardOperators.NumberPad.Num1Button.Click();
@@ -163,7 +163,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void MouseInput_HistoryButtons()
+        public void MouseInputHistoryButtons()
         {
             //Verifies history buttons
             page.StandardOperators.NumberPad.Num4Button.Click();
@@ -175,38 +175,38 @@ namespace CalculatorUITests
             page.HistoryPanel.ResizeWindowToDisplayHistoryButton();
             page.HistoryPanel.HistoryButton.Click();
             var historyFlyoutItems = page.HistoryPanel.GetAllHistoryFlyoutListViewItems();
-            Assert.IsTrue(historyFlyoutItems[0].GetValue().Equals("3.333333333333333", StringComparison.InvariantCultureIgnoreCase)); //verifies History button
-            Assert.IsTrue(historyFlyoutItems[0].GetExpression().Equals("20 ÷ 6=", StringComparison.InvariantCultureIgnoreCase)); //verifies History button
-            Assert.IsTrue(historyFlyoutItems[1].GetValue().Equals("20", StringComparison.InvariantCultureIgnoreCase)); //verifies History button
-            Assert.IsTrue(historyFlyoutItems[1].GetExpression().Equals("4 × 5=", StringComparison.InvariantCultureIgnoreCase)); //verifies History button
+            Assert.IsTrue(historyFlyoutItems[0].GetValue().Equals("3.333333333333333", StringComparison.OrdinalIgnoreCase)); //verifies History button
+            Assert.IsTrue(historyFlyoutItems[0].GetExpression().Equals("20 ÷ 6=", StringComparison.OrdinalIgnoreCase)); //verifies History button
+            Assert.IsTrue(historyFlyoutItems[1].GetValue().Equals("20", StringComparison.OrdinalIgnoreCase)); //verifies History button
+            Assert.IsTrue(historyFlyoutItems[1].GetExpression().Equals("4 × 5=", StringComparison.OrdinalIgnoreCase)); //verifies History button
             page.HistoryPanel.ResizeWindowToDisplayHistoryLabel();
             var historyItems = page.HistoryPanel.GetAllHistoryListViewItems();
-            Assert.IsTrue(historyItems[0].GetValue().Equals("3.333333333333333", StringComparison.InvariantCultureIgnoreCase)); //verifies History button
-            Assert.IsTrue(historyItems[0].GetExpression().Equals("20 ÷ 6=", StringComparison.InvariantCultureIgnoreCase)); //verifies History button
-            Assert.IsTrue(historyItems[1].GetValue().Equals("20", StringComparison.InvariantCultureIgnoreCase)); //verifies History button
-            Assert.IsTrue(historyItems[1].GetExpression().Equals("4 × 5=", StringComparison.InvariantCultureIgnoreCase)); //verifies History button
+            Assert.IsTrue(historyItems[0].GetValue().Equals("3.333333333333333", StringComparison.OrdinalIgnoreCase)); //verifies History button
+            Assert.IsTrue(historyItems[0].GetExpression().Equals("20 ÷ 6=", StringComparison.OrdinalIgnoreCase)); //verifies History button
+            Assert.IsTrue(historyItems[1].GetValue().Equals("20", StringComparison.OrdinalIgnoreCase)); //verifies History button
+            Assert.IsTrue(historyItems[1].GetExpression().Equals("4 × 5=", StringComparison.OrdinalIgnoreCase)); //verifies History button
             page.HistoryPanel.ClearHistoryButton.Click();
             Assert.IsNotNull(CalculatorDriver.Instance.CalculatorSession.FindElementByAccessibilityId("HistoryEmpty")); //verifies the History panel's clear history button
         }
 
         [TestMethod]
         [Priority(0)]
-        public void MouseInput_MemoryButtons()
+        public void MouseInputMemoryButtons()
         {
             //Verifies memory buttons
             page.StandardOperators.NumberPad.Num1Button.Click();
             page.MemoryPanel.NumberpadMSButton.Click();
             var memoryItems = page.MemoryPanel.GetAllMemoryListViewItems();
-            Assert.IsTrue(memoryItems[0].GetValue().Equals("1", StringComparison.InvariantCultureIgnoreCase)); //verifies memory button
+            Assert.IsTrue(memoryItems[0].Value.Equals("1", StringComparison.OrdinalIgnoreCase)); //verifies memory button
             page.MemoryPanel.NumberpadMPlusButton.Click();
-            Assert.IsTrue(memoryItems[0].GetValue().Equals("2", StringComparison.InvariantCultureIgnoreCase)); //verifies memory plus button
+            Assert.IsTrue(memoryItems[0].Value.Equals("2", StringComparison.OrdinalIgnoreCase)); //verifies memory plus button
             page.MemoryPanel.NumberpadMRButton.Click();
             Assert.AreEqual("2", page.CalculatorResults.GetCalculatorResultText()); //verifies memory recall button
             page.StandardOperators.MinusButton.Click();
             page.StandardOperators.NumberPad.Num1Button.Click();
             page.StandardOperators.EqualButton.Click();
             page.MemoryPanel.NumberpadMMinusButton.Click();
-            Assert.IsTrue(memoryItems[0].GetValue().Equals("1", StringComparison.InvariantCultureIgnoreCase));
+            Assert.IsTrue(memoryItems[0].Value.Equals("1", StringComparison.OrdinalIgnoreCase));
             Assert.AreEqual("1", page.CalculatorResults.GetCalculatorResultText()); //verifies MemMinus button
             page.MemoryPanel.NumberpadMCButton.Click();
             Assert.IsNotNull(CalculatorDriver.Instance.CalculatorSession.FindElementByAccessibilityId("MemoryPaneEmpty")); //verifies the Memory panel's memory clear button
@@ -225,29 +225,29 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void KeyboardInput_HotkeysToChangeToBasicModes()
+        public void KeyboardInputHotkeysToChangeToBasicModes()
         {
             // Verify Hotkeys for changing modes
             CalculatorApp.EnsureCalculatorHasFocus();
             CalculatorApp.Window.SendKeys(Keys.Alt + "2" + Keys.Alt);
-            Assert.AreEqual("Scientific", CalculatorApp.GetCalculatorHeaderText()); //verifies Scientific navigation hotkey
+            Assert.AreEqual("Scientific", CalculatorApp.CalculatorHeaderText); //verifies Scientific navigation hotkey
 
             //To-do: Waiting for hotkey difinitions to become settled once graphing calculator is full add into the build process 
             //CalculatorApp.EnsureCalculatorHasFocus();
             //CalculatorApp.Window.SendKeys(Keys.Alt + "4" + Keys.Alt);
-            //Assert.AreEqual("Programmer", CalculatorApp.GetCalculatorHeaderText()); //verifies Programmer navigation hotkey
+            //Assert.AreEqual("Programmer", CalculatorApp.CalculatorHeaderText); //verifies Programmer navigation hotkey
             //CalculatorApp.EnsureCalculatorHasFocus();
             //CalculatorApp.Window.SendKeys(Keys.Alt + "5" + Keys.Alt);
-            //Assert.AreEqual("Date Calculation", CalculatorApp.GetCalculatorHeaderText()); //verifies Date Calculation navigation hotkey
+            //Assert.AreEqual("Date Calculation", CalculatorApp.CalculatorHeaderText); //verifies Date Calculation navigation hotkey
 
             CalculatorApp.EnsureCalculatorHasFocus();
             CalculatorApp.Window.SendKeys(Keys.Alt + "1" + Keys.Alt);
-            Assert.AreEqual("Standard", CalculatorApp.GetCalculatorHeaderText()); //verifies Standard navigation hotkey
+            Assert.AreEqual("Standard", CalculatorApp.CalculatorHeaderText); //verifies Standard navigation hotkey
         }
 
         [TestMethod]
         [Priority(1)]
-        public void KeyboardInput_AddSubtractClearClearEntryTwoThree()
+        public void KeyboardInputAddSubtractClearClearEntryTwoThree()
         {
             //Verifies the +, -, CE, C, 2, and 3 button
             CalculatorApp.EnsureCalculatorHasFocus();
@@ -268,12 +268,12 @@ namespace CalculatorUITests
             Assert.AreEqual("0", page.CalculatorResults.GetCalculatorResultText()); //verifies the CE hotkey
             CalculatorApp.EnsureCalculatorHasFocus();
             CalculatorApp.Window.SendKeys(Keys.Escape);
-            page.CalculatorResults.IsResultsExpressionClear(); //verifies the C hotkey
+            CalculatorResults.IsResultsExpressionClear(); //verifies the C hotkey
         }
 
         [TestMethod]
         [Priority(1)]
-        public void KeyboardInput_MultiplyDivideEqualFourFiveSix()
+        public void KeyboardInputMultiplyDivideEqualFourFiveSix()
         {
             //Verifies the multiplication, division, and equal, 4, 5, and 6 key input
             CalculatorApp.EnsureCalculatorHasFocus();
@@ -295,7 +295,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void KeyboardInput_InvertSquaredSevenEightNine()
+        public void KeyboardInputInvertSquaredSevenEightNine()
         {
             //Verifies the invert, squared, 7, 8, and 9 key input
             CalculatorApp.EnsureCalculatorHasFocus();
@@ -318,7 +318,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void KeyboardInput_PercentSquareRootBackspaceDecimalNegateOneZero()
+        public void KeyboardInputPercentSquareRootBackspaceDecimalNegateOneZero()
         {
             //Verifies the %, square root, backspace, decimal, negate, 1, and 0 button
             CalculatorApp.EnsureCalculatorHasFocus();
@@ -347,16 +347,16 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void KeyboardInput_MemoryHotkeys()
+        public void KeyboardInputMemoryHotkeys()
         {
             //Verifies memory buttons
             CalculatorApp.EnsureCalculatorHasFocus();
             CalculatorApp.Window.SendKeys("1");
             CalculatorApp.Window.SendKeys(Keys.Control + "m" + Keys.Control);
             var memoryItems = page.MemoryPanel.GetAllMemoryListViewItems();
-            Assert.IsTrue(memoryItems[0].GetValue().Equals("1", StringComparison.InvariantCultureIgnoreCase)); //verifies memory hotkey
+            Assert.IsTrue(memoryItems[0].Value.Equals("1", StringComparison.OrdinalIgnoreCase)); //verifies memory hotkey
             CalculatorApp.Window.SendKeys(Keys.Control + "p" + Keys.Control);
-            Assert.IsTrue(memoryItems[0].GetValue().Equals("2", StringComparison.InvariantCultureIgnoreCase)); //verifies memory plus hotkey
+            Assert.IsTrue(memoryItems[0].Value.Equals("2", StringComparison.OrdinalIgnoreCase)); //verifies memory plus hotkey
             CalculatorApp.Window.SendKeys(Keys.Control + "r" + Keys.Control);
             Assert.AreEqual("2", page.CalculatorResults.GetCalculatorResultText()); //verifies memory recall hotkey
             CalculatorApp.Window.SendKeys(Keys.Subtract);
@@ -364,7 +364,7 @@ namespace CalculatorUITests
             CalculatorApp.Window.SendKeys(Keys.Equal);
             CalculatorApp.Window.SendKeys(Keys.Subtract);
             CalculatorApp.Window.SendKeys(Keys.Control + "q" + Keys.Control);
-            Assert.IsTrue(memoryItems[0].GetValue().Equals("1", StringComparison.InvariantCultureIgnoreCase));
+            Assert.IsTrue(memoryItems[0].Value.Equals("1", StringComparison.OrdinalIgnoreCase));
             Assert.AreEqual("1", page.CalculatorResults.GetCalculatorResultText()); //verifies MemMinus hotkey
             CalculatorApp.Window.SendKeys(Keys.Control + "l" + Keys.Control);
             Assert.IsNotNull(CalculatorDriver.Instance.CalculatorSession.FindElementByAccessibilityId("MemoryPaneEmpty")); //verifies the Memory panel's memory clear button hotkey
@@ -372,7 +372,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void KeyboardInput_HistoryHotkeys()
+        public void KeyboardInputHistoryHotkeys()
         {
             //Verifies history buttons
             CalculatorApp.EnsureCalculatorHasFocus();
@@ -387,16 +387,16 @@ namespace CalculatorUITests
             var historyFlyoutItems = page.HistoryPanel.GetAllHistoryFlyoutListViewItems();
             var historyExpression0 = Regex.Replace(historyFlyoutItems[0].GetExpression(), @"\s", string.Empty);
             var historyExpression1 = Regex.Replace(historyFlyoutItems[1].GetExpression(), @"\s", string.Empty);
-            Assert.IsTrue(historyFlyoutItems[0].GetValue().Equals("10", StringComparison.InvariantCultureIgnoreCase)); //verifies History button hotkeys
-            Assert.IsTrue(historyExpression0.Equals("20÷2=", StringComparison.InvariantCultureIgnoreCase)); //verifies History button hotkeys
-            Assert.IsTrue(historyFlyoutItems[1].GetValue().Equals("20", StringComparison.InvariantCultureIgnoreCase)); //verifies History button hotkeys
-            Assert.IsTrue(historyExpression1.Equals("4×5=", StringComparison.InvariantCultureIgnoreCase)); //verifies History button hotkeys
+            Assert.IsTrue(historyFlyoutItems[0].GetValue().Equals("10", StringComparison.OrdinalIgnoreCase)); //verifies History button hotkeys
+            Assert.IsTrue(historyExpression0.Equals("20÷2=", StringComparison.OrdinalIgnoreCase)); //verifies History button hotkeys
+            Assert.IsTrue(historyFlyoutItems[1].GetValue().Equals("20", StringComparison.OrdinalIgnoreCase)); //verifies History button hotkeys
+            Assert.IsTrue(historyExpression1.Equals("4×5=", StringComparison.OrdinalIgnoreCase)); //verifies History button hotkeys
             page.HistoryPanel.ResizeWindowToDisplayHistoryLabel();
             var historyItems = page.HistoryPanel.GetAllHistoryListViewItems();
-            Assert.IsTrue(historyItems[0].GetValue().Equals("10", StringComparison.InvariantCultureIgnoreCase));
-            Assert.IsTrue(historyItems[1].GetValue().Equals("20", StringComparison.InvariantCultureIgnoreCase));
-            Assert.IsTrue(historyExpression0.Equals("20÷2=", StringComparison.InvariantCultureIgnoreCase)); //verifies History button hotkeys
-            Assert.IsTrue(historyExpression1.Equals("4×5=", StringComparison.InvariantCultureIgnoreCase)); //verifies History button hotkeys
+            Assert.IsTrue(historyItems[0].GetValue().Equals("10", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(historyItems[1].GetValue().Equals("20", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(historyExpression0.Equals("20÷2=", StringComparison.OrdinalIgnoreCase)); //verifies History button hotkeys
+            Assert.IsTrue(historyExpression1.Equals("4×5=", StringComparison.OrdinalIgnoreCase)); //verifies History button hotkeys
             CalculatorApp.Window.SendKeys(Keys.Shift + Keys.Control + "d" + Keys.Control + Keys.Shift);
             Assert.IsNotNull(CalculatorDriver.Instance.CalculatorSession.FindElementByAccessibilityId("HistoryEmpty")); //verifies the History panel's clear history button hotkeys
         }
@@ -414,7 +414,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void MixedInput_Operators_Addition()
+        public void MixedInputOperatorsAddition()
         {
 
             //Verify Addition
@@ -429,7 +429,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void MixedInput_Operators_Subtraction()
+        public void MixedInputOperatorsSubtraction()
         {
             //Verify Subtraction
             page.StandardOperators.NumberPad.Input(3);
@@ -443,7 +443,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void MixedInput_Operators_Multiplication()
+        public void MixedInputOperatorsMultiplication()
         {
             //Verify Multiplication
             page.StandardOperators.NumberPad.Input(3);
@@ -457,7 +457,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void MixedInput_Operators_Division()
+        public void MixedInputOperatorsDivision()
         {
             //Verify Division
             page.StandardOperators.NumberPad.Input(6);
@@ -471,7 +471,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void MixedInput_Operators_Reciprocal()
+        public void MixedInputOperatorsReciprocal()
         {
             //Verify Reciprocal
             page.StandardOperators.NumberPad.Input(2);
@@ -483,7 +483,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void MixedInput_Operators_Square()
+        public void MixedInputOperatorsSquare()
         {
             //Verify Square
             page.StandardOperators.NumberPad.Input(3);
@@ -496,7 +496,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void MixedInput_Operators_SquareRoot()
+        public void MixedInputOperatorsSquareRoot()
         {
             //Verify Square root
             page.StandardOperators.NumberPad.Input(9);
@@ -509,7 +509,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void MixedInput_Operators_PercentAdditionSubtraction()
+        public void MixedInputOperatorsPercentAdditionSubtraction()
         {
             //Verify Percent addition/subtraction
             page.StandardOperators.NumberPad.Input(10);
@@ -524,7 +524,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void MixedInput_Operators_PercentMultiplicationDivision()
+        public void MixedInputOperatorsPercentMultiplicationDivision()
         {
             //Verify Percent multiplication/division
             page.StandardOperators.NumberPad.Input(10);
@@ -539,7 +539,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void MixedInput_Operators_PositiveNegative()
+        public void MixedInputOperatorsPositiveNegative()
         {
             //Verify Positive/Negative (plus/minus)
             page.StandardOperators.NumberPad.Input(3);
@@ -554,7 +554,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void MixedInput_Operators_Decimal()
+        public void MixedInputOperatorsDecimal()
         {
             //Verify Decimal
             page.StandardOperators.NumberPad.Input(3);
@@ -568,7 +568,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void MixedInput_Operators_Equal()
+        public void MixedInputOperatorsEqual()
         {
             //Verify Equal
             page.HistoryPanel.ClearHistory();
@@ -577,16 +577,16 @@ namespace CalculatorUITests
             CalculatorApp.Window.SendKeys(Keys.Equal);
             Assert.AreEqual("0", page.CalculatorResults.GetCalculatorResultText());
             var historyItems = page.HistoryPanel.GetAllHistoryListViewItems();
-            Assert.IsTrue(historyItems[0].GetValue().Equals("0", StringComparison.InvariantCultureIgnoreCase));
-            Assert.IsTrue(historyItems[0].GetExpression().Equals("0=", StringComparison.InvariantCultureIgnoreCase));
-            Assert.IsTrue(historyItems[1].GetValue().Equals("0", StringComparison.InvariantCultureIgnoreCase));
-            Assert.IsTrue(historyItems[1].GetExpression().Equals("0=", StringComparison.InvariantCultureIgnoreCase));
+            Assert.IsTrue(historyItems[0].GetValue().Equals("0", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(historyItems[0].GetExpression().Equals("0=", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(historyItems[1].GetValue().Equals("0", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(historyItems[1].GetExpression().Equals("0=", StringComparison.OrdinalIgnoreCase));
             CalculatorApp.Window.SendKeys(Keys.Escape);
         }
 
         [TestMethod]
         [Priority(2)]
-        public void MixedInput_Operators_Delete()
+        public void MixedInputOperatorsDelete()
         {
             //Verify Delete
             page.StandardOperators.NumberPad.Input(3);
@@ -600,7 +600,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void MixedInput_Operators_ClearEntryClear()
+        public void MixedInputOperatorsClearEntryClear()
         {
             //Verify Clear Entery
             page.StandardOperators.NumberPad.Input(3);
@@ -623,13 +623,13 @@ namespace CalculatorUITests
             CalculatorApp.Window.SendKeys(Keys.Subtract);
             CalculatorApp.Window.SendKeys("9");
             page.StandardOperators.ClearButton.Click();
-            page.CalculatorResults.IsResultsExpressionClear();
+            CalculatorResults.IsResultsExpressionClear();
         }
 
         // Issue #817: Prefixed multiple zeros
         [TestMethod]
         [Priority(2)]
-        public void MixedInput_Operators_DeletingDecimalDoesNotPrefixZeros()
+        public void MixedInputOperatorsDeletingDecimalDoesNotPrefixZeros()
         {
             page.StandardOperators.NumberPad.DecimalButton.Click(); // To enter decimal point
             CalculatorApp.Window.SendKeys("1");
@@ -662,7 +662,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void AoT_EnterExitKeepOnTop()
+        public void AoTEnterExitKeepOnTop()
         {
             page.StandardAoTCalculatorPage.NavigateToStandardAoTMode();
             page.StandardAoTCalculatorPage.NavigateToStandardMode();
@@ -670,7 +670,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void AoT_Tootip()
+        public void AoTTootip()
         {
             Assert.AreEqual("Keep on top (Alt+Up)", page.StandardAoTCalculatorPage.GetAoTToolTipText());
             page.StandardAoTCalculatorPage.NavigateToStandardAoTMode();
@@ -679,7 +679,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void AoT_NoMemoryFunction()
+        public void AoTNoMemoryFunction()
         {
             page.StandardOperators.NumberPad.Num9Button.Click();
             page.StandardOperators.MinusButton.Click();
@@ -695,7 +695,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void AoT_HistoryFunction()
+        public void AoTHistoryFunction()
         {
             page.StandardOperators.NumberPad.Num3Button.Click();
             page.StandardOperators.PlusButton.Click();
@@ -704,7 +704,7 @@ namespace CalculatorUITests
             page.StandardOperators.EqualButton.Click();
             CalculatorApp.Window.SendKeys(Keys.Control + "H" + Keys.Control);
             string source = CalculatorDriver.Instance.CalculatorSession.PageSource;
-            if (source.Contains("HistoryFlyout"))
+            if (source.Contains("HistoryFlyout", StringComparison.Ordinal))
             {
                 throw new NotFoundException("This test fails; history flyout is present");
             }
@@ -712,38 +712,38 @@ namespace CalculatorUITests
             {
                 page.StandardAoTCalculatorPage.NavigateToStandardMode();
                 var historyItems = page.HistoryPanel.GetAllHistoryListViewItems();
-                Assert.IsTrue(historyItems[0].GetValue().Equals("6", StringComparison.InvariantCultureIgnoreCase));
-                Assert.IsTrue(historyItems[0].GetExpression().Equals("3 + 3=", StringComparison.InvariantCultureIgnoreCase));
+                Assert.IsTrue(historyItems[0].GetValue().Equals("6", StringComparison.OrdinalIgnoreCase));
+                Assert.IsTrue(historyItems[0].GetExpression().Equals("3 + 3=", StringComparison.OrdinalIgnoreCase));
             }
         }
 
         [TestMethod]
         [Priority(2)]
-        public void AoT_ButtonOnlyInStandard()
+        public void AoTButtonOnlyInStandard()
         {
             page.NavigationMenu.ChangeCalculatorMode(CalculatorMode.ScientificCalculator);
-            Assert.AreEqual("Scientific", CalculatorApp.GetCalculatorHeaderText());
+            Assert.AreEqual("Scientific", CalculatorApp.CalculatorHeaderText);
             Assert.IsFalse(page.StandardAoTCalculatorPage.IsKeepOnTopButtonPresent());
 
             CalculatorApp.EnsureCalculatorHasFocus();
             page.NavigationMenu.ChangeCalculatorMode(CalculatorMode.ProgrammerCalculator);
-            Assert.AreEqual("Programmer", CalculatorApp.GetCalculatorHeaderText());
+            Assert.AreEqual("Programmer", CalculatorApp.CalculatorHeaderText);
             Assert.IsFalse(page.StandardAoTCalculatorPage.IsKeepOnTopButtonPresent());
 
             CalculatorApp.EnsureCalculatorHasFocus();
             page.NavigationMenu.ChangeCalculatorMode(CalculatorMode.DateCalculator);
-            Assert.AreEqual("Date calculation", CalculatorApp.GetCalculatorHeaderText());
+            Assert.AreEqual("Date calculation", CalculatorApp.CalculatorHeaderText);
             Assert.IsFalse(page.StandardAoTCalculatorPage.IsKeepOnTopButtonPresent());
 
             CalculatorApp.EnsureCalculatorHasFocus();
             page.NavigationMenu.ChangeCalculatorMode(CalculatorMode.StandardCalculator);
-            Assert.AreEqual("Standard", CalculatorApp.GetCalculatorHeaderText());
+            Assert.AreEqual("Standard", CalculatorApp.CalculatorHeaderText);
             Assert.IsTrue(page.StandardAoTCalculatorPage.IsKeepOnTopButtonPresent());
         }
 
         [TestMethod]
         [Priority(2)]
-        public void AoT_ErrorMessage_ResultUndefined()
+        public void AoTErrorMessageResultUndefined()
         {
             page.StandardAoTCalculatorPage.NavigateToStandardAoTMode();
             Assert.IsTrue(page.StandardAoTCalculatorPage.IsInAlwaysOnTopMode());
@@ -756,7 +756,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void AoT_ErrorMessage_CannotDivideByZero()
+        public void AoTErrorMessageCannotDivideByZero()
         {
             page.StandardAoTCalculatorPage.NavigateToStandardAoTMode();
             Assert.IsTrue(page.StandardAoTCalculatorPage.IsInAlwaysOnTopMode());
@@ -769,7 +769,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void AoT_ErrorMessage_MessageRetentionUponExitingAoT()
+        public void AoTErrorMessageMessageRetentionUponExitingAoT()
         {
             page.StandardAoTCalculatorPage.NavigateToStandardAoTMode();
             Assert.IsTrue(page.StandardAoTCalculatorPage.IsInAlwaysOnTopMode());
@@ -794,15 +794,15 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Error_DivideByZero()
+        public void ErrorDivideByZero()
         {
             page.StandardOperators.InvertButton.Click();
-            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText() == "Cannot divide by zero");
+            Assert.AreEqual("Cannot divide by zero", page.CalculatorResults.GetCalculatorResultText());
         }
 
         [TestMethod]
         [Priority(1)]
-        public void Error_ErrorSquareRootNegativeNumber()
+        public void ErrorErrorSquareRootNegativeNumber()
         {
             page.StandardOperators.NumberPad.Input(9);
             page.StandardOperators.NegateButton.Click();

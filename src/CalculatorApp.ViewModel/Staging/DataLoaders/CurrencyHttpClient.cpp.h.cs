@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace CalculatorApp.ViewModel.DataLoaders
 {
-   public partial  class CurrencyHttpClient
+    public partial class CurrencyHttpClient
     {
-    // // public:
+        // // public:
 #if VIEWMODEL_FOR_UT
         public static bool ForceWebFailure { get; set; }
 #endif
@@ -20,8 +20,8 @@ namespace CalculatorApp.ViewModel.DataLoaders
         // async Task<string > GetCurrencyMetadataAsync() const;
         // async Task<string > GetCurrencyRatiosAsync() const;
 
-    // // private:
-        string  m_sourceCurrencyCode;
-        string  m_responseLanguage;
+        // // private:
+        string m_sourceCurrencyCode = string.Empty;
+        string m_responseLanguage = string.Empty;
     };
 }

@@ -13,6 +13,10 @@ let lastUiSnapshot = null;
 let lastUiSnapshotAtMonoMs = 0;
 let pendingEvents = [];
 let timer = 0;
+let inputTrace = null;
+let inputTraceCursor = 0;
+let inputTraceDropped = 0;
+const maximumInputTraceRecordsPerBatch = 256;
 
 self.onmessage = event => {
     const message = event.data;
@@ -22,6 +26,7 @@ self.onmessage = event => {
         runId = message.runId;
         client = message.client;
         intervalMs = Math.max(500, Number(message.intervalMs) || 1000);
+        inputTrace = openInputTrace(message.inputTrace);
         startedAtMonoMs = performance.now();
         initialized = true;
         if (timer) {
@@ -61,6 +66,7 @@ async function upload() {
     inFlight = true;
     const now = performance.now();
     const eventCount = pendingEvents.length;
+    const inputBatch = readInputTraceBatch();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), Math.max(3000, intervalMs * 3));
     const batch = {
@@ -77,6 +83,10 @@ async function upload() {
         client,
         ui: lastUiSnapshot,
         events: eventCount > 0 ? pendingEvents.slice(0, eventCount) : null,
+        inputTraceStartSequence: inputBatch?.startSequence ?? 0,
+        inputTraceStride: inputBatch?.stride ?? 0,
+        inputTraceDropped: inputBatch?.dropped ?? inputTraceDropped,
+        inputTraceValues: inputBatch?.values ?? null,
     };
 
     try {
@@ -95,10 +105,87 @@ async function upload() {
         if (eventCount > 0) {
             pendingEvents.splice(0, eventCount);
         }
+        if (inputBatch) {
+            inputTraceCursor = inputBatch.endSequence;
+            inputTraceDropped = inputBatch.dropped;
+        }
     } catch {
         uploadFailures++;
     } finally {
         clearTimeout(timeout);
         inFlight = false;
     }
+}
+
+function openInputTrace(descriptor) {
+    if (!descriptor ||
+        !(descriptor.controlBuffer instanceof SharedArrayBuffer) ||
+        !(descriptor.slotSequenceBuffer instanceof SharedArrayBuffer) ||
+        !(descriptor.valuesBuffer instanceof SharedArrayBuffer)) {
+        return null;
+    }
+
+    const capacity = Math.trunc(Number(descriptor.capacity));
+    const stride = Math.trunc(Number(descriptor.stride));
+    if (capacity <= 0 || stride <= 0) {
+        return null;
+    }
+
+    return {
+        capacity,
+        stride,
+        control: new Int32Array(descriptor.controlBuffer),
+        slotSequences: new Int32Array(descriptor.slotSequenceBuffer),
+        values: new Float64Array(descriptor.valuesBuffer),
+    };
+}
+
+function readInputTraceBatch() {
+    if (!inputTrace) {
+        return null;
+    }
+
+    const latestSequence = Atomics.load(inputTrace.control, 1);
+    if (latestSequence <= inputTraceCursor) {
+        return null;
+    }
+
+    const oldestAvailable = Math.max(1, latestSequence - inputTrace.capacity + 1);
+    const startSequence = Math.max(inputTraceCursor + 1, oldestAvailable);
+    const dropped = inputTraceDropped + Math.max(0, startSequence - inputTraceCursor - 1);
+
+    const endSequence = Math.min(latestSequence, startSequence + maximumInputTraceRecordsPerBatch - 1);
+    const values = new Array((endSequence - startSequence + 1) * inputTrace.stride);
+    let destination = 0;
+    let actualEndSequence = startSequence - 1;
+    for (let sequence = startSequence; sequence <= endSequence; sequence++) {
+        const slot = (sequence - 1) % inputTrace.capacity;
+        if (Atomics.load(inputTrace.slotSequences, slot) !== sequence) {
+            break;
+        }
+
+        const offset = slot * inputTrace.stride;
+        const recordStart = destination;
+        for (let index = 0; index < inputTrace.stride; index++) {
+            values[destination++] = inputTrace.values[offset + index];
+        }
+        if (Atomics.load(inputTrace.slotSequences, slot) !== sequence) {
+            destination = recordStart;
+            break;
+        }
+        actualEndSequence = sequence;
+    }
+
+    if (actualEndSequence < startSequence) {
+        return null;
+    }
+
+    values.length = destination;
+    return {
+        startSequence,
+        endSequence: actualEndSequence,
+        stride: inputTrace.stride,
+        dropped,
+        values,
+    };
 }

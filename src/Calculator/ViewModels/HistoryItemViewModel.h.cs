@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using CalcEngine;
 
 //#include  "CalcManager/ExpressionCommandInterface.h"
@@ -18,15 +19,9 @@ namespace CalculatorApp.ViewModel
         //      List<(string, int)>  spTokens,
         //      List<IExpressionCommand>  spCommands);
 
-        public List<(string, int)> GetTokens()
-        {
-            return m_spTokens;
-        }
+        public IReadOnlyList<(string, int)> Tokens => m_spTokens;
 
-       public List<IExpressionCommand> GetCommands()
-        {
-            return m_spCommands;
-        }
+        public IReadOnlyList<IExpressionCommand> Commands => m_spCommands;
 
         // public:
         public string Expression { get { return m_expression; } }
@@ -52,7 +47,7 @@ namespace CalculatorApp.ViewModel
         string m_accExpression;
         string m_accResult;
         string m_result;
-        List<(string, int)> m_spTokens;
-        List<IExpressionCommand> m_spCommands;
+        ImmutableArray<(string, int)> m_spTokens;
+        ImmutableArray<IExpressionCommand> m_spCommands;
     };
 }

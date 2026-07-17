@@ -2,34 +2,16 @@ using System.Collections.Immutable;
 
 namespace Graphing.Symbolics;
 
-internal sealed record AffineTrigPattern(
-    string Function,
-    BigRational Amplitude,
-    BigRational Frequency,
-    BigRational Phase,
-    BigRational Shift)
-{
-    public string Canonical =>
-        $"{Function}:{Amplitude}:{Frequency}:{Phase}:{Shift}";
-}
-
 internal static class TrigonometricAndLatticeAnalyzer
 {
-    public static bool TryAnalyze<T>(
-        AnalysisRequest request,
-        SemanticExpression expression,
-        AnalysisFeatures feature,
-        ResourceBudget budget,
-        out ProofOutcome<T> outcome)
+    public static bool TryAnalyze<T>(AnalysisRequest request, SemanticExpression expression, AnalysisFeatures feature, ResourceBudget budget, out ProofOutcome<T> outcome)
     {
-        if (!TryCompute(
-                request,
-                expression,
-                feature,
-                budget,
-                out object? value,
-                out TheoremRule theorem,
-                out ImmutableArray<string> parameters))
+        if (AffineReciprocalTrigZeroAnalyzer.TryAnalyze(request, expression, feature, budget, out outcome))
+        {
+            return true;
+        }
+
+        if (!TryCompute(request, expression, feature, budget, out object? value, out TheoremRule theorem, out ImmutableArray<string> parameters))
         {
             outcome = null!;
             return false;
@@ -41,70 +23,27 @@ internal static class TrigonometricAndLatticeAnalyzer
             return false;
         }
 
-        var certificate = new TheoremProofCertificate(
-            feature,
-            expression.Value.Canonical,
-            ClaimCanonical.ForObject(value),
-            theorem,
-            parameters);
+        var certificate = new TheoremProofCertificate(feature, expression.Value.Canonical, ClaimCanonical.ForObject(value), theorem, parameters);
         outcome = ProofOutcome<T>.Proved(typed, certificate);
         return true;
     }
 
-    public static bool VerifyTheorem(
-        AnalysisRequest request,
-        SemanticExpression expression,
-        TheoremProofCertificate certificate,
-        string claim,
-        ResourceBudget budget)
-    {
-        if (!TryCompute(
-                request,
-                expression,
-                certificate.Feature,
-                budget,
-                out object? value,
-                out TheoremRule theorem,
-                out ImmutableArray<string> parameters) ||
-            theorem != certificate.Theorem ||
-            !parameters.SequenceEqual(certificate.Parameters, StringComparer.Ordinal))
-        {
-            return false;
-        }
-
-        return string.Equals(ClaimCanonical.ForObject(value), claim, StringComparison.Ordinal);
-    }
-
-    private static bool TryCompute(
-        AnalysisRequest request,
-        SemanticExpression expression,
-        AnalysisFeatures feature,
-        ResourceBudget budget,
-        out object value,
-        out TheoremRule theorem,
-        out ImmutableArray<string> parameters)
+    private static bool TryCompute(AnalysisRequest request, SemanticExpression expression, AnalysisFeatures feature, ResourceBudget budget, out object value, out TheoremRule theorem, out ImmutableArray<string> parameters)
     {
         budget.Charge();
-        if (DegenerateDomainAnalyzer.TryCompute(
-                expression,
-                request.Variable,
-                feature,
-                budget,
-                out value,
-                out parameters))
+        if (DegenerateDomainAnalyzer.TryCompute(expression, request.Variable, feature, budget, out value, out parameters))
         {
             theorem = TheoremRule.SemialgebraicCellDecomposition;
             return true;
         }
 
-        if (PowerDomainSolver.TryCompute(
-                expression,
-                request.Variable,
-                request.AngleUnit,
-                feature,
-                budget,
-                out object powerValue,
-                out ImmutableArray<string> powerParameters))
+        if (ExactConstantAnalyzer.TryCompute(expression, request.Variable, request.AngleUnit, feature, budget, out value, out parameters))
+        {
+            theorem = TheoremRule.ConstantFunction;
+            return true;
+        }
+
+        if (PowerDomainSolver.TryCompute(expression, request.Variable, request.AngleUnit, feature, budget, out object powerValue, out ImmutableArray<string> powerParameters))
         {
             value = powerValue;
             theorem = TheoremRule.VariablePowerDomain;
@@ -112,13 +51,7 @@ internal static class TrigonometricAndLatticeAnalyzer
             return true;
         }
 
-        if (feature == AnalysisFeatures.Domain &&
-            MixedTrigonometricSolver.TryDomain(
-                expression,
-                request.Variable,
-                request.AngleUnit,
-                budget,
-                out RealSet mixedDomain))
+        if (feature == AnalysisFeatures.Domain && MixedTrigonometricSolver.TryDomain(expression, request.Variable, request.AngleUnit, budget, out RealSet mixedDomain))
         {
             value = mixedDomain;
             theorem = TheoremRule.TrigonometricPolynomial;
@@ -126,13 +59,7 @@ internal static class TrigonometricAndLatticeAnalyzer
             return true;
         }
 
-        if (feature == AnalysisFeatures.Zeros &&
-            MixedTrigonometricSolver.TryZeros(
-                expression,
-                request.Variable,
-                request.AngleUnit,
-                budget,
-                out RealSet mixedZeros))
+        if (feature == AnalysisFeatures.Zeros && MixedTrigonometricSolver.TryZeros(expression, request.Variable, request.AngleUnit, budget, out RealSet mixedZeros))
         {
             value = mixedZeros;
             theorem = TheoremRule.TrigonometricPolynomial;
@@ -140,13 +67,7 @@ internal static class TrigonometricAndLatticeAnalyzer
             return true;
         }
 
-        if (feature == AnalysisFeatures.YIntercept &&
-            MixedTrigonometricSolver.TryYIntercept(
-                expression,
-                request.Variable,
-                request.AngleUnit,
-                budget,
-                out OptionalValue<ExactReal> mixedIntercept))
+        if (feature == AnalysisFeatures.YIntercept && MixedTrigonometricSolver.TryYIntercept(expression, request.Variable, request.AngleUnit, budget, out OptionalValue<ExactReal> mixedIntercept))
         {
             value = mixedIntercept;
             theorem = TheoremRule.TrigonometricPolynomial;
@@ -154,78 +75,40 @@ internal static class TrigonometricAndLatticeAnalyzer
             return true;
         }
 
-        if (TryComputeInversePrimitive(
-                expression.Value,
-                request.Variable,
-                request.AngleUnit,
-                feature,
-                out value,
-                out parameters))
+        if (TryComputeAffinePrimitive(expression, request.Variable, request.AngleUnit, feature, budget, out value, out theorem, out parameters))
         {
-            theorem = TheoremRule.InversePrimitive;
             return true;
         }
 
-        if (TryComputeElementaryPrimitive(
-                expression.Value,
-                request.Variable,
-                feature,
-                budget,
-                out value,
-                out parameters))
+        if (AffineReciprocalTrigonometricAnalyzer.TryCompute(expression, request.Variable, request.AngleUnit, feature, budget, out value, out parameters))
         {
-            theorem = TheoremRule.ElementaryPrimitive;
+            theorem = TheoremRule.AffineReciprocalTrigonometric;
             return true;
         }
 
-        if (TryComputeOddRootPrimitive(
-                expression.Value,
-                request.Variable,
-                feature,
-                out value,
-                out parameters))
+        if (TryGetAffineTrig(expression.Value, request.Variable, budget, out AffineTrigPattern? pattern))
         {
-            theorem = TheoremRule.OddRootPrimitive;
-            return true;
-        }
-
-        if (TryComputeSemialgebraicPrimitive(
-                expression.Value,
-                request.Variable,
-                feature,
-                budget,
-                out value,
-                out parameters))
-        {
-            theorem = TheoremRule.SemialgebraicCellDecomposition;
-            return true;
-        }
-
-        if (TryGetAffineTrig(
-                expression.Value,
-                request.Variable,
-                budget,
-                out AffineTrigPattern? pattern))
-        {
-            theorem = pattern.Function switch
+            if (DomainMatches(expression, request.Variable, request.AngleUnit, AffineDomain(pattern, request.AngleUnit), budget))
             {
-                "sin" => TheoremRule.AffineSine,
-                "cos" => TheoremRule.AffineCosine,
-                "tan" => TheoremRule.AffineTangent,
-                _ => throw new InvalidOperationException("The affine trigonometric pattern was not canonical.")
-            };
-            parameters = [pattern.Canonical, request.AngleUnit.ToString()];
-            return TryComputeAffine(pattern, request.AngleUnit, feature, out value);
+                theorem = pattern.Function switch
+                {
+                    "sin" => TheoremRule.AffineSine,
+                    "cos" => TheoremRule.AffineCosine,
+                    "tan" => TheoremRule.AffineTangent,
+                    _ => throw new InvalidOperationException("The affine trigonometric pattern was not canonical.")
+                };
+                parameters = [pattern.Canonical, request.AngleUnit.ToString(), expression.DefinedWhen.Canonical];
+                return TryComputeAffine(pattern, request.AngleUnit, feature, out value);
+            }
         }
 
-        if (TrigonometricPolynomialAnalyzer.TryCompute(
-                expression.Value,
-                request.Variable,
-                request.AngleUnit,
-                feature,
-                budget,
-                out value,
-                out parameters))
+        if (LinearDriftTrigAnalyzer.TryCompute(expression, request.Variable, request.AngleUnit, feature, budget, out value, out parameters))
+        {
+            theorem = TheoremRule.LinearDriftTrigonometric;
+            return true;
+        }
+
+        if (DomainMatches(expression, request.Variable, request.AngleUnit, AllRealSet.Instance, budget) && TrigonometricPolynomialAnalyzer.TryCompute(expression.Value, request.Variable, request.AngleUnit, feature, budget, out value, out parameters))
         {
             theorem = TheoremRule.TrigonometricPolynomial;
             return true;
@@ -237,538 +120,698 @@ internal static class TrigonometricAndLatticeAnalyzer
         return false;
     }
 
-    private static bool TryComputeInversePrimitive(
-        ValueTerm term,
-        string variable,
-        AngleUnit angleUnit,
-        AnalysisFeatures feature,
-        out object value,
-        out ImmutableArray<string> parameters)
+    internal static bool DomainMatches(SemanticExpression expression, string variable, AngleUnit angleUnit, RealSet expected, ResourceBudget budget)
     {
-        if (term.Kind != ValueKind.Function ||
-            term.Name is not ("asin" or "acos" or "atan") ||
-            term.Operands.Length != 1 ||
-            term.Operands[0].Kind != ValueKind.Variable ||
-            !term.Operands[0].Name.Equals(variable, StringComparison.OrdinalIgnoreCase))
+        bool solved = DomainSolver.TrySolve(expression, variable, budget, out RealSet actual, out _);
+        if (!solved)
         {
-            value = null!;
-            parameters = [];
-            return false;
+            solved = MixedTrigonometricSolver.TryDomain(expression, variable, angleUnit, budget, out actual);
         }
 
-        string function = term.Name;
-        ExactReal minusHalfTurn = Angle(angleUnit, new BigRational(-1, 2));
-        ExactReal halfTurn = Angle(angleUnit, new BigRational(1, 2));
-        ExactReal fullHalfTurn = Angle(angleUnit, BigRational.One);
-        RealSet domain = function == "atan"
-            ? AllRealSet.Instance
-            : new IntervalSet(
-                RealBound.Finite(new RationalReal(BigRational.MinusOne)),
-                true,
-                RealBound.Finite(new RationalReal(BigRational.One)),
-                true);
-        value = feature switch
-        {
-            AnalysisFeatures.Domain => domain,
-            AnalysisFeatures.Range => function switch
-            {
-                "asin" => new IntervalSet(
-                    RealBound.Finite(minusHalfTurn),
-                    true,
-                    RealBound.Finite(halfTurn),
-                    true),
-                "acos" => new IntervalSet(
-                    RealBound.Finite(new RationalReal(BigRational.Zero)),
-                    true,
-                    RealBound.Finite(fullHalfTurn),
-                    true),
-                _ => new IntervalSet(
-                    RealBound.Finite(minusHalfTurn),
-                    false,
-                    RealBound.Finite(halfTurn),
-                    false)
-            },
-            AnalysisFeatures.Parity => function == "acos"
-                ? FunctionParity.Neither
-                : FunctionParity.Odd,
-            AnalysisFeatures.Zeros => RealSets.Points(
-            [
-                new RationalReal(function == "acos" ? BigRational.One : BigRational.Zero)
-            ]),
-            AnalysisFeatures.YIntercept => OptionalValue<ExactReal>.Some(
-                function == "acos"
-                    ? halfTurn
-                    : new RationalReal(BigRational.Zero)),
-            AnalysisFeatures.Minima => InverseMinimum(function, minusHalfTurn),
-            AnalysisFeatures.Maxima => InverseMaximum(function, halfTurn, fullHalfTurn),
-            AnalysisFeatures.InflectionPoints =>
-            ImmutableArray.Create(
-                new FeaturePoint(
-                    new SingletonReal(new RationalReal(BigRational.Zero)),
-                    function == "acos"
-                        ? halfTurn
-                        : new RationalReal(BigRational.Zero))),
-            AnalysisFeatures.VerticalAsymptotes => ImmutableArray<Asymptote>.Empty,
-            AnalysisFeatures.HorizontalAsymptotes => function == "atan"
-                ?
-                [
-                    new Asymptote(
-                        AsymptoteOrientation.Horizontal,
-                        new SingletonReal(halfTurn),
-                        null,
-                        halfTurn),
-                    new Asymptote(
-                        AsymptoteOrientation.Horizontal,
-                        new SingletonReal(minusHalfTurn),
-                        null,
-                        minusHalfTurn)
-                ]
-                : ImmutableArray<Asymptote>.Empty,
-            AnalysisFeatures.ObliqueAsymptotes => ImmutableArray<Asymptote>.Empty,
-            AnalysisFeatures.Monotonicity =>
-            ImmutableArray.Create(
-                new MonotoneRegion(
-                    domain,
-                    function == "acos"
-                        ? Graphing.Symbolics.Monotonicity.Decreasing
-                        : Graphing.Symbolics.Monotonicity.Increasing)),
-            AnalysisFeatures.Period => new Periodicity(PeriodicityKind.NotPeriodic, null),
-            _ => null!
-        };
-        parameters = [function, angleUnit.ToString()];
-        return value is not null;
+        return solved && string.Equals(actual.Canonical, expected.Canonical, StringComparison.Ordinal);
     }
 
-    private static bool TryComputeElementaryPrimitive(
-        ValueTerm term,
-        string variable,
-        AnalysisFeatures feature,
-        ResourceBudget budget,
-        out object value,
-        out ImmutableArray<string> parameters)
+    private static bool TryComputeAffinePrimitive(SemanticExpression expression, string variable, AngleUnit angleUnit, AnalysisFeatures feature, ResourceBudget budget, out object value, out TheoremRule theorem, out ImmutableArray<string> parameters)
     {
-        if (term.Kind != ValueKind.Function || term.Operands.Length != 1)
+        if (!TryGetAffinePrimitive(expression.Value, variable, budget, out AffinePrimitivePattern? pattern))
         {
             value = null!;
+            theorem = default;
             parameters = [];
             return false;
         }
 
-        string function = term.Name;
-        ValueTerm argument = term.Operands[0];
-        bool variableArgument = argument.Kind == ValueKind.Variable &&
-                                argument.Name.Equals(variable, StringComparison.OrdinalIgnoreCase);
-        if (function is "exp" or "sinh" or "cosh")
+        RealSet domain = PrimitiveDomain(pattern, budget);
+        if (!PrimitiveDomainMatches(expression, pattern, variable, angleUnit, domain, budget))
         {
-            if (!variableArgument)
+            value = null!;
+            theorem = default;
+            parameters = [];
+            return false;
+        }
+
+        theorem = pattern.Function switch
+        {
+            "asin" or "acos" or "atan" => TheoremRule.InversePrimitive,
+            "root" => TheoremRule.OddRootPrimitive,
+            _ => TheoremRule.ElementaryPrimitive
+        };
+        parameters = [pattern.Canonical, angleUnit.ToString(), expression.DefinedWhen.Canonical];
+        return TryComputePrimitiveFeature(pattern, angleUnit, feature, domain, budget, out value);
+    }
+
+    internal static bool TryGetAffinePrimitive(ValueTerm root, string variable, ResourceBudget budget, out AffinePrimitivePattern pattern)
+    {
+        ImmutableArray<(ValueTerm Term, BigRational Coefficient)> terms = CollectPrimitiveLinearCombination(root, budget);
+        ValueTerm? core = null;
+        BigRational outerScale = BigRational.Zero;
+        BigRational outerShift = BigRational.Zero;
+        foreach ((ValueTerm term, BigRational coefficient) in terms)
+        {
+            budget.Charge();
+            budget.CheckCoefficient(coefficient);
+            if (TryRationalScalar(term, budget, out BigRational constant))
             {
-                value = null!;
-                parameters = [];
+                outerShift = Checked(outerShift + coefficient * constant, budget);
+                continue;
+            }
+
+            if (core is null)
+            {
+                core = term;
+            }
+            else if (!string.Equals(core.Canonical, term.Canonical, StringComparison.Ordinal))
+            {
+                pattern = null!;
                 return false;
             }
 
-            ExactReal zero = new RationalReal(BigRational.Zero);
-            ExactReal one = new RationalReal(BigRational.One);
-            value = feature switch
-            {
-                AnalysisFeatures.Domain => AllRealSet.Instance,
-                AnalysisFeatures.Range => function switch
-                {
-                    "exp" => new IntervalSet(
-                        RealBound.Finite(zero),
-                        false,
-                        RealBound.PositiveInfinity,
-                        false),
-                    "sinh" => AllRealSet.Instance,
-                    _ => new IntervalSet(
-                        RealBound.Finite(one),
-                        true,
-                        RealBound.PositiveInfinity,
-                        false)
-                },
-                AnalysisFeatures.Parity => function switch
-                {
-                    "sinh" => FunctionParity.Odd,
-                    "cosh" => FunctionParity.Even,
-                    _ => FunctionParity.Neither
-                },
-                AnalysisFeatures.Zeros => function == "sinh"
-                    ? RealSets.Points([zero])
-                    : EmptySet.Instance,
-                AnalysisFeatures.YIntercept => OptionalValue<ExactReal>.Some(
-                    function == "sinh" ? zero : one),
-                AnalysisFeatures.Minima => function == "cosh"
-                    ? ImmutableArray.Create(
-                        new FeaturePoint(new SingletonReal(zero), one))
-                    : ImmutableArray<FeaturePoint>.Empty,
-                AnalysisFeatures.Maxima => ImmutableArray<FeaturePoint>.Empty,
-                AnalysisFeatures.InflectionPoints => function == "sinh"
-                    ? ImmutableArray.Create(
-                        new FeaturePoint(new SingletonReal(zero), zero))
-                    : ImmutableArray<FeaturePoint>.Empty,
-                AnalysisFeatures.VerticalAsymptotes => ImmutableArray<Asymptote>.Empty,
-                AnalysisFeatures.HorizontalAsymptotes => function == "exp"
-                    ? ImmutableArray.Create(
-                        new Asymptote(
-                            AsymptoteOrientation.Horizontal,
-                            new SingletonReal(zero),
-                            null,
-                            zero))
-                    : ImmutableArray<Asymptote>.Empty,
-                AnalysisFeatures.ObliqueAsymptotes => ImmutableArray<Asymptote>.Empty,
-                AnalysisFeatures.Monotonicity => function == "cosh"
-                    ? ImmutableArray.Create(
-                        new MonotoneRegion(
-                            new IntervalSet(
-                                RealBound.NegativeInfinity,
-                                false,
-                                RealBound.Finite(zero),
-                                false),
-                            Graphing.Symbolics.Monotonicity.Decreasing),
-                        new MonotoneRegion(
-                            new IntervalSet(
-                                RealBound.Finite(zero),
-                                false,
-                                RealBound.PositiveInfinity,
-                                false),
-                            Graphing.Symbolics.Monotonicity.Increasing))
-                    : ImmutableArray.Create(
-                        new MonotoneRegion(
-                            AllRealSet.Instance,
-                            Graphing.Symbolics.Monotonicity.Increasing)),
-                AnalysisFeatures.Period => new Periodicity(PeriodicityKind.NotPeriodic, null),
-                _ => null!
-            };
-            parameters = [function, "identity-argument"];
-            return value is not null;
+            outerScale = Checked(outerScale + coefficient, budget);
         }
 
-        if (function is not ("log" or "ln") ||
-            !TryAffineArgument(
-                argument,
-                variable,
-                budget,
-                out BigRational slope,
-                out BigRational intercept))
+        if (core is null || outerScale.IsZero || !TryDescribePrimitiveCore(core, variable, budget, out string function, out BigRational innerSlope, out BigRational innerIntercept, out int rootDegree))
         {
-            value = null!;
-            parameters = [];
+            pattern = null!;
             return false;
         }
 
-        BigRational boundary = -intercept / slope;
-        ExactReal boundaryReal = new RationalReal(boundary);
-        RealSet domain = slope.Sign > 0
-            ? new IntervalSet(
-                RealBound.Finite(boundaryReal),
-                false,
-                RealBound.PositiveInfinity,
-                false)
-            : new IntervalSet(
-                RealBound.NegativeInfinity,
-                false,
-                RealBound.Finite(boundaryReal),
-                false);
-        BigRational zeroLocation = (BigRational.One - intercept) / slope;
-        OptionalValue<ExactReal> yIntercept = intercept.Sign > 0
-            ? OptionalValue<ExactReal>.Some(
-                ElementaryValueAtRational(function, intercept))
-            : OptionalValue<ExactReal>.None;
-        value = feature switch
+        pattern = new AffinePrimitivePattern(function, innerSlope, innerIntercept, outerScale, outerShift, rootDegree, core);
+        return true;
+    }
+
+    private static ImmutableArray<(ValueTerm Term, BigRational Coefficient)> CollectPrimitiveLinearCombination(ValueTerm root, ResourceBudget budget)
+    {
+        var descendingIds = Comparer<int>.Create(static (left, right) => right.CompareTo(left));
+        var pending = new SortedDictionary<int, (ValueTerm Term, BigRational Coefficient)>(descendingIds);
+        var atoms = new SortedDictionary<string, (ValueTerm Term, BigRational Coefficient)>(StringComparer.Ordinal);
+        AddPrimitivePending(root, BigRational.One, pending, budget);
+        int visited = 0;
+        while (pending.Count != 0)
         {
-            AnalysisFeatures.Domain => domain,
-            AnalysisFeatures.Range => AllRealSet.Instance,
-            AnalysisFeatures.Parity => FunctionParity.Neither,
-            AnalysisFeatures.Zeros => RealSets.Points([new RationalReal(zeroLocation)]),
-            AnalysisFeatures.YIntercept => yIntercept,
-            AnalysisFeatures.Minima or
-            AnalysisFeatures.Maxima or
-            AnalysisFeatures.InflectionPoints => ImmutableArray<FeaturePoint>.Empty,
-            AnalysisFeatures.VerticalAsymptotes => ImmutableArray.Create(
-                new Asymptote(
-                    AsymptoteOrientation.Vertical,
-                    new SingletonReal(boundaryReal),
-                    null,
-                    null)),
-            AnalysisFeatures.HorizontalAsymptotes or
-            AnalysisFeatures.ObliqueAsymptotes => ImmutableArray<Asymptote>.Empty,
-            AnalysisFeatures.Monotonicity => ImmutableArray.Create(
-                new MonotoneRegion(
-                    domain,
-                    slope.Sign > 0
-                        ? Graphing.Symbolics.Monotonicity.Increasing
-                        : Graphing.Symbolics.Monotonicity.Decreasing)),
-            AnalysisFeatures.Period => new Periodicity(PeriodicityKind.NotPeriodic, null),
-            _ => null!
+            budget.Charge();
+            if (++visited > AnalysisLimits.SemanticNodes)
+            {
+                throw new BudgetExceededException(nameof(AnalysisLimits.SemanticNodes));
+            }
+
+            KeyValuePair<int, (ValueTerm Term, BigRational Coefficient)> entry = pending.First();
+            pending.Remove(entry.Key);
+            (ValueTerm term, BigRational coefficient) = entry.Value;
+            if (coefficient.IsZero)
+            {
+                continue;
+            }
+
+            switch (term.Kind)
+            {
+                case ValueKind.Add:
+                    AddPrimitivePending(term.Operands[0], coefficient, pending, budget);
+                    AddPrimitivePending(term.Operands[1], coefficient, pending, budget);
+                    continue;
+                case ValueKind.Subtract:
+                    AddPrimitivePending(term.Operands[0], coefficient, pending, budget);
+                    AddPrimitivePending(term.Operands[1], -coefficient, pending, budget);
+                    continue;
+                case ValueKind.Negate:
+                    AddPrimitivePending(term.Operands[0], -coefficient, pending, budget);
+                    continue;
+                case ValueKind.Multiply when TryRationalScalar(term.Operands[0], budget, out BigRational left):
+                    AddPrimitivePending(term.Operands[1], Checked(coefficient * left, budget), pending, budget);
+                    continue;
+                case ValueKind.Multiply when TryRationalScalar(term.Operands[1], budget, out BigRational right):
+                    AddPrimitivePending(term.Operands[0], Checked(coefficient * right, budget), pending, budget);
+                    continue;
+                case ValueKind.Divide when TryRationalScalar(term.Operands[1], budget, out BigRational denominator) && !denominator.IsZero:
+                    AddPrimitivePending(term.Operands[0], Checked(coefficient / denominator, budget), pending, budget);
+                    continue;
+                default:
+                    AddPrimitiveAtom(term, coefficient, atoms, budget);
+                    continue;
+            }
+        }
+
+        return atoms.Values.Where(static atom => !atom.Coefficient.IsZero).ToImmutableArray();
+    }
+
+    private static void AddPrimitivePending(ValueTerm term, BigRational coefficient, System.Collections.Generic.SortedDictionary<int, (Graphing.Symbolics.ValueTerm Term, Graphing.Symbolics.BigRational Coefficient)> pending, ResourceBudget budget)
+    {
+        budget.CheckCoefficient(coefficient);
+        if (pending.TryGetValue(term.Id, out var existing))
+        {
+            coefficient = Checked(coefficient + existing.Coefficient, budget);
+        }
+
+        if (coefficient.IsZero)
+        {
+            pending.Remove(term.Id);
+            return;
+        }
+
+        pending[term.Id] = (term, coefficient);
+        if (pending.Count > AnalysisLimits.SemanticNodes)
+        {
+            throw new BudgetExceededException(nameof(AnalysisLimits.SemanticNodes));
+        }
+    }
+
+    private static void AddPrimitiveAtom(ValueTerm term, BigRational coefficient, System.Collections.Generic.SortedDictionary<string, (Graphing.Symbolics.ValueTerm Term, Graphing.Symbolics.BigRational Coefficient)> atoms, ResourceBudget budget)
+    {
+        budget.CheckCoefficient(coefficient);
+        if (atoms.TryGetValue(term.Canonical, out var existing))
+        {
+            coefficient = Checked(coefficient + existing.Coefficient, budget);
+        }
+
+        if (coefficient.IsZero)
+        {
+            atoms.Remove(term.Canonical);
+            return;
+        }
+
+        atoms[term.Canonical] = (term, coefficient);
+        if (atoms.Count > AnalysisLimits.SemanticNodes)
+        {
+            throw new BudgetExceededException(nameof(AnalysisLimits.SemanticNodes));
+        }
+    }
+
+    private static bool TryDescribePrimitiveCore(ValueTerm core, string variable, ResourceBudget budget, out string function, out BigRational innerSlope, out BigRational innerIntercept, out int rootDegree)
+    {
+        function = string.Empty;
+        innerSlope = default;
+        innerIntercept = default;
+        rootDegree = 0;
+        if (core.Kind != ValueKind.Function)
+        {
+            return false;
+        }
+
+        function = core.Name switch
+        {
+            "arcsin" => "asin",
+            "arccos" => "acos",
+            "arctan" => "atan",
+            var name => name
         };
-        parameters = [function, slope.ToString(), intercept.ToString()];
-        return value is not null;
-    }
-
-    private static ExactReal ElementaryValueAtRational(
-        string function,
-        BigRational argument)
-    {
-        if (argument == BigRational.One)
+        ValueTerm argument;
+        if (function == "root")
         {
-            return new RationalReal(BigRational.Zero);
+            if (core.Operands.Length != 2 || core.Operands[1].Kind != ValueKind.Constant)
+            {
+                return false;
+            }
+
+            BigRational degree = core.Operands[1].Constant;
+            budget.CheckCoefficient(degree);
+            if (!degree.IsInteger || degree.Numerator <= 1 || degree.Numerator.IsEven)
+            {
+                return false;
+            }
+
+            if (degree.Numerator > AnalysisLimits.UnivariateDegree)
+            {
+                throw new BudgetExceededException(nameof(AnalysisLimits.UnivariateDegree));
+            }
+
+            rootDegree = (int)degree.Numerator;
+            argument = core.Operands[0];
+        }
+        else
+        {
+            if (function is not ("asin" or "acos" or "atan" or "exp" or "sinh" or "cosh" or "tanh" or "log" or "ln") || core.Operands.Length != 1)
+            {
+                return false;
+            }
+
+            argument = core.Operands[0];
         }
 
-        return new FunctionReal(function, [new RationalReal(argument)]);
-    }
-
-    private static bool TryComputeOddRootPrimitive(
-        ValueTerm term,
-        string variable,
-        AnalysisFeatures feature,
-        out object value,
-        out ImmutableArray<string> parameters)
-    {
-        if (term.Kind != ValueKind.Function ||
-            term.Name != "root" ||
-            term.Operands.Length != 2 ||
-            term.Operands[0].Kind != ValueKind.Variable ||
-            !term.Operands[0].Name.Equals(variable, StringComparison.OrdinalIgnoreCase) ||
-            term.Operands[1].Kind != ValueKind.Constant)
+        if (!TryAffineArgument(argument, variable, budget, out innerSlope, out innerIntercept))
         {
-            value = null!;
-            parameters = [];
             return false;
         }
 
-        BigRational degree = term.Operands[1].Constant;
-        if (!degree.Denominator.IsOne ||
-            degree.Numerator <= 1 ||
-            degree.Numerator.IsEven)
-        {
-            value = null!;
-            parameters = [];
-            return false;
-        }
-
-        ExactReal zero = new RationalReal(BigRational.Zero);
-        value = feature switch
-        {
-            AnalysisFeatures.Domain or AnalysisFeatures.Range => AllRealSet.Instance,
-            AnalysisFeatures.Parity => FunctionParity.Odd,
-            AnalysisFeatures.Zeros => RealSets.Points([zero]),
-            AnalysisFeatures.YIntercept => OptionalValue<ExactReal>.Some(zero),
-            AnalysisFeatures.Minima or AnalysisFeatures.Maxima =>
-                ImmutableArray<FeaturePoint>.Empty,
-            AnalysisFeatures.InflectionPoints => ImmutableArray.Create(
-                new FeaturePoint(new SingletonReal(zero), zero)),
-            AnalysisFeatures.VerticalAsymptotes or
-            AnalysisFeatures.HorizontalAsymptotes or
-            AnalysisFeatures.ObliqueAsymptotes => ImmutableArray<Asymptote>.Empty,
-            AnalysisFeatures.Monotonicity => ImmutableArray.Create(
-                new MonotoneRegion(
-                    AllRealSet.Instance,
-                    Graphing.Symbolics.Monotonicity.Increasing)),
-            AnalysisFeatures.Period => new Periodicity(PeriodicityKind.NotPeriodic, null),
-            _ => null!
-        };
-        parameters = [degree.ToString()];
-        return value is not null;
+        budget.CheckCoefficient(innerSlope);
+        budget.CheckCoefficient(innerIntercept);
+        return true;
     }
 
-    private static ImmutableArray<FeaturePoint> InverseMinimum(
-        string function,
-        ExactReal minusHalfTurn) => function switch
+    private static bool TryRationalScalar(ValueTerm term, ResourceBudget budget, out BigRational value)
     {
-        "asin" =>
-        [
-            new FeaturePoint(
-                new SingletonReal(new RationalReal(BigRational.MinusOne)),
-                minusHalfTurn)
-        ],
-        "acos" =>
-        [
-            new FeaturePoint(
-                new SingletonReal(new RationalReal(BigRational.One)),
-                new RationalReal(BigRational.Zero))
-        ],
-        _ => []
-    };
-
-    private static ImmutableArray<FeaturePoint> InverseMaximum(
-        string function,
-        ExactReal halfTurn,
-        ExactReal fullHalfTurn) => function switch
-    {
-        "asin" =>
-        [
-            new FeaturePoint(
-                new SingletonReal(new RationalReal(BigRational.One)),
-                halfTurn)
-        ],
-        "acos" =>
-        [
-            new FeaturePoint(
-                new SingletonReal(new RationalReal(BigRational.MinusOne)),
-                fullHalfTurn)
-        ],
-        _ => []
-    };
-
-    private static bool TryComputeSemialgebraicPrimitive(
-        ValueTerm term,
-        string variable,
-        AnalysisFeatures feature,
-        ResourceBudget budget,
-        out object value,
-        out ImmutableArray<string> parameters)
-    {
-        if (term.Kind == ValueKind.Function &&
-            term.Name == "abs" &&
-            term.Operands.Length == 1 &&
-            TryAffineArgument(
-                term.Operands[0],
-                variable,
-                budget,
-                out BigRational slope,
-                out BigRational intercept))
+        if (ExactScalar.TryCreate(term, budget, out ExactScalar scalar) && scalar.RationalValue is { } rational)
         {
-            BigRational root = -intercept / slope;
-            RealSet left = new IntervalSet(
-                RealBound.NegativeInfinity,
-                false,
-                RealBound.Finite(new RationalReal(root)),
-                false);
-            RealSet right = new IntervalSet(
-                RealBound.Finite(new RationalReal(root)),
-                false,
-                RealBound.PositiveInfinity,
-                false);
-            value = feature switch
-            {
-                AnalysisFeatures.Domain => AllRealSet.Instance,
-                AnalysisFeatures.Range => new IntervalSet(
-                    RealBound.Finite(new RationalReal(BigRational.Zero)),
-                    true,
-                    RealBound.PositiveInfinity,
-                    false),
-                AnalysisFeatures.Parity => intercept.IsZero
-                    ? FunctionParity.Even
-                    : FunctionParity.Neither,
-                AnalysisFeatures.Zeros => RealSets.Points([new RationalReal(root)]),
-                AnalysisFeatures.YIntercept => OptionalValue<ExactReal>.Some(
-                    new RationalReal(intercept.Abs())),
-                AnalysisFeatures.Minima =>
-                ImmutableArray.Create(
-                    new FeaturePoint(
-                        new SingletonReal(new RationalReal(root)),
-                        new RationalReal(BigRational.Zero))),
-                AnalysisFeatures.Maxima => ImmutableArray<FeaturePoint>.Empty,
-                AnalysisFeatures.InflectionPoints => ImmutableArray<FeaturePoint>.Empty,
-                AnalysisFeatures.VerticalAsymptotes or
-                AnalysisFeatures.HorizontalAsymptotes => ImmutableArray<Asymptote>.Empty,
-                AnalysisFeatures.ObliqueAsymptotes => AbsoluteObliqueAsymptotes(
-                    slope,
-                    intercept),
-                AnalysisFeatures.Monotonicity =>
-                ImmutableArray.Create(
-                    new MonotoneRegion(left, Graphing.Symbolics.Monotonicity.Decreasing),
-                    new MonotoneRegion(right, Graphing.Symbolics.Monotonicity.Increasing)),
-                AnalysisFeatures.Period => new Periodicity(PeriodicityKind.NotPeriodic, null),
-                _ => null!
-            };
-            parameters = ["absolute-affine", slope.ToString(), intercept.ToString()];
-            return value is not null;
+            budget.CheckCoefficient(rational);
+            value = rational;
+            return true;
         }
 
-        if (term.Kind == ValueKind.Function &&
-            term.Name == "sqrt" &&
-            term.Operands.Length == 1 &&
-            term.Operands[0].Kind == ValueKind.Variable &&
-            term.Operands[0].Name.Equals(variable, StringComparison.OrdinalIgnoreCase))
-        {
-            RealSet nonnegative = new IntervalSet(
-                RealBound.Finite(new RationalReal(BigRational.Zero)),
-                true,
-                RealBound.PositiveInfinity,
-                false);
-            value = feature switch
-            {
-                AnalysisFeatures.Domain or AnalysisFeatures.Range => nonnegative,
-                AnalysisFeatures.Parity => FunctionParity.Neither,
-                AnalysisFeatures.Zeros => RealSets.Points([new RationalReal(BigRational.Zero)]),
-                AnalysisFeatures.YIntercept => OptionalValue<ExactReal>.Some(
-                    new RationalReal(BigRational.Zero)),
-                AnalysisFeatures.Minima =>
-                ImmutableArray.Create(
-                    new FeaturePoint(
-                        new SingletonReal(new RationalReal(BigRational.Zero)),
-                        new RationalReal(BigRational.Zero))),
-                AnalysisFeatures.Maxima or AnalysisFeatures.InflectionPoints =>
-                    ImmutableArray<FeaturePoint>.Empty,
-                AnalysisFeatures.VerticalAsymptotes or
-                AnalysisFeatures.HorizontalAsymptotes or
-                AnalysisFeatures.ObliqueAsymptotes => ImmutableArray<Asymptote>.Empty,
-                AnalysisFeatures.Monotonicity =>
-                ImmutableArray.Create(
-                    new MonotoneRegion(
-                        new IntervalSet(
-                            RealBound.Finite(new RationalReal(BigRational.Zero)),
-                            false,
-                            RealBound.PositiveInfinity,
-                            false),
-                        Graphing.Symbolics.Monotonicity.Increasing)),
-                AnalysisFeatures.Period => new Periodicity(PeriodicityKind.NotPeriodic, null),
-                _ => null!
-            };
-            parameters = ["principal-square-root"];
-            return value is not null;
-        }
-
-        value = null!;
-        parameters = [];
+        value = default;
         return false;
     }
 
-    private static ImmutableArray<Asymptote> AbsoluteObliqueAsymptotes(
-        BigRational slope,
-        BigRational intercept)
+    private static bool PrimitiveDomainMatches(SemanticExpression expression, AffinePrimitivePattern pattern, string variable, AngleUnit angleUnit, RealSet expected, ResourceBudget budget)
     {
-        BigRational sign = slope.Sign > 0
-            ? BigRational.One
-            : BigRational.MinusOne;
-        BigRational rightSlope = slope.Abs();
-        BigRational rightIntercept = sign * intercept;
-        BigRational leftSlope = -rightSlope;
-        BigRational leftIntercept = -rightIntercept;
-        return
-        [
-            ObliqueAsymptote(rightSlope, rightIntercept),
-            ObliqueAsymptote(leftSlope, leftIntercept)
-        ];
+        if (DomainMatches(expression, variable, angleUnit, expected, budget))
+        {
+            return true;
+        }
+
+        // tanh and spelling aliases currently enter the semantic graph as an
+        // opaque primitive predicate. Accept only the exact, unguarded source
+        // predicate for the recognized primitive. Any retained hole produces
+        // a conjunction and is therefore rejected here.
+        return pattern.Core.Name is "tanh" or "arcsin" or "arccos" or "arctan" && expression.DefinedWhen is PredicateFormula { Kind: ExactPredicate.FunctionIsDefined, Terms.Length: 1 } predicate && string.Equals(predicate.Terms[0].Canonical, pattern.Core.Canonical, StringComparison.Ordinal);
     }
 
-    private static Asymptote ObliqueAsymptote(
-        BigRational slope,
-        BigRational intercept)
+    private static RealSet PrimitiveDomain(AffinePrimitivePattern pattern, ResourceBudget budget)
     {
-        ExactReal interceptReal = new RationalReal(intercept);
-        return new Asymptote(
-            AsymptoteOrientation.Oblique,
-            new SingletonReal(interceptReal),
-            new RationalReal(slope),
-            interceptReal);
+        if (pattern.Function is "asin" or "acos")
+        {
+            BigRational atMinusOne = SolveInnerRational(pattern, BigRational.MinusOne, budget);
+            BigRational atOne = SolveInnerRational(pattern, BigRational.One, budget);
+            BigRational lower = pattern.InnerSlope.Sign > 0 ? atMinusOne : atOne;
+            BigRational upper = pattern.InnerSlope.Sign > 0 ? atOne : atMinusOne;
+            return new IntervalSet(RealBound.Finite(new RationalReal(lower)), true, RealBound.Finite(new RationalReal(upper)), true);
+        }
+
+        if (pattern.Function is "log" or "ln")
+        {
+            BigRational boundary = SolveInnerRational(pattern, BigRational.Zero, budget);
+            ExactReal boundaryReal = new RationalReal(boundary);
+            return pattern.InnerSlope.Sign > 0 ? new IntervalSet(RealBound.Finite(boundaryReal), false, RealBound.PositiveInfinity, false) : new IntervalSet(RealBound.NegativeInfinity, false, RealBound.Finite(boundaryReal), false);
+        }
+
+        return AllRealSet.Instance;
     }
 
-    private static bool TryAffineArgument(
-        ValueTerm term,
-        string variable,
-        ResourceBudget budget,
-        out BigRational slope,
-        out BigRational intercept)
+    private static bool TryComputePrimitiveFeature(AffinePrimitivePattern pattern, AngleUnit angleUnit, AnalysisFeatures feature, RealSet domain, ResourceBudget budget, out object value)
     {
-        if (!RationalFunctionExtractor.TryExtract(
-                term,
-                variable,
-                budget,
-                out RationalExtraction extraction) ||
-            extraction.Function.Denominator.Degree != 0 ||
-            extraction.Function.Numerator.Degree != 1)
+        budget.Charge();
+        switch (feature)
+        {
+            case AnalysisFeatures.Domain:
+                value = domain;
+                return true;
+            case AnalysisFeatures.Range:
+                value = PrimitiveRange(pattern, angleUnit, budget);
+                return true;
+            case AnalysisFeatures.Parity:
+                value = PrimitiveParity(pattern, angleUnit, budget);
+                return true;
+            case AnalysisFeatures.Zeros:
+                return TryPrimitiveZeros(pattern, angleUnit, budget, out value);
+            case AnalysisFeatures.YIntercept:
+                value = PrimitiveYIntercept(pattern, angleUnit, budget);
+                return true;
+            case AnalysisFeatures.Minima:
+                value = PrimitiveExtrema(pattern, angleUnit, minimum: true, budget);
+                return true;
+            case AnalysisFeatures.Maxima:
+                value = PrimitiveExtrema(pattern, angleUnit, minimum: false, budget);
+                return true;
+            case AnalysisFeatures.InflectionPoints:
+                value = PrimitiveInflections(pattern, angleUnit, budget);
+                return true;
+            case AnalysisFeatures.VerticalAsymptotes:
+                value = PrimitiveVerticalAsymptotes(pattern, budget);
+                return true;
+            case AnalysisFeatures.HorizontalAsymptotes:
+                value = PrimitiveHorizontalAsymptotes(pattern, angleUnit, budget);
+                return true;
+            case AnalysisFeatures.ObliqueAsymptotes:
+                value = ImmutableArray<Asymptote>.Empty;
+                return true;
+            case AnalysisFeatures.Monotonicity:
+                value = PrimitiveMonotonicity(pattern, domain, budget);
+                return true;
+            case AnalysisFeatures.Period:
+                value = new Periodicity(PeriodicityKind.NotPeriodic, null);
+                return true;
+            default:
+                value = null!;
+                return false;
+        }
+    }
+
+    private static RealSet PrimitiveRange(AffinePrimitivePattern pattern, AngleUnit angleUnit, ResourceBudget budget)
+    {
+        ExactReal zero = new RationalReal(BigRational.Zero);
+        ExactReal one = new RationalReal(BigRational.One);
+        ExactReal minusOne = new RationalReal(BigRational.MinusOne);
+        ExactReal minusHalfTurn = Angle(angleUnit, new BigRational(-1, 2));
+        ExactReal halfTurn = Angle(angleUnit, new BigRational(1, 2));
+        ExactReal fullHalfTurn = Angle(angleUnit, BigRational.One);
+        return pattern.Function switch
+        {
+            "asin" => TransformInterval(pattern, minusHalfTurn, true, halfTurn, true, budget),
+            "acos" => TransformInterval(pattern, zero, true, fullHalfTurn, true, budget),
+            "atan" => TransformInterval(pattern, minusHalfTurn, false, halfTurn, false, budget),
+            "exp" => pattern.OuterScale.Sign > 0 ? new IntervalSet(RealBound.Finite(TransformOutput(pattern, zero, budget)), false, RealBound.PositiveInfinity, false) : new IntervalSet(RealBound.NegativeInfinity, false, RealBound.Finite(TransformOutput(pattern, zero, budget)), false),
+            "cosh" => pattern.OuterScale.Sign > 0 ? new IntervalSet(RealBound.Finite(TransformOutput(pattern, one, budget)), true, RealBound.PositiveInfinity, false) : new IntervalSet(RealBound.NegativeInfinity, false, RealBound.Finite(TransformOutput(pattern, one, budget)), true),
+            "tanh" => TransformInterval(pattern, minusOne, false, one, false, budget),
+            _ => AllRealSet.Instance
+        };
+    }
+
+    private static IntervalSet TransformInterval(AffinePrimitivePattern pattern, ExactReal lower, bool includesLower, ExactReal upper, bool includesUpper, ResourceBudget budget)
+    {
+        ExactReal transformedLower = TransformOutput(pattern, lower, budget);
+        ExactReal transformedUpper = TransformOutput(pattern, upper, budget);
+        return pattern.OuterScale.Sign > 0 ? new IntervalSet(RealBound.Finite(transformedLower), includesLower, RealBound.Finite(transformedUpper), includesUpper) : new IntervalSet(RealBound.Finite(transformedUpper), includesUpper, RealBound.Finite(transformedLower), includesLower);
+    }
+
+    private static FunctionParity PrimitiveParity(AffinePrimitivePattern pattern, AngleUnit angleUnit, ResourceBudget budget)
+    {
+        if (!pattern.InnerIntercept.IsZero)
+        {
+            return FunctionParity.Neither;
+        }
+
+        if (pattern.Function == "cosh")
+        {
+            return FunctionParity.Even;
+        }
+
+        if (pattern.Function == "acos")
+        {
+            ExactReal center = TransformOutput(pattern, Angle(angleUnit, new BigRational(1, 2)), budget);
+            return IsExactZero(center) ? FunctionParity.Odd : FunctionParity.Neither;
+        }
+
+        bool oddPrimitive = pattern.Function is "asin" or "atan" or "sinh" or "tanh" or "root";
+        return oddPrimitive && pattern.OuterShift.IsZero ? FunctionParity.Odd : FunctionParity.Neither;
+    }
+
+    private static bool TryPrimitiveZeros(AffinePrimitivePattern pattern, AngleUnit angleUnit, ResourceBudget budget, out object value)
+    {
+        BigRational target = Checked(-pattern.OuterShift / pattern.OuterScale, budget);
+        switch (pattern.Function)
+        {
+            case "asin" when target.IsZero:
+            case "atan" when target.IsZero:
+                value = PointAtInnerValue(pattern, new RationalReal(BigRational.Zero), budget);
+                return true;
+            case "acos" when target.IsZero:
+                value = PointAtInnerValue(pattern, new RationalReal(BigRational.One), budget);
+                return true;
+            case "asin":
+            case "acos":
+            case "atan":
+                // A general rational inverse-trig output requires a certified
+                // comparison with the unit-dependent principal range and an
+                // exact special-angle table. Leave that obligation unknown.
+                value = null!;
+                return false;
+            case "exp":
+                if (target.Sign <= 0)
+                {
+                    value = EmptySet.Instance;
+                    return true;
+                }
+
+                value = PointAtInnerValue(pattern, NaturalLogOfPositiveRational(target), budget);
+                return true;
+            case "sinh":
+                value = PointAtInnerValue(pattern, InverseSinh(target, budget), budget);
+                return true;
+            case "cosh":
+                if (target < BigRational.One)
+                {
+                    value = EmptySet.Instance;
+                    return true;
+                }
+
+                if (target == BigRational.One)
+                {
+                    value = PointAtInnerValue(pattern, new RationalReal(BigRational.Zero), budget);
+                    return true;
+                }
+
+                ExactReal acosh = InverseCosh(target, budget);
+                value = RealSets.Points([SolveInnerExact(pattern, ExactRealArithmetic.Negate(acosh), budget), SolveInnerExact(pattern, acosh, budget)]);
+                return true;
+            case "tanh":
+                if (target <= BigRational.MinusOne || target >= BigRational.One)
+                {
+                    value = EmptySet.Instance;
+                    return true;
+                }
+
+                value = PointAtInnerValue(pattern, InverseTanh(target, budget), budget);
+                return true;
+            case "log":
+            case "ln":
+                value = PointAtInnerValue(pattern, ExponentialInverse(pattern.Function, target, budget), budget);
+                return true;
+            case "root":
+                BigRational radicand = target.Pow(pattern.RootDegree);
+                budget.CheckCoefficient(radicand);
+                value = PointAtInnerValue(pattern, new RationalReal(radicand), budget);
+                return true;
+            default:
+                value = null!;
+                return false;
+        }
+    }
+
+    private static OptionalValue<ExactReal> PrimitiveYIntercept(AffinePrimitivePattern pattern, AngleUnit angleUnit, ResourceBudget budget)
+    {
+        if (!PrimitiveDefinedAt(pattern, pattern.InnerIntercept))
+        {
+            return OptionalValue<ExactReal>.None;
+        }
+
+        ExactReal primitive = PrimitiveAtRational(pattern, pattern.InnerIntercept, angleUnit, budget);
+        return OptionalValue<ExactReal>.Some(TransformOutput(pattern, primitive, budget));
+    }
+
+    private static bool PrimitiveDefinedAt(AffinePrimitivePattern pattern, BigRational argument) => pattern.Function switch
+    {
+        "asin" or "acos" => argument >= BigRational.MinusOne && argument <= BigRational.One,
+        "log" or "ln" => argument.Sign > 0,
+        _ => true
+    };
+    private static ImmutableArray<FeaturePoint> PrimitiveExtrema(AffinePrimitivePattern pattern, AngleUnit angleUnit, bool minimum, ResourceBudget budget)
+    {
+        if (pattern.Function is "asin" or "acos")
+        {
+            bool useBaseMinimum = (pattern.OuterScale.Sign > 0) == minimum;
+            BigRational innerValue = (pattern.Function, useBaseMinimum) switch
+            {
+                ("asin", true) => BigRational.MinusOne,
+                ("asin", false) => BigRational.One,
+                ("acos", true) => BigRational.One,
+                _ => BigRational.MinusOne
+            };
+            ExactReal x = new RationalReal(SolveInnerRational(pattern, innerValue, budget));
+            ExactReal y = TransformOutput(pattern, PrimitiveAtRational(pattern, innerValue, angleUnit, budget), budget);
+            return [new ConstantYFeaturePoint(new SingletonReal(x), y)];
+        }
+
+        if (pattern.Function == "cosh" && minimum == (pattern.OuterScale.Sign > 0))
+        {
+            ExactReal x = new RationalReal(SolveInnerRational(pattern, BigRational.Zero, budget));
+            ExactReal y = TransformOutput(pattern, new RationalReal(BigRational.One), budget);
+            return [new ConstantYFeaturePoint(new SingletonReal(x), y)];
+        }
+
+        return [];
+    }
+
+    private static ImmutableArray<FeaturePoint> PrimitiveInflections(AffinePrimitivePattern pattern, AngleUnit angleUnit, ResourceBudget budget)
+    {
+        if (pattern.Function is not ("asin" or "acos" or "atan" or "sinh" or "tanh" or "root"))
+        {
+            return [];
+        }
+
+        ExactReal x = new RationalReal(SolveInnerRational(pattern, BigRational.Zero, budget));
+        ExactReal y = TransformOutput(pattern, PrimitiveAtRational(pattern, BigRational.Zero, angleUnit, budget), budget);
+        return [new ConstantYFeaturePoint(new SingletonReal(x), y)];
+    }
+
+    private static ImmutableArray<Asymptote> PrimitiveVerticalAsymptotes(AffinePrimitivePattern pattern, ResourceBudget budget)
+    {
+        if (pattern.Function is not ("log" or "ln"))
+        {
+            return [];
+        }
+
+        ExactReal x = new RationalReal(SolveInnerRational(pattern, BigRational.Zero, budget));
+        return [new Asymptote(AsymptoteOrientation.Vertical, new SingletonReal(x), null, null)];
+    }
+
+    private static ImmutableArray<Asymptote> PrimitiveHorizontalAsymptotes(AffinePrimitivePattern pattern, AngleUnit angleUnit, ResourceBudget budget)
+    {
+        ExactReal positive;
+        ExactReal negative;
+        switch (pattern.Function)
+        {
+            case "exp":
+                return [HorizontalAsymptote(TransformOutput(pattern, new RationalReal(BigRational.Zero), budget))];
+            case "atan":
+                positive = Angle(angleUnit, new BigRational(1, 2));
+                negative = Angle(angleUnit, new BigRational(-1, 2));
+                break;
+            case "tanh":
+                positive = new RationalReal(BigRational.One);
+                negative = new RationalReal(BigRational.MinusOne);
+                break;
+            default:
+                return [];
+        }
+
+        return [HorizontalAsymptote(TransformOutput(pattern, positive, budget)), HorizontalAsymptote(TransformOutput(pattern, negative, budget))];
+    }
+
+    private static Asymptote HorizontalAsymptote(ExactReal y) => new(AsymptoteOrientation.Horizontal, new SingletonReal(y), null, y);
+    private static ImmutableArray<MonotoneRegion> PrimitiveMonotonicity(AffinePrimitivePattern pattern, RealSet domain, ResourceBudget budget)
+    {
+        if (pattern.Function == "cosh")
+        {
+            ExactReal center = new RationalReal(SolveInnerRational(pattern, BigRational.Zero, budget));
+            RealSet left = new IntervalSet(RealBound.NegativeInfinity, false, RealBound.Finite(center), false);
+            RealSet right = new IntervalSet(RealBound.Finite(center), false, RealBound.PositiveInfinity, false);
+            return pattern.OuterScale.Sign > 0 ? [new MonotoneRegion(left, Graphing.Symbolics.Monotonicity.Decreasing), new MonotoneRegion(right, Graphing.Symbolics.Monotonicity.Increasing)] : [new MonotoneRegion(left, Graphing.Symbolics.Monotonicity.Increasing), new MonotoneRegion(right, Graphing.Symbolics.Monotonicity.Decreasing)];
+        }
+
+        int primitiveDirection = pattern.Function == "acos" ? -1 : 1;
+        int direction = primitiveDirection * pattern.InnerSlope.Sign * pattern.OuterScale.Sign;
+        return [new MonotoneRegion(domain, direction > 0 ? Graphing.Symbolics.Monotonicity.Increasing : Graphing.Symbolics.Monotonicity.Decreasing)];
+    }
+
+    private static ExactReal PrimitiveAtRational(AffinePrimitivePattern pattern, BigRational argument, AngleUnit angleUnit, ResourceBudget budget)
+    {
+        budget.CheckCoefficient(argument);
+        if (pattern.Function is "asin" or "acos" or "atan")
+        {
+            return ExactInverseTrigonometry.PrincipalAngle(pattern.Function, ExactScalar.FromRational(argument), angleUnit, normalizeOddNegative: false);
+        }
+
+        ExactReal zero = new RationalReal(BigRational.Zero);
+        ExactReal one = new RationalReal(BigRational.One);
+        return pattern.Function switch
+        {
+            "exp" when argument.IsZero => one,
+            "exp" when argument == BigRational.One => new NamedReal("e"),
+            "sinh" or "tanh" when argument.IsZero => zero,
+            "cosh" when argument.IsZero => one,
+            "log" or "ln" when argument == BigRational.One => zero,
+            "log" when argument == new BigRational(10) => one,
+            "root" when argument.IsZero => zero,
+            "root" when argument == BigRational.One => one,
+            "root" when argument == BigRational.MinusOne => new RationalReal(BigRational.MinusOne),
+            "root" => new FunctionReal("root", [new RationalReal(argument), new RationalReal(new BigRational(pattern.RootDegree))]),
+            _ => new FunctionReal(pattern.Function, [new RationalReal(argument)])
+        };
+    }
+
+    private static RealSet PointAtInnerValue(AffinePrimitivePattern pattern, ExactReal innerValue, ResourceBudget budget) => RealSets.Points([SolveInnerExact(pattern, innerValue, budget)]);
+    private static ExactReal SolveInnerExact(AffinePrimitivePattern pattern, ExactReal innerValue, ResourceBudget budget)
+    {
+        budget.CheckCoefficient(pattern.InnerIntercept);
+        budget.CheckCoefficient(pattern.InnerSlope);
+        return Checked(ExactRealArithmetic.Scale(ExactRealArithmetic.AddRational(innerValue, -pattern.InnerIntercept), pattern.InnerSlope.Reciprocal()), budget);
+    }
+
+    private static BigRational SolveInnerRational(AffinePrimitivePattern pattern, BigRational innerValue, ResourceBudget budget) => Checked((innerValue - pattern.InnerIntercept) / pattern.InnerSlope, budget);
+    private static ExactReal TransformOutput(AffinePrimitivePattern pattern, ExactReal primitiveValue, ResourceBudget budget)
+    {
+        budget.CheckCoefficient(pattern.OuterScale);
+        budget.CheckCoefficient(pattern.OuterShift);
+        return Checked(ExactRealArithmetic.AddRational(ExactRealArithmetic.Scale(primitiveValue, pattern.OuterScale), pattern.OuterShift), budget);
+    }
+
+    private static ExactReal NaturalLogOfPositiveRational(BigRational value) => value == BigRational.One ? new RationalReal(BigRational.Zero) : new FunctionReal("ln", [new RationalReal(value)]);
+    private static ExactReal InverseSinh(BigRational value, ResourceBudget budget)
+    {
+        BigRational radicand = Checked(value * value + BigRational.One, budget);
+        ExactReal argument = ExactRealArithmetic.AddRational(SquareRoot(radicand), value);
+        return NaturalLog(argument);
+    }
+
+    private static ExactReal InverseCosh(BigRational value, ResourceBudget budget)
+    {
+        BigRational radicand = Checked(value * value - BigRational.One, budget);
+        ExactReal argument = ExactRealArithmetic.AddRational(SquareRoot(radicand), value);
+        return NaturalLog(argument);
+    }
+
+    private static ExactReal InverseTanh(BigRational value, ResourceBudget budget)
+    {
+        BigRational ratio = Checked((BigRational.One + value) / (BigRational.One - value), budget);
+        return ExactRealArithmetic.Scale(NaturalLogOfPositiveRational(ratio), new BigRational(1, 2));
+    }
+
+    private static ExactReal ExponentialInverse(string logarithm, BigRational exponent, ResourceBudget budget)
+    {
+        budget.CheckCoefficient(exponent);
+        if (exponent.IsZero)
+        {
+            return new RationalReal(BigRational.One);
+        }
+
+        if (logarithm == "ln")
+        {
+            return exponent == BigRational.One ? new NamedReal("e") : new FunctionReal("exp", [new RationalReal(exponent)]);
+        }
+
+        if (exponent.IsInteger && exponent.Numerator >= int.MinValue && exponent.Numerator <= int.MaxValue)
+        {
+            if (ExactInteger.Abs(exponent.Numerator) > AnalysisLimits.CoefficientBits)
+            {
+                throw new BudgetExceededException(nameof(AnalysisLimits.CoefficientBits));
+            }
+
+            BigRational power = new BigRational(10).Pow((int)exponent.Numerator);
+            budget.CheckCoefficient(power);
+            return new RationalReal(power);
+        }
+
+        return new FunctionReal("power", [new RationalReal(new BigRational(10)), new RationalReal(exponent)]);
+    }
+
+    private static ExactReal SquareRoot(BigRational value) => BigRational.TrySquareRoot(value, out BigRational root) ? new RationalReal(root) : new FunctionReal("sqrt", [new RationalReal(value)]);
+    private static ExactReal NaturalLog(ExactReal value) => value is RationalReal { Value.IsOne: true } ? new RationalReal(BigRational.Zero) : new FunctionReal("ln", [value]);
+    private static bool IsExactZero(ExactReal value) => value switch
+    {
+        RationalReal rational => rational.Value.IsZero,
+        AffinePiReal affine => affine.PiCoefficient.IsZero && affine.Constant.IsZero,
+        _ => false
+    };
+    private static BigRational Checked(BigRational value, ResourceBudget budget)
+    {
+        budget.CheckCoefficient(value);
+        return value;
+    }
+
+    private static ExactReal Checked(ExactReal value, ResourceBudget budget)
+    {
+        budget.Charge();
+        switch (value)
+        {
+            case RationalReal rational:
+                budget.CheckCoefficient(rational.Value);
+                break;
+            case AffinePiReal affine:
+                budget.CheckCoefficient(affine.PiCoefficient);
+                budget.CheckCoefficient(affine.Constant);
+                break;
+            case FunctionReal function:
+                foreach (ExactReal argument in function.Arguments)
+                {
+                    Checked(argument, budget);
+                }
+
+                break;
+        }
+
+        return value;
+    }
+
+    private static bool TryAffineArgument(ValueTerm term, string variable, ResourceBudget budget, out BigRational slope, out BigRational intercept)
+    {
+        if (!RationalFunctionExtractor.TryExtract(term, variable, budget, out RationalExtraction extraction) || extraction.Function.Denominator.Degree != 0 || extraction.Function.Numerator.Degree != 1)
         {
             slope = default;
             intercept = default;
@@ -781,15 +824,9 @@ internal static class TrigonometricAndLatticeAnalyzer
         return !slope.IsZero;
     }
 
-    private static bool TryComputeAffine(
-        AffineTrigPattern pattern,
-        AngleUnit angleUnit,
-        AnalysisFeatures feature,
-        out object value)
+    private static bool TryComputeAffine(AffineTrigPattern pattern, AngleUnit angleUnit, AnalysisFeatures feature, out object value)
     {
-        if (!pattern.Phase.IsZero &&
-            angleUnit != AngleUnit.Radians &&
-            feature is AnalysisFeatures.Parity or AnalysisFeatures.YIntercept)
+        if (feature == AnalysisFeatures.Zeros && !pattern.Shift.IsZero && pattern.Amplitude.RationalValue is null)
         {
             value = null!;
             return false;
@@ -799,9 +836,9 @@ internal static class TrigonometricAndLatticeAnalyzer
         {
             AnalysisFeatures.Domain => AffineDomain(pattern, angleUnit),
             AnalysisFeatures.Range => AffineRange(pattern),
-            AnalysisFeatures.Parity => AffineParity(pattern),
+            AnalysisFeatures.Parity => AffineParity(pattern, angleUnit),
             AnalysisFeatures.Zeros => AffineZeros(pattern, angleUnit),
-            AnalysisFeatures.YIntercept => AffineYIntercept(pattern),
+            AnalysisFeatures.YIntercept => AffineYIntercept(pattern, angleUnit),
             AnalysisFeatures.Minima => AffineExtrema(pattern, angleUnit, minimum: true),
             AnalysisFeatures.Maxima => AffineExtrema(pattern, angleUnit, minimum: false),
             AnalysisFeatures.InflectionPoints => AffineInflections(pattern, angleUnit),
@@ -824,14 +861,8 @@ internal static class TrigonometricAndLatticeAnalyzer
 
         ExactReal lower = SolveAngle(pattern, Angle(angleUnit, new BigRational(-1, 2)));
         ExactReal upper = SolveAngle(pattern, Angle(angleUnit, new BigRational(1, 2)));
-        ExactReal period = ScaleAngle(
-            Angle(angleUnit, BigRational.One),
-            pattern.Frequency.Reciprocal());
-        return new PeriodicIntervalSet(
-            period,
-            "m",
-            IntegerConstraint.All("m"),
-            [new PeriodicInterval(lower, false, upper, false)]);
+        ExactReal period = ScaleAngle(Angle(angleUnit, BigRational.One), pattern.Frequency.Reciprocal());
+        return new PeriodicIntervalSet(period, "m", IntegerConstraint.All("m"), [new PeriodicInterval(lower, false, upper, false)]);
     }
 
     private static RealSet AffineRange(AffineTrigPattern pattern)
@@ -841,22 +872,21 @@ internal static class TrigonometricAndLatticeAnalyzer
             return AllRealSet.Instance;
         }
 
-        BigRational magnitude = pattern.Amplitude.Abs();
+        ExactScalar magnitude = pattern.Amplitude.Abs();
         if (magnitude.IsZero)
         {
             return RealSets.Points([new RationalReal(pattern.Shift)]);
         }
 
-        return new IntervalSet(
-            RealBound.Finite(new RationalReal(pattern.Shift - magnitude)),
-            true,
-            RealBound.Finite(new RationalReal(pattern.Shift + magnitude)),
-            true);
+        return new IntervalSet(RealBound.Finite(ExactRealArithmetic.AddRational(magnitude.Negate().Value, pattern.Shift)), true, RealBound.Finite(ExactRealArithmetic.AddRational(magnitude.Value, pattern.Shift)), true);
     }
 
-    private static FunctionParity AffineParity(AffineTrigPattern pattern)
+    private static FunctionParity AffineParity(AffineTrigPattern pattern, AngleUnit angleUnit)
     {
-        if (!pattern.Phase.IsZero)
+        BigRational? phaseFraction = PhaseInPi(pattern.Phase, angleUnit);
+        bool integer = phaseFraction is { IsInteger: true };
+        bool halfInteger = phaseFraction is { } fraction && (fraction - new BigRational(1, 2)).IsInteger;
+        if (pattern.Function == "tan" && !integer && !halfInteger)
         {
             return FunctionParity.Neither;
         }
@@ -868,8 +898,11 @@ internal static class TrigonometricAndLatticeAnalyzer
 
         return pattern.Function switch
         {
-            "cos" => FunctionParity.Even,
-            "sin" or "tan" when pattern.Shift.IsZero => FunctionParity.Odd,
+            "sin" when halfInteger => FunctionParity.Even,
+            "sin" when integer && pattern.Shift.IsZero => FunctionParity.Odd,
+            "cos" when integer => FunctionParity.Even,
+            "cos" when halfInteger && pattern.Shift.IsZero => FunctionParity.Odd,
+            "tan" when pattern.Shift.IsZero => FunctionParity.Odd,
             _ => FunctionParity.Neither
         };
     }
@@ -886,59 +919,102 @@ internal static class TrigonometricAndLatticeAnalyzer
             return SolveShiftedTrigZeros(pattern, angleUnit);
         }
 
-        BigRational offsetFraction = pattern.Function == "cos"
-            ? new BigRational(1, 2)
-            : BigRational.Zero;
+        BigRational offsetFraction = pattern.Function == "cos" ? new BigRational(1, 2) : BigRational.Zero;
         ExactReal offset = SolveAngle(pattern, Angle(angleUnit, offsetFraction));
-        BigRational periodFraction = pattern.Function == "sin" || pattern.Function == "tan"
-            ? BigRational.One
-            : BigRational.One;
-        ExactReal period = ScaleAngle(
-            Angle(angleUnit, periodFraction),
-            pattern.Frequency.Reciprocal());
+        BigRational periodFraction = pattern.Function == "sin" || pattern.Function == "tan" ? BigRational.One : BigRational.One;
+        ExactReal period = ScaleAngle(Angle(angleUnit, periodFraction), pattern.Frequency.Reciprocal());
         return new PeriodicPointSet(offset, period, "m", IntegerConstraint.All("m"));
     }
 
-    private static OptionalValue<ExactReal> AffineYIntercept(AffineTrigPattern pattern)
+    private static OptionalValue<ExactReal> AffineYIntercept(AffineTrigPattern pattern, AngleUnit angleUnit)
     {
         if (pattern.Phase.IsZero)
         {
-            BigRational origin = pattern.Function == "cos"
-                ? pattern.Amplitude + pattern.Shift
-                : pattern.Shift;
-            return OptionalValue<ExactReal>.Some(new RationalReal(origin));
+            ExactReal origin = pattern.Function == "cos" ? ExactRealArithmetic.AddRational(pattern.Amplitude.Value, pattern.Shift) : new RationalReal(pattern.Shift);
+            return OptionalValue<ExactReal>.Some(origin);
         }
 
-        ExactReal primitive = new FunctionReal(
-            pattern.Function,
-            [new RationalReal(pattern.Phase)]);
+        BigRational? phaseFraction = PhaseInPi(pattern.Phase, angleUnit);
+        if (phaseFraction is { } exactFraction && TryPrimitiveQuarterTurn(pattern.Function, exactFraction, out bool defined, out BigRational exactPrimitive))
+        {
+            if (!defined)
+            {
+                return OptionalValue<ExactReal>.None;
+            }
+
+            ExactReal exactScaled = ExactRealArithmetic.Scale(pattern.Amplitude.Value, exactPrimitive);
+            return OptionalValue<ExactReal>.Some(pattern.Shift.IsZero ? exactScaled : ExactRealArithmetic.AddRational(exactScaled, pattern.Shift));
+        }
+
+        ExactScalar amplitude = pattern.Amplitude;
+        BigRational phase = pattern.Phase;
+        if (pattern.Function == "tan" && phase.Sign < 0)
+        {
+            // tan(-b) = -tan(b). Keep the exact sign outside the primitive so
+            // every amplitude spelling reaches the same canonical value.
+            amplitude = amplitude.Negate();
+            phase = phase.Abs();
+        }
+
+        ExactReal primitive = new FunctionReal(pattern.Function, [ExactAngleArithmetic.ToRadians(new RationalReal(phase), angleUnit)]);
         ExactReal scaled;
-        if (pattern.Amplitude.IsOne)
-        {
-            scaled = primitive;
-        }
-        else if (pattern.Amplitude == BigRational.MinusOne)
-        {
-            scaled = new FunctionReal("negate", [primitive]);
-        }
-        else
-        {
-            scaled = new FunctionReal(
-                "scale",
-                [primitive, new RationalReal(pattern.Amplitude)]);
-        }
-        ExactReal shifted = pattern.Shift.IsZero
-            ? scaled
-            : new FunctionReal(
-                "add",
-                [scaled, new RationalReal(pattern.Shift)]);
+        scaled = ExactRealArithmetic.Multiply(amplitude.Value, primitive);
+        ExactReal shifted = pattern.Shift.IsZero ? scaled : ExactRealArithmetic.AddRational(scaled, pattern.Shift);
         return OptionalValue<ExactReal>.Some(shifted);
     }
 
-    private static ImmutableArray<FeaturePoint> AffineExtrema(
-        AffineTrigPattern pattern,
-        AngleUnit angleUnit,
-        bool minimum)
+    private static BigRational? PhaseInPi(BigRational phase, AngleUnit angleUnit) => angleUnit switch
+    {
+        AngleUnit.Radians => phase.IsZero ? BigRational.Zero : null,
+        AngleUnit.Degrees => phase / new BigRational(180),
+        AngleUnit.Grads => phase / new BigRational(200),
+        _ => throw new ArgumentOutOfRangeException(nameof(angleUnit))
+    };
+    private static bool TryPrimitiveQuarterTurn(string function, BigRational phaseInPi, out bool defined, out BigRational value)
+    {
+        BigRational quarterTurns = phaseInPi * new BigRational(2);
+        if (!quarterTurns.IsInteger)
+        {
+            defined = false;
+            value = default;
+            return false;
+        }
+
+        int residue = (int)(quarterTurns.Numerator % 4);
+        if (residue < 0)
+        {
+            residue += 4;
+        }
+
+        if (function == "tan" && residue is 1 or 3)
+        {
+            defined = false;
+            value = default;
+            return true;
+        }
+
+        defined = true;
+        value = function switch
+        {
+            "sin" => residue switch
+            {
+                1 => BigRational.One,
+                3 => BigRational.MinusOne,
+                _ => BigRational.Zero
+            },
+            "cos" => residue switch
+            {
+                0 => BigRational.One,
+                2 => BigRational.MinusOne,
+                _ => BigRational.Zero
+            },
+            "tan" => BigRational.Zero,
+            _ => throw new ArgumentOutOfRangeException(nameof(function))
+        };
+        return true;
+    }
+
+    private static ImmutableArray<FeaturePoint> AffineExtrema(AffineTrigPattern pattern, AngleUnit angleUnit, bool minimum)
     {
         if (pattern.Function == "tan" || pattern.Amplitude.IsZero)
         {
@@ -959,23 +1035,13 @@ internal static class TrigonometricAndLatticeAnalyzer
         }
 
         ExactReal offset = SolveAngle(pattern, Angle(angleUnit, angleFraction));
-        ExactReal period = ScaleAngle(
-            Angle(angleUnit, new BigRational(2)),
-            pattern.Frequency.Reciprocal());
-        BigRational y = minimum
-            ? pattern.Shift - pattern.Amplitude.Abs()
-            : pattern.Shift + pattern.Amplitude.Abs();
-        return
-        [
-            new FeaturePoint(
-                new PeriodicReal(offset, period, "m", IntegerConstraint.All("m")),
-                new RationalReal(y))
-        ];
+        ExactReal period = ScaleAngle(Angle(angleUnit, new BigRational(2)), pattern.Frequency.Reciprocal());
+        ExactScalar magnitude = pattern.Amplitude.Abs();
+        ExactReal y = ExactRealArithmetic.AddRational(minimum ? magnitude.Negate().Value : magnitude.Value, pattern.Shift);
+        return [new ConstantYFeaturePoint(new PeriodicReal(offset, period, "m", IntegerConstraint.All("m")), y)];
     }
 
-    private static ImmutableArray<FeaturePoint> AffineInflections(
-        AffineTrigPattern pattern,
-        AngleUnit angleUnit)
+    private static ImmutableArray<FeaturePoint> AffineInflections(AffineTrigPattern pattern, AngleUnit angleUnit)
     {
         if (pattern.Amplitude.IsZero)
         {
@@ -984,20 +1050,11 @@ internal static class TrigonometricAndLatticeAnalyzer
 
         BigRational fraction = pattern.Function == "cos" ? new BigRational(1, 2) : BigRational.Zero;
         ExactReal offset = SolveAngle(pattern, Angle(angleUnit, fraction));
-        ExactReal period = ScaleAngle(
-            Angle(angleUnit, BigRational.One),
-            pattern.Frequency.Reciprocal());
-        return
-        [
-            new FeaturePoint(
-                new PeriodicReal(offset, period, "m", IntegerConstraint.All("m")),
-                new RationalReal(pattern.Shift))
-        ];
+        ExactReal period = ScaleAngle(Angle(angleUnit, BigRational.One), pattern.Frequency.Reciprocal());
+        return [new ConstantYFeaturePoint(new PeriodicReal(offset, period, "m", IntegerConstraint.All("m")), new RationalReal(pattern.Shift))];
     }
 
-    private static ImmutableArray<Asymptote> AffineVerticalAsymptotes(
-        AffineTrigPattern pattern,
-        AngleUnit angleUnit)
+    private static ImmutableArray<Asymptote> AffineVerticalAsymptotes(AffineTrigPattern pattern, AngleUnit angleUnit)
     {
         if (pattern.Function != "tan" || pattern.Amplitude.IsZero)
         {
@@ -1005,94 +1062,32 @@ internal static class TrigonometricAndLatticeAnalyzer
         }
 
         ExactReal offset = SolveAngle(pattern, Angle(angleUnit, new BigRational(1, 2)));
-        ExactReal period = ScaleAngle(
-            Angle(angleUnit, BigRational.One),
-            pattern.Frequency.Reciprocal());
-        return
-        [
-            new Asymptote(
-                AsymptoteOrientation.Vertical,
-                new PeriodicReal(offset, period, "m", IntegerConstraint.All("m")),
-                null,
-                null)
-        ];
+        ExactReal period = ScaleAngle(Angle(angleUnit, BigRational.One), pattern.Frequency.Reciprocal());
+        return [new Asymptote(AsymptoteOrientation.Vertical, new PeriodicReal(offset, period, "m", IntegerConstraint.All("m")), null, null)];
     }
 
-    private static ImmutableArray<MonotoneRegion> AffineMonotonicity(
-        AffineTrigPattern pattern,
-        AngleUnit angleUnit)
+    private static ImmutableArray<MonotoneRegion> AffineMonotonicity(AffineTrigPattern pattern, AngleUnit angleUnit)
     {
         if (pattern.Amplitude.IsZero)
         {
-            return
-            [
-                new MonotoneRegion(
-                    AffineDomain(pattern, angleUnit),
-                    Graphing.Symbolics.Monotonicity.Constant)
-            ];
+            return [new MonotoneRegion(AffineDomain(pattern, angleUnit), Graphing.Symbolics.Monotonicity.Constant)];
         }
 
         if (pattern.Function == "tan")
         {
-            ExactReal tangentPeriod = ScaleAngle(
-                Angle(angleUnit, BigRational.One),
-                pattern.Frequency.Reciprocal());
-            return
-            [
-                new MonotoneRegion(
-                    PeriodicInterval(
-                        pattern,
-                        angleUnit,
-                        tangentPeriod,
-                        new BigRational(1, 2),
-                        new BigRational(3, 2)),
-                    pattern.Amplitude.Sign > 0
-                        ? Graphing.Symbolics.Monotonicity.Increasing
-                        : Graphing.Symbolics.Monotonicity.Decreasing)
-            ];
+            ExactReal tangentPeriod = ScaleAngle(Angle(angleUnit, BigRational.One), pattern.Frequency.Reciprocal());
+            return [new MonotoneRegion(PeriodicInterval(pattern, angleUnit, tangentPeriod, new BigRational(1, 2), new BigRational(3, 2)), pattern.Amplitude.Sign > 0 ? Graphing.Symbolics.Monotonicity.Increasing : Graphing.Symbolics.Monotonicity.Decreasing)];
         }
 
-        ExactReal period = ScaleAngle(
-            Angle(angleUnit, new BigRational(2)),
-            pattern.Frequency.Reciprocal());
-        BigRational increasingStart = pattern.Function == "sin"
-            ? new BigRational(3, 2)
-            : BigRational.One;
-        BigRational increasingEnd = pattern.Function == "sin"
-            ? new BigRational(5, 2)
-            : new BigRational(2);
-        BigRational decreasingStart = pattern.Function == "sin"
-            ? new BigRational(1, 2)
-            : BigRational.Zero;
-        BigRational decreasingEnd = pattern.Function == "sin"
-            ? new BigRational(3, 2)
-            : BigRational.One;
-        RealSet increasing = PeriodicInterval(
-            pattern,
-            angleUnit,
-            period,
-            increasingStart,
-            increasingEnd);
-        RealSet decreasing = PeriodicInterval(
-            pattern,
-            angleUnit,
-            period,
-            decreasingStart,
-            decreasingEnd);
+        ExactReal period = ScaleAngle(Angle(angleUnit, new BigRational(2)), pattern.Frequency.Reciprocal());
+        BigRational increasingStart = pattern.Function == "sin" ? new BigRational(3, 2) : BigRational.One;
+        BigRational increasingEnd = pattern.Function == "sin" ? new BigRational(5, 2) : new BigRational(2);
+        BigRational decreasingStart = pattern.Function == "sin" ? new BigRational(1, 2) : BigRational.Zero;
+        BigRational decreasingEnd = pattern.Function == "sin" ? new BigRational(3, 2) : BigRational.One;
+        RealSet increasing = PeriodicInterval(pattern, angleUnit, period, increasingStart, increasingEnd);
+        RealSet decreasing = PeriodicInterval(pattern, angleUnit, period, decreasingStart, decreasingEnd);
         bool positiveAmplitude = pattern.Amplitude.Sign > 0;
-        return
-        [
-            new MonotoneRegion(
-                decreasing,
-                positiveAmplitude
-                    ? Graphing.Symbolics.Monotonicity.Decreasing
-                    : Graphing.Symbolics.Monotonicity.Increasing),
-            new MonotoneRegion(
-                increasing,
-                positiveAmplitude
-                    ? Graphing.Symbolics.Monotonicity.Increasing
-                    : Graphing.Symbolics.Monotonicity.Decreasing)
-        ];
+        return [new MonotoneRegion(decreasing, positiveAmplitude ? Graphing.Symbolics.Monotonicity.Decreasing : Graphing.Symbolics.Monotonicity.Increasing), new MonotoneRegion(increasing, positiveAmplitude ? Graphing.Symbolics.Monotonicity.Increasing : Graphing.Symbolics.Monotonicity.Decreasing)];
     }
 
     private static Periodicity AffinePeriod(AffineTrigPattern pattern, AngleUnit angleUnit)
@@ -1103,17 +1098,18 @@ internal static class TrigonometricAndLatticeAnalyzer
         }
 
         BigRational fraction = pattern.Function == "tan" ? BigRational.One : new BigRational(2);
-        ExactReal period = ScaleAngle(
-            Angle(angleUnit, fraction),
-            pattern.Frequency.Reciprocal());
+        ExactReal period = ScaleAngle(Angle(angleUnit, fraction), pattern.Frequency.Reciprocal());
         return new Periodicity(PeriodicityKind.PeriodicWithFundamentalPeriod, period);
     }
 
-    private static RealSet SolveShiftedTrigZeros(
-        AffineTrigPattern pattern,
-        AngleUnit angleUnit)
+    private static RealSet SolveShiftedTrigZeros(AffineTrigPattern pattern, AngleUnit angleUnit)
     {
-        BigRational target = -pattern.Shift / pattern.Amplitude;
+        if (pattern.Amplitude.RationalValue is not { } rationalAmplitude)
+        {
+            throw new InvalidOperationException("Shifted affine trigonometric zeros require a rational amplitude.");
+        }
+
+        BigRational target = -pattern.Shift / rationalAmplitude;
         if (pattern.Function != "tan" && (target < BigRational.MinusOne || target > BigRational.One))
         {
             return EmptySet.Instance;
@@ -1126,91 +1122,41 @@ internal static class TrigonometricAndLatticeAnalyzer
             "tan" => "atan",
             _ => throw new ArgumentOutOfRangeException(nameof(pattern))
         };
-        ExactReal principal = new FunctionReal(inverse, [new RationalReal(target)]);
+        ExactReal principal = ExactInverseTrigonometry.PrincipalAngle(inverse, ExactScalar.FromRational(target), angleUnit, normalizeOddNegative: false);
         ExactReal offset = TransformInverseAngle(pattern, principal);
-        ExactReal period = ScaleAngle(
-            Angle(angleUnit, pattern.Function == "sin" || pattern.Function == "cos"
-                ? new BigRational(2)
-                : BigRational.One),
-            pattern.Frequency.Reciprocal());
+        ExactReal period = ScaleAngle(Angle(angleUnit, pattern.Function == "sin" || pattern.Function == "cos" ? new BigRational(2) : BigRational.One), pattern.Frequency.Reciprocal());
         RealSet first = new PeriodicPointSet(offset, period, "m", IntegerConstraint.All("m"));
-        if (pattern.Function == "tan")
+        if (pattern.Function == "tan" || target.Abs().IsOne)
         {
             return first;
         }
 
-        ExactReal reflected = pattern.Function == "sin"
-            ? TransformInverseAngle(
-                pattern,
-                new FunctionReal("pi-minus", [principal]))
-            : TransformInverseAngle(pattern, new FunctionReal("negate", [principal]));
+        ExactReal reflectedAngle = pattern.Function == "sin" ? ExactRealArithmetic.Subtract(Angle(angleUnit, BigRational.One), principal) : ExactRealArithmetic.Negate(principal);
+        ExactReal reflected = TransformInverseAngle(pattern, reflectedAngle);
         RealSet second = new PeriodicPointSet(reflected, period, "m", IntegerConstraint.All("m"));
         return RealSets.Union(first, second);
     }
 
-    private static RealSet PeriodicInterval(
-        AffineTrigPattern pattern,
-        AngleUnit angleUnit,
-        ExactReal period,
-        BigRational lowerFraction,
-        BigRational upperFraction) =>
-        new PeriodicIntervalSet(
-            period,
-            "m",
-            IntegerConstraint.All("m"),
-            [
-                new PeriodicInterval(
-                    SolveAngle(pattern, Angle(angleUnit, lowerFraction)),
-                    false,
-                    SolveAngle(pattern, Angle(angleUnit, upperFraction)),
-                    false)
-            ]);
-
-    private static ExactReal SolveAngle(AffineTrigPattern pattern, ExactReal angle) =>
-        AddRational(
-            ScaleAngle(angle, pattern.Frequency.Reciprocal()),
-            -pattern.Phase / pattern.Frequency);
-
-    private static ExactReal TransformInverseAngle(
-        AffineTrigPattern pattern,
-        ExactReal angle) =>
-        new FunctionReal(
-            "affine",
-            [
-                angle,
-                new RationalReal(pattern.Frequency.Reciprocal()),
-                new RationalReal(-pattern.Phase / pattern.Frequency)
-            ]);
-
-    private static ExactReal Angle(AngleUnit unit, BigRational piFraction) => unit switch
-    {
-        AngleUnit.Radians => new AffinePiReal(piFraction, BigRational.Zero),
-        AngleUnit.Degrees => new RationalReal(new BigRational(180) * piFraction),
-        AngleUnit.Grads => new RationalReal(new BigRational(200) * piFraction),
-        _ => throw new ArgumentOutOfRangeException(nameof(unit))
-    };
-
+    private static Graphing.Symbolics.PeriodicIntervalSet PeriodicInterval(AffineTrigPattern pattern, AngleUnit angleUnit, ExactReal period, BigRational lowerFraction, BigRational upperFraction) => new PeriodicIntervalSet(period, "m", IntegerConstraint.All("m"), [new PeriodicInterval(SolveAngle(pattern, Angle(angleUnit, lowerFraction)), false, SolveAngle(pattern, Angle(angleUnit, upperFraction)), false)]);
+    private static ExactReal SolveAngle(AffineTrigPattern pattern, ExactReal angle) => AddRational(ScaleAngle(angle, pattern.Frequency.Reciprocal()), -pattern.Phase / pattern.Frequency);
+    private static ExactReal TransformInverseAngle(AffineTrigPattern pattern, ExactReal angle) => SolveAngle(pattern, angle);
+    private static ExactReal Angle(AngleUnit unit, BigRational piFraction) => ExactAngleArithmetic.PiFraction(unit, piFraction);
     private static ExactReal ScaleAngle(ExactReal value, BigRational scale) => value switch
     {
         RationalReal rational => new RationalReal(rational.Value * scale),
-        AffinePiReal affine => new AffinePiReal(
-            affine.PiCoefficient * scale,
-            affine.Constant * scale),
+        AffinePiReal affine => new AffinePiReal(affine.PiCoefficient * scale, affine.Constant * scale),
         _ => new FunctionReal("scale", [value, new RationalReal(scale)])
     };
-
     private static ExactReal AddRational(ExactReal value, BigRational addend) => value switch
     {
         RationalReal rational => new RationalReal(rational.Value + addend),
-        AffinePiReal affine => affine with { Constant = affine.Constant + addend },
+        AffinePiReal affine => affine with
+        {
+            Constant = affine.Constant + addend
+        },
         _ => new FunctionReal("add", [value, new RationalReal(addend)])
     };
-
-    internal static bool TryGetAffineTrig(
-        ValueTerm term,
-        string variable,
-        ResourceBudget budget,
-        out AffineTrigPattern pattern)
+    internal static bool TryGetAffineTrig(ValueTerm term, string variable, ResourceBudget budget, out AffineTrigPattern pattern)
     {
         BigRational shift = BigRational.Zero;
         ValueTerm core = term;
@@ -1228,37 +1174,13 @@ internal static class TrigonometricAndLatticeAnalyzer
             }
         }
 
-        BigRational amplitude = BigRational.One;
-        ValueTerm trig = core;
-        if (core.Kind == ValueKind.Negate)
+        if (!TryStripAmplitude(core, budget, out ValueTerm trig, out ExactScalar amplitude))
         {
-            amplitude = BigRational.MinusOne;
-            trig = core.Operands[0];
-        }
-        else if (core.Kind == ValueKind.Multiply)
-        {
-            if (TryConstant(core.Operands[0], out BigRational left))
-            {
-                amplitude = left;
-                trig = core.Operands[1];
-            }
-            else if (TryConstant(core.Operands[1], out BigRational right))
-            {
-                amplitude = right;
-                trig = core.Operands[0];
-            }
+            pattern = null!;
+            return false;
         }
 
-        if (trig.Kind != ValueKind.Function ||
-            trig.Name is not ("sin" or "cos" or "tan") ||
-            trig.Operands.Length != 1 ||
-            !RationalFunctionExtractor.TryExtract(
-                trig.Operands[0],
-                variable,
-                budget,
-                out RationalExtraction argument) ||
-            argument.Function.Denominator.Degree != 0 ||
-            argument.Function.Numerator.Degree > 1)
+        if (trig.Kind != ValueKind.Function || trig.Name is not ("sin" or "cos" or "tan") || trig.Operands.Length != 1 || !RationalFunctionExtractor.TryExtract(trig.Operands[0], variable, budget, out RationalExtraction argument) || argument.Function.Denominator.Degree != 0 || argument.Function.Numerator.Degree > 1)
         {
             pattern = null!;
             return false;
@@ -1280,12 +1202,63 @@ internal static class TrigonometricAndLatticeAnalyzer
             phase = -phase;
             if (function is "sin" or "tan")
             {
-                amplitude = -amplitude;
+                amplitude = amplitude.Negate();
             }
         }
 
         pattern = new AffineTrigPattern(function, amplitude, frequency, phase, shift);
         return true;
+    }
+
+    private static bool TryStripAmplitude(ValueTerm core, ResourceBudget budget, out ValueTerm trig, out ExactScalar amplitude)
+    {
+        amplitude = ExactScalar.One;
+        trig = core;
+        StripNegations(ref trig, ref amplitude);
+        bool stripped;
+        do
+        {
+            stripped = false;
+            if (trig.Kind == ValueKind.Multiply && ExactScalar.TryCreate(trig.Operands[0], budget, out ExactScalar left))
+            {
+                amplitude = amplitude.Multiply(left, budget);
+                trig = trig.Operands[1];
+                stripped = true;
+            }
+            else if (trig.Kind == ValueKind.Multiply && ExactScalar.TryCreate(trig.Operands[1], budget, out ExactScalar right))
+            {
+                amplitude = amplitude.Multiply(right, budget);
+                trig = trig.Operands[0];
+                stripped = true;
+            }
+            else if (trig.Kind == ValueKind.Divide && ExactScalar.TryCreate(trig.Operands[1], budget, out ExactScalar denominator) && !denominator.IsZero)
+            {
+                amplitude = amplitude.Multiply(denominator.Reciprocal(budget), budget);
+                trig = trig.Operands[0];
+                stripped = true;
+            }
+
+            stripped |= StripNegations(ref trig, ref amplitude);
+        }
+        while (stripped);
+        // A cancelled symbolic coefficient (for example (pi-pi)*tan(x))
+        // still carries the source function's partial domain. Until the
+        // constant-on-periodic-domain theorem is represented explicitly, do
+        // not misclassify it as an everywhere-defined constant.
+        return !amplitude.IsZero;
+    }
+
+    private static bool StripNegations(ref ValueTerm term, ref ExactScalar amplitude)
+    {
+        bool stripped = false;
+        while (term.Kind == ValueKind.Negate)
+        {
+            amplitude = amplitude.Negate();
+            term = term.Operands[0];
+            stripped = true;
+        }
+
+        return stripped;
     }
 
     private static bool TryConstant(ValueTerm term, out BigRational value)
@@ -1298,172 +1271,5 @@ internal static class TrigonometricAndLatticeAnalyzer
 
         value = default;
         return false;
-    }
-}
-
-internal static class PowerDomainSolver
-{
-    public static bool TryCompute(
-        SemanticExpression expression,
-        string variable,
-        AngleUnit angleUnit,
-        AnalysisFeatures feature,
-        ResourceBudget budget,
-        out object value,
-        out ImmutableArray<string> parameters)
-    {
-        ValueTerm term = expression.Value;
-        if (angleUnit != AngleUnit.Radians ||
-            term.Kind != ValueKind.Power ||
-            term.Operands.Length != 2 ||
-            !TrigonometricSignSolver.IsPrimitive(term.Operands[0], "sin", variable) ||
-            !IntegerPredicateSolver.TrySolvePrimitivePreimage(
-                term.Operands[1],
-                variable,
-                out PrimitiveIntegerPreimage integerPreimage))
-        {
-            value = null!;
-            parameters = [];
-            return false;
-        }
-
-        budget.Charge(32);
-        parameters = feature switch
-        {
-            AnalysisFeatures.Domain =>
-            [
-                expression.DefinedWhen.Canonical,
-                "tan-inverse:atan(n)+k*pi",
-                "negative-base:integer-exponent",
-                "zero-base:positive-exponent"
-            ],
-            AnalysisFeatures.Zeros => ["nonzero-on-every-certified-domain-component"],
-            AnalysisFeatures.YIntercept => ["origin-fails-power-definedness"],
-            AnalysisFeatures.HorizontalAsymptotes =>
-            [
-                "distinct-periodic-subsequences-at-positive-and-negative-infinity"
-            ],
-            _ => []
-        };
-        if (parameters.IsEmpty)
-        {
-            value = null!;
-            return false;
-        }
-
-        if (feature == AnalysisFeatures.Zeros)
-        {
-            value = EmptySet.Instance;
-            return true;
-        }
-
-        if (feature == AnalysisFeatures.YIntercept)
-        {
-            value = OptionalValue<ExactReal>.None;
-            return true;
-        }
-
-        if (feature == AnalysisFeatures.HorizontalAsymptotes)
-        {
-            value = ImmutableArray<Asymptote>.Empty;
-            return true;
-        }
-
-        ExactReal halfPi = new AffinePiReal(new BigRational(1, 2), BigRational.Zero);
-        ExactReal pi = new AffinePiReal(BigRational.One, BigRational.Zero);
-        ExactReal twoPi = new AffinePiReal(new BigRational(2), BigRational.Zero);
-        RealSet positiveBaseWithDefinedExponent =
-            TrigonometricSignSolver.PositiveSineWithTangentDefined(halfPi, pi, twoPi);
-        if (!LatticeIntersectionSolver.TryRestrictToNegativeSine(
-                integerPreimage,
-                out ImmutableArray<IntegerLatticeSet> integralNegativeBase))
-        {
-            value = null!;
-            parameters = [];
-            return false;
-        }
-        value = RealSets.Union(
-            [positiveBaseWithDefinedExponent, .. integralNegativeBase]);
-        return true;
-    }
-}
-
-internal sealed record PrimitiveIntegerPreimage(
-    string Primitive,
-    string PrincipalInverse,
-    ExactReal Period,
-    string ValueParameter,
-    string PeriodParameter);
-
-internal static class IntegerPredicateSolver
-{
-    public static bool TrySolvePrimitivePreimage(
-        ValueTerm expression,
-        string variable,
-        out PrimitiveIntegerPreimage preimage)
-    {
-        if (!TrigonometricSignSolver.IsPrimitive(expression, "tan", variable))
-        {
-            preimage = null!;
-            return false;
-        }
-
-        preimage = new PrimitiveIntegerPreimage(
-            "tan",
-            "arctan(n)",
-            new AffinePiReal(BigRational.One, BigRational.Zero),
-            "n",
-            "k");
-        return true;
-    }
-}
-
-internal static class TrigonometricSignSolver
-{
-    public static bool IsPrimitive(ValueTerm term, string function, string variable) =>
-        term.Kind == ValueKind.Function &&
-        term.Name == function &&
-        term.Operands.Length == 1 &&
-        term.Operands[0].Kind == ValueKind.Variable &&
-        term.Operands[0].Name.Equals(variable, StringComparison.OrdinalIgnoreCase);
-
-    public static RealSet PositiveSineWithTangentDefined(
-        ExactReal halfPi,
-        ExactReal pi,
-        ExactReal twoPi) =>
-        new PeriodicIntervalSet(
-            twoPi,
-            "m",
-            IntegerConstraint.All("m"),
-            [
-                new PeriodicInterval(new RationalReal(BigRational.Zero), false, halfPi, false),
-                new PeriodicInterval(halfPi, false, pi, false)
-            ]);
-}
-
-internal static class LatticeIntersectionSolver
-{
-    public static bool TryRestrictToNegativeSine(
-        PrimitiveIntegerPreimage preimage,
-        out ImmutableArray<IntegerLatticeSet> result)
-    {
-        if (preimage.Primitive != "tan" || preimage.PrincipalInverse != "arctan(n)")
-        {
-            result = [];
-            return false;
-        }
-
-        result =
-        [
-            new IntegerLatticeSet(
-                "arctan(n)+2mπ",
-                ["m", "n"],
-                ["m,n∈ℤ", "n<0"]),
-            new IntegerLatticeSet(
-                "arctan(n)+(2m+1)π",
-                ["m", "n"],
-                ["m,n∈ℤ", "n>0"])
-        ];
-        return true;
     }
 }

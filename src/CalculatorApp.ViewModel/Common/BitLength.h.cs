@@ -6,11 +6,12 @@ namespace CalculatorApp.ViewModel
     {
         public enum BitLength : int
         {
-            BitLengthUnknown = -1,
-            BitLengthByte = 8,
-            BitLengthWord = 16,
-            BitLengthDWord = 32,
-            BitLengthQWord = 64,
+            None = 0,
+            Unknown = -1,
+            Byte = 8,
+            Word = 16,
+            DoubleWord = 32,
+            QuadWord = 64,
         };
     }
 }

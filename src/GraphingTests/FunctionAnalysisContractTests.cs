@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Numerics;
 using Graphing.Symbolics;
 
 namespace GraphingTests;
@@ -93,6 +92,39 @@ public sealed class FunctionAnalysisContractTests
 
         SemanticExpression normalized = Build(Add(Variable(), Number(0)));
         Assert.Equal("v:x", normalized.Value.Canonical);
+    }
+
+    [Fact]
+    public void ExactSelfCancellationSimplifiesOnlyTheValueAndRetainsEveryGuard()
+    {
+        SemanticExpression symbolicZero = Build(Subtract(Named("pi"), Named("pi")));
+        Assert.Equal("q:0", symbolicZero.Value.Canonical);
+        Assert.Contains(
+            symbolicZero.RewriteHistory,
+            static rewrite => rewrite.Rule == "self-subtraction-value");
+
+        SemanticExpression additiveInverse = Build(Add(Named("pi"), Negate(Named("pi"))));
+        Assert.Equal("q:0", additiveInverse.Value.Canonical);
+        Assert.Contains(
+            additiveInverse.RewriteHistory,
+            static rewrite => rewrite.Rule == "exact-scalar-fold");
+
+        SemanticExpression rationalHole = Build(Divide(Variable(), Variable()));
+        Assert.Equal("q:1", rationalHole.Value.Canonical);
+        Assert.NotEqual(Formula.True.Canonical, rationalHole.DefinedWhen.Canonical);
+        RewriteStep division = Assert.Single(rationalHole.RewriteHistory);
+        Assert.Equal("self-division-value", division.Rule);
+        Assert.NotEqual(Formula.True.Canonical, division.Guard.Canonical);
+
+        InputExpression tangent = Function("tan", Variable());
+        SemanticExpression cancelledTangent = Build(Subtract(tangent, tangent));
+        Assert.Equal("q:0", cancelledTangent.Value.Canonical);
+        Assert.NotEqual(Formula.True.Canonical, cancelledTangent.DefinedWhen.Canonical);
+        Assert.Contains("cos", cancelledTangent.DefinedWhen.Canonical, StringComparison.Ordinal);
+
+        SemanticExpression zeroOverZero = Build(Divide(Number(0), Number(0)));
+        Assert.Equal("q:1", zeroOverZero.Value.Canonical);
+        Assert.Equal(Formula.False.Canonical, zeroOverZero.DefinedWhen.Canonical);
     }
 
     [Fact]
@@ -236,7 +268,109 @@ public sealed class FunctionAnalysisContractTests
     }
 
     [Fact]
-    public void NonRadianShiftedTrigValuesRemainUnknownWithoutUnitAwareExactValues()
+    public void ExactScalarAffineTrigProofsReplayAndRejectMutation()
+    {
+        InputExpression sine = Function("sin", Variable());
+        InputExpression piScaled = Multiply(Named("pi"), sine);
+        AnalysisRequest request = Request(piScaled, AnalysisFeatures.All);
+        AnalysisReport report = AnalysisEngine.Analyze(request);
+
+        Assert.Equal(ProofState.Proved, report.Domain.State);
+        Assert.Equal(ProofState.Proved, report.Range.State);
+        Assert.Equal(ProofState.Proved, report.Parity.State);
+        Assert.Equal(ProofState.Proved, report.Zeros.State);
+        Assert.Equal(ProofState.Proved, report.YIntercept.State);
+        Assert.Equal(ProofState.Proved, report.Minima.State);
+        Assert.Equal(ProofState.Proved, report.Maxima.State);
+        Assert.Equal(ProofState.Proved, report.InflectionPoints.State);
+        Assert.Equal(ProofState.Proved, report.VerticalAsymptotes.State);
+        Assert.Equal(ProofState.Proved, report.HorizontalAsymptotes.State);
+        Assert.Equal(ProofState.Proved, report.ObliqueAsymptotes.State);
+        Assert.Equal(ProofState.Proved, report.Monotonicity.State);
+        Assert.Equal(ProofState.Proved, report.Period.State);
+
+        AssertReplay(request, report.Expression!, report.Domain);
+        AssertReplay(request, report.Expression!, report.Range);
+        AssertReplay(request, report.Expression!, report.Parity);
+        AssertReplay(request, report.Expression!, report.Zeros);
+        AssertReplay(request, report.Expression!, report.YIntercept);
+        AssertReplay(request, report.Expression!, report.Minima);
+        AssertReplay(request, report.Expression!, report.Maxima);
+        AssertReplay(request, report.Expression!, report.InflectionPoints);
+        AssertReplay(request, report.Expression!, report.VerticalAsymptotes);
+        AssertReplay(request, report.Expression!, report.HorizontalAsymptotes);
+        AssertReplay(request, report.Expression!, report.ObliqueAsymptotes);
+        AssertReplay(request, report.Expression!, report.Monotonicity);
+        AssertReplay(request, report.Expression!, report.Period);
+
+        AnalysisRequest eRequest = Request(
+            Multiply(Named("e"), sine),
+            AnalysisFeatures.Range | AnalysisFeatures.Monotonicity);
+        AnalysisReport eReport = AnalysisEngine.Analyze(eRequest);
+        AssertReplay(eRequest, eReport.Expression!, eReport.Range);
+        AssertReplay(eRequest, eReport.Expression!, eReport.Monotonicity);
+
+        AnalysisRequest algebraicRequest = Request(
+            Multiply(Function("sqrt", Number(2)), sine),
+            AnalysisFeatures.Range | AnalysisFeatures.Minima | AnalysisFeatures.Maxima);
+        AnalysisReport algebraicReport = AnalysisEngine.Analyze(algebraicRequest);
+        AssertReplay(algebraicRequest, algebraicReport.Expression!, algebraicReport.Range);
+        AssertReplay(algebraicRequest, algebraicReport.Expression!, algebraicReport.Minima);
+        AssertReplay(algebraicRequest, algebraicReport.Expression!, algebraicReport.Maxima);
+
+        RealSet range = AssertProved(report.Range);
+        var certificate = Assert.IsType<ExactCoefficientProofCertificate>(
+            report.Range.Certificate);
+        ExactCoefficientProofCertificate changedPattern = certificate with
+        {
+            PatternCanonical = certificate.PatternCanonical + ":changed"
+        };
+        Assert.False(CertificateChecker.Check(
+            request,
+            report.Expression!,
+            ProofOutcome<RealSet>.Proved(range, changedPattern)));
+
+        AnalysisReport cancelledTangent = AnalysisEngine.Analyze(Request(
+            Multiply(
+                Subtract(Named("pi"), Named("pi")),
+                Function("tan", Variable())),
+            AnalysisFeatures.Domain | AnalysisFeatures.Period));
+        Assert.Equal(ProofState.Proved, cancelledTangent.Domain.State);
+        Periodicity cancelledPeriod = AssertProved(cancelledTangent.Period);
+        Assert.Equal(
+            PeriodicityKind.PeriodicWithFundamentalPeriod,
+            cancelledPeriod.Kind);
+        Assert.Equal(
+            "pi:1:0",
+            ExactRealCanonical.Format(cancelledPeriod.FundamentalPeriod!));
+
+        InputExpression retainedHole = Add(
+            piScaled,
+            Multiply(
+                Number(0),
+                Divide(Number(1), Subtract(Variable(), Number(1)))));
+        AnalysisReport holeReport = AnalysisEngine.Analyze(Request(
+            retainedHole,
+            AnalysisFeatures.Domain | AnalysisFeatures.Parity | AnalysisFeatures.Period));
+        Assert.Equal(ProofState.Proved, holeReport.Domain.State);
+        Assert.Equal(ProofState.Unknown, holeReport.Parity.State);
+        Assert.Equal(UnknownReason.UnsupportedFragment, holeReport.Parity.UnknownReason);
+        Assert.Equal(ProofState.Unknown, holeReport.Period.State);
+        Assert.Equal(UnknownReason.UnsupportedFragment, holeReport.Period.UnknownReason);
+
+        ExactInteger largeFactor = ExactInteger.One << ((AnalysisLimits.CoefficientBits / 2) + 1);
+        InputExpression oversizedScalar = Multiply(
+            Multiply(Number(new BigRational(largeFactor)), Named("pi")),
+            Number(new BigRational(largeFactor)));
+        AnalysisReport oversizedReport = AnalysisEngine.Analyze(Request(
+            Multiply(oversizedScalar, sine),
+            AnalysisFeatures.Range));
+        Assert.Equal(ProofState.Unknown, oversizedReport.Range.State);
+        Assert.Equal(UnknownReason.BudgetExceeded, oversizedReport.Range.UnknownReason);
+    }
+
+    [Fact]
+    public void NonRadianShiftedTrigValuesUseUnitAwareExactValues()
     {
         InputExpression argument = Subtract(
             Multiply(Number(2), Variable()),
@@ -250,10 +384,183 @@ public sealed class FunctionAnalysisContractTests
 
         AnalysisReport report = AnalysisEngine.Analyze(request);
 
-        Assert.Equal(ProofState.Unknown, report.Parity.State);
-        Assert.Equal(UnknownReason.UnsupportedFragment, report.Parity.UnknownReason);
-        Assert.Equal(ProofState.Unknown, report.YIntercept.State);
-        Assert.Equal(UnknownReason.UnsupportedFragment, report.YIntercept.UnknownReason);
+        Assert.Equal(FunctionParity.Neither, AssertProved(report.Parity));
+        Assert.Equal(
+            "fn:negate(fn:tan(pi:1/180:0))",
+            ExactRealCanonical.Format(AssertProved(report.YIntercept).Value!));
+        Assert.True(CertificateChecker.Check(request, report.Expression!, report.Parity));
+        Assert.True(CertificateChecker.Check(request, report.Expression!, report.YIntercept));
+
+        AnalysisRequest grads = request with { AngleUnit = AngleUnit.Grads };
+        Assert.False(CertificateChecker.Check(grads, report.Expression!, report.Parity));
+        Assert.False(CertificateChecker.Check(grads, report.Expression!, report.YIntercept));
+    }
+
+    [Fact]
+    public void LinearDriftTrigBoundaryProofsAreExactReplayableAndDomainAware()
+    {
+        InputExpression sine = Function("sin", Variable());
+        InputExpression expression = Add(sine, Variable());
+        AnalysisRequest request = Request(expression, AnalysisFeatures.All);
+        AnalysisReport report = AnalysisEngine.Analyze(request);
+
+        Assert.Equal(ProofState.Proved, report.Domain.State);
+        Assert.Equal(ProofState.Proved, report.Range.State);
+        Assert.Equal(ProofState.Proved, report.Parity.State);
+        Assert.Equal(ProofState.Proved, report.Zeros.State);
+        Assert.Equal(ProofState.Proved, report.YIntercept.State);
+        Assert.Equal(ProofState.Proved, report.Minima.State);
+        Assert.Equal(ProofState.Proved, report.Maxima.State);
+        Assert.Equal(ProofState.Proved, report.InflectionPoints.State);
+        Assert.Equal(ProofState.Proved, report.VerticalAsymptotes.State);
+        Assert.Equal(ProofState.Proved, report.HorizontalAsymptotes.State);
+        Assert.Equal(ProofState.Proved, report.ObliqueAsymptotes.State);
+        Assert.Equal(ProofState.Proved, report.Monotonicity.State);
+        Assert.Equal(ProofState.Proved, report.Period.State);
+
+        var zero = Assert.IsType<PointSet>(AssertProved(report.Zeros));
+        Assert.Equal(BigRational.Zero, Assert.IsType<RationalReal>(Assert.Single(zero.Points)).Value);
+        Assert.Empty(AssertProved(report.Minima));
+        Assert.Empty(AssertProved(report.Maxima));
+        Assert.Equal(FunctionParity.Odd, AssertProved(report.Parity));
+        Assert.Equal(
+            Monotonicity.Increasing,
+            Assert.Single(AssertProved(report.Monotonicity)).Direction);
+        Assert.Equal(
+            PeriodicityKind.NotPeriodic,
+            AssertProved(report.Period).Kind);
+
+        var inflection = Assert.IsType<IntegerAffineFeaturePoint>(
+            Assert.Single(AssertProved(report.InflectionPoints)));
+        Assert.Equal("pi:1:0", ExactRealCanonical.Format(inflection.XStep));
+        Assert.Equal("pi:1:0", ExactRealCanonical.Format(inflection.YStep));
+
+        AssertReplay(request, report.Expression!, report.Domain);
+        AssertReplay(request, report.Expression!, report.Range);
+        AssertReplay(request, report.Expression!, report.Parity);
+        AssertReplay(request, report.Expression!, report.Zeros);
+        AssertReplay(request, report.Expression!, report.YIntercept);
+        AssertReplay(request, report.Expression!, report.Minima);
+        AssertReplay(request, report.Expression!, report.Maxima);
+        AssertReplay(request, report.Expression!, report.InflectionPoints);
+        AssertReplay(request, report.Expression!, report.VerticalAsymptotes);
+        AssertReplay(request, report.Expression!, report.HorizontalAsymptotes);
+        AssertReplay(request, report.Expression!, report.ObliqueAsymptotes);
+        AssertReplay(request, report.Expression!, report.Monotonicity);
+        AssertReplay(request, report.Expression!, report.Period);
+
+        ImmutableArray<FeaturePoint> changedPoints =
+        [
+            inflection with { YStep = new RationalReal(BigRational.Zero) }
+        ];
+        Assert.False(CertificateChecker.Check(
+            request,
+            report.Expression!,
+            ProofOutcome<ImmutableArray<FeaturePoint>>.Proved(
+                changedPoints,
+                report.InflectionPoints.Certificate!)));
+        var theoremCertificate = Assert.IsType<TheoremProofCertificate>(
+            report.InflectionPoints.Certificate);
+        TheoremProofCertificate forgedClaim = theoremCertificate with
+        {
+            Claim = ClaimCanonical.For(changedPoints)
+        };
+        Assert.False(CertificateChecker.Check(
+            request,
+            report.Expression!,
+            ProofOutcome<ImmutableArray<FeaturePoint>>.Proved(
+                changedPoints,
+                forgedClaim)));
+
+        foreach (InputExpression equivalent in new[]
+                 {
+                     Add(Variable(), sine),
+                     Subtract(Variable(), sine),
+                     Add(Negate(Variable()), sine),
+                     Add(Multiply(Number(2), Variable()), sine)
+                 })
+        {
+            AnalysisReport equivalentReport = AnalysisEngine.Analyze(Request(
+                equivalent,
+                AnalysisFeatures.Range |
+                AnalysisFeatures.Parity |
+                AnalysisFeatures.Minima |
+                AnalysisFeatures.Maxima |
+                AnalysisFeatures.InflectionPoints |
+                AnalysisFeatures.Monotonicity |
+                AnalysisFeatures.Period));
+            Assert.Equal(ProofState.Proved, equivalentReport.Range.State);
+            Assert.Equal(ProofState.Proved, equivalentReport.Parity.State);
+            Assert.Equal(ProofState.Proved, equivalentReport.Minima.State);
+            Assert.Equal(ProofState.Proved, equivalentReport.Maxima.State);
+            Assert.Equal(ProofState.Proved, equivalentReport.InflectionPoints.State);
+            Assert.Equal(ProofState.Proved, equivalentReport.Monotonicity.State);
+            Assert.Equal(ProofState.Proved, equivalentReport.Period.State);
+        }
+
+        InputExpression retainedHole = Add(
+            expression,
+            Multiply(
+                Number(0),
+                Divide(Number(1), Subtract(Variable(), Number(1)))));
+        AnalysisReport holeReport = AnalysisEngine.Analyze(Request(
+            retainedHole,
+            AnalysisFeatures.Domain | AnalysisFeatures.Range | AnalysisFeatures.Monotonicity));
+        Assert.Equal(ProofState.Proved, holeReport.Domain.State);
+        Assert.Equal(ProofState.Unknown, holeReport.Range.State);
+        Assert.Equal(ProofState.Unknown, holeReport.Monotonicity.State);
+    }
+
+    [Fact]
+    public void OscillatoryLinearDriftPublishesOnlyFeaturesAlreadyProved()
+    {
+        InputExpression expression = Add(
+            Divide(Variable(), Number(2)),
+            Function("sin", Variable()));
+        AnalysisRequest request = Request(expression, AnalysisFeatures.All);
+        AnalysisReport report = AnalysisEngine.Analyze(request);
+
+        Assert.Equal(ProofState.Proved, report.Domain.State);
+        Assert.Equal(ProofState.Proved, report.Range.State);
+        Assert.Equal(ProofState.Proved, report.Parity.State);
+        Assert.Equal(ProofState.Unknown, report.Zeros.State);
+        Assert.Equal(ProofState.Proved, report.YIntercept.State);
+        Assert.Equal(ProofState.Proved, report.Minima.State);
+        Assert.Equal(ProofState.Proved, report.Maxima.State);
+        var minimum = Assert.IsType<IntegerAffineFeaturePoint>(
+            Assert.Single(AssertProved(report.Minima)));
+        var maximum = Assert.IsType<IntegerAffineFeaturePoint>(
+            Assert.Single(AssertProved(report.Maxima)));
+        Assert.Equal("pi:4/3:0", ExactRealCanonical.Format(minimum.XOffset));
+        Assert.Equal("pi:2:0", ExactRealCanonical.Format(minimum.XStep));
+        Assert.Equal("pi:2/3:0", ExactRealCanonical.Format(maximum.XOffset));
+        Assert.Equal("pi:2:0", ExactRealCanonical.Format(maximum.XStep));
+        Assert.Equal(ProofState.Proved, report.InflectionPoints.State);
+        Assert.Equal(ProofState.Proved, report.VerticalAsymptotes.State);
+        Assert.Equal(ProofState.Proved, report.HorizontalAsymptotes.State);
+        Assert.Equal(ProofState.Proved, report.ObliqueAsymptotes.State);
+        Assert.Equal(ProofState.Unknown, report.Monotonicity.State);
+        Assert.Equal(ProofState.Proved, report.Period.State);
+        AssertReplay(request, report.Expression!, report.Minima);
+        AssertReplay(request, report.Expression!, report.Maxima);
+    }
+
+    [Fact]
+    public void LinearDriftDerivedCoefficientsRespectTheGlobalLimit()
+    {
+        ExactInteger large = ExactInteger.One << ((AnalysisLimits.CoefficientBits / 2) + 100);
+        InputExpression expression = Add(
+            Multiply(Number(new BigRational(large)), Variable()),
+            Function(
+                "sin",
+                Multiply(Number(new BigRational(ExactInteger.One, large)), Variable())));
+
+        AnalysisReport report = AnalysisEngine.Analyze(Request(
+            expression,
+            AnalysisFeatures.All));
+
+        Assert.Equal(ProofState.Unknown, report.InflectionPoints.State);
+        Assert.Equal(UnknownReason.BudgetExceeded, report.InflectionPoints.UnknownReason);
     }
 
     [Fact]
@@ -403,8 +710,8 @@ public sealed class FunctionAnalysisContractTests
             budget,
             out PresburgerFormula equalityProjection));
         var divisibility = Assert.IsType<PresburgerDivisibility>(equalityProjection);
-        Assert.Equal(new BigInteger(2), divisibility.Divisor);
-        Assert.Equal(new BigInteger(-1), divisibility.Expression.Coefficient("x"));
+        Assert.Equal(new ExactInteger(2), divisibility.Divisor);
+        Assert.Equal(new ExactInteger(-1), divisibility.Expression.Coefficient("x"));
 
         PresburgerFormula bounds = PresburgerNormalizer.And(
         [
@@ -421,9 +728,9 @@ public sealed class FunctionAnalysisContractTests
             budget,
             out PresburgerFormula boundProjection));
         var projectedBound = Assert.IsType<PresburgerComparison>(boundProjection);
-        Assert.Equal(new BigInteger(1), projectedBound.Expression.Coefficient("x"));
-        Assert.Equal(new BigInteger(-1), projectedBound.Expression.Coefficient("y"));
-        Assert.Equal(BigInteger.Zero, projectedBound.Expression.Constant);
+        Assert.Equal(new ExactInteger(1), projectedBound.Expression.Coefficient("x"));
+        Assert.Equal(new ExactInteger(-1), projectedBound.Expression.Coefficient("y"));
+        Assert.Equal(ExactInteger.Zero, projectedBound.Expression.Constant);
     }
 
     [Fact]
@@ -436,7 +743,7 @@ public sealed class FunctionAnalysisContractTests
         Assert.Equal(ProofState.Unknown, degreeReport.Domain.State);
         Assert.Equal(UnknownReason.BudgetExceeded, degreeReport.Domain.UnknownReason);
 
-        BigInteger huge = BigInteger.One << (AnalysisLimits.CoefficientBits + 1);
+        ExactInteger huge = ExactInteger.One << (AnalysisLimits.CoefficientBits + 1);
         AnalysisReport coefficientReport = AnalysisEngine.Analyze(Request(
             Multiply(Number(new BigRational(huge)), Variable()),
             AnalysisFeatures.All));
@@ -445,13 +752,24 @@ public sealed class FunctionAnalysisContractTests
         var cellBudget = new ResourceBudget();
         Assert.Throws<BudgetExceededException>(() => cellBudget.AddCells(AnalysisLimits.Cells + 1));
 
+        AnalysisRequest checkedRequest = Request(Variable(), AnalysisFeatures.Domain);
+        AnalysisReport checkedReport = AnalysisEngine.Analyze(checkedRequest);
+        Assert.Equal(ProofState.Proved, checkedReport.Domain.State);
+        var exhaustedCheckerBudget = new ResourceBudget();
+        exhaustedCheckerBudget.Charge(AnalysisLimits.WorkUnits);
+        Assert.Throws<BudgetExceededException>(() => CertificateChecker.Check(
+            checkedRequest,
+            checkedReport.Expression!,
+            checkedReport.Domain,
+            exhaustedCheckerBudget));
+
         AnalysisRequest cancelled = new(
             Variable(),
             AnalysisFeatures.All,
             AngleUnit.Radians,
             "x",
             static () => false);
-        Assert.Throws<AnalysisCancelledException>(() => AnalysisEngine.Analyze(cancelled));
+        Assert.ThrowsAny<OperationCanceledException>(() => AnalysisEngine.Analyze(cancelled));
     }
 
     private static void AssertReplay<T>(
@@ -486,6 +804,8 @@ public sealed class FunctionAnalysisContractTests
         new SemanticGraphBuilder(new ResourceBudget()).Build(expression);
 
     private static InputExpression Variable() => InputExpression.Variable("x", Source);
+
+    private static InputExpression Named(string name) => InputExpression.Variable(name, Source);
 
     private static InputExpression Number(int value) => Number(new BigRational(value));
 

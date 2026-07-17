@@ -3,7 +3,8 @@ using System.Text;
 namespace CSharpMath.Atom.Atoms;
 
 /// <summary>An accented atom</summary>
-public sealed class Accent(string value, MathList? innerList = null) : MathAtom(value), IMathListContainer {
+public sealed class Accent(string value, MathList? innerList = null) : MathAtom(value), IMathListContainer
+{
     public MathList InnerList { get; } = innerList ?? new MathList();
 
     System.Collections.Generic.IEnumerable<MathList> IMathListContainer.InnerLists =>

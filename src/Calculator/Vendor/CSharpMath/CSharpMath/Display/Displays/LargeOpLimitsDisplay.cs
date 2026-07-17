@@ -7,7 +7,8 @@ namespace CSharpMath.Display.Displays;
 
 using FrontEnd;
 public class LargeOpLimitsDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph>
-    where TFont : IFont<TGlyph> {
+    where TFont : IFont<TGlyph>
+{
     private readonly float _limitShift;
     private readonly int _extraPadding;
     private readonly float _upperLimitGap;
@@ -19,7 +20,9 @@ public class LargeOpLimitsDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph>
         ListDisplay<TFont, TGlyph>? lowerLimit,
         float lowerLimitGap,
         float limitShift,
-        int extraPadding) {
+        int extraPadding)
+    {
+        System.ArgumentNullException.ThrowIfNull(nucleusDisplay);
         NucleusDisplay = nucleusDisplay;
         UpperLimit = upperLimit;
         _upperLimitGap = upperLimitGap;
@@ -57,20 +60,24 @@ public class LargeOpLimitsDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph>
 
     public bool HasScript { get; set; }
 
-    private void UpdateComponentPositions() {
+    private void UpdateComponentPositions()
+    {
         NucleusDisplay.Position = new PointF(Position.X + (Width - NucleusDisplay.Width) / 2, Position.Y);
-        if (UpperLimit!=null) {
+        if (UpperLimit != null)
+        {
             UpperLimit.Position = new PointF(
                 Position.X + _limitShift + (Width - UpperLimit.Width) / 2,
                 Position.Y + NucleusDisplay.Ascent + _upperLimitGap + UpperLimit.Descent);
         }
-        if (LowerLimit!=null) {
+        if (LowerLimit != null)
+        {
             LowerLimit.Position = new PointF(
                 Position.X - _limitShift + (Width - LowerLimit.Width) / 2,
                 Position.Y - NucleusDisplay.Descent - _lowerLimitGap - LowerLimit.Ascent);
         }
     }
-    public void Draw(IGraphicsContext<TFont, TGlyph> context) {
+    public void Draw(IGraphicsContext<TFont, TGlyph> context)
+    {
         this.DrawBackground(context);
         UpperLimit?.Draw(context);
         LowerLimit?.Draw(context);
@@ -78,7 +85,8 @@ public class LargeOpLimitsDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph>
     }
 
     public Color? TextColor { get; set; }
-    public void SetTextColorRecursive(Color? textColor) {
+    public void SetTextColorRecursive(Color? textColor)
+    {
         TextColor ??= textColor;
         UpperLimit?.SetTextColorRecursive(textColor);
         LowerLimit?.SetTextColorRecursive(textColor);

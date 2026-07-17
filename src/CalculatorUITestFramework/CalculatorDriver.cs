@@ -7,30 +7,37 @@ using OpenQA.Selenium.Appium;
 using OpenQA.Selenium.Appium.Windows;
 
 using System;
+using System.Threading;
 
 namespace CalculatorUITestFramework
 {
-    public sealed class CalculatorDriver
+    public sealed class CalculatorDriver : IDisposable
     {
         private const string defaultAppId = "Microsoft.WindowsCalculator.Dev_8wekyb3d8bbwe!App";
+        private const int NotStarted = 0;
+        private const int Starting = 1;
+        private const int Started = 2;
+        private const int Stopping = 3;
 
-        private static CalculatorDriver instance = null;
-        public static CalculatorDriver Instance
+        private static readonly CalculatorDriver instance = new();
+        private WinAppDriverLocalServer server;
+        private WindowsDriver<WindowsElement> calculatorSession;
+        private int lifecycleState;
+
+        public static CalculatorDriver Instance => instance;
+
+        public WindowsDriver<WindowsElement> CalculatorSession
         {
             get
             {
-                if (instance == null)
+                if (Volatile.Read(ref lifecycleState) != Started)
                 {
-                    instance = new CalculatorDriver();
+                    throw new InvalidOperationException("The Calculator UI automation session has not been started.");
                 }
-                return instance;
+
+                return Volatile.Read(ref calculatorSession);
             }
-
         }
-
-        private WinAppDriverLocalServer server;
-
-        public WindowsDriver<WindowsElement> CalculatorSession { get; private set; }
 
         private CalculatorDriver()
         {
@@ -38,18 +45,27 @@ namespace CalculatorUITestFramework
 
         public void SetupCalculatorSession(TestContext context)
         {
-            this.server = new WinAppDriverLocalServer();
+            ArgumentNullException.ThrowIfNull(context);
 
-            // Launch Calculator application if it is not yet launched
-            if (this.CalculatorSession == null)
+            int previousState = Interlocked.CompareExchange(ref lifecycleState, Starting, NotStarted);
+            if (previousState == Started)
             {
-                // Create a new  WinAppDriver session to bring up an instance of the Calculator application
-                // Note: Multiple calculator windows (instances) share the same process Id
+                return;
+            }
+
+            if (previousState != NotStarted)
+            {
+                throw new InvalidOperationException("The Calculator UI automation session is changing state.");
+            }
+
+            try
+            {
+                server = new WinAppDriverLocalServer();
                 var options = new AppiumOptions();
 
-                if (context.Properties.Contains("AppId"))
+                if (context.Properties.TryGetValue("AppId", out var configuredAppId) && configuredAppId is string appId)
                 {
-                    options.AddAdditionalCapability("app", (string)context.Properties["AppId"]);
+                    options.AddAdditionalCapability("app", appId);
                 }
                 else
                 {
@@ -57,26 +73,51 @@ namespace CalculatorUITestFramework
                 }
 
                 options.AddAdditionalCapability("deviceName", "WindowsPC");
-                this.CalculatorSession = new WindowsDriver<WindowsElement>(this.server.ServiceUrl, options);
-                this.CalculatorSession.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
-                Assert.IsNotNull(this.CalculatorSession);
+                calculatorSession = new WindowsDriver<WindowsElement>(WinAppDriverLocalServer.ServiceUrl, options);
+                calculatorSession.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(10);
+                Assert.IsNotNull(calculatorSession);
+
+                Volatile.Write(ref lifecycleState, Started);
+            }
+            catch
+            {
+                Interlocked.Exchange(ref calculatorSession, null)?.Dispose();
+                Interlocked.Exchange(ref server, null)?.Dispose();
+                Volatile.Write(ref lifecycleState, NotStarted);
+                throw;
             }
         }
 
         public void TearDownCalculatorSession()
         {
-            // Close the application and delete the session
-            if (this.CalculatorSession != null)
+            int previousState = Interlocked.CompareExchange(ref lifecycleState, Stopping, Started);
+            if (previousState == NotStarted || previousState == Stopping)
             {
-                this.CalculatorSession.Quit();
-                this.CalculatorSession = null;
+                return;
             }
 
-            if (this.server != null)
+            if (previousState != Started)
             {
-                this.server.Dispose();
-                this.server = null;
+                throw new InvalidOperationException("The Calculator UI automation session is still starting.");
             }
+
+            try
+            {
+                calculatorSession?.Quit();
+            }
+            finally
+            {
+                calculatorSession?.Dispose();
+                server?.Dispose();
+                Volatile.Write(ref calculatorSession, null);
+                Volatile.Write(ref server, null);
+                Volatile.Write(ref lifecycleState, NotStarted);
+            }
+        }
+
+        public void Dispose()
+        {
+            TearDownCalculatorSession();
         }
     }
 }

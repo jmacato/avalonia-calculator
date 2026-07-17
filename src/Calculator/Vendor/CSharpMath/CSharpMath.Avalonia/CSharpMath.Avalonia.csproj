@@ -12,6 +12,6 @@
     <PackageReference Include="Avalonia" />
     <ProjectReference Include="..\CSharpMath.Rendering\CSharpMath.Rendering.csproj" />
     <ProjectReference Include="..\CSharpMath\CSharpMath.csproj" />
-    <Compile Include="..\CSharpMath.Xaml\Views.cs" Link="Views.cs" />
+    <Compile Include="..\CSharpMath.Xaml\MathView.Views.cs" Link="Views.cs" />
   </ItemGroup>
 </Project>

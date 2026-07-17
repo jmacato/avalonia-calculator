@@ -11,9 +11,13 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
-  <Target Name="RejectExternalSymbolicsDependencies" BeforeTargets="CollectPackageReferences">
+  <ItemGroup>
+    <ProjectReference Include="..\CalcManagerManaged\CalcManagerPort\CalcManagerPort.csproj" />
+  </ItemGroup>
+
+  <Target Name="RejectExternalSymbolicsPackages" BeforeTargets="CollectPackageReferences">
     <Error
       Condition="'@(PackageReference)' != ''"
-      Text="Graphing.Symbolics must remain a BCL-only assembly without PackageReference items." />
+      Text="Graphing.Symbolics must not add external PackageReference items." />
   </Target>
 </Project>

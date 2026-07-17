@@ -1,7 +1,8 @@
 namespace CSharpMath.Atom.Atoms;
 
 /// <summary>AMSMath class 1: Prefix operator, e.g. \sin, \cos, \sum, \prod, \int</summary>
-public sealed class LargeOperator : MathAtom {
+public sealed class LargeOperator : MathAtom
+{
     bool? _limits;
     /// <summary>
     /// True: \limits
@@ -11,7 +12,8 @@ public sealed class LargeOperator : MathAtom {
     public bool? Limits { get => ForceNoLimits ? false : _limits; set => _limits = value; }
     ///<summary>If true, overrides Limits and makes it treated as false</summary>
     public bool ForceNoLimits { get; }
-    public LargeOperator(string value, bool? limits, bool forceNoLimits = false): base(value) {
+    public LargeOperator(string value, bool? limits, bool forceNoLimits = false) : base(value)
+    {
         Limits = limits;
         ForceNoLimits = forceNoLimits;
     }
@@ -19,7 +21,8 @@ public sealed class LargeOperator : MathAtom {
     protected override MathAtom CloneInside(bool finalize) =>
         new LargeOperator(Nucleus, Limits, ForceNoLimits);
     public override bool ScriptsAllowed => true;
-    public override string DebugString => base.DebugString + Limits switch {
+    public override string DebugString => base.DebugString + Limits switch
+    {
         true => @"\limits",
         false when !ForceNoLimits => @"\nolimits",
         _ => ""

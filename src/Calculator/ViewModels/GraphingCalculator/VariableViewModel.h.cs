@@ -1,26 +1,16 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 using System.ComponentModel;
 using CalculatorApp.ViewModel.Common;
 using GraphControl;
 
 namespace CalculatorApp.ViewModel;
 
-public sealed class VariableChangedEventArgs(string variableName, double newValue) : EventArgs
-{
-    public string VariableName { get; } = variableName;
-
-    public double NewValue { get; } = newValue;
-}
-
 public sealed class VariableViewModel : ViewModelBase
 {
     public const int DefaultMinMaxRange = 10;
-
     private Variable _variable;
     private bool _sliderSettingsVisible;
-
     public VariableViewModel(string name, Variable variable)
     {
         Name = name;
@@ -121,12 +111,9 @@ public sealed class VariableViewModel : ViewModelBase
         }
     }
 
-    public string VariableAutomationName => LocalizationStringUtil.GetLocalizedString(
-        AppResourceProvider.GetInstance().GetResourceString("VariableListViewItem"),
-        Name);
+    public string VariableAutomationName => LocalizationStringUtil.GetLocalizedString(AppResourceProvider.Instance.GetResourceString("VariableListViewItem"), Name);
 
     public event EventHandler<VariableChangedEventArgs>? VariableUpdated;
-
     internal void UpdateVariable(Variable variable)
     {
         if (ReferenceEquals(_variable, variable))
@@ -143,6 +130,5 @@ public sealed class VariableViewModel : ViewModelBase
         OnPropertyChanged(nameof(Step));
     }
 
-    private void OnVariablePropertyChanged(object? sender, PropertyChangedEventArgs e) =>
-        OnPropertyChanged(e.PropertyName);
+    private void OnVariablePropertyChanged(object? sender, PropertyChangedEventArgs e) => OnPropertyChanged(e.PropertyName);
 }

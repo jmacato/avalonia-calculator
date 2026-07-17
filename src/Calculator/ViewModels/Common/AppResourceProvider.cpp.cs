@@ -9,7 +9,7 @@ using System.Resources;
 
 namespace CalculatorApp.ViewModel.Common;
 
-public partial class AppResourceProvider
+internal sealed partial class AppResourceProvider
 {
     public AppResourceProvider()
     {
@@ -21,10 +21,7 @@ public partial class AppResourceProvider
     private static readonly AppResourceProvider s_instance = new();
 
 
-    public static AppResourceProvider GetInstance()
-    {
-        return s_instance;
-    }
+    public static AppResourceProvider Instance => s_instance;
 
     public string GetResourceString(string key)
     {

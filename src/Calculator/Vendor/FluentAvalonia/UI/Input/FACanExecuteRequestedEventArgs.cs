@@ -1,13 +1,13 @@
-﻿namespace FluentAvalonia.UI.Input;
+namespace FluentAvalonia.UI.Input;
 
 /// <summary>
 /// Provides event data for the CanExecuteRequested event.
 /// </summary>
 public class FACanExecuteRequestedEventArgs : EventArgs
 {
-    internal FACanExecuteRequestedEventArgs(object param)
+    internal FACanExecuteRequestedEventArgs(object? parameter)
     {
-        Parameter = param;
+        Parameter = parameter;
     }
 
     /// <summary>
@@ -18,5 +18,5 @@ public class FACanExecuteRequestedEventArgs : EventArgs
     /// <summary>
     /// Gets the command parameter passed into the CanExecute method that raised this event.
     /// </summary>
-    public object Parameter { get; }
+    public object? Parameter { get; }
 }

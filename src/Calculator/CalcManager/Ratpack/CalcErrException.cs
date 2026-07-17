@@ -2,14 +2,28 @@ using System;
 
 namespace CalcEngine;
 
-public class CalcErrException : Exception
+public sealed class CalcErrException : Exception
 {
-    public override string Message { get; }
-    internal CalcErr err { get; }
+    internal CalcErr Error { get; }
 
-    public CalcErrException(CalcErr _err)
+    internal CalcErrException(CalcErr error)
+        : base($"CalcError {Enum.GetName(error)}")
     {
-        err = _err;
-        Message = $"CalcError {Enum.GetName(typeof(CalcErr),err)}";
+        Error = error;
+    }
+
+    public CalcErrException()
+        : base("Calculator error.")
+    {
+    }
+
+    public CalcErrException(string message)
+        : base(message)
+    {
+    }
+
+    public CalcErrException(string message, Exception innerException)
+        : base(message, innerException)
+    {
     }
 }

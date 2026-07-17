@@ -1,4 +1,3 @@
-﻿using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
@@ -15,7 +14,7 @@ namespace FluentAvalonia.UI.Controls;
 /// <summary>
 /// An item displayed within a <see cref="FASettingsExpander"/>
 /// </summary>
-public partial class FASettingsExpanderItem : ContentControl, ICommandSource
+public sealed partial class FASettingsExpanderItem : ContentControl, ICommandSource
 {
     public FASettingsExpanderItem()
     {
@@ -48,8 +47,10 @@ public partial class FASettingsExpanderItem : ContentControl, ICommandSource
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
+        ArgumentNullException.ThrowIfNull(e);
         base.OnApplyTemplate(e);
 
+        _adaptiveWidthDisposable?.Dispose();
         _adaptiveWidthDisposable = this.GetResourceObservable(s_resAdaptiveWidthTrigger)
             .Subscribe(OnAdaptiveWidthValueChanged);
 
@@ -62,6 +63,7 @@ public partial class FASettingsExpanderItem : ContentControl, ICommandSource
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
 
         if (change.Property == IconSourceProperty)
@@ -92,7 +94,7 @@ public partial class FASettingsExpanderItem : ContentControl, ICommandSource
         {
             if (((ILogical)this).IsAttachedToLogicalTree)
             {
-                var (oldValue, newValue) = change.GetOldAndNewValue<ICommand>();
+                var (oldValue, newValue) = change.GetOldAndNewValue<ICommand?>();
                 if (oldValue != null)
                 {
                     oldValue.CanExecuteChanged -= CanExecuteChanged;
@@ -136,6 +138,7 @@ public partial class FASettingsExpanderItem : ContentControl, ICommandSource
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
+        ArgumentNullException.ThrowIfNull(e);
         base.OnPointerPressed(e);
 
         if (_allowInteraction && !e.Handled)
@@ -151,6 +154,7 @@ public partial class FASettingsExpanderItem : ContentControl, ICommandSource
 
     protected override void OnPointerMoved(PointerEventArgs e)
     {
+        ArgumentNullException.ThrowIfNull(e);
         base.OnPointerMoved(e);
 
         if (_allowInteraction && !e.Handled && e.Pointer.Captured != null)
@@ -176,6 +180,7 @@ public partial class FASettingsExpanderItem : ContentControl, ICommandSource
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
+        ArgumentNullException.ThrowIfNull(e);
         base.OnPointerReleased(e);
         if (_isPressed && _allowInteraction)
         {
@@ -188,7 +193,7 @@ public partial class FASettingsExpanderItem : ContentControl, ICommandSource
 
                 OnClick();
             }
-        }       
+        }
     }
 
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
@@ -200,6 +205,7 @@ public partial class FASettingsExpanderItem : ContentControl, ICommandSource
 
     protected override bool RegisterContentPresenter(ContentPresenter presenter)
     {
+        ArgumentNullException.ThrowIfNull(presenter);
         if (presenter.Name == "ContentPresenter" || presenter.Name == "FooterPresenter")
             return true;
 
@@ -209,7 +215,7 @@ public partial class FASettingsExpanderItem : ContentControl, ICommandSource
     /// <summary>
     /// Invoked when the SettingsExpanderItem is clicked when IsClickEnabled = true
     /// </summary>
-    protected virtual void OnClick()
+    private void OnClick()
     {
         var args = new RoutedEventArgs(ClickEvent);
         RaiseEvent(args);
@@ -284,7 +290,7 @@ public partial class FASettingsExpanderItem : ContentControl, ICommandSource
         PseudoClasses.Set(s_pcDescription, args.NewValue != null);
     }
 
-    private void CanExecuteChanged(object sender, EventArgs e)
+    private void CanExecuteChanged(object? sender, EventArgs e)
     {
         var command = Command;
         var canExecute = command == null || command.CanExecute(CommandParameter);
@@ -296,16 +302,16 @@ public partial class FASettingsExpanderItem : ContentControl, ICommandSource
         }
     }
 
-    private void OnAdaptiveWidthValueChanged(object value)
+    private void OnAdaptiveWidthValueChanged(object? value)
     {
-        if (value == AvaloniaProperty.UnsetValue)
+        if (value is not double adaptiveWidth)
             return;
 
-        _adaptiveWidthTrigger = Unsafe.Unbox<double>(value);
+        _adaptiveWidthTrigger = adaptiveWidth;
         InvalidateMeasure();
     }
 
-    void ICommandSource.CanExecuteChanged(object sender, EventArgs e) =>
+    void ICommandSource.CanExecuteChanged(object? sender, EventArgs e) =>
         CanExecuteChanged(sender, e);
 
     private bool _commandCanExecute = true;
@@ -313,6 +319,6 @@ public partial class FASettingsExpanderItem : ContentControl, ICommandSource
     private bool _isPressed;
     private bool _hasFooter;
     private bool _isFooterAtBottom;
-    private IDisposable _adaptiveWidthDisposable;
+    private IDisposable? _adaptiveWidthDisposable;
     private double _adaptiveWidthTrigger = 460;
 }

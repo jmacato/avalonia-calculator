@@ -34,7 +34,6 @@ public sealed partial class App : Application
             desktop.MainWindow = Window;
             DesktopWindowCreated?.Invoke(Window);
         }
-        else
 #endif
         if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {

@@ -5,7 +5,8 @@
              xmlns:vm="using:CalculatorApp.ViewModel"
              x:DataType="vm:StandardCalculatorViewModel"
              x:CompileBindings="True"
-             Loaded="OnLoaded">
+             Loaded="OnLoaded"
+             Unloaded="OnUnloaded">
   <UserControl.Styles>
     <Style Selector="ToggleButton.inputMode">
       <Setter Property="Margin" Value="1" />

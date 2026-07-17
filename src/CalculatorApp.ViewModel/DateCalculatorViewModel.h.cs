@@ -43,19 +43,19 @@ namespace CalculatorApp
             private string m_StrDateResultAutomationName;
 
             // Command field
-            private ICommand donotuse_CopyCommand;
+            private ICommand? donotuse_CopyCommand;
 
             #endregion
 
             #region Property Changed
 
-            public event PropertyChangedEventHandler PropertyChanged;
+            public event PropertyChangedEventHandler? PropertyChanged;
 
-            protected void RaisePropertyChanged(string propertyName)
+            protected void NotifyPropertyChanged(string propertyName)
             {
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
                 OnPropertyChanged(propertyName);
-            } 
+            }
 
             #endregion
 
@@ -72,7 +72,7 @@ namespace CalculatorApp
                     if (m_IsDateDiffMode != value)
                     {
                         m_IsDateDiffMode = value;
-                        RaisePropertyChanged("IsDateDiffMode");
+                        NotifyPropertyChanged(nameof(IsDateDiffMode));
                     }
                 }
             }
@@ -88,7 +88,7 @@ namespace CalculatorApp
                     if (m_IsAddMode != value)
                     {
                         m_IsAddMode = value;
-                        RaisePropertyChanged("IsAddMode");
+                        NotifyPropertyChanged(nameof(IsAddMode));
                     }
                 }
             }
@@ -104,7 +104,7 @@ namespace CalculatorApp
                     if (m_DaysOffset != value)
                     {
                         m_DaysOffset = value;
-                        RaisePropertyChanged("DaysOffset");
+                        NotifyPropertyChanged(nameof(DaysOffset));
                     }
                 }
             }
@@ -120,7 +120,7 @@ namespace CalculatorApp
                     if (m_MonthsOffset != value)
                     {
                         m_MonthsOffset = value;
-                        RaisePropertyChanged("MonthsOffset");
+                        NotifyPropertyChanged(nameof(MonthsOffset));
                     }
                 }
             }
@@ -136,7 +136,7 @@ namespace CalculatorApp
                     if (m_YearsOffset != value)
                     {
                         m_YearsOffset = value;
-                        RaisePropertyChanged("YearsOffset");
+                        NotifyPropertyChanged(nameof(YearsOffset));
                     }
                 }
             }
@@ -156,7 +156,7 @@ namespace CalculatorApp
                     if (m_IsDiffInDays != value)
                     {
                         m_IsDiffInDays = value;
-                        RaisePropertyChanged("IsDiffInDays");
+                        NotifyPropertyChanged(nameof(IsDiffInDays));
                     }
                 }
             }
@@ -172,7 +172,7 @@ namespace CalculatorApp
                     if (m_StrDateDiffResult != value)
                     {
                         m_StrDateDiffResult = value;
-                        RaisePropertyChanged("StrDateDiffResult");
+                        NotifyPropertyChanged(nameof(StrDateDiffResult));
                     }
                 }
             }
@@ -188,7 +188,7 @@ namespace CalculatorApp
                     if (m_StrDateDiffResultAutomationName != value)
                     {
                         m_StrDateDiffResultAutomationName = value;
-                        RaisePropertyChanged("StrDateDiffResultAutomationName");
+                        NotifyPropertyChanged(nameof(StrDateDiffResultAutomationName));
                     }
                 }
             }
@@ -204,7 +204,7 @@ namespace CalculatorApp
                     if (m_StrDateDiffResultInDays != value)
                     {
                         m_StrDateDiffResultInDays = value;
-                        RaisePropertyChanged("StrDateDiffResultInDays");
+                        NotifyPropertyChanged(nameof(StrDateDiffResultInDays));
                     }
                 }
             }
@@ -220,7 +220,7 @@ namespace CalculatorApp
                     if (m_StrDateResult != value)
                     {
                         m_StrDateResult = value;
-                        RaisePropertyChanged("StrDateResult");
+                        NotifyPropertyChanged(nameof(StrDateResult));
                     }
                 }
             }
@@ -236,7 +236,7 @@ namespace CalculatorApp
                     if (m_StrDateResultAutomationName != value)
                     {
                         m_StrDateResultAutomationName = value;
-                        RaisePropertyChanged("StrDateResultAutomationName");
+                        NotifyPropertyChanged(nameof(StrDateResultAutomationName));
                     }
                 }
             }
@@ -261,7 +261,7 @@ namespace CalculatorApp
                     if (m_fromDate.Ticks != value.Ticks)
                     {
                         m_fromDate = value;
-                        RaisePropertyChanged("FromDate");
+                        NotifyPropertyChanged(nameof(FromDate));
                     }
                 }
             }
@@ -277,7 +277,7 @@ namespace CalculatorApp
                     if (m_toDate.Ticks != value.Ticks)
                     {
                         m_toDate = value;
-                        RaisePropertyChanged("ToDate");
+                        NotifyPropertyChanged(nameof(ToDate));
                     }
                 }
             }
@@ -293,7 +293,7 @@ namespace CalculatorApp
                     if (m_startDate.Ticks != value.Ticks)
                     {
                         m_startDate = value;
-                        RaisePropertyChanged("StartDate");
+                        NotifyPropertyChanged(nameof(StartDate));
                     }
                 }
             }
@@ -381,11 +381,11 @@ namespace CalculatorApp
             // // Property variables
             //List<string> m_offsetValues;  
             // // Private members
-             CalculatorApp.ViewModel.Common.DateCalculation.DateCalculationEngine m_dateCalcEngine;
-              CalculatorApp.ViewModel.Common.DateCalculation.DateUnit m_daysOutputFormat;
+            CalculatorApp.ViewModel.Common.DateCalculation.DateCalculationEngine m_dateCalcEngine;
+            CalculatorApp.ViewModel.Common.DateCalculation.DateUnit m_daysOutputFormat;
             CalculatorApp.ViewModel.Common.DateCalculation.DateUnit m_allDateUnitsOutputFormat;
-              Windows.Globalization.DateTimeFormatting.DateTimeFormatter m_dateTimeFormatter;
-             string m_listSeparator;
+            Windows.Globalization.DateTimeFormatting.DateTimeFormatter? m_dateTimeFormatter;
+            string m_listSeparator;
         }
     }
 }

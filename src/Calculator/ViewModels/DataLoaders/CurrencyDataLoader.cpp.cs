@@ -10,7 +10,7 @@ using UCM = UnitConversionManager;
 
 namespace CalculatorApp.ViewModel.DataLoaders;
 
-public partial class CurrencyDataLoader
+public sealed partial class CurrencyDataLoader
 {
     public async void LoadData()
     {
@@ -26,19 +26,19 @@ public partial class CurrencyDataLoader
 
         RegisterForNetworkBehaviorChanges();
         _initialLoadTask = LoadInitialDataAndNotifyAsync();
-        await _initialLoadTask;
+        await _initialLoadTask.ConfigureAwait(true);
     }
 
     private async Task<bool> LoadInitialDataAndNotifyAsync()
     {
-        bool didLoad = await LoadInitialDataAsync();
+        bool didLoad = await LoadInitialDataAsync().ConfigureAwait(true);
         NotifyDataLoadFinished(didLoad);
         return didLoad;
     }
 
     private async Task<bool> LoadInitialDataAsync()
     {
-        CurrencyRateSnapshot? cached = await ReadCacheAsync();
+        CurrencyRateSnapshot? cached = await ReadCacheAsync().ConfigureAwait(true);
         if (cached is not null &&
             DateTimeOffset.UtcNow - cached.FetchedAtUtc <= CacheRefreshAge)
         {
@@ -47,7 +47,7 @@ public partial class CurrencyDataLoader
             return true;
         }
 
-        if (await TryLoadDataFromWebAsync())
+        if (await TryLoadDataFromWebAsync().ConfigureAwait(true))
         {
             return true;
         }
@@ -68,40 +68,38 @@ public partial class CurrencyDataLoader
     public IList<UCM.Unit> GetOrderedUnits(UCM.Category category)
     {
         _ = category;
-        lock (_currencyUnitsMutex)
-        {
-            return _currencyUnits;
-        }
+        return Volatile.Read(ref _currencyData).Units;
     }
 
     public Dictionary<UCM.Unit, UCM.ConversionData> LoadOrderedRatios(UCM.Unit unit)
     {
-        lock (_currencyUnitsMutex)
-        {
-            return _currencyRatioMap.TryGetValue(unit, out var ratios)
-                ? ratios
-                : [];
-        }
+        CurrencyDataLoaderCurrencyDataSnapshot data = Volatile.Read(ref _currencyData);
+        return data.Ratios.TryGetValue(unit, out var ratios) ? ratios : [];
     }
 
-    public bool SupportsCategory(UCM.Category target) =>
-        target.Id == NavCategoryStates.Serialize(ViewMode.Currency);
+    public bool SupportsCategory(UCM.Category target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        return target.Id == NavCategoryStates.Serialize(ViewMode.Currency);
+    }
 
     public void SetViewModelCallback(UCM.IViewModelCurrencyCallback callback)
     {
         _viewModelCallback = callback;
-        OnNetworkBehaviorChanged(_networkAccessBehavior);
+        OnNetworkBehaviorChanged(this, new NetworkBehaviorChangedEventArgs(_networkAccessBehavior));
     }
 
     private void RegisterForNetworkBehaviorChanges()
     {
         _networkManager.NetworkBehaviorChanged -= OnNetworkBehaviorChanged;
         _networkManager.NetworkBehaviorChanged += OnNetworkBehaviorChanged;
-        OnNetworkBehaviorChanged(NetworkManager.GetNetworkAccessBehavior());
+        OnNetworkBehaviorChanged(this, new NetworkBehaviorChangedEventArgs(NetworkManager.GetNetworkAccessBehavior()));
     }
 
-    private void OnNetworkBehaviorChanged(NetworkAccessBehavior newBehavior)
+    private void OnNetworkBehaviorChanged(object? sender, NetworkBehaviorChangedEventArgs e)
     {
+        _ = sender;
+        NetworkAccessBehavior newBehavior = e.Behavior;
         NetworkAccessBehavior previousBehavior = _networkAccessBehavior;
         _networkAccessBehavior = newBehavior;
         _viewModelCallback?.NetworkBehaviorChanged((int)newBehavior);
@@ -123,7 +121,7 @@ public partial class CurrencyDataLoader
         await Task.Yield();
         if (_initialLoadTask is not null)
         {
-            await _initialLoadTask;
+            await _initialLoadTask.ConfigureAwait(true);
         }
 
         if (!_settingsStore.Current.AutomaticCurrencyRefresh ||
@@ -133,7 +131,7 @@ public partial class CurrencyDataLoader
             return;
         }
 
-        bool didLoad = await TryLoadDataFromWebAsync();
+        bool didLoad = await TryLoadDataFromWebAsync().ConfigureAwait(true);
         NotifyDataLoadFinished(didLoad);
     }
 
@@ -144,58 +142,61 @@ public partial class CurrencyDataLoader
 
     public (string, string) GetCurrencySymbols(UCM.Unit unit1, UCM.Unit unit2)
     {
-        lock (_currencyUnitsMutex)
-        {
-            // Preserve the WinUI loader contract: these are currency symbols,
-            // not generic unit abbreviations. Both values must be currencies.
-            return _currencyMetadata.TryGetValue(unit1, out var first) &&
-                   _currencyMetadata.TryGetValue(unit2, out var second)
-                ? (first.Symbol, second.Symbol)
-                : (string.Empty, string.Empty);
-        }
+        CurrencyDataLoaderCurrencyDataSnapshot data = Volatile.Read(ref _currencyData);
+        // Preserve the WinUI loader contract: these are currency symbols,
+        // not generic unit abbreviations. Both values must be currencies.
+        return data.Metadata.TryGetValue(unit1, out var first) &&
+               data.Metadata.TryGetValue(unit2, out var second)
+            ? (first.Symbol, second.Symbol)
+            : (string.Empty, string.Empty);
     }
 
     public (string, string) GetCurrencyRatioEquality(UCM.Unit unit1, UCM.Unit unit2)
     {
-        lock (_currencyUnitsMutex)
+        System.ArgumentNullException.ThrowIfNull(unit1);
+        System.ArgumentNullException.ThrowIfNull(unit2);
+        if (Environment.CurrentManagedThreadId != _ownerThreadId)
         {
-            if (!_currencyRatioMap.TryGetValue(unit1, out var ratios) ||
-                !ratios.TryGetValue(unit2, out UCM.ConversionData? conversion))
-            {
-                return (string.Empty, string.Empty);
-            }
-
-            Rational ratio = RatPakDecimal.Parse(_ratPak, conversion.RatioNumerator) /
-                             RatPakDecimal.Parse(_ratPak, conversion.RatioDenominator);
-            int decimals = 4;
-            int exponent = RatPakDecimal.GetDecimalExponent(_ratPak, ratio);
-            if (exponent < 0)
-            {
-                decimals = Math.Max(decimals, -exponent + 3);
-            }
-
-            string formatted = RatPakDecimal.FormatFixed(
-                _ratPak,
-                ratio,
-                Math.Min(decimals, 15),
-                RatPakRoundingMode.AwayFromZero);
-            formatted = FormatCurrencyRatio(formatted, _numberFormat);
-            LocalizationSettings localization = LocalizationSettings.GetInstance();
-            string one = localization.GetDigitSymbolFromEnUsDigit('1').ToString();
-            string visible = LocalizationStringUtil.GetLocalizedString(
-                _ratioFormat,
-                one,
-                unit1.Abbreviation,
-                formatted,
-                unit2.Abbreviation);
-            string accessible = LocalizationStringUtil.GetLocalizedString(
-                _ratioFormat,
-                one,
-                unit1.AccessibleName,
-                formatted,
-                unit2.AccessibleName);
-            return (visible, accessible);
+            throw new InvalidOperationException("Currency formatting must remain on its owning UI thread.");
         }
+
+        CurrencyDataLoaderCurrencyDataSnapshot data = Volatile.Read(ref _currencyData);
+        if (!data.Ratios.TryGetValue(unit1, out var ratios) ||
+            !ratios.TryGetValue(unit2, out UCM.ConversionData? conversion))
+        {
+            return (string.Empty, string.Empty);
+        }
+
+        Rational ratio = RatPakDecimal.Parse(_ratPak, conversion.RatioNumerator) /
+                         RatPakDecimal.Parse(_ratPak, conversion.RatioDenominator);
+        int decimals = 4;
+        int exponent = RatPakDecimal.GetDecimalExponent(_ratPak, ratio);
+        if (exponent < 0)
+        {
+            decimals = Math.Max(decimals, -exponent + 3);
+        }
+
+        string formatted = RatPakDecimal.FormatFixed(
+            _ratPak,
+            ratio,
+            Math.Min(decimals, 15),
+            RatPakRoundingMode.AwayFromZero);
+        formatted = FormatCurrencyRatio(formatted, _numberFormat);
+        LocalizationSettings localization = LocalizationSettings.Instance;
+        string one = localization.GetDigitSymbolFromEnUsDigit('1').ToString();
+        string visible = LocalizationStringUtil.GetLocalizedString(
+            _ratioFormat,
+            one,
+            unit1.Abbreviation,
+            formatted,
+            unit2.Abbreviation);
+        string accessible = LocalizationStringUtil.GetLocalizedString(
+            _ratioFormat,
+            one,
+            unit1.AccessibleName,
+            formatted,
+            unit2.AccessibleName);
+        return (visible, accessible);
     }
 
     private static string FormatCurrencyRatio(
@@ -204,9 +205,9 @@ public partial class CurrencyDataLoader
     {
         const int minimumFractionDigits = 2;
 
-        bool isNegative = invariantValue.StartsWith("-", StringComparison.Ordinal);
+        bool isNegative = invariantValue.StartsWith('-');
         string unsignedValue = isNegative ? invariantValue[1..] : invariantValue;
-        int decimalPosition = unsignedValue.IndexOf('.');
+        int decimalPosition = unsignedValue.IndexOf('.', StringComparison.Ordinal);
         string whole = decimalPosition < 0
             ? unsignedValue
             : unsignedValue[..decimalPosition];
@@ -243,7 +244,7 @@ public partial class CurrencyDataLoader
 
     public async Task<bool> TryLoadDataFromCacheAsync()
     {
-        CurrencyRateSnapshot? snapshot = await ReadCacheAsync();
+        CurrencyRateSnapshot? snapshot = await ReadCacheAsync().ConfigureAwait(true);
         if (snapshot is null)
         {
             return false;
@@ -264,31 +265,56 @@ public partial class CurrencyDataLoader
 
         try
         {
-            CurrencyRateSnapshot snapshot = await _rateProvider.GetLatestRatesAsync();
+            CurrencyRateSnapshot snapshot = await _rateProvider.GetLatestRatesAsync().ConfigureAwait(true);
             ValidateSnapshot(snapshot);
             FinalizeUnits(snapshot);
             _loadStatus = CurrencyLoadStatus.LoadedFromWeb;
-            await WriteCacheAtomicallyAsync(snapshot);
+            await WriteCacheAtomicallyAsync(snapshot).ConfigureAwait(true);
             UpdateDisplayedTimestamp();
             return true;
         }
-        catch (Exception exception)
+        catch (HttpRequestException exception)
         {
-            _loadStatus = CurrencyLoadStatus.FailedToLoad;
-            TraceLogger.GetInstance().LogPlatformException(
-                ViewMode.Currency,
-                nameof(TryLoadDataFromWebAsync),
-                exception);
-            return false;
+            return HandleWebLoadFailure(exception);
         }
+        catch (OperationCanceledException exception)
+        {
+            return HandleWebLoadFailure(exception);
+        }
+        catch (InvalidDataException exception)
+        {
+            return HandleWebLoadFailure(exception);
+        }
+        catch (JsonException exception)
+        {
+            return HandleWebLoadFailure(exception);
+        }
+        catch (IOException exception)
+        {
+            return HandleWebLoadFailure(exception);
+        }
+        catch (NotSupportedException exception)
+        {
+            return HandleWebLoadFailure(exception);
+        }
+    }
+
+    private bool HandleWebLoadFailure(Exception exception)
+    {
+        _loadStatus = CurrencyLoadStatus.FailedToLoad;
+        TraceLogger.LogPlatformException(
+            ViewMode.Currency,
+            nameof(TryLoadDataFromWebAsync),
+            exception);
+        return false;
     }
 
     public async Task<bool> TryLoadDataFromWebOverrideAsync()
     {
-        bool didLoad = await TryLoadDataFromWebAsync();
+        bool didLoad = await TryLoadDataFromWebAsync().ConfigureAwait(true);
         if (!didLoad)
         {
-            TraceLogger.GetInstance().LogError(
+            TraceLogger.LogError(
                 ViewMode.Currency,
                 nameof(TryLoadDataFromWebOverrideAsync),
                 "UserRequestedRefreshFailed");
@@ -332,53 +358,53 @@ public partial class CurrencyDataLoader
                 : rates.ContainsKey("EUR") ? "EUR" : rates.Keys.First();
         }
 
-        lock (_currencyUnitsMutex)
+        List<UCM.Unit> currencyUnits = [];
+        Dictionary<UCM.Unit, Dictionary<UCM.Unit, UCM.ConversionData>> currencyRatioMap = [];
+        Dictionary<UCM.Unit, CurrencyUnitMetadata> currencyMetadata = [];
+
+        int id = (int)UnitConverterUnits.UnitEnd + 1;
+        foreach ((string isoCode, decimal _) in rates.OrderBy(pair => pair.Key,
+                     StringComparer.OrdinalIgnoreCase))
         {
-            _currencyUnits = [];
-            _currencyRatioMap = [];
-            _currencyMetadata = [];
-
-            int id = (int)UnitConverterUnits.UnitEnd + 1;
-            foreach ((string isoCode, decimal _) in rates.OrderBy(pair => pair.Key,
-                         StringComparer.OrdinalIgnoreCase))
+            metadata.TryGetValue(isoCode, out CurrencyMetadataRecord? fallback);
+            CurrencyDisplayMetadata display = _nameProvider.GetCurrency(
+                isoCode,
+                fallback?.Name ?? isoCode,
+                fallback?.Symbol ?? isoCode);
+            UCM.Unit unit = new(
+                id++,
+                $"{isoCode} — {display.Name}",
+                isoCode,
+                isoCode.Equals(preferredFrom, StringComparison.OrdinalIgnoreCase),
+                isoCode.Equals(preferredTo, StringComparison.OrdinalIgnoreCase),
+                false)
             {
-                metadata.TryGetValue(isoCode, out CurrencyMetadataRecord? fallback);
-                CurrencyDisplayMetadata display = _nameProvider.GetCurrency(
-                    isoCode,
-                    fallback?.Name ?? isoCode,
-                    fallback?.Symbol ?? isoCode);
-                UCM.Unit unit = new(
-                    id++,
-                    $"{isoCode} — {display.Name}",
-                    isoCode,
-                    isoCode.Equals(preferredFrom, StringComparison.OrdinalIgnoreCase),
-                    isoCode.Equals(preferredTo, StringComparison.OrdinalIgnoreCase),
-                    false)
-                {
-                    AccessibleName = $"{isoCode} {display.Name}"
-                };
-                _currencyUnits.Add(unit);
-                _currencyMetadata[unit] = new CurrencyUnitMetadata(
-                    display.Symbol,
-                    display.FractionDigits);
-            }
-
-            foreach (UCM.Unit source in _currencyUnits)
-            {
-                decimal sourceRate = rates[source.Abbreviation];
-                Dictionary<UCM.Unit, UCM.ConversionData> conversions = [];
-                foreach (UCM.Unit target in _currencyUnits)
-                {
-                    conversions[target] = new UCM.ConversionData(
-                        rates[target.Abbreviation].ToString(CultureInfo.InvariantCulture),
-                        sourceRate.ToString(CultureInfo.InvariantCulture),
-                        "0",
-                        false);
-                }
-                _currencyRatioMap[source] = conversions;
-            }
+                AccessibleName = $"{isoCode} {display.Name}"
+            };
+            currencyUnits.Add(unit);
+            currencyMetadata[unit] = new CurrencyUnitMetadata(
+                display.Symbol,
+                display.FractionDigits);
         }
 
+        foreach (UCM.Unit source in currencyUnits)
+        {
+            decimal sourceRate = rates[source.Abbreviation];
+            Dictionary<UCM.Unit, UCM.ConversionData> conversions = [];
+            foreach (UCM.Unit target in currencyUnits)
+            {
+                conversions[target] = new UCM.ConversionData(
+                    rates[target.Abbreviation].ToString(CultureInfo.InvariantCulture),
+                    sourceRate.ToString(CultureInfo.InvariantCulture),
+                    "0",
+                    false);
+            }
+            currencyRatioMap[source] = conversions;
+        }
+
+        Volatile.Write(
+            ref _currencyData,
+            new CurrencyDataLoaderCurrencyDataSnapshot(currencyUnits, currencyRatioMap, currencyMetadata));
         _cacheTimestamp = snapshot.FetchedAtUtc;
     }
 
@@ -398,10 +424,10 @@ public partial class CurrencyDataLoader
     {
         if (snapshot.FetchedAtUtc == default ||
             string.IsNullOrWhiteSpace(snapshot.BaseCurrency) ||
-            snapshot.Currencies is not { Count: > 0 } ||
+            snapshot.Currencies.IsDefaultOrEmpty ||
             snapshot.Currencies.Any(currency =>
                 currency is null || string.IsNullOrWhiteSpace(currency.IsoCode)) ||
-            snapshot.Rates is not { Count: > 0 } ||
+            snapshot.Rates.IsDefaultOrEmpty ||
             snapshot.Rates.Any(rate =>
                 rate is null ||
                 rate.Rate <= 0 ||
@@ -424,25 +450,50 @@ public partial class CurrencyDataLoader
                 return null;
             }
 
-            await using FileStream stream = File.OpenRead(_cachePath);
-            CurrencyRateSnapshot? snapshot = await JsonSerializer.DeserializeAsync(
-                stream,
-                CurrencyJsonContext.Default.CurrencyRateSnapshot);
+            FileStream stream = File.OpenRead(_cachePath);
+            CurrencyRateSnapshot? snapshot;
+            await using (stream.ConfigureAwait(false))
+            {
+                snapshot = await JsonSerializer.DeserializeAsync(
+                    stream,
+                    CurrencyJsonContext.Default.CurrencyRateSnapshot).ConfigureAwait(false);
+            }
             if (snapshot is not null)
             {
                 ValidateSnapshot(snapshot);
             }
             return snapshot;
         }
-        catch (Exception exception)
+        catch (JsonException exception)
         {
-            TryBackupCorruptCache();
-            TraceLogger.GetInstance().LogPlatformException(
-                ViewMode.Currency,
-                nameof(ReadCacheAsync),
-                exception);
-            return null;
+            return HandleCacheReadFailure(exception);
         }
+        catch (InvalidDataException exception)
+        {
+            return HandleCacheReadFailure(exception);
+        }
+        catch (IOException exception)
+        {
+            return HandleCacheReadFailure(exception);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return HandleCacheReadFailure(exception);
+        }
+        catch (NotSupportedException exception)
+        {
+            return HandleCacheReadFailure(exception);
+        }
+    }
+
+    private CurrencyRateSnapshot? HandleCacheReadFailure(Exception exception)
+    {
+        TryBackupCorruptCache();
+        TraceLogger.LogPlatformException(
+            ViewMode.Currency,
+            nameof(ReadCacheAsync),
+            exception);
+        return null;
     }
 
     private async Task WriteCacheAtomicallyAsync(CurrencyRateSnapshot snapshot)
@@ -456,24 +507,42 @@ public partial class CurrencyDataLoader
             }
 
             string temporaryPath = _cachePath + ".tmp";
-            await using (FileStream stream = File.Create(temporaryPath))
+            FileStream stream = File.Create(temporaryPath);
+            await using (stream.ConfigureAwait(false))
             {
                 await JsonSerializer.SerializeAsync(
                     stream,
                     snapshot,
-                    CurrencyJsonContext.Default.CurrencyRateSnapshot);
-                await stream.FlushAsync();
+                    CurrencyJsonContext.Default.CurrencyRateSnapshot).ConfigureAwait(false);
+                await stream.FlushAsync().ConfigureAwait(false);
             }
 
             File.Move(temporaryPath, _cachePath, true);
         }
-        catch (Exception exception)
+        catch (JsonException exception)
         {
-            TraceLogger.GetInstance().LogPlatformException(
-                ViewMode.Currency,
-                nameof(WriteCacheAtomicallyAsync),
-                exception);
+            LogCacheWriteFailure(exception);
         }
+        catch (IOException exception)
+        {
+            LogCacheWriteFailure(exception);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            LogCacheWriteFailure(exception);
+        }
+        catch (NotSupportedException exception)
+        {
+            LogCacheWriteFailure(exception);
+        }
+    }
+
+    private static void LogCacheWriteFailure(Exception exception)
+    {
+        TraceLogger.LogPlatformException(
+            ViewMode.Currency,
+            nameof(WriteCacheAtomicallyAsync),
+            exception);
     }
 
     private void TryBackupCorruptCache()

@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace CalcEngine;
 
-public interface IHistoryDisplay
+internal interface IHistoryDisplay
 {
     uint AddToHistory(
         List<(string, int)> tokens,

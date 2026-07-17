@@ -14,9 +14,6 @@ namespace CalculatorUITestFramework
             Item = item;
         }
 
-        public string GetValue()
-        {
-            return Item.Text;
-        }
+        public string Value => Item.Text;
     }
 }

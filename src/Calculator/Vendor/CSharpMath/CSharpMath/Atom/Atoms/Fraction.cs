@@ -3,7 +3,8 @@ using System.Text;
 namespace CSharpMath.Atom.Atoms;
 
 public sealed class Fraction(MathList numerator, MathList denominator, bool hasRule = true)
-    : MathAtom, IMathListContainer {
+    : MathAtom, IMathListContainer
+{
     public MathList Numerator { get; } = numerator;
     public MathList Denominator { get; } = denominator;
 
@@ -17,7 +18,8 @@ public sealed class Fraction(MathList numerator, MathList denominator, bool hasR
     public override bool ScriptsAllowed => true;
     public new Fraction Clone(bool finalize) => (Fraction)base.Clone(finalize);
     protected override MathAtom CloneInside(bool finalize) =>
-        new Fraction(Numerator.Clone(finalize), Denominator.Clone(finalize), HasRule) {
+        new Fraction(Numerator.Clone(finalize), Denominator.Clone(finalize), HasRule)
+        {
             LeftDelimiter = LeftDelimiter,
             RightDelimiter = RightDelimiter
         };
@@ -29,12 +31,15 @@ public sealed class Fraction(MathList numerator, MathList denominator, bool hasR
             .AppendInBracesOrEmptyBraces(Denominator?.DebugString)
             .AppendDebugStringOfScripts(this).ToString();
     public override bool Equals(object? obj) => obj is Fraction f && EqualsFraction(f);
-    public bool EqualsFraction(Fraction other) =>
-        EqualsAtom(other)
-        && Numerator.NullCheckingStructuralEquality(other.Numerator)
-        && Denominator.NullCheckingStructuralEquality(other.Denominator)
-        && LeftDelimiter == other.LeftDelimiter
-        && RightDelimiter == other.RightDelimiter;
+    public bool EqualsFraction(Fraction other)
+    {
+        System.ArgumentNullException.ThrowIfNull(other);
+        return EqualsAtom(other)
+                && Numerator.NullCheckingStructuralEquality(other.Numerator)
+                && Denominator.NullCheckingStructuralEquality(other.Denominator)
+                && LeftDelimiter == other.LeftDelimiter
+                && RightDelimiter == other.RightDelimiter;
+    }
     public override int GetHashCode() =>
         (base.GetHashCode(), Numerator, Denominator, LeftDelimiter, RightDelimiter).GetHashCode();
 }

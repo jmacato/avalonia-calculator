@@ -11,7 +11,7 @@ namespace CalculatorApp
         /// Value converter that translates true to false and vice versa.
         /// </summary>
         [Windows.Foundation.Metadata.WebHostHidden]
-        public sealed class BooleanNegationConverter : Microsoft.UI.Xaml.Data.IValueConverter
+        internal sealed class BooleanNegationConverter : Microsoft.UI.Xaml.Data.IValueConverter
         {
             public object Convert(object value, Type targetType, object parameter, string language)
             {

@@ -1,5 +1,24 @@
 const snapshotIntervalMs = 1000;
 const maximumPendingEvents = 48;
+const dispatcherTelemetryChannelName = 'avalonia-browser-dispatcher-v1';
+const inputTraceCapacity = 4096;
+const inputTraceStride = 16;
+const inputTraceKind = Object.freeze({
+    pointerDown: 1,
+    pointerMove: 2,
+    pointerUp: 3,
+    pointerCancel: 4,
+    wheel: 5,
+    keyDown: 6,
+    keyUp: 7,
+    beforeInput: 8,
+    input: 9,
+    focusIn: 10,
+    focusOut: 11,
+    resize: 12,
+    visibility: 13,
+    contextMenu: 14,
+});
 
 export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
     const sessionId = createSessionId();
@@ -16,13 +35,6 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
     let bootStage = 'telemetry-started';
     let uiSequence = 0;
     let runtimeApi = null;
-    let managedProbe = null;
-    let managedProbeFailed = false;
-    let managedProbeStarted = false;
-    let managedProbeStartedAtMonoMs = 0;
-    let managedSampleInFlight = false;
-    let managedSampleAtMonoMs = 0;
-    let managedSample = emptyManagedSample();
     let canvas = null;
     let canvasTransform = '';
     let canvasDetectedAtMonoMs = 0;
@@ -48,6 +60,11 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
     let lostPointerCaptureTotal = 0;
     let canvasPresentTotal = 0;
     let canvasPresentSinceLast = 0;
+    let canvasFrameReceivedTotal = 0;
+    let canvasFrameDroppedTotal = 0;
+    let lastCanvasFrameReceived = 0;
+    let lastCanvasFramePresented = 0;
+    let lastCanvasFrameDropped = 0;
     let webGlContextLost = false;
     let webGlContextLosses = 0;
     let webGlContextRestores = 0;
@@ -59,6 +76,14 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
     let focusInTotal = 0;
     let focusOutTotal = 0;
     let lastSnapshotMonoMs = performance.now();
+    let dispatcherTelemetryChannel = null;
+    let dispatcherRuntimeId = '';
+    let managedProbeStarted = false;
+    let managedDispatcherPulse = 0;
+    let lastManagedDispatcherMonoMs = 0;
+    let graphPipelineProbeStarted = false;
+    let graphPipelineState = new Int32Array(19);
+    const inputTrace = createInputTrace();
 
     const client = {
         startedAtUnixMs,
@@ -81,7 +106,39 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
         runId,
         client,
         intervalMs: snapshotIntervalMs,
+        inputTrace: inputTrace?.descriptor ?? null,
     });
+
+    try {
+        dispatcherTelemetryChannel = new BroadcastChannel(dispatcherTelemetryChannelName);
+        dispatcherTelemetryChannel.addEventListener('message', event => {
+            const message = event.data;
+            if (message?.source !== dispatcherTelemetryChannelName || typeof message.runtimeId !== 'string') {
+                return;
+            }
+
+            if (message.kind === 'started') {
+                dispatcherRuntimeId = message.runtimeId;
+                queueEvent('managed-dispatcher-started', `runtime=${cleanText(dispatcherRuntimeId, 96)}`);
+                return;
+            }
+
+            if (message.kind !== 'pulse' || message.runtimeId !== dispatcherRuntimeId) {
+                return;
+            }
+
+            const sequence = finiteNumber(message.sequence);
+            if (sequence <= managedDispatcherPulse) {
+                return;
+            }
+
+            managedProbeStarted = true;
+            managedDispatcherPulse = sequence;
+            lastManagedDispatcherMonoMs = performance.now();
+        });
+    } catch {
+        dispatcherTelemetryChannel = null;
+    }
 
     function queueEvent(kind, detail = '') {
         if (pendingEvents.length >= maximumPendingEvents) {
@@ -105,6 +162,37 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
         queueEvent(kind, describeError(error));
     }
 
+    function recordInput(kind, event, detail1 = 0, detail2 = 0) {
+        if (!inputTrace) {
+            return;
+        }
+
+        const pointerType = event instanceof PointerEvent
+            ? encodePointerType(event.pointerType)
+            : 0;
+        const modifierBits = (event.altKey ? 1 : 0) |
+            (event.ctrlKey ? 2 : 0) |
+            (event.metaKey ? 4 : 0) |
+            (event.shiftKey ? 8 : 0);
+        inputTrace.write(
+            performance.now() - startedAtMonoMs,
+            kind,
+            pointerType,
+            finiteNumber(event.pointerId),
+            finiteNumber(event.clientX),
+            finiteNumber(event.clientY),
+            finiteNumber(event.button),
+            finiteNumber(event.buttons),
+            modifierBits,
+            finiteNumber(event.pressure),
+            finiteNumber(event.deltaX),
+            finiteNumber(event.deltaY),
+            finiteNumber(globalThis.innerWidth),
+            finiteNumber(globalThis.innerHeight),
+            finiteNumber(detail1),
+            finiteNumber(detail2));
+    }
+
     function locateCanvas(now) {
         if (canvas?.isConnected) {
             return;
@@ -118,6 +206,12 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
         canvasDetectedAtMonoMs = now;
         lastCanvasPresentMonoMs = now;
         canvasTransform = canvas.style.transform;
+        lastCanvasFrameReceived = finiteNumber(canvas.__avaloniaFramesReceived);
+        lastCanvasFramePresented = finiteNumber(canvas.__avaloniaFramesPresented);
+        lastCanvasFrameDropped = finiteNumber(canvas.__avaloniaFramesDropped);
+        canvasFrameReceivedTotal += lastCanvasFrameReceived;
+        canvasPresentTotal += lastCanvasFramePresented;
+        canvasFrameDroppedTotal += lastCanvasFrameDropped;
         canvas.addEventListener('webglcontextlost', event => {
             webGlContextLost = true;
             webGlContextLosses++;
@@ -149,12 +243,38 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
         if (!canvas?.isConnected && frameCountTotal % 30 === 0) {
             locateCanvas(now);
         } else if (canvas) {
-            const transform = canvas.style.transform;
-            if (transform !== canvasTransform) {
-                canvasTransform = transform;
-                canvasPresentTotal++;
-                canvasPresentSinceLast++;
-                lastCanvasPresentMonoMs = now;
+            const received = finiteNumber(canvas.__avaloniaFramesReceived);
+            const presented = finiteNumber(canvas.__avaloniaFramesPresented);
+            const dropped = finiteNumber(canvas.__avaloniaFramesDropped);
+            if (received > 0 || presented > 0 || dropped > 0) {
+                const receivedDelta = received >= lastCanvasFrameReceived
+                    ? received - lastCanvasFrameReceived
+                    : received;
+                const presentedDelta = presented >= lastCanvasFramePresented
+                    ? presented - lastCanvasFramePresented
+                    : presented;
+                const droppedDelta = dropped >= lastCanvasFrameDropped
+                    ? dropped - lastCanvasFrameDropped
+                    : dropped;
+                canvasFrameReceivedTotal += receivedDelta;
+                canvasPresentTotal += presentedDelta;
+                canvasPresentSinceLast += presentedDelta;
+                canvasFrameDroppedTotal += droppedDelta;
+                lastCanvasFrameReceived = received;
+                lastCanvasFramePresented = presented;
+                lastCanvasFrameDropped = dropped;
+                if (presentedDelta > 0) {
+                    lastCanvasPresentMonoMs = now;
+                }
+            } else {
+                // Preserve telemetry compatibility for non-worker renderers.
+                const transform = canvas.style.transform;
+                if (transform !== canvasTransform) {
+                    canvasTransform = transform;
+                    canvasPresentTotal++;
+                    canvasPresentSinceLast++;
+                    lastCanvasPresentMonoMs = now;
+                }
             }
         }
 
@@ -178,33 +298,21 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
         }
     }
 
-    function requestManagedSample() {
-        if (!managedProbe || !managedProbeStarted || managedProbeFailed || managedSampleInFlight) {
+    function refreshGraphPipeline() {
+        const state = globalThis.calculatorGraphPipeline;
+        if (typeof state !== 'string') {
             return;
         }
 
-        managedSampleInFlight = true;
-        Promise.resolve(managedProbe.GetSnapshot())
-            .then(encoded => {
-                const values = String(encoded).split(',');
-                managedSample = {
-                    heapBytes: finiteNumber(values?.[0]),
-                    allocatedBytes: finiteNumber(values?.[1]),
-                    gen0: finiteNumber(values?.[2]),
-                    gen1: finiteNumber(values?.[3]),
-                    gen2: finiteNumber(values?.[4]),
-                    dispatcherPulse: finiteNumber(values?.[5]),
-                    dispatcherAgeMs: finiteNumber(values?.[6]),
-                };
-                managedSampleAtMonoMs = performance.now();
-            })
-            .catch(error => {
-                managedProbeFailed = true;
-                recordError('managed-probe-error', error);
-            })
-            .finally(() => {
-                managedSampleInFlight = false;
-            });
+        const values = state.split(',');
+        if (values.length < graphPipelineState.length) {
+            return;
+        }
+
+        graphPipelineProbeStarted = true;
+        for (let index = 0; index < graphPipelineState.length; index++) {
+            graphPipelineState[index] = finiteNumber(values[index]);
+        }
     }
 
     function createSnapshot() {
@@ -217,15 +325,13 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
             : null;
         const viewport = globalThis.visualViewport;
         const rect = canvas?.getBoundingClientRect();
+        const inputHost = canvas?.parentElement;
         const wasm = readWasmMemory();
-        const managed = managedSample;
-        const managedSampleAgeMs = managedSampleAtMonoMs > 0
-            ? now - managedSampleAtMonoMs
-            : managedProbeStarted ? now - managedProbeStartedAtMonoMs : -1;
-        const managedDispatcherAgeMs = managed.dispatcherAgeMs >= 0 && managedSampleAtMonoMs > 0
-            ? managed.dispatcherAgeMs + managedSampleAgeMs
-            : -1;
         const jsHeapBytes = finiteNumber(performance.memory?.usedJSHeapSize);
+        const managedDispatcherAgeMs = lastManagedDispatcherMonoMs > 0
+            ? now - lastManagedDispatcherMonoMs
+            : 0;
+        refreshGraphPipeline();
         const events = pendingEvents.length > 0 ? pendingEvents : null;
         pendingEvents = [];
 
@@ -264,6 +370,16 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
             canvasPresentTotal,
             canvasPresentSinceLast,
             canvasPresentAgeMs: lastCanvasPresentMonoMs > 0 ? now - lastCanvasPresentMonoMs : -1,
+            canvasFrameReceivedTotal,
+            canvasFramePresentedTotal: canvasPresentTotal,
+            canvasFrameDroppedTotal,
+            canvasFramePending: Math.max(0,
+                lastCanvasFrameReceived - lastCanvasFramePresented - lastCanvasFrameDropped),
+            inputQueueDepth: finiteNumber(inputHost?.__avaloniaInputQueueDepth),
+            inputQueueHighWater: finiteNumber(inputHost?.__avaloniaInputQueueHighWater),
+            inputQueueDequeued: finiteNumber(inputHost?.__avaloniaInputQueueDequeued),
+            inputQueueRetries: finiteNumber(inputHost?.__avaloniaInputQueueRetries),
+            inputQueueShed: finiteNumber(inputHost?.__avaloniaInputQueueShed),
             webGlContextLost,
             webGlContextLosses,
             webGlContextRestores,
@@ -289,20 +405,35 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
             wasmMemoryBytes: wasm.bytes,
             wasmMemoryMaxBytes: wasm.maximumBytes,
             jsHeapBytes,
-            managedHeapBytes: managed.heapBytes,
-            managedAllocatedBytes: managed.allocatedBytes,
-            managedGen0Collections: managed.gen0,
-            managedGen1Collections: managed.gen1,
-            managedGen2Collections: managed.gen2,
             managedProbeStarted,
-            managedProbeInFlight: managedSampleInFlight,
-            managedSampleAgeMs,
-            managedDispatcherPulse: managed.dispatcherPulse,
+            managedProbeInFlight: false,
+            managedSampleAgeMs: managedDispatcherAgeMs,
+            managedDispatcherPulse,
             managedDispatcherAgeMs,
+            graphPipelineProbeStarted,
+            graphPipelineProbeInFlight: false,
+            graphRequestedGeneration: finiteNumber(graphPipelineState[0]),
+            graphWorkerGeneration: finiteNumber(graphPipelineState[1]),
+            graphCompletedGeneration: finiteNumber(graphPipelineState[2]),
+            graphPublishedGeneration: finiteNumber(graphPipelineState[3]),
+            graphCommittedGeneration: finiteNumber(graphPipelineState[4]),
+            graphWorkerActive: finiteNumber(graphPipelineState[5]),
+            graphCompletedStatus: finiteNumber(graphPipelineState[6]),
+            graphCommitStatus: finiteNumber(graphPipelineState[7]),
+            graphRequestCount: finiteNumber(graphPipelineState[8]),
+            graphWorkerStartCount: finiteNumber(graphPipelineState[9]),
+            graphWorkerCompletionCount: finiteNumber(graphPipelineState[10]),
+            graphCommitCount: finiteNumber(graphPipelineState[11]),
+            graphCommitMissCount: finiteNumber(graphPipelineState[12]),
+            graphSettlementTimerCount: finiteNumber(graphPipelineState[13]),
+            graphSettlementRequestCount: finiteNumber(graphPipelineState[14]),
+            graphRenderCount: finiteNumber(graphPipelineState[15]),
+            graphRendererActiveCount: finiteNumber(graphPipelineState[16]),
+            graphRendererCreatedCount: finiteNumber(graphPipelineState[17]),
+            graphRendererDisposedCount: finiteNumber(graphPipelineState[18]),
         };
 
         worker.postMessage({ type: 'snapshot', snapshot, events });
-        requestManagedSample();
         framesSinceLast = 0;
         maxFrameGapMs = 0;
         longTaskDurationSinceLastMs = 0;
@@ -343,21 +474,25 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
         activePointers.add(event.pointerId);
         pointerDownTotal++;
         lastPointerMonoMs = performance.now();
+        recordInput(inputTraceKind.pointerDown, event, event.offsetX, event.offsetY);
     }, { capture: true, passive: true });
-    window.addEventListener('pointermove', () => {
+    window.addEventListener('pointermove', event => {
         pointerMoveTotal++;
         pointerMoveSinceLast++;
         lastPointerMonoMs = performance.now();
+        recordInput(inputTraceKind.pointerMove, event, event.offsetX, event.offsetY);
     }, { capture: true, passive: true });
     window.addEventListener('pointerup', event => {
         activePointers.delete(event.pointerId);
         pointerUpTotal++;
         lastPointerMonoMs = performance.now();
+        recordInput(inputTraceKind.pointerUp, event, event.offsetX, event.offsetY);
     }, { capture: true, passive: true });
     window.addEventListener('pointercancel', event => {
         activePointers.delete(event.pointerId);
         pointerCancelTotal++;
         lastPointerMonoMs = performance.now();
+        recordInput(inputTraceKind.pointerCancel, event, event.offsetX, event.offsetY);
         queueEvent('pointer-cancel', `pointerId=${event.pointerId}`);
     }, { capture: true, passive: true });
     window.addEventListener('gotpointercapture', event => {
@@ -368,27 +503,47 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
         lostPointerCaptureTotal++;
         queueEvent('lost-pointer-capture', `pointerId=${event.pointerId}; target=${describeElement(event.target)}`);
     }, true);
-    window.addEventListener('wheel', () => {
+    window.addEventListener('wheel', event => {
         wheelTotal++;
         wheelSinceLast++;
+        recordInput(inputTraceKind.wheel, event, event.deltaMode);
     }, { capture: true, passive: true });
-    window.addEventListener('keydown', () => { keyDownTotal++; }, true);
-    window.addEventListener('beforeinput', () => { beforeInputTotal++; }, true);
-    window.addEventListener('input', () => { inputTotal++; }, true);
+    window.addEventListener('keydown', event => {
+        keyDownTotal++;
+        recordInput(inputTraceKind.keyDown, event, encodeKey(event.key), encodeText(event.code));
+    }, true);
+    window.addEventListener('keyup', event => {
+        recordInput(inputTraceKind.keyUp, event, encodeKey(event.key), encodeText(event.code));
+    }, true);
+    window.addEventListener('beforeinput', event => {
+        beforeInputTotal++;
+        recordInput(inputTraceKind.beforeInput, event, encodeKey(event.data), encodeText(event.inputType));
+    }, true);
+    window.addEventListener('input', event => {
+        inputTotal++;
+        recordInput(inputTraceKind.input, event, encodeKey(event.data), encodeText(event.inputType));
+    }, true);
     window.addEventListener('focusin', event => {
         focusInTotal++;
+        recordInput(inputTraceKind.focusIn, event, encodeText(describeElement(event.target)));
         queueEvent('focus-in', describeElement(event.target));
     }, true);
     window.addEventListener('focusout', event => {
         focusOutTotal++;
+        recordInput(inputTraceKind.focusOut, event, encodeText(describeElement(event.target)));
         queueEvent('focus-out', describeElement(event.target));
     }, true);
     window.addEventListener('contextmenu', event => {
         contextMenuTotal++;
+        recordInput(inputTraceKind.contextMenu, event);
         queueEvent('context-menu', describeElement(event.target));
     }, true);
     document.addEventListener('selectionchange', () => { selectionChangeTotal++; }, true);
-    document.addEventListener('visibilitychange', () => queueEvent(`visibility-${document.visibilityState}`));
+    document.addEventListener('visibilitychange', event => {
+        recordInput(inputTraceKind.visibility, event, encodeText(document.visibilityState));
+        queueEvent(`visibility-${document.visibilityState}`);
+    });
+    window.addEventListener('resize', event => recordInput(inputTraceKind.resize, event), { passive: true });
     window.addEventListener('focus', () => queueEvent('window-focus'));
     window.addEventListener('blur', () => queueEvent('window-blur'));
     window.addEventListener('online', () => queueEvent('online'));
@@ -397,6 +552,7 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
     window.addEventListener('pagehide', event => {
         queueEvent('pagehide', `persisted=${event.persisted}`);
         sendFinalBeacon('pagehide');
+        dispatcherTelemetryChannel?.close();
     });
     document.addEventListener('freeze', () => {
         queueEvent('freeze');
@@ -415,16 +571,18 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
     worker.addEventListener('messageerror', () => queueEvent('worker-message-error'));
 
     try {
-        const observer = new PerformanceObserver(list => {
-            for (const entry of list.getEntries()) {
-                longTaskCountTotal++;
-                longTaskDurationSinceLastMs += entry.duration;
-                if (entry.duration > maxLongTaskMs) {
-                    maxLongTaskMs = entry.duration;
+        if (globalThis.PerformanceObserver?.supportedEntryTypes?.includes('longtask')) {
+            const observer = new PerformanceObserver(list => {
+                for (const entry of list.getEntries()) {
+                    longTaskCountTotal++;
+                    longTaskDurationSinceLastMs += entry.duration;
+                    if (entry.duration > maxLongTaskMs) {
+                        maxLongTaskMs = entry.duration;
+                    }
                 }
-            }
-        });
-        observer.observe({ type: 'longtask', buffered: true });
+            });
+            observer.observe({ type: 'longtask', buffered: true });
+        }
     } catch {
         // Event-loop gaps remain available where Long Tasks is unsupported.
     }
@@ -442,32 +600,8 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
         setBootStage(stage) {
             bootStage = cleanText(stage, 80);
         },
-        async attachRuntime(dotnetRuntime, mainAssemblyName) {
+        attachRuntime(dotnetRuntime) {
             runtimeApi = dotnetRuntime;
-            try {
-                const exports = await dotnetRuntime.getAssemblyExports(mainAssemblyName);
-                managedProbe = exports?.CalculatorApp?.Browser?.BrowserTelemetryExports ?? null;
-                if (!managedProbe) {
-                    queueEvent('managed-probe-unavailable');
-                }
-            } catch (error) {
-                recordError('managed-probe-load-error', error);
-            }
-        },
-        async startManagedProbe() {
-            if (!managedProbe) {
-                return;
-            }
-            try {
-                await managedProbe.Start();
-                managedProbeStarted = true;
-                managedProbeStartedAtMonoMs = performance.now();
-                queueEvent('managed-probe-started');
-                requestManagedSample();
-            } catch (error) {
-                managedProbeFailed = true;
-                recordError('managed-probe-start-error', error);
-            }
         },
     };
 }
@@ -487,17 +621,88 @@ function finiteNumber(value) {
     return Number.isFinite(number) ? number : 0;
 }
 
-function emptyManagedSample() {
-    return {
-        heapBytes: 0,
-        allocatedBytes: 0,
-        gen0: 0,
-        gen1: 0,
-        gen2: 0,
-        dispatcherPulse: 0,
-        dispatcherAgeMs: -1,
-    };
+function createInputTrace() {
+    if (typeof SharedArrayBuffer !== 'function') {
+        return null;
+    }
+
+    try {
+        const controlBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 2);
+        const slotSequenceBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * inputTraceCapacity);
+        const valuesBuffer = new SharedArrayBuffer(Float64Array.BYTES_PER_ELEMENT * inputTraceCapacity * inputTraceStride);
+        const control = new Int32Array(controlBuffer);
+        const slotSequences = new Int32Array(slotSequenceBuffer);
+        const values = new Float64Array(valuesBuffer);
+        return {
+            descriptor: {
+                capacity: inputTraceCapacity,
+                stride: inputTraceStride,
+                controlBuffer,
+                slotSequenceBuffer,
+                valuesBuffer,
+            },
+            write(uptimeMs, kind, pointerType, pointerId, clientX, clientY, button, buttons, modifiers, pressure, deltaX, deltaY, viewportWidth, viewportHeight, detail1, detail2) {
+                const sequence = Atomics.add(control, 0, 1) + 1;
+                const slot = (sequence - 1) % inputTraceCapacity;
+                const offset = slot * inputTraceStride;
+                values[offset] = uptimeMs;
+                values[offset + 1] = kind;
+                values[offset + 2] = pointerType;
+                values[offset + 3] = pointerId;
+                values[offset + 4] = clientX;
+                values[offset + 5] = clientY;
+                values[offset + 6] = button;
+                values[offset + 7] = buttons;
+                values[offset + 8] = modifiers;
+                values[offset + 9] = pressure;
+                values[offset + 10] = deltaX;
+                values[offset + 11] = deltaY;
+                values[offset + 12] = viewportWidth;
+                values[offset + 13] = viewportHeight;
+                values[offset + 14] = detail1;
+                values[offset + 15] = detail2;
+                Atomics.store(slotSequences, slot, sequence);
+                Atomics.store(control, 1, sequence);
+            },
+        };
+    } catch {
+        return null;
+    }
 }
+
+function encodePointerType(pointerType) {
+    switch (pointerType) {
+        case 'touch': return 1;
+        case 'pen': return 2;
+        case 'mouse': return 3;
+        default: return 0;
+    }
+}
+
+function encodeKey(value) {
+    if (typeof value !== 'string' || value.length === 0) {
+        return 0;
+    }
+
+    const codePoint = value.codePointAt(0) ?? 0;
+    return value.length === String.fromCodePoint(codePoint).length
+        ? codePoint
+        : -encodeText(value);
+}
+
+function encodeText(value) {
+    if (typeof value !== 'string' || value.length === 0) {
+        return 0;
+    }
+
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index++) {
+        hash ^= value.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+}
+
 
 function cleanText(value, maximumLength) {
     const text = value == null ? '' : String(value);

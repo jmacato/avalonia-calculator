@@ -6,7 +6,8 @@ public class GlyphPart<TGlyph>(
     float fullAdvance,
     float startConnectorLength,
     float endConnectorLength,
-    bool isExtender) {
+    bool isExtender)
+{
     public TGlyph Glyph { get; } = glyph;
     public float FullAdvance { get; } = fullAdvance;
     public float StartConnectorLength { get; } = startConnectorLength;

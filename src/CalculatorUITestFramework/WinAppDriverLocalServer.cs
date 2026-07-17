@@ -7,23 +7,25 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
 
 namespace CalculatorUITestFramework
 {
-    public class WinAppDriverLocalServer : IDisposable
+    public sealed class WinAppDriverLocalServer : IDisposable
     {
         private const int WinAppDriverDefaultPort = 4723;
         private static readonly IPAddress WinAppDriverDefaultIp = IPAddress.Loopback;
-
-        private readonly Process winAppDriverProcess;
-        private bool processExited = false;
-
-        public Uri ServiceUrl => new UriBuilder()
+        private static readonly Uri serviceUrl = new UriBuilder
         {
             Scheme = "http",
             Host = WinAppDriverDefaultIp.ToString(),
             Port = WinAppDriverDefaultPort,
         }.Uri;
+
+        private readonly Process winAppDriverProcess;
+        private int disposeState;
+
+        public static Uri ServiceUrl => serviceUrl;
 
         public WinAppDriverLocalServer()
         {
@@ -36,55 +38,66 @@ namespace CalculatorUITestFramework
 
             if (!File.Exists(path))
             {
-                throw new Exception("Could not find winappdriver.exe in program files. Make sure WinAppDriver is installed: https://aka.ms/winappdriver");
+                throw new FileNotFoundException(
+                    "Could not find winappdriver.exe in program files. Make sure WinAppDriver is installed: https://aka.ms/winappdriver",
+                    path);
             }
 
-            this.winAppDriverProcess = new Process();
-            this.winAppDriverProcess.StartInfo.CreateNoWindow = true;
-            this.winAppDriverProcess.StartInfo.FileName = path;
-            this.winAppDriverProcess.StartInfo.UseShellExecute = false;
-            this.winAppDriverProcess.StartInfo.RedirectStandardInput = true;
-            this.winAppDriverProcess.StartInfo.RedirectStandardOutput = true;
-            this.winAppDriverProcess.StartInfo.RedirectStandardError = true;
-            this.winAppDriverProcess.OutputDataReceived += this.OnProcessOutputDataReceived;
-            this.winAppDriverProcess.ErrorDataReceived += this.OnProcessErrorDataReceived;
-            if (!this.winAppDriverProcess.Start())
+            var process = new Process();
+            try
             {
-                throw new Exception("WinAppDriver process failed to start.");
-            }
-            this.winAppDriverProcess.BeginOutputReadLine();
-            this.winAppDriverProcess.BeginErrorReadLine();
+                process.StartInfo.CreateNoWindow = true;
+                process.StartInfo.FileName = path;
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.RedirectStandardInput = true;
+                process.StartInfo.RedirectStandardOutput = true;
+                process.StartInfo.RedirectStandardError = true;
+                process.OutputDataReceived += OnProcessOutputDataReceived;
+                process.ErrorDataReceived += OnProcessErrorDataReceived;
+                if (!process.Start())
+                {
+                    throw new InvalidOperationException("WinAppDriver process failed to start.");
+                }
 
-            var pingUri = new Uri(this.ServiceUrl, "/status");
-            var status = new HttpClient().GetAsync(pingUri);
-            var timeout = TimeSpan.FromSeconds(10);
-            if (!status.Wait(timeout))
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                var pingUri = new Uri(ServiceUrl, "/status");
+                using var httpClient = new HttpClient();
+                using HttpResponseMessage response = httpClient
+                    .GetAsync(pingUri)
+                    .WaitAsync(TimeSpan.FromSeconds(10))
+                    .GetAwaiter()
+                    .GetResult();
+                response.EnsureSuccessStatusCode();
+                winAppDriverProcess = process;
+            }
+            catch
             {
-                throw new Exception($"Request to WinAppDriver at {pingUri} timed out after {timeout.TotalSeconds} seconds.");
+                process.Dispose();
+                throw;
             }
-
-            status.Result.EnsureSuccessStatusCode();
         }
 
         private void OnProcessOutputDataReceived(object sender, DataReceivedEventArgs e)
         {
-            var data = e.Data?.Replace("\0", string.Empty);
+            var data = e.Data?.Replace("\0", string.Empty, System.StringComparison.Ordinal);
             if (!string.IsNullOrEmpty(data))
             {
-                Console.WriteLine(this.PrependWinAppDriverToEachLine(data));
+                Console.WriteLine(PrependWinAppDriverToEachLine(data));
             }
         }
 
         private void OnProcessErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
-            var data = e.Data?.Replace("\0", string.Empty);
+            var data = e.Data?.Replace("\0", string.Empty, System.StringComparison.Ordinal);
             if (!string.IsNullOrEmpty(data))
             {
-                Console.Error.WriteLine(this.PrependWinAppDriverToEachLine(data));
+                Console.Error.WriteLine(PrependWinAppDriverToEachLine(data));
             }
         }
 
-        private string PrependWinAppDriverToEachLine(string data)
+        private static string PrependWinAppDriverToEachLine(string data)
         {
             return string.Join("\r\n", data
                 .ReplaceLineEndings("\n")
@@ -92,21 +105,37 @@ namespace CalculatorUITestFramework
                 .Select(line => "WinAppDriver> " + line));
         }
 
-        ~WinAppDriverLocalServer()
-        {
-            if (!this.processExited)
-            {
-                this.winAppDriverProcess.Kill();
-                this.winAppDriverProcess.WaitForExit();
-            }
-        }
-
         public void Dispose()
         {
-            this.winAppDriverProcess.Kill();
-            this.winAppDriverProcess.WaitForExit();
-            this.processExited = true;
+            Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (!disposing || Interlocked.Exchange(ref disposeState, 1) != 0)
+            {
+                return;
+            }
+
+            winAppDriverProcess.OutputDataReceived -= OnProcessOutputDataReceived;
+            winAppDriverProcess.ErrorDataReceived -= OnProcessErrorDataReceived;
+            try
+            {
+                if (!winAppDriverProcess.HasExited)
+                {
+                    winAppDriverProcess.Kill();
+                    winAppDriverProcess.WaitForExit();
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // The process exited between checking HasExited and stopping it.
+            }
+            finally
+            {
+                winAppDriverProcess.Dispose();
+            }
         }
     }
 }

@@ -10,15 +10,16 @@ namespace CalculatorUITestFramework
     /// </summary>
     public class ScientificCalculatorPage
     {
-        private WindowsDriver<WindowsElement> session => CalculatorDriver.Instance.CalculatorSession;
-        public ScientificOperatorsPanel ScientificOperators = new ScientificOperatorsPanel();
-        public StandardOperatorsPanel StandardOperators = new StandardOperatorsPanel();
-        public MemoryPanel MemoryPanel = new MemoryPanel();
-        public HistoryPanel HistoryPanel = new HistoryPanel();
-        public NavigationMenu NavigationMenu = new NavigationMenu();
-        public WindowsElement Header => this.session.TryFindElementByAccessibilityId("Header");
+        private readonly CalculatorDriver driver = CalculatorDriver.Instance;
+        private WindowsDriver<WindowsElement> Session => driver.CalculatorSession;
+        public ScientificOperatorsPanel ScientificOperators { get; } = new();
+        public StandardOperatorsPanel StandardOperators { get; } = new();
+        public MemoryPanel MemoryPanel { get; } = new();
+        public HistoryPanel HistoryPanel { get; } = new();
+        public NavigationMenu NavigationMenu { get; } = new();
+        public WindowsElement Header => Session.TryFindElementByAccessibilityId("Header");
 
-        public CalculatorResults CalculatorResults = new CalculatorResults();
+        public CalculatorResults CalculatorResults { get; } = new();
 
         public void NavigateToScientificCalculator()
         {
@@ -31,14 +32,14 @@ namespace CalculatorUITestFramework
         /// </summary>
         public void ClearAll()
         {
-            string source = this.session.PageSource;
+            string source = Session.PageSource;
 
-            if (source.Contains("clearEntryButton"))
+            if (source.Contains("clearEntryButton", System.StringComparison.Ordinal))
             {
                 this.StandardOperators.ClearEntryButton.Click();
-                source = this.session.PageSource;
+                source = Session.PageSource;
             }
-            if (source.Contains("clearButton"))
+            if (source.Contains("clearButton", System.StringComparison.Ordinal))
             {
                 this.StandardOperators.ClearButton.Click();
             }

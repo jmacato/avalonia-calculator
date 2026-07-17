@@ -4,10 +4,11 @@
 // #include "pch.h"
 // #include "GraphingSettingsViewModel.cpp.h"
 
-using  CalculatorApp.ViewModel;
-using  CalculatorApp.ViewModel.Common;
-using  GraphControl;
-using  Windows.UI.Xaml;
+using System.Globalization;
+using CalculatorApp.ViewModel;
+using CalculatorApp.ViewModel.Common;
+using GraphControl;
+using Windows.UI.Xaml;
 
 namespace CalculatorApp.ViewModel
 {
@@ -24,8 +25,6 @@ namespace CalculatorApp.ViewModel
             m_YMinError = false;
             m_YMaxError = false;
             m_dontUpdateDisplayRange = false;
-            m_XIsMinLastChanged = true;
-            m_YIsMinLastChanged = true;
         }
 
         public void SetGrapher(Grapher grapher)
@@ -55,10 +54,10 @@ namespace CalculatorApp.ViewModel
             m_YMinValue = yMin;
             m_YMaxValue = yMax;
 
-            XMin = m_XMinValue.ToString();
-            XMax = m_XMaxValue.ToString();
-            YMin = m_YMinValue.ToString();
-            YMax = m_YMaxValue.ToString();
+            XMin = m_XMinValue.ToString(CultureInfo.CurrentCulture);
+            XMax = m_XMaxValue.ToString(CultureInfo.CurrentCulture);
+            YMin = m_YMinValue.ToString(CultureInfo.CurrentCulture);
+            YMax = m_YMaxValue.ToString(CultureInfo.CurrentCulture);
 
             m_dontUpdateDisplayRange = false;
         }
@@ -89,7 +88,7 @@ namespace CalculatorApp.ViewModel
                 return;
             }
             m_Graph.SetDisplayRanges(m_XMinValue, m_XMaxValue, m_YMinValue, m_YMaxValue);
-            CalculatorApp.ViewModel.Common.TraceLogger.GetInstance().LogGraphSettingsChanged(CalculatorApp.ViewModel.Common.GraphSettingsType.Grid, "");
+            CalculatorApp.ViewModel.Common.TraceLogger.LogGraphSettingsChanged(CalculatorApp.ViewModel.Common.GraphSettingsType.Grid, "");
         }
 
         public bool HasError()

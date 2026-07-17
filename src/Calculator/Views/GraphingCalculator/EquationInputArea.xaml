@@ -127,12 +127,11 @@
                                       IsAddEquationMode="{CompiledBinding IsLastItemInList}"
                                       IsEquationLineDisabled="{CompiledBinding IsLineDisabled}"
                                       EquationButtonClicked="OnEquationButtonClicked"
+                                      EditorFocused="OnEquationEditorFocused"
                                       EquationFormatRequested="OnEquationFormatRequested"
                                       EquationSubmitted="OnEquationSubmitted"
-                                      GotFocus="OnEquationGotFocus"
                                       KeyGraphFeaturesButtonClicked="OnKeyGraphFeaturesButtonClicked"
                                       Loaded="OnEquationLoaded"
-                                      LostFocus="OnEquationLostFocus"
                                       RemoveButtonClicked="OnRemoveButtonClicked">
               <controls:EquationTextBox.ColorChooserFlyout>
                 <Flyout Placement="Bottom">
@@ -172,7 +171,7 @@
                                FontSize="16"
                                FontStyle="Italic"
                                Text="=" />
-                    <TextBox x:Name="ValueTextBox"
+                    <controls:GraphingVariableTextBox x:Name="ValueTextBox"
                              Grid.Column="2"
                              Classes="variableTextBox"
                              MinWidth="32"
@@ -182,9 +181,6 @@
                              VerticalAlignment="Center"
                              FontStyle="Italic"
                              AutomationProperties.Name="{utils:ResourceString Name='VariableValueTextBox.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
-                             GotFocus="OnVariableTextBoxGotFocus"
-                             KeyDown="OnVariableTextBoxKeyDown"
-                             LostFocus="OnVariableTextBoxLostFocus"
                              Text="{CompiledBinding Value, Mode=OneWay}" />
                   </Grid>
 
@@ -208,16 +204,13 @@
                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                  FontSize="12"
                                  Text="{utils:ResourceString Name='MinTextBlock.Text'}" />
-                      <TextBox x:Name="MinTextBox"
+                      <controls:GraphingVariableTextBox x:Name="MinTextBox"
                                Grid.Column="1"
                                Classes="variableTextBox"
                                MinWidth="18"
                                Padding="2,16,2,2"
                                FontSize="12"
                                AutomationProperties.Name="{utils:ResourceString Name='VariableMinTextBox.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
-                               GotFocus="OnVariableTextBoxGotFocus"
-                               KeyDown="OnVariableTextBoxKeyDown"
-                               LostFocus="OnVariableTextBoxLostFocus"
                                Text="{CompiledBinding Min, Mode=OneWay}" />
                     </Grid>
                     <Grid Grid.Column="1" HorizontalAlignment="Center" ColumnDefinitions="Auto,*">
@@ -226,16 +219,13 @@
                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                  FontSize="12"
                                  Text="{utils:ResourceString Name='StepTextBlock.Text'}" />
-                      <TextBox x:Name="StepTextBox"
+                      <controls:GraphingVariableTextBox x:Name="StepTextBox"
                                Grid.Column="1"
                                Classes="variableTextBox"
                                MinWidth="18"
                                Padding="2,16,2,2"
                                FontSize="12"
                                AutomationProperties.Name="{utils:ResourceString Name='VariableStepTextBox.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
-                               GotFocus="OnVariableTextBoxGotFocus"
-                               KeyDown="OnVariableTextBoxKeyDown"
-                               LostFocus="OnVariableTextBoxLostFocus"
                                Text="{CompiledBinding Step, Mode=OneWay}" />
                     </Grid>
                     <Grid Grid.Column="2" HorizontalAlignment="Right" ColumnDefinitions="Auto,*">
@@ -244,16 +234,13 @@
                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                  FontSize="12"
                                  Text="{utils:ResourceString Name='MaxTextBlock.Text'}" />
-                      <TextBox x:Name="MaxTextBox"
+                      <controls:GraphingVariableTextBox x:Name="MaxTextBox"
                                Grid.Column="1"
                                Classes="variableTextBox"
                                MinWidth="18"
                                Padding="2,16,2,2"
                                FontSize="12"
                                AutomationProperties.Name="{utils:ResourceString Name='VariableMaxTextBox.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
-                               GotFocus="OnVariableTextBoxGotFocus"
-                               KeyDown="OnVariableTextBoxKeyDown"
-                               LostFocus="OnVariableTextBoxLostFocus"
                                Text="{CompiledBinding Max, Mode=OneWay}" />
                     </Grid>
                   </Grid>

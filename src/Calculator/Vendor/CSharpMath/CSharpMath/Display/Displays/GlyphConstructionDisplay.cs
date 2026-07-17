@@ -6,7 +6,8 @@ using CSharpMath.Atom;
 namespace CSharpMath.Display.Displays;
 
 using FrontEnd;
-public class GlyphConstructionDisplay<TFont, TGlyph> : IGlyphDisplay<TFont, TGlyph> where TFont : IFont<TGlyph> {
+public class GlyphConstructionDisplay<TFont, TGlyph> : IGlyphDisplay<TFont, TGlyph> where TFont : IFont<TGlyph>
+{
     private readonly IReadOnlyList<TGlyph> _glyphs;
     private readonly IEnumerable<PointF> _glyphPositions;
 
@@ -26,7 +27,8 @@ public class GlyphConstructionDisplay<TFont, TGlyph> : IGlyphDisplay<TFont, TGly
 
     public GlyphConstructionDisplay(
         IReadOnlyList<TGlyph> glyphs, IEnumerable<float> offsets, TFont font,
-        float ascent, float descent, float width) {
+        float ascent, float descent, float width)
+    {
         _glyphs = glyphs;
         _glyphPositions = offsets.Select(x => new PointF(0, x));
         Font = font;
@@ -35,7 +37,9 @@ public class GlyphConstructionDisplay<TFont, TGlyph> : IGlyphDisplay<TFont, TGly
         Width = width;
     }
 
-    public void Draw(IGraphicsContext<TFont, TGlyph> context) {
+    public void Draw(IGraphicsContext<TFont, TGlyph> context)
+    {
+        System.ArgumentNullException.ThrowIfNull(context);
         this.DrawBackground(context);
         context.SaveState();
         context.Translate(new PointF(Position.X, Position.Y - ShiftDown));

@@ -4,12 +4,14 @@ using System.Linq;
 namespace CSharpMath.Atom.Atoms;
 
 ///<summary>A table. Not part of TeX.</summary>
-public sealed class Table(string? environment, List<List<MathList>>? cells = null)
-    : MathAtom(string.Empty), IMathListContainer {
+public sealed class Table(string? environment, IEnumerable<IEnumerable<MathList>>? cells = null)
+    : MathAtom(string.Empty), IMathListContainer
+{
     public Table() : this(null) { }
     /// <summary>Deep copy, finalized or not.</summary>
     public new Table Clone(bool finalize) => (Table)base.Clone(finalize);
-    protected override MathAtom CloneInside(bool finalize) => new Table(Environment) {
+    protected override MathAtom CloneInside(bool finalize) => new Table(Environment)
+    {
         InterColumnSpacing = InterColumnSpacing,
         InterRowAdditionalSpacing = InterRowAdditionalSpacing,
         Environment = Environment,
@@ -20,9 +22,10 @@ public sealed class Table(string? environment, List<List<MathList>>? cells = nul
         ]
     };
     public override bool ScriptsAllowed => false;
-    public List<ColumnAlignment> Alignments { get; private set; } = [];
+    public IList<ColumnAlignment> Alignments { get; private set; } = [];
     /// <summary>Cells[i][j] == cell at ith row and jth column</summary>
-    public List<List<MathList>> Cells { get; private set; } = cells ?? [];
+    public IList<IList<MathList>> Cells { get; private set; } =
+        cells?.Select(row => (IList<MathList>)[.. row]).ToList() ?? [];
 
     IEnumerable<MathList> IMathListContainer.InnerLists => Cells.SelectMany(row => row);
     /// <summary>Space between columns in mu units.</summary>
@@ -38,22 +41,27 @@ public sealed class Table(string? environment, List<List<MathList>>? cells = nul
     public int NRows => Cells.Count;
     /// <summary>Number of columns</summary>
     public int NColumns => NRows == 0 ? 0 : Cells.Max(row => row.Count);
-    public void SetCell(MathList list, int iRow, int iColumn) {
+    public void SetCell(MathList list, int iRow, int iColumn)
+    {
         while (Cells.Count <= iRow) Cells.Add(new List<MathList>());
         while (Cells[iRow].Count <= iColumn) Cells[iRow].Add(new MathList());
         Cells[iRow][iColumn] = list;
     }
-    public void SetAlignment(ColumnAlignment alignment, int columnIndex) {
+    public void SetAlignment(ColumnAlignment alignment, int columnIndex)
+    {
         while (Alignments.Count <= columnIndex) Alignments.Add(ColumnAlignment.Center);
         Alignments[columnIndex] = alignment;
     }
     public ColumnAlignment GetAlignment(int columnIndex) =>
         Alignments.Count <= columnIndex ? ColumnAlignment.Center : Alignments[columnIndex];
-    public bool EqualsTable(Table otherTable) =>
-        EqualsAtom(otherTable) &&
-        NRows == otherTable.NRows &&
-        Cells.SequenceEqual(otherTable.Cells, EqualityComparer<List<MathList>>.Default) &&
-        Alignments.SequenceEqual(otherTable.Alignments);
+    public bool EqualsTable(Table otherTable)
+    {
+        System.ArgumentNullException.ThrowIfNull(otherTable);
+        return EqualsAtom(otherTable) &&
+                NRows == otherTable.NRows &&
+                Cells.SequenceEqual(otherTable.Cells, EqualityComparer<IList<MathList>>.Default) &&
+                Alignments.SequenceEqual(otherTable.Alignments);
+    }
     public override bool Equals(object? obj) => obj is Table t && EqualsTable(t);
     public override int GetHashCode() =>
         (base.GetHashCode(), Cells, Alignments).GetHashCode();

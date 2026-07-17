@@ -11,15 +11,16 @@
         <InternalsVisibleTo Include="CalcManagerManagedTests" />
     </ItemGroup>
 
-    <ItemGroup>
+    <ItemGroup Condition="Exists('bin/$(Configuration)/$(TargetFramework)/libCalcManager.dylib')">
         <None Include="bin/$(Configuration)/$(TargetFramework)/libCalcManager.dylib"
               Link="libCalcManager.dylib"
               CopyToOutputDirectory="PreserveNewest"
               Visible="false" />
     </ItemGroup>
 
-    <!-- Build CMake project before building C# project -->
-    <Target Name="BuildNative" BeforeTargets="BeforeBuild">
+    <!-- Native production builds opt in explicitly. Repository-wide managed
+         validation must not depend on a host-specific CMake toolchain. -->
+    <Target Name="BuildNative" BeforeTargets="BeforeBuild" Condition="'$(BuildCalcManagerNative)' == 'true'">
         <Message Text="Building native code with CMake..." Importance="high" />
         <Exec Command="cd $(MSBuildThisFileDirectory)../../../build &amp;&amp; cmake ../src &amp;&amp; make" />
     </Target>

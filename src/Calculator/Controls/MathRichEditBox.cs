@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -10,28 +9,6 @@ using Avalonia.Interactivity;
 using GraphControl;
 
 namespace CalculatorApp.Controls;
-
-public enum EquationSubmissionSource
-{
-    FocusLost,
-    EnterKey,
-    Programmatic
-}
-
-public sealed class MathRichEditBoxSubmission(bool hasTextChanged, EquationSubmissionSource source) : EventArgs
-{
-    public bool HasTextChanged { get; } = hasTextChanged;
-
-    public EquationSubmissionSource Source { get; } = source;
-}
-
-public sealed class MathRichEditBoxFormatRequest(string originalText) : EventArgs
-{
-    public string OriginalText { get; } = originalText;
-
-    public string FormattedText { get; set; } = string.Empty;
-}
-
 /// <summary>
 /// Cross-platform port of Calculator's math-only RichEdit control. Avalonia's
 /// text services provide caret, selection, IME, clipboard, and undo/redo; this
@@ -39,27 +16,11 @@ public sealed class MathRichEditBoxFormatRequest(string originalText) : EventArg
 /// </summary>
 public sealed class MathRichEditBox : TextBox
 {
-    public static readonly StyledProperty<string> MathTextProperty =
-        AvaloniaProperty.Register<MathRichEditBox, string>(
-            nameof(MathText),
-            string.Empty,
-            defaultBindingMode: BindingMode.TwoWay);
-
-    public static readonly StyledProperty<string> LinearTextProperty =
-        AvaloniaProperty.Register<MathRichEditBox, string>(
-            nameof(LinearText),
-            string.Empty,
-            defaultBindingMode: BindingMode.TwoWay);
-
-    public static readonly StyledProperty<bool> HasEquationErrorProperty =
-        AvaloniaProperty.Register<MathRichEditBox, bool>(nameof(HasEquationError));
-
-    public static readonly StyledProperty<int> ErrorCodeProperty =
-        AvaloniaProperty.Register<MathRichEditBox, int>(nameof(ErrorCode));
-
-    public static readonly StyledProperty<int> ErrorTypeProperty =
-        AvaloniaProperty.Register<MathRichEditBox, int>(nameof(ErrorType));
-
+    public static readonly StyledProperty<string> MathTextProperty = AvaloniaProperty.Register<MathRichEditBox, string>(nameof(MathText), string.Empty, defaultBindingMode: BindingMode.TwoWay);
+    public static readonly StyledProperty<string> LinearTextProperty = AvaloniaProperty.Register<MathRichEditBox, string>(nameof(LinearText), string.Empty, defaultBindingMode: BindingMode.TwoWay);
+    public static readonly StyledProperty<bool> HasEquationErrorProperty = AvaloniaProperty.Register<MathRichEditBox, bool>(nameof(HasEquationError));
+    public static readonly StyledProperty<int> ErrorCodeProperty = AvaloniaProperty.Register<MathRichEditBox, int>(nameof(ErrorCode));
+    public static readonly StyledProperty<int> ErrorTypeProperty = AvaloniaProperty.Register<MathRichEditBox, int>(nameof(ErrorType));
     private readonly EquationTextCodec _codec = new();
     private readonly MenuItem _cutMenuItem;
     private readonly MenuItem _copyMenuItem;
@@ -68,13 +29,10 @@ public sealed class MathRichEditBox : TextBox
     private readonly MenuItem _redoMenuItem;
     private bool _updatingProperties;
     private string _lastSubmittedLinear = string.Empty;
-
     static MathRichEditBox()
     {
-        MathTextProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, args) =>
-            editor.OnMathTextChanged(args.NewValue as string ?? string.Empty));
-        LinearTextProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, args) =>
-            editor.OnLinearTextChanged(args.NewValue as string ?? string.Empty));
+        MathTextProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, args) => editor.OnMathTextChanged(args.NewValue as string ?? string.Empty));
+        LinearTextProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, args) => editor.OnLinearTextChanged(args.NewValue as string ?? string.Empty));
     }
 
     public MathRichEditBox()
@@ -82,7 +40,6 @@ public sealed class MathRichEditBox : TextBox
         AcceptsReturn = false;
         TextWrapping = Avalonia.Media.TextWrapping.NoWrap;
         TextChanged += OnEditorTextChanged;
-
         _cutMenuItem = MenuItem("Cut", (_, _) => Cut());
         _copyMenuItem = MenuItem("Copy", (_, _) => Copy());
         _pasteMenuItem = MenuItem("Paste", (_, _) => Paste());
@@ -111,43 +68,15 @@ public sealed class MathRichEditBox : TextBox
     }
 
     protected override Type StyleKeyOverride => typeof(TextBox);
+    public string MathText { get => GetValue(MathTextProperty); set => SetValue(MathTextProperty, value ?? string.Empty); }
+    public string LinearText { get => GetValue(LinearTextProperty); set => SetValue(LinearTextProperty, value ?? string.Empty); }
+    public bool HasEquationError { get => GetValue(HasEquationErrorProperty); private set => SetCurrentValue(HasEquationErrorProperty, value); }
+    public int ErrorCode { get => GetValue(ErrorCodeProperty); private set => SetCurrentValue(ErrorCodeProperty, value); }
+    public int ErrorType { get => GetValue(ErrorTypeProperty); private set => SetCurrentValue(ErrorTypeProperty, value); }
 
-    public string MathText
-    {
-        get => GetValue(MathTextProperty);
-        set => SetValue(MathTextProperty, value ?? string.Empty);
-    }
-
-    public string LinearText
-    {
-        get => GetValue(LinearTextProperty);
-        set => SetValue(LinearTextProperty, value ?? string.Empty);
-    }
-
-    public bool HasEquationError
-    {
-        get => GetValue(HasEquationErrorProperty);
-        private set => SetCurrentValue(HasEquationErrorProperty, value);
-    }
-
-    public int ErrorCode
-    {
-        get => GetValue(ErrorCodeProperty);
-        private set => SetCurrentValue(ErrorCodeProperty, value);
-    }
-
-    public int ErrorType
-    {
-        get => GetValue(ErrorTypeProperty);
-        private set => SetCurrentValue(ErrorTypeProperty, value);
-    }
-
-    public event EventHandler<MathRichEditBoxFormatRequest>? FormatRequest;
-
-    public event EventHandler<MathRichEditBoxSubmission>? EquationSubmitted;
-
+    public event EventHandler<MathRichEditBoxFormatRequestEventArgs>? FormatRequest;
+    public event EventHandler<MathRichEditBoxSubmissionEventArgs>? EquationSubmitted;
     public event EventHandler? ErrorStateChanged;
-
     public void InsertText(string text, int cursorOffset, int selectionLength)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -236,15 +165,13 @@ public sealed class MathRichEditBox : TextBox
         if (!valid)
         {
             SetError(errorCode, errorType);
-            EquationSubmitted?.Invoke(
-                this,
-                new MathRichEditBoxSubmission(!string.Equals(_lastSubmittedLinear, original, StringComparison.Ordinal), source));
+            EquationSubmitted?.Invoke(this, new MathRichEditBoxSubmissionEventArgs(!string.Equals(_lastSubmittedLinear, original, StringComparison.Ordinal), source));
             _lastSubmittedLinear = original;
             return;
         }
 
         _ = _codec.TryLinearToMathMl(normalized, out string mathMl, out _, out _);
-        var formatRequest = new MathRichEditBoxFormatRequest(mathMl);
+        var formatRequest = new MathRichEditBoxFormatRequestEventArgs(mathMl);
         FormatRequest?.Invoke(this, formatRequest);
         if (!string.IsNullOrWhiteSpace(formatRequest.FormattedText))
         {
@@ -270,11 +197,12 @@ public sealed class MathRichEditBox : TextBox
 
         _lastSubmittedLinear = normalized;
         ClearError();
-        EquationSubmitted?.Invoke(this, new MathRichEditBoxSubmission(changed, source));
+        EquationSubmitted?.Invoke(this, new MathRichEditBoxSubmissionEventArgs(changed, source));
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
+        System.ArgumentNullException.ThrowIfNull(e);
         if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.B)
         {
             e.Handled = true;
@@ -393,13 +321,7 @@ public sealed class MathRichEditBox : TextBox
         ReplaceRange(value, start, end, replacement, requestedStart, requestedEnd);
     }
 
-    private void ReplaceRange(
-        string value,
-        int start,
-        int end,
-        string replacement,
-        int newSelectionStart,
-        int newSelectionEnd)
+    private void ReplaceRange(string value, int start, int end, string replacement, int newSelectionStart, int newSelectionEnd)
     {
         Text = string.Concat(value.AsSpan(0, start), replacement, value.AsSpan(end));
         SelectionStart = newSelectionStart;
@@ -455,7 +377,10 @@ public sealed class MathRichEditBox : TextBox
 
     private static MenuItem MenuItem(string header, EventHandler<RoutedEventArgs> handler)
     {
-        var item = new MenuItem { Header = header };
+        var item = new MenuItem
+        {
+            Header = header
+        };
         item.Click += handler;
         return item;
     }

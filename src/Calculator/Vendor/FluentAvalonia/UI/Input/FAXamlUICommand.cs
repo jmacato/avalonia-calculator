@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using System.Windows.Input;
 
 namespace FluentAvalonia.UI.Input;
@@ -9,13 +9,13 @@ namespace FluentAvalonia.UI.Input;
 /// </summary>
 public partial class FAXamlUICommand : AvaloniaObject, ICommand
 {
-    public void NotifyCanExecuteChanged() => CanExecuteChanged?.Invoke(this, null);
+    public void NotifyCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 
-    public bool CanExecute(object param)
+    public bool CanExecute(object? parameter)
     {
         bool canExec = false;
 
-        var args = new FACanExecuteRequestedEventArgs(param);
+        var args = new FACanExecuteRequestedEventArgs(parameter);
 
         CanExecuteRequested?.Invoke(this, args);
 
@@ -24,19 +24,19 @@ public partial class FAXamlUICommand : AvaloniaObject, ICommand
         var command = Command;
         if (command != null)
         {
-            bool canExecCommand = command.CanExecute(param);
+            bool canExecCommand = command.CanExecute(parameter);
             canExec = canExec && canExecCommand;
         }
 
         return canExec;
     }
 
-    public void Execute(object param)
+    public void Execute(object? parameter)
     {
-        var args = new FAExecuteRequestedEventArgs(param);
+        var args = new FAExecuteRequestedEventArgs(parameter);
 
         ExecuteRequested?.Invoke(this, args);
 
-        Command?.Execute(param);
+        Command?.Execute(parameter);
     }
 }

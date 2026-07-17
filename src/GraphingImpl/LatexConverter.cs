@@ -79,7 +79,7 @@ internal sealed class LatexConverter
             _position++;
         }
 
-        string command = _source[start.._position].ToLowerInvariant();
+        string command = IdentifierNormalizer.ToCanonicalLowerInvariant(_source[start.._position]);
         return command switch
         {
             "frac" or "dfrac" or "tfrac" => ConvertFraction(),

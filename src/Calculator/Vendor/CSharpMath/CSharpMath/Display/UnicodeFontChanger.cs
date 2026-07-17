@@ -3,7 +3,8 @@ using CSharpMath.Atom;
 
 namespace CSharpMath.Display;
 
-public static class UnicodeFontChanger {
+public static class UnicodeFontChanger
+{
     private const char UnicodeGreekLowerStart = 'α'; // 03B1
     private const char UnicodeGreekLowerEnd = 'ω'; // 03C9
     private const char UnicodeGreekUpperStart = 'Α'; // 0391
@@ -28,7 +29,6 @@ public static class UnicodeFontChanger {
     private const int UnicodeGreekLowerBoldItalicStart = 0x1D736;
     private const int UnicodeGreekSymbolBoldItalicStart = 0x1D750;
 
-    // ReSharper disable InconsistentNaming
     private const int UnicodeMathCapitalTTStart = 0x1D670;
     private const int UnicodeMathLowerTTStart = 0x1D68A;
     private const int UnicodeNumberTTStart = 0x1D7F6;
@@ -91,7 +91,7 @@ public static class UnicodeFontChanger {
         : IsUpperGreek(c) ? UnicodeGreekCapitalBoldItalicStart + c - UnicodeGreekUpperStart
         : IsLowerGreek(c) ? UnicodeGreekLowerBoldItalicStart + c - UnicodeGreekLowerStart
         : IsGreekSymbol(c) ? UnicodeGreekSymbolBoldItalicStart + GreekSymbolOrder(c)
-            // no bold italic for numbers, so we just bold them.
+        // no bold italic for numbers, so we just bold them.
         : IsNumber(c) ? GetBold(c) : c;
 
     private static int GetCaligraphic(char c) =>
@@ -122,7 +122,7 @@ public static class UnicodeFontChanger {
         IsUpperEn(c) ? UnicodeMathCapitalSansSerifStart + c - 'A'
         : IsLowerEn(c) ? UnicodeMathLowerSansSerifStart + c - 'a'
         : IsNumber(c) ? UnicodeNumberSansSerifStart + c - '0'
-            // SansSerif doesn't exist for greek
+        // SansSerif doesn't exist for greek
         : GetDefaultStyle(c);
 
     // mathfrak
@@ -145,7 +145,7 @@ public static class UnicodeFontChanger {
         IsUpperEn(c) ? UnicodeMathCapitalTTStart + c - 'A'
         : IsLowerEn(c) ? UnicodeMathLowerTTStart + c - 'a'
         : IsNumber(c) ? UnicodeNumberTTStart + c - '0'
-            // monospace doesn't exist for Greek, so use the default treatment
+        // monospace doesn't exist for Greek, so use the default treatment
         : GetDefaultStyle(c);
 
     private static int GetBlackboard(char c) =>
@@ -179,9 +179,12 @@ public static class UnicodeFontChanger {
             FontStyle.Blackboard => GetBlackboard(c),
             _ => throw new NotImplementedException("Unknown font style " + fontStyle),
         };
-    public static string ChangeFont(string inputString, FontStyle outputFontStyle) {
+    public static string ChangeFont(string inputString, FontStyle outputFontStyle)
+    {
+        System.ArgumentNullException.ThrowIfNull(inputString);
         var builder = new System.Text.StringBuilder();
-        foreach (var c in inputString) {
+        foreach (var c in inputString)
+        {
             int unicode = StyleCharacter(c, outputFontStyle);
             builder.Append(char.IsSurrogate(c)
                 ? ((char)unicode).ToStringInvariant() : char.ConvertFromUtf32(unicode));

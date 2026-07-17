@@ -2,73 +2,222 @@
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:CalculatorApp"
-             xmlns:fa="using:FluentAvalonia.UI.Controls"
-             xmlns:selectors="using:CalculatorApp.TemplateSelectors"
+             xmlns:utils="using:CalculatorApp.Utils"
              xmlns:vmcom="using:CalculatorApp.ViewModel.Common"
              x:DataType="local:MainPage">
 
   <UserControl.Resources>
-    <DataTemplate x:Key="NavViewCategoryItemDataTemplate" x:DataType="vmcom:NavCategory">
-      <fa:FANavigationViewItem Content="{CompiledBinding Name}"
-                               IsEnabled="{CompiledBinding IsEnabled}"
-                               AutomationProperties.AutomationId="{CompiledBinding AutomationId}"
-                               AutomationProperties.Name="{CompiledBinding AutomationName}">
-        <fa:FANavigationViewItem.IconSource>
-          <fa:FAFontIconSource Glyph="{CompiledBinding Glyph}"
-                               FontFamily="{StaticResource CalculatorFontFamily}" />
-        </fa:FANavigationViewItem.IconSource>
-      </fa:FANavigationViewItem>
-    </DataTemplate>
+    <ControlTheme x:Key="CalculatorNavigationItemTheme" TargetType="ListBoxItem">
+      <Setter Property="Background" Value="{DynamicResource NavigationViewItemBackground}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Name="LayoutRoot"
+                  MinHeight="36"
+                  Margin="4,2"
+                  Background="{TemplateBinding Background}"
+                  CornerRadius="{DynamicResource ControlCornerRadius}"
+                  TemplatedControl.IsTemplateFocusTarget="True">
+            <Panel>
+              <Border Name="SelectionIndicator"
+                      Width="3"
+                      Height="16"
+                      HorizontalAlignment="Left"
+                      VerticalAlignment="Center"
+                      Background="{DynamicResource NavigationViewSelectionIndicatorForeground}"
+                      CornerRadius="2"
+                      Opacity="0" />
+              <ContentPresenter Name="ContentPresenter"
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+            </Panel>
+          </Border>
+        </ControlTemplate>
+      </Setter>
 
-    <DataTemplate x:Key="NavViewCategoryGroupItemDataTemplate" x:DataType="vmcom:NavCategoryGroup">
-      <fa:FANavigationViewItemHeader Content="{CompiledBinding Name}"
-                                     AutomationProperties.Name="{CompiledBinding AutomationName}" />
-    </DataTemplate>
+      <Style Selector="^:pointerover /template/ Border#LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource NavigationViewItemBackgroundPointerOver}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource NavigationViewItemBackgroundPressed}" />
+      </Style>
+      <Style Selector="^:selected /template/ Border#LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource NavigationViewItemBackgroundSelected}" />
+      </Style>
+      <Style Selector="^:selected /template/ Border#SelectionIndicator">
+        <Setter Property="Opacity" Value="1" />
+      </Style>
+      <Style Selector="^:selected:pointerover /template/ Border#LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource NavigationViewItemBackgroundSelectedPointerOver}" />
+      </Style>
+      <Style Selector="^:selected:pressed /template/ Border#LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource NavigationViewItemBackgroundSelectedPressed}" />
+      </Style>
+    </ControlTheme>
 
-    <selectors:NavViewMenuItemTemplateSelector x:Key="NavViewMenuItemTemplateSelector"
-                                                CategoryGroupItemTemplate="{StaticResource NavViewCategoryGroupItemDataTemplate}"
-                                                CategoryItemTemplate="{StaticResource NavViewCategoryItemDataTemplate}" />
+    <ControlTheme x:Key="CalculatorNavigationButtonTheme" TargetType="Button">
+      <Setter Property="Background" Value="{DynamicResource NavigationViewItemBackground}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Name="LayoutRoot"
+                  MinHeight="36"
+                  Margin="4,2"
+                  Background="{TemplateBinding Background}"
+                  CornerRadius="{DynamicResource ControlCornerRadius}"
+                  TemplatedControl.IsTemplateFocusTarget="True">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource NavigationViewItemBackgroundPointerOver}" />
+      </Style>
+      <Style Selector="^:pressed /template/ Border#LayoutRoot">
+        <Setter Property="Background" Value="{DynamicResource NavigationViewItemBackgroundPressed}" />
+      </Style>
+    </ControlTheme>
   </UserControl.Resources>
 
-  <Grid>
-    <fa:FANavigationView x:Name="NavView"
-                         AlwaysShowHeader="False"
-                         CompactModeThresholdWidth="10000"
-                         ExpandedModeThresholdWidth="10000"
-                         IsBackButtonVisible="False"
-                         IsPaneToggleButtonVisible="True"
-                         IsSettingsVisible="True"
-                         Loaded="OnNavLoaded"
-                         MenuItemTemplateSelector="{StaticResource NavViewMenuItemTemplateSelector}"
-                         MenuItemsSource="{CompiledBinding NavViewCategoriesSource}"
-                         OpenPaneLength="320"
-                         PaneClosed="OnNavPaneClosed"
-                         PaneDisplayMode="LeftMinimal"
-                         SelectionChanged="OnNavSelectionChanged">
-      <Grid>
-        <Grid>
-          <Border x:Name="CalcHolder" />
-          <Border x:Name="DateCalcHolder" />
-          <Border x:Name="GraphingCalcHolder" />
-          <Border x:Name="ConverterHolder" />
-        </Grid>
-
-        <Grid Height="{StaticResource HamburgerHeight}"
-              Margin="48,0,0,0"
-              HorizontalAlignment="Left"
-              VerticalAlignment="Top">
-          <TextBlock x:Name="Header"
-                     FontSize="20"
-                     FontWeight="SemiBold"
-                     Text="{CompiledBinding Model.CategoryName}"
-                     VerticalAlignment="Center" />
-        </Grid>
+  <!-- Keep the WinUI navigation visuals, but use Avalonia's built-in
+       ListBox containers and VirtualizingStackPanel instead of FAItemsRepeater. -->
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="vmcom:NavCategory" x:DataType="vmcom:NavCategory">
+      <Grid MinHeight="36" ColumnDefinitions="40,*">
+        <Viewbox Width="16"
+                 Height="16"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center">
+          <TextBlock FontFamily="{StaticResource CalculatorFontFamily}"
+                     Foreground="{DynamicResource NavigationViewItemForeground}"
+                     Text="{CompiledBinding Glyph}" />
+        </Viewbox>
+        <TextBlock Grid.Column="1"
+                   Margin="4,-1,8,0"
+                   AutomationProperties.AutomationId="{CompiledBinding AutomationId}"
+                   AutomationProperties.Name="{CompiledBinding AutomationName}"
+                   Foreground="{DynamicResource NavigationViewItemForeground}"
+                   Text="{CompiledBinding Name}"
+                   TextWrapping="NoWrap"
+                   VerticalAlignment="Center" />
       </Grid>
-    </fa:FANavigationView>
+    </DataTemplate>
 
-    <!-- The WinUI Settings page is hosted in a full-window Popup while the
-         NavigationView is collapsed. Keep that stacking and input scope here
-         instead of placing Settings underneath the navigation chrome. -->
+    <DataTemplate DataType="vmcom:NavCategoryGroup" x:DataType="vmcom:NavCategoryGroup">
+      <Grid MinHeight="36">
+        <TextBlock Margin="12,-1,0,0"
+                   AutomationProperties.Name="{CompiledBinding AutomationName}"
+                   FontWeight="SemiBold"
+                   Foreground="{DynamicResource NavigationViewItemHeaderForeground}"
+                   Text="{CompiledBinding Name}"
+                   TextWrapping="NoWrap"
+                   VerticalAlignment="Center" />
+      </Grid>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <Grid>
+    <SplitView x:Name="NavSplitView"
+               CompactPaneLength="0"
+               DisplayMode="Overlay"
+               IsPaneOpen="False"
+               OpenPaneLength="320"
+               PaneClosed="OnNavPaneClosed"
+               PanePlacement="Left"
+               UseLightDismissOverlayMode="False">
+      <SplitView.Pane>
+        <Border Width="320"
+                Background="{DynamicResource NavigationViewDefaultPaneBackground}"
+                BoxShadow="0 16 32 #17000000">
+          <Grid RowDefinitions="43,*,62">
+            <ListBox x:Name="NavList"
+                     Grid.Row="1"
+                     Margin="-1,0"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     ItemContainerTheme="{StaticResource CalculatorNavigationItemTheme}"
+                     ItemsSource="{CompiledBinding NavViewCategoriesSource}"
+                     Loaded="OnNavLoaded"
+                     SelectionChanged="OnNavSelectionChanged"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto" />
+
+            <Border Grid.Row="2"
+                    BorderBrush="{DynamicResource NavigationViewItemSeparatorForeground}"
+                    BorderThickness="0,1,0,0">
+              <Button x:Name="SettingsButton"
+                      Margin="-1,0"
+                      Theme="{StaticResource CalculatorNavigationButtonTheme}"
+                      AutomationProperties.Name="{utils:ResourceString Name=SettingsHeader.Text}"
+                      Click="OnSettingsClick">
+                <Grid MinHeight="36" ColumnDefinitions="40,*">
+                  <Viewbox Width="16"
+                           Height="16"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center">
+                    <TextBlock FontFamily="{DynamicResource SymbolThemeFontFamily}"
+                               Foreground="{DynamicResource NavigationViewItemForeground}"
+                               Text="&#xE713;" />
+                  </Viewbox>
+                  <TextBlock Grid.Column="1"
+                             Margin="4,-1,8,0"
+                             Foreground="{DynamicResource NavigationViewItemForeground}"
+                             Text="{utils:ResourceString Name=SettingsHeader.Text}"
+                             VerticalAlignment="Center" />
+                </Grid>
+              </Button>
+            </Border>
+          </Grid>
+        </Border>
+      </SplitView.Pane>
+
+      <SplitView.Content>
+        <Grid>
+          <Grid>
+            <Border x:Name="CalcHolder" />
+            <Border x:Name="DateCalcHolder" />
+            <Border x:Name="GraphingCalcHolder" />
+            <Border x:Name="ConverterHolder" />
+          </Grid>
+
+          <Grid Height="{StaticResource HamburgerHeight}"
+                Margin="48,0,0,0"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top">
+            <TextBlock x:Name="Header"
+                       FontSize="20"
+                       FontWeight="SemiBold"
+                       Text="{CompiledBinding Model.CategoryName}"
+                       VerticalAlignment="Center" />
+          </Grid>
+        </Grid>
+      </SplitView.Content>
+    </SplitView>
+
+    <Button x:Name="PaneToggleButton"
+            Width="48"
+            Height="40"
+            Margin="0,4,0,0"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            AutomationProperties.Name="Open Navigation"
+            Click="OnPaneToggleClick"
+            Theme="{StaticResource PaneToggleButtonStyle}"
+            ToolTip.Tip="Open Navigation" />
+
+    <!-- The WinUI Settings page is hosted as a full-window view while the
+         navigation chrome is collapsed. -->
     <Border x:Name="SettingsHolder" IsVisible="False" />
   </Grid>
 </UserControl>

@@ -2,13 +2,13 @@
 
 using uint32_t = System.UInt32;
 using int32_t = System.Int32;
-using PNUMBER = CalcEngine.RatPak.NUMBER;
+using PNUMBER = CalcEngine.RatPakNUMBER;
 using System.Linq;
 using System;
 
 namespace CalcEngine;
 
-public class Number
+internal sealed class Number
 {
     private readonly RatPak _ratPak;
 
@@ -31,7 +31,7 @@ public class Number
         Sign = sign;
         Exp = exp;
 
-        var tmp =  mantissa.ToArray();
+        var tmp = mantissa.ToArray();
 
         if (tmp.Length <= CDigits)
         {
@@ -44,9 +44,9 @@ public class Number
 
     public PNUMBER ToPNUMBER()
     {
-        PNUMBER ret = null;
+        PNUMBER? ret = null;
 
-        _ratPak.createnum(ref ret!, (uint32_t)(Mantissa.Length + 1));
+        RatPak.createnum(ref ret, (uint32_t)(Mantissa.Length + 1));
         ret.sign = Sign;
         ret.exp = Exp;
         ret.cdigit = CDigits;

@@ -1,6 +1,8 @@
-namespace CSharpMath.Rendering.FrontEnd {
-  public enum PaintStyle : byte {
-    Fill,
-    Stroke
-  }
+namespace CSharpMath.Rendering.FrontEnd
+{
+    public enum PaintStyle
+    {
+        Fill,
+        Stroke
+    }
 }

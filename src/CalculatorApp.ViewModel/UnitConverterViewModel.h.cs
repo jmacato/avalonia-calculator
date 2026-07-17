@@ -18,110 +18,25 @@ using UnitConversionManager;
 namespace CalculatorApp.ViewModel
 {
     [Windows.UI.Xaml.Data.Bindable]
-    public partial class Category : INotifyPropertyChanged
-    {
-        private readonly UnitConversionManager.Category m_original;
-
-        internal Category(UnitConversionManager.Category category)
-        {
-            m_original = category;
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        internal void RaisePropertyChanged(string p)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
-        }
-
-        public string Name
-        {
-            get { return m_original.name; }
-        }
-
-        public Visibility NegateVisibility
-        {
-            get
-            {
-                return m_original.supportsNegative ? Visibility.Visible : Visibility.Collapsed;
-            }
-        }
-
-        public int GetModelCategoryId()
-        {
-            return GetModelCategory().id;
-        }
-
-        internal UnitConversionManager.Category GetModelCategory()
-        {
-            return m_original;
-        }
-    }
-
-    [Windows.UI.Xaml.Data.Bindable]
-    public partial class SupplementaryResult : INotifyPropertyChanged
-    {
-        private string m_Value;
-        private Unit m_Unit;
-
-        internal SupplementaryResult(string value, Unit unit)
-        {
-            m_Value = value;
-            m_Unit = unit;
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        internal void RaisePropertyChanged(string p)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
-        }
-
-        public bool IsWhimsical()
-        {
-            return m_Unit.isWhimsical;
-        }
-
-        public String GetLocalizedAutomationName()
-        {
-            var format = AppResourceProvider.GetInstance().GetResourceString("SupplementaryUnit_AutomationName");
-            return LocalizationStringUtil.GetLocalizedString(format, this.Value, this.Unit.name);
-        }
-
-        public string Value
-        {
-            get { return m_Value; }
-            private set { m_Value = value; }
-        }
-
-        public Unit Unit
-        {
-            get { return m_Unit; }
-            private set { m_Unit = value; }
-        }
-    }
-     
-
-    [Windows.UI.Xaml.Data.Bindable]
     public partial class UnitConverterViewModel : INotifyPropertyChanged
     {
         private ObservableCollection<Category> m_Categories;
         private Common.ViewMode m_Mode;
         private ObservableCollection<Unit> m_Units;
         private string m_CurrencySymbol1;
-        private Unit m_Unit1;
+        private Unit m_Unit1 = Unit.EmptyUnit;
         private string m_Value1;
         private string m_CurrencySymbol2;
-        private Unit m_Unit2;
+        private Unit m_Unit2 = Unit.EmptyUnit;
         private string m_Value2;
         private ObservableCollection<SupplementaryResult> m_SupplementaryResults;
         private bool m_Value1Active;
         private bool m_Value2Active;
-        private string m_Value1AutomationName;
-        private string m_Value2AutomationName;
-        private string m_Unit1AutomationName;
-        private string m_Unit2AutomationName;
-        private Common.Automation.NarratorAnnouncement m_Announcement;
+        private string m_Value1AutomationName = string.Empty;
+        private string m_Value2AutomationName = string.Empty;
+        private string m_Unit1AutomationName = string.Empty;
+        private string m_Unit2AutomationName = string.Empty;
+        private Common.Automation.NarratorAnnouncement? m_Announcement;
         private bool m_IsDecimalEnabled;
         private bool m_IsDropDownOpen;
         private bool m_IsDropDownEnabled;
@@ -129,24 +44,22 @@ namespace CalculatorApp.ViewModel
         private bool m_IsCurrencyCurrentCategory;
         private string m_CurrencyRatioEquality;
         private string m_CurrencyRatioEqualityAutomationName;
-        private string m_CurrencyTimestamp;
+        private string m_CurrencyTimestamp = string.Empty;
         private Common.NetworkAccessBehavior m_NetworkBehavior;
         private bool m_CurrencyDataLoadFailed;
         private bool m_CurrencyDataIsWeekOld;
-
-        private ICommand donotuse_CategoryChanged;
-        private ICommand donotuse_UnitChanged;
-        private ICommand donotuse_SwitchActive;
-        private ICommand donotuse_ButtonPressed;
-        private ICommand donotuse_CopyCommand;
-        private ICommand donotuse_PasteCommand;
-
-        private Category m_CurrentCategory;
+        private ICommand? donotuse_CategoryChanged;
+        private ICommand? donotuse_UnitChanged;
+        private ICommand? donotuse_SwitchActive;
+        private ICommand? donotuse_ButtonPressed;
+        private ICommand? donotuse_CopyCommand;
+        private ICommand? donotuse_PasteCommand;
+        private Category m_CurrentCategory = new(new UnitConversionManager.Category());
         private bool m_isInputBlocked;
-        private ThreadPoolTimer m_supplementaryResultsTimer;
-        private bool m_resettingTimer;
-        private List<(string, UnitConversionManager.Unit)> m_cachedSuggestedValues;
-        private object m_cacheMutex = new object();
+        private ThreadPoolTimer? m_supplementaryResultsTimer;
+        private readonly SynchronizationContext? m_ownerContext;
+        private (string, UnitConversionManager.Unit)[] m_cachedSuggestedValues = Array.Empty<(string, UnitConversionManager.Unit)>();
+        private int m_supplementaryResultsVersion;
         private DecimalFormatter m_decimalFormatter;
         private CurrencyFormatter m_currencyFormatter;
         private CurrencyFormatter m_currencyFormatter1;
@@ -166,11 +79,9 @@ namespace CalculatorApp.ViewModel
         private string m_lastAnnouncedTo;
         private string m_lastAnnouncedConversionResult;
         private bool m_isCurrencyDataLoaded;
-        private ConversionParameter m_value1cp;
+        private UnitConverterViewModelConversionParameter m_value1cp;
         private char m_decimalSeparator;
-         
-        public event PropertyChangedEventHandler PropertyChanged;
-
+        public event PropertyChangedEventHandler? PropertyChanged;
         internal void RaisePropertyChanged(string p)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
@@ -179,7 +90,11 @@ namespace CalculatorApp.ViewModel
 
         public ObservableCollection<Category> Categories
         {
-            get { return m_Categories; }
+            get
+            {
+                return m_Categories;
+            }
+
             private set
             {
                 if (m_Categories != value)
@@ -192,7 +107,11 @@ namespace CalculatorApp.ViewModel
 
         public Common.ViewMode Mode
         {
-            get { return m_Mode; }
+            get
+            {
+                return m_Mode;
+            }
+
             set
             {
                 if (m_Mode != value)
@@ -205,7 +124,11 @@ namespace CalculatorApp.ViewModel
 
         public ObservableCollection<Unit> Units
         {
-            get { return m_Units; }
+            get
+            {
+                return m_Units;
+            }
+
             private set
             {
                 if (m_Units != value)
@@ -218,7 +141,11 @@ namespace CalculatorApp.ViewModel
 
         public string CurrencySymbol1
         {
-            get { return m_CurrencySymbol1; }
+            get
+            {
+                return m_CurrencySymbol1;
+            }
+
             set
             {
                 if (m_CurrencySymbol1 != value)
@@ -231,7 +158,11 @@ namespace CalculatorApp.ViewModel
 
         public Unit Unit1
         {
-            get { return m_Unit1; }
+            get
+            {
+                return m_Unit1;
+            }
+
             set
             {
                 if (m_Unit1 != value)
@@ -244,7 +175,11 @@ namespace CalculatorApp.ViewModel
 
         public string Value1
         {
-            get { return m_Value1; }
+            get
+            {
+                return m_Value1;
+            }
+
             set
             {
                 if (m_Value1 != value)
@@ -257,7 +192,11 @@ namespace CalculatorApp.ViewModel
 
         public string CurrencySymbol2
         {
-            get { return m_CurrencySymbol2; }
+            get
+            {
+                return m_CurrencySymbol2;
+            }
+
             set
             {
                 if (m_CurrencySymbol2 != value)
@@ -270,7 +209,11 @@ namespace CalculatorApp.ViewModel
 
         public Unit Unit2
         {
-            get { return m_Unit2; }
+            get
+            {
+                return m_Unit2;
+            }
+
             set
             {
                 if (m_Unit2 != value)
@@ -283,7 +226,11 @@ namespace CalculatorApp.ViewModel
 
         public string Value2
         {
-            get { return m_Value2; }
+            get
+            {
+                return m_Value2;
+            }
+
             set
             {
                 if (m_Value2 != value)
@@ -296,7 +243,11 @@ namespace CalculatorApp.ViewModel
 
         public ObservableCollection<SupplementaryResult> SupplementaryResults
         {
-            get { return m_SupplementaryResults; }
+            get
+            {
+                return m_SupplementaryResults;
+            }
+
             private set
             {
                 if (m_SupplementaryResults != value)
@@ -311,7 +262,11 @@ namespace CalculatorApp.ViewModel
 
         public bool Value1Active
         {
-            get { return m_Value1Active; }
+            get
+            {
+                return m_Value1Active;
+            }
+
             set
             {
                 if (m_Value1Active != value)
@@ -324,7 +279,11 @@ namespace CalculatorApp.ViewModel
 
         public bool Value2Active
         {
-            get { return m_Value2Active; }
+            get
+            {
+                return m_Value2Active;
+            }
+
             set
             {
                 if (m_Value2Active != value)
@@ -337,7 +296,11 @@ namespace CalculatorApp.ViewModel
 
         public string Value1AutomationName
         {
-            get { return m_Value1AutomationName; }
+            get
+            {
+                return m_Value1AutomationName;
+            }
+
             set
             {
                 if (m_Value1AutomationName != value)
@@ -350,7 +313,11 @@ namespace CalculatorApp.ViewModel
 
         public string Value2AutomationName
         {
-            get { return m_Value2AutomationName; }
+            get
+            {
+                return m_Value2AutomationName;
+            }
+
             set
             {
                 if (m_Value2AutomationName != value)
@@ -363,7 +330,11 @@ namespace CalculatorApp.ViewModel
 
         public string Unit1AutomationName
         {
-            get { return m_Unit1AutomationName; }
+            get
+            {
+                return m_Unit1AutomationName;
+            }
+
             set
             {
                 if (m_Unit1AutomationName != value)
@@ -376,7 +347,11 @@ namespace CalculatorApp.ViewModel
 
         public string Unit2AutomationName
         {
-            get { return m_Unit2AutomationName; }
+            get
+            {
+                return m_Unit2AutomationName;
+            }
+
             set
             {
                 if (m_Unit2AutomationName != value)
@@ -387,9 +362,13 @@ namespace CalculatorApp.ViewModel
             }
         }
 
-        public Common.Automation.NarratorAnnouncement Announcement
+        public Common.Automation.NarratorAnnouncement? Announcement
         {
-            get { return m_Announcement; }
+            get
+            {
+                return m_Announcement;
+            }
+
             set
             {
                 if (m_Announcement != value)
@@ -402,7 +381,11 @@ namespace CalculatorApp.ViewModel
 
         public bool IsDecimalEnabled
         {
-            get { return m_IsDecimalEnabled; }
+            get
+            {
+                return m_IsDecimalEnabled;
+            }
+
             set
             {
                 if (m_IsDecimalEnabled != value)
@@ -415,7 +398,11 @@ namespace CalculatorApp.ViewModel
 
         public bool IsDropDownOpen
         {
-            get { return m_IsDropDownOpen; }
+            get
+            {
+                return m_IsDropDownOpen;
+            }
+
             set
             {
                 if (m_IsDropDownOpen != value)
@@ -428,7 +415,11 @@ namespace CalculatorApp.ViewModel
 
         public bool IsDropDownEnabled
         {
-            get { return m_IsDropDownEnabled; }
+            get
+            {
+                return m_IsDropDownEnabled;
+            }
+
             set
             {
                 if (m_IsDropDownEnabled != value)
@@ -441,7 +432,11 @@ namespace CalculatorApp.ViewModel
 
         public bool IsCurrencyLoadingVisible
         {
-            get { return m_IsCurrencyLoadingVisible; }
+            get
+            {
+                return m_IsCurrencyLoadingVisible;
+            }
+
             set
             {
                 if (m_IsCurrencyLoadingVisible != value)
@@ -456,7 +451,11 @@ namespace CalculatorApp.ViewModel
 
         public bool IsCurrencyCurrentCategory
         {
-            get { return m_IsCurrencyCurrentCategory; }
+            get
+            {
+                return m_IsCurrencyCurrentCategory;
+            }
+
             private set
             {
                 if (m_IsCurrencyCurrentCategory != value)
@@ -471,7 +470,11 @@ namespace CalculatorApp.ViewModel
 
         public string CurrencyRatioEquality
         {
-            get { return m_CurrencyRatioEquality; }
+            get
+            {
+                return m_CurrencyRatioEquality;
+            }
+
             set
             {
                 if (m_CurrencyRatioEquality != value)
@@ -484,7 +487,11 @@ namespace CalculatorApp.ViewModel
 
         public string CurrencyRatioEqualityAutomationName
         {
-            get { return m_CurrencyRatioEqualityAutomationName; }
+            get
+            {
+                return m_CurrencyRatioEqualityAutomationName;
+            }
+
             set
             {
                 if (m_CurrencyRatioEqualityAutomationName != value)
@@ -497,7 +504,11 @@ namespace CalculatorApp.ViewModel
 
         public string CurrencyTimestamp
         {
-            get { return m_CurrencyTimestamp; }
+            get
+            {
+                return m_CurrencyTimestamp;
+            }
+
             set
             {
                 if (m_CurrencyTimestamp != value)
@@ -510,7 +521,11 @@ namespace CalculatorApp.ViewModel
 
         public Common.NetworkAccessBehavior NetworkBehavior
         {
-            get { return m_NetworkBehavior; }
+            get
+            {
+                return m_NetworkBehavior;
+            }
+
             set
             {
                 if (m_NetworkBehavior != value)
@@ -525,7 +540,11 @@ namespace CalculatorApp.ViewModel
 
         public bool CurrencyDataLoadFailed
         {
-            get { return m_CurrencyDataLoadFailed; }
+            get
+            {
+                return m_CurrencyDataLoadFailed;
+            }
+
             set
             {
                 if (m_CurrencyDataLoadFailed != value)
@@ -540,7 +559,11 @@ namespace CalculatorApp.ViewModel
 
         public bool CurrencyDataIsWeekOld
         {
-            get { return m_CurrencyDataIsWeekOld; }
+            get
+            {
+                return m_CurrencyDataIsWeekOld;
+            }
+
             set
             {
                 if (m_CurrencyDataIsWeekOld != value)
@@ -555,19 +578,25 @@ namespace CalculatorApp.ViewModel
 
         public Category CurrentCategory
         {
-            get { return m_CurrentCategory; }
+            get
+            {
+                return m_CurrentCategory;
+            }
+
             set
             {
                 if (m_CurrentCategory == value)
                 {
                     return;
                 }
+
                 m_CurrentCategory = value;
                 if (value != null)
                 {
                     var currentCategory = value.GetModelCategory();
-                    IsCurrencyCurrentCategory = currentCategory.id == Common.NavCategoryStates.Serialize(Common.ViewMode.Currency);
+                    IsCurrencyCurrentCategory = currentCategory.Id == Common.NavCategoryStates.Serialize(Common.ViewMode.Currency);
                 }
+
                 RaisePropertyChanged(nameof(CurrentCategory));
             }
         }
@@ -584,8 +613,7 @@ namespace CalculatorApp.ViewModel
         {
             get
             {
-                return (string.IsNullOrEmpty(CurrencySymbol1) || string.IsNullOrEmpty(CurrencySymbol2)) ?
-                    Visibility.Collapsed : Visibility.Visible;
+                return (string.IsNullOrEmpty(CurrencySymbol1) || string.IsNullOrEmpty(CurrencySymbol2)) ? Visibility.Collapsed : Visibility.Visible;
             }
         }
 
@@ -597,6 +625,7 @@ namespace CalculatorApp.ViewModel
                 {
                     donotuse_CategoryChanged = new DelegateCommand((OnCategoryChanged));
                 }
+
                 return donotuse_CategoryChanged;
             }
         }
@@ -609,6 +638,7 @@ namespace CalculatorApp.ViewModel
                 {
                     donotuse_UnitChanged = new DelegateCommand((OnUnitChanged));
                 }
+
                 return donotuse_UnitChanged;
             }
         }
@@ -621,6 +651,7 @@ namespace CalculatorApp.ViewModel
                 {
                     donotuse_SwitchActive = new DelegateCommand((OnSwitchActive));
                 }
+
                 return donotuse_SwitchActive;
             }
         }
@@ -633,6 +664,7 @@ namespace CalculatorApp.ViewModel
                 {
                     donotuse_ButtonPressed = new DelegateCommand((OnButtonPressed));
                 }
+
                 return donotuse_ButtonPressed;
             }
         }
@@ -645,6 +677,7 @@ namespace CalculatorApp.ViewModel
                 {
                     donotuse_CopyCommand = new DelegateCommand((OnCopyCommand));
                 }
+
                 return donotuse_CopyCommand;
             }
         }
@@ -657,23 +690,24 @@ namespace CalculatorApp.ViewModel
                 {
                     donotuse_PasteCommand = new DelegateCommand((OnPasteCommand));
                 }
+
                 return donotuse_PasteCommand;
             }
         }
 
-        private CurrencyFormatterParameter CurrencyFormatterParameterFrom
+        private UnitConverterViewModelCurrencyFormatterParameter CurrencyFormatterParameterFrom
         {
             get
             {
-                return m_value1cp == ConversionParameter.Source ? CurrencyFormatterParameter.ForValue1 : CurrencyFormatterParameter.ForValue2;
+                return m_value1cp == UnitConverterViewModelConversionParameter.Source ? UnitConverterViewModelCurrencyFormatterParameter.ForValue1 : UnitConverterViewModelCurrencyFormatterParameter.ForValue2;
             }
         }
 
-        private CurrencyFormatterParameter CurrencyFormatterParameterTo
+        private UnitConverterViewModelCurrencyFormatterParameter CurrencyFormatterParameterTo
         {
             get
             {
-                return m_value1cp == ConversionParameter.Target ? CurrencyFormatterParameter.ForValue1 : CurrencyFormatterParameter.ForValue2;
+                return m_value1cp == UnitConverterViewModelConversionParameter.Target ? UnitConverterViewModelCurrencyFormatterParameter.ForValue1 : UnitConverterViewModelCurrencyFormatterParameter.ForValue2;
             }
         }
 
@@ -681,7 +715,7 @@ namespace CalculatorApp.ViewModel
         {
             get
             {
-                return m_value1cp == ConversionParameter.Source ? m_currencyFormatter1 : m_currencyFormatter2;
+                return m_value1cp == UnitConverterViewModelConversionParameter.Source ? m_currencyFormatter1 : m_currencyFormatter2;
             }
         }
 
@@ -689,103 +723,77 @@ namespace CalculatorApp.ViewModel
         {
             get
             {
-                return m_value1cp == ConversionParameter.Target ? m_currencyFormatter1 : m_currencyFormatter2;
+                return m_value1cp == UnitConverterViewModelConversionParameter.Target ? m_currencyFormatter1 : m_currencyFormatter2;
             }
         }
 
         private string ValueFrom
         {
-            get { return m_value1cp == ConversionParameter.Source ? Value1 : Value2; }
-            set { if (m_value1cp == ConversionParameter.Source) Value1 = value; else Value2 = value; }
+            get
+            {
+                return m_value1cp == UnitConverterViewModelConversionParameter.Source ? Value1 : Value2;
+            }
+
+            set
+            {
+                if (m_value1cp == UnitConverterViewModelConversionParameter.Source)
+                    Value1 = value;
+                else
+                    Value2 = value;
+            }
         }
 
         private Unit UnitFrom
         {
-            get { return m_value1cp == ConversionParameter.Source ? Unit1 : Unit2; }
-            set { if (m_value1cp == ConversionParameter.Source) Unit1 = value; else Unit2 = value; }
+            get
+            {
+                return m_value1cp == UnitConverterViewModelConversionParameter.Source ? Unit1 : Unit2;
+            }
+
+            set
+            {
+                if (m_value1cp == UnitConverterViewModelConversionParameter.Source)
+                    Unit1 = value;
+                else
+                    Unit2 = value;
+            }
         }
 
         private string ValueTo
         {
-            get { return m_value1cp == ConversionParameter.Target ? Value1 : Value2; }
-            set { if (m_value1cp == ConversionParameter.Target) Value1 = value; else Value2 = value; }
+            get
+            {
+                return m_value1cp == UnitConverterViewModelConversionParameter.Target ? Value1 : Value2;
+            }
+
+            set
+            {
+                if (m_value1cp == UnitConverterViewModelConversionParameter.Target)
+                    Value1 = value;
+                else
+                    Value2 = value;
+            }
         }
 
         private Unit UnitTo
         {
-            get { return m_value1cp == ConversionParameter.Target ? Unit1 : Unit2; }
-            set { if (m_value1cp == ConversionParameter.Target) Unit1 = value; else Unit2 = value; }
+            get
+            {
+                return m_value1cp == UnitConverterViewModelConversionParameter.Target ? Unit1 : Unit2;
+            }
+
+            set
+            {
+                if (m_value1cp == UnitConverterViewModelConversionParameter.Target)
+                    Unit1 = value;
+                else
+                    Unit2 = value;
+            }
         }
 
         private void SwitchConversionParameters()
         {
-            m_value1cp = m_value1cp == ConversionParameter.Source ? ConversionParameter.Target : ConversionParameter.Source;
-        }
-    }
-
-    public partial class UnitConverterVMCallback : UnitConversionManager.IUnitConverterVMCallback
-    {
-        private UnitConverterViewModel m_viewModel;
-
-        public UnitConverterVMCallback(UnitConverterViewModel viewModel)
-        {
-            m_viewModel = viewModel;
-        }
-
-        public void DisplayCallback(string from, string to)
-        {
-            m_viewModel.UpdateDisplay(from, to);
-        }
-
-        public void SuggestedValueCallback(List<(string, UnitConversionManager.Unit)> suggestedValues)
-        {
-            m_viewModel.UpdateSupplementaryResults(suggestedValues);
-        }
-
-        public void MaxDigitsReached()
-        {
-            m_viewModel.OnMaxDigitsReached();
-        }
-    }
-
-    public partial class ViewModelCurrencyCallback : UnitConversionManager.IViewModelCurrencyCallback
-    {
-        private UnitConverterViewModel m_viewModel;
-
-        public ViewModelCurrencyCallback(UnitConverterViewModel viewModel)
-        {
-            m_viewModel = viewModel;
-        }
-
-        public void CurrencyDataLoadFinished(bool didLoad)
-        {
-            m_viewModel.OnCurrencyDataLoadFinished(didLoad);
-        }
-
-        public void CurrencySymbolsCallback(string symbol1, string symbol2)
-        {
-            string sym1 = symbol1;
-            string sym2 = symbol2;
-
-            bool value1Active = m_viewModel.Value1Active;
-            m_viewModel.CurrencySymbol1 = value1Active ? sym1 : sym2;
-            m_viewModel.CurrencySymbol2 = value1Active ? sym2 : sym1;
-        }
-
-        public void CurrencyRatiosCallback(string ratioEquality, string accRatioEquality)
-        {
-            m_viewModel.CurrencyRatioEquality = ratioEquality;
-            m_viewModel.CurrencyRatioEqualityAutomationName = accRatioEquality;
-        }
-
-        public void CurrencyTimestampCallback(string timestamp, bool isWeekOld)
-        {
-            m_viewModel.OnCurrencyTimestampUpdated(timestamp, isWeekOld);
-        }
-
-        public void NetworkBehaviorChanged(int newBehavior)
-        {
-            m_viewModel.OnNetworkBehaviorChanged((Common.NetworkAccessBehavior)newBehavior);
+            m_value1cp = m_value1cp == UnitConverterViewModelConversionParameter.Source ? UnitConverterViewModelConversionParameter.Target : UnitConverterViewModelConversionParameter.Source;
         }
     }
 }

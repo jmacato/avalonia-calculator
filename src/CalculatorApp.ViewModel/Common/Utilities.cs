@@ -1,11 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 using System;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.UI;
@@ -14,43 +12,6 @@ using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Media;
 
-namespace CalculatorApp
-{
-
-    // Helper class to mimic C++'s scoped_lock
-    public class ReaderLockScope : IDisposable
-    {
-        private readonly ReaderWriterLockSlim _lock;
-
-        public ReaderLockScope(ReaderWriterLockSlim rwLock)
-        {
-            _lock = rwLock;
-            _lock.EnterReadLock();
-        }
-
-        public void Dispose()
-        {
-            _lock.ExitReadLock();
-        }
-    }
-    public class WriterLockScope : IDisposable
-    {
-        private readonly ReaderWriterLockSlim _lock;
-
-        public WriterLockScope(ReaderWriterLockSlim rwLock)
-        {
-            _lock = rwLock;
-            _lock.EnterWriteLock();
-        }
-
-        public void Dispose()
-        {
-            _lock.ExitWriteLock();
-        }
-    }
-
-}
-
 namespace CalculatorApp.ViewModel.Common
 {
     public static class Utilities
@@ -58,7 +19,6 @@ namespace CalculatorApp.ViewModel.Common
         public static int GetWindowId()
         {
             int windowId = -1;
-
             var window = CoreWindow.GetForCurrentThread();
             if (window != null)
             {
@@ -68,11 +28,7 @@ namespace CalculatorApp.ViewModel.Common
             return windowId;
         }
 
-        static long WINEVENT_KEYWORD_RESPONSE_TIME = 0x1000000000000;
-        public static long GetConst_WINEVENT_KEYWORD_RESPONSE_TIME()
-        {
-            return WINEVENT_KEYWORD_RESPONSE_TIME;
-        }
+        public const long WinEventKeywordResponseTime = 0x1000000000000;
 
         // This method calculates the luminance ratio between White and the given background color.
         // The luminance is calculate using the RGB values and does not use the A value.
@@ -80,7 +36,6 @@ namespace CalculatorApp.ViewModel.Common
         public static SolidColorBrush GetContrastColor(Color backgroundColor)
         {
             var luminance = 0.2126 * backgroundColor.R + 0.7152 * backgroundColor.G + 0.0722 * backgroundColor.B;
-
             if ((255 + 0.05) / (luminance + 0.05) >= 2.5)
             {
                 return (SolidColorBrush)(Application.Current.Resources["WhiteBrush"]);
@@ -91,16 +46,25 @@ namespace CalculatorApp.ViewModel.Common
 
         public static string EscapeHtmlSpecialCharacters(string originalString)
         {
+            if (originalString is null)
+            {
+                throw new ArgumentNullException(nameof(originalString));
+            }
+
             // Construct a default special characters if not provided.
-            char[] specialCharacters = new char[] { '&', '\"', '\'', '<', '>' };
-
-            bool replaceCharacters = false;
-            string replacementString = null;
-
+            char[] specialCharacters = new char[]
+            {
+                '&',
+                '\"',
+                '\'',
+                '<',
+                '>'
+            };
+            bool replaceCharacters;
+            string? replacementString = null;
             // First step is scanning the string for special characters.
             // If there isn't any special character, we simply return the original string
-            replaceCharacters = replacementString.Any(x => specialCharacters.Contains(x));
-
+            replaceCharacters = originalString.Any(specialCharacters.Contains);
             if (replaceCharacters)
             {
                 // If we indeed find a special character, we step back one character (the special
@@ -112,7 +76,6 @@ namespace CalculatorApp.ViewModel.Common
                     {
                         case '&':
                             buffer.Append("&amp;");
-
                             break;
                         case '\"':
                             buffer.Append("&quot;");
@@ -129,48 +92,58 @@ namespace CalculatorApp.ViewModel.Common
                         default:
                             buffer.Append(x);
                             break;
-
                     }
                 }
+
                 replacementString = buffer.ToString();
             }
 
-            return replaceCharacters ? replacementString : originalString;
+            return replacementString ?? originalString;
         }
 
         public static string RemoveUnwantedCharsFromString(string inputString, char[] unwantedChars)
         {
+            if (inputString is null)
+            {
+                throw new ArgumentNullException(nameof(inputString));
+            }
+
+            if (unwantedChars is null)
+            {
+                throw new ArgumentNullException(nameof(unwantedChars));
+            }
+
             foreach (char unwantedChar in unwantedChars)
             {
                 inputString = inputString.Replace(unwantedChar.ToString(), "");
             }
+
             return inputString;
         }
 
         // Returns if the last character of a wstring is the target wchar_t
         public static bool IsLastCharacterTarget(string input, char target)
         {
+            if (input is null)
+            {
+                throw new ArgumentNullException(nameof(input));
+            }
+
             return input.Length != 0 && input.Last() == target;
-
         }
-
 
         public static bool IsDateTimeOlderThan(DateTime dateTime, long duration)
         {
             DateTime now = GetUniversalSystemTime();
-
             return dateTime.Ticks + duration < now.Ticks;
-
         }
 
         public static DateTime GetUniversalSystemTime()
         {
             return DateTime.Now.ToUniversalTime();
-
         }
 
-        public static async Task<string> ReadFileFromFolder(StorageFolder folder, string fileName)
-
+        public static async Task<string?> ReadFileFromFolder(StorageFolder? folder, string fileName)
         {
             if (folder == null)
             {
@@ -209,12 +182,5 @@ namespace CalculatorApp.ViewModel.Common
             //Console.WriteLine($"{GetIntegratedDisplaySize} {size}");
             //return res;
         }
-    }
-
-    static class WinNativeMethods
-    {
-        // Define the PInvoke signature for GetIntegratedDisplaySize
-        [DllImport("kernelbase.dll", SetLastError = true)]
-        public static extern int GetIntegratedDisplaySize(out double sizeInInches);
     }
 }

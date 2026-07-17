@@ -34,11 +34,6 @@ public sealed partial class CalculatorScientificOperators : UserControl
         }
     }
 
-    private void OpenParenthesisButton_GotFocus(object? sender, RoutedEventArgs e)
-    {
-        Model?.SetOpenParenthesisCountNarratorAnnouncement();
-    }
-
     private void ShiftButton_Check(object? sender, RoutedEventArgs e)
     {
         SetOperatorRowVisibility();

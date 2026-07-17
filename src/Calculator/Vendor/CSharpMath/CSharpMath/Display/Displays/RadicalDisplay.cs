@@ -5,7 +5,8 @@ namespace CSharpMath.Display.Displays;
 
 using FrontEnd;
 public class RadicalDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph>
-    where TFont : IFont<TGlyph> {
+    where TFont : IFont<TGlyph>
+{
     ///<summary>A display representing the radicand of the radical.
     ///Its position is relative to the parent and it is not treated as a sub-display.</summary>
     public ListDisplay<TFont, TGlyph> Radicand { get; }
@@ -18,18 +19,23 @@ public class RadicalDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph>
     public float LineThickness { get; set; }
     private float _radicalShift;
     private readonly IDisplay<TFont, TGlyph> _radicalGlyph;
-    public RadicalDisplay(ListDisplay<TFont, TGlyph> innerDisplay, IGlyphDisplay<TFont, TGlyph> glyph, PointF position, Range range) {
+    public RadicalDisplay(ListDisplay<TFont, TGlyph> innerDisplay, IGlyphDisplay<TFont, TGlyph> glyph, PointF position, Range range)
+    {
         Radicand = innerDisplay;
         _radicalGlyph = glyph;
         Position = position;
         Range = range;
     }
-    public void SetDegree(ListDisplay<TFont, TGlyph> degree, TFont degreeFont, FontMathTable<TFont, TGlyph> degreeFontMathTable) {
+    public void SetDegree(ListDisplay<TFont, TGlyph> degree, TFont degreeFont, FontMathTable<TFont, TGlyph> degreeFontMathTable)
+    {
+        System.ArgumentNullException.ThrowIfNull(degree);
+        System.ArgumentNullException.ThrowIfNull(degreeFontMathTable);
         var kernBefore = degreeFontMathTable.RadicalKernBeforeDegree(degreeFont);
         Degree = degree;
         _radicalShift = kernBefore + degree.Width +
                         degreeFontMathTable.RadicalKernAfterDegree(degreeFont);
-        if (_radicalShift < 0) {
+        if (_radicalShift < 0)
+        {
             kernBefore -= _radicalShift;
             _radicalShift = 0;
         }
@@ -52,7 +58,9 @@ public class RadicalDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph>
     PointF _position;
     public PointF Position { get => _position; set { _position = value; UpdateRadicandPosition(); } }
     public bool HasScript { get; set; }
-    public void Draw(IGraphicsContext<TFont, TGlyph> context) {
+    public void Draw(IGraphicsContext<TFont, TGlyph> context)
+    {
+        System.ArgumentNullException.ThrowIfNull(context);
         this.DrawBackground(context);
         Radicand.Draw(context);
         Degree?.Draw(context);
@@ -71,7 +79,8 @@ public class RadicalDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph>
         context.RestoreState();
     }
     public Color? TextColor { get; set; }
-    public void SetTextColorRecursive(Color? textColor) {
+    public void SetTextColorRecursive(Color? textColor)
+    {
         TextColor ??= textColor;
         _radicalGlyph.SetTextColorRecursive(TextColor);
         Radicand.SetTextColorRecursive(textColor);

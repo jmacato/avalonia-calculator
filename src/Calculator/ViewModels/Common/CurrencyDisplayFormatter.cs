@@ -43,7 +43,7 @@ internal sealed class CurrencyDisplayFormatter
         // the engine string contains a decimal point. This keeps an untouched
         // zero as "0", while partial input such as "2." displays "2.00" for
         // a two-fraction-digit currency.
-        int fractionDigits = invariantValue.Contains('.')
+        int fractionDigits = invariantValue.Contains('.', StringComparison.Ordinal)
             ? CldrCurrencyNameProvider.GetFractionDigits(isoCode)
             : 0;
         Rational value;
@@ -61,14 +61,14 @@ internal sealed class CurrencyDisplayFormatter
             value,
             fractionDigits,
             RatPakRoundingMode.HalfDown);
-        bool isNegative = rounded.StartsWith("-", StringComparison.Ordinal) ||
-                          invariantValue.StartsWith("-", StringComparison.Ordinal);
-        if (rounded.StartsWith("-", StringComparison.Ordinal))
+        bool isNegative = rounded.StartsWith('-') ||
+                          invariantValue.StartsWith('-');
+        if (rounded.StartsWith('-'))
         {
             rounded = rounded.Substring(1);
         }
 
-        int decimalSeparator = rounded.IndexOf('.');
+        int decimalSeparator = rounded.IndexOf('.', StringComparison.Ordinal);
         string whole = decimalSeparator < 0 ? rounded : rounded.Substring(0, decimalSeparator);
         string fraction = decimalSeparator < 0 ? string.Empty : rounded.Substring(decimalSeparator + 1);
         string grouped = ApplyGrouping(
@@ -165,7 +165,7 @@ internal sealed class CurrencyDisplayFormatter
         // input and display retain Calculator's leading-sign convention.
         if (formatted.EndsWith(sign, StringComparison.Ordinal))
         {
-            formatted = sign + formatted.Substring(0, formatted.Length - sign.Length);
+            formatted = string.Concat(sign, formatted.AsSpan(0, formatted.Length - sign.Length));
         }
 
         return formatted;

@@ -10,7 +10,7 @@ using CalcEngine;
 using CalculatorApp.ViewModel;
 
 namespace CalculatorApp.ViewModel.Common
-{ 
+{
 
     public partial class CalculatorDisplay : ICalcDisplay
     {
@@ -18,7 +18,7 @@ namespace CalculatorApp.ViewModel.Common
         {
         }
 
-      public  void SetCallback(WeakReference callbackReference)
+        public void SetCallback(WeakReference callbackReference)
         {
             m_callbackReference = callbackReference;
         }
@@ -28,70 +28,70 @@ namespace CalculatorApp.ViewModel.Common
             m_historyCallbackReference = callbackReference;
         }
 
-        public void SetPrimaryDisplay(string displayStringValue, bool isError)
+        public void SetPrimaryDisplay(string pszText, bool isError)
         {
             if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
             {
 
 
-                    calcVM.SetPrimaryDisplay((displayStringValue), isError);
+                calcVM.SetPrimaryDisplay(pszText, isError);
 
             }
         }
 
-        public void SetParenthesisNumber(uint parenthesisCount)
+        public void SetParenthesisNumber(uint count)
         {
-                        if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
+            if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
             {
 
-            {
-                    calcVM.SetParenthesisNumber(parenthesisCount);
+                {
+                    calcVM.SetParenthesisNumber(count);
                 }
             }
         }
 
         public void OnNoRightParenAdded()
         {
-                        if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
+            if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
             {
 
-            {
+                {
                     calcVM.OnNoRightParenAdded();
                 }
             }
         }
 
-        public void SetIsInError(bool isError)
+        public void SetIsInError(bool isInError)
         {
-                        if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
+            if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
             {
 
-            {
-                    calcVM.IsInError = isError;
+                {
+                    calcVM.IsInError = isInError;
                 }
             }
         }
 
         public void SetExpressionDisplay(
-             IList<(string, int)> tokens,
-             IList<IExpressionCommand> commands)
+             IReadOnlyList<(string, int)> tokens,
+             IReadOnlyList<IExpressionCommand> commands)
         {
-                        if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
+            if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
             {
 
-            {
-                    calcVM.SetExpressionDisplay(  tokens,  commands);
+                {
+                    calcVM.SetExpressionDisplay(tokens, commands);
                 }
             }
         }
 
-        public void SetMemorizedNumbers(IList<string> newMemorizedNumbers)
+        public void SetMemorizedNumbers(IList<string> memorizedNumbers)
         {
-                        if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
+            if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
             {
 
-            {
-                    calcVM.SetMemorizedNumbers(newMemorizedNumbers);
+                {
+                    calcVM.SetMemorizedNumbers(memorizedNumbers);
                 }
             }
         }
@@ -100,7 +100,7 @@ namespace CalculatorApp.ViewModel.Common
         {
             if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
             {
-             {
+                {
                     calcVM.OnHistoryItemAdded(addedItemIndex);
                 }
             }
@@ -108,10 +108,10 @@ namespace CalculatorApp.ViewModel.Common
 
         public void MaxDigitsReached()
         {
-                        if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
+            if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
             {
 
-            {
+                {
                     calcVM.MaxDigitsReached();
                 }
             }
@@ -119,10 +119,10 @@ namespace CalculatorApp.ViewModel.Common
 
         public void BinaryOperatorReceived()
         {
-                        if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
+            if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
             {
 
-            {
+                {
                     calcVM.BinaryOperatorReceived();
                 }
             }
@@ -130,10 +130,10 @@ namespace CalculatorApp.ViewModel.Common
 
         public void MemoryItemChanged(uint indexOfMemory)
         {
-                        if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
+            if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
             {
 
-            {
+                {
                     calcVM.MemoryItemChanged(indexOfMemory);
                 }
             }
@@ -141,10 +141,10 @@ namespace CalculatorApp.ViewModel.Common
 
         public void InputChanged()
         {
-                        if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
+            if (m_callbackReference != null && m_callbackReference.IsAlive && m_callbackReference.Target is StandardCalculatorViewModel calcVM)
             {
 
-            {
+                {
                     calcVM.InputChanged();
                 }
             }

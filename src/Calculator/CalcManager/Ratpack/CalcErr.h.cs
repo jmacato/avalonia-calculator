@@ -5,7 +5,7 @@ using uint32_t = System.UInt32;
 
 namespace CalcEngine;
 
-public enum CalcErr : uint32_t
+internal enum CalcErr : uint32_t
 {
     // CalcErr.h
     //

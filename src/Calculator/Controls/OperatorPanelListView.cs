@@ -25,6 +25,7 @@ public sealed class OperatorPanelListView : ItemsControl
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
+        System.ArgumentNullException.ThrowIfNull(e);
         DetachTemplateParts();
         base.OnApplyTemplate(e);
 
@@ -52,6 +53,7 @@ public sealed class OperatorPanelListView : ItemsControl
 
     protected override void OnPointerEntered(PointerEventArgs e)
     {
+        System.ArgumentNullException.ThrowIfNull(e);
         base.OnPointerEntered(e);
         if (e.Pointer.Type == PointerType.Mouse)
         {

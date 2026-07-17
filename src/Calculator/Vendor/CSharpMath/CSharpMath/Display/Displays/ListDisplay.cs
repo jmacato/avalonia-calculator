@@ -8,12 +8,14 @@ namespace CSharpMath.Display.Displays;
 using FrontEnd;
 /// <summary>Corresponds to MTMathListDisplay in iosMath.</summary>
 public class ListDisplay<TFont, TGlyph>(IReadOnlyList<IDisplay<TFont, TGlyph>> displays) : IDisplay<TFont, TGlyph>
-    where TFont : IFont<TGlyph> {
+    where TFont : IFont<TGlyph>
+{
     public IReadOnlyList<IDisplay<TFont, TGlyph>> Displays { get; } = displays;
     public LinePosition LinePosition { get; set; } = LinePosition.Regular;
     public bool HasScript { get; set; }
     public Color? TextColor { get; set; }
-    public void SetTextColorRecursive(Color? textColor) {
+    public void SetTextColorRecursive(Color? textColor)
+    {
         TextColor ??= textColor;
         foreach (var display in Displays)
             display.SetTextColorRecursive(textColor);
@@ -33,7 +35,9 @@ public class ListDisplay<TFont, TGlyph>(IReadOnlyList<IDisplay<TFont, TGlyph>> d
                 .Where(d => !(d is ListDisplay<TFont, TGlyph> ld && ld.LinePosition != LinePosition.Regular))
                 .Select(d => d.Range));
     public float Width => Displays.CollectionWidth();
-    public void Draw(IGraphicsContext<TFont, TGlyph> context) {
+    public void Draw(IGraphicsContext<TFont, TGlyph> context)
+    {
+        System.ArgumentNullException.ThrowIfNull(context);
         this.DrawBackground(context);
         context.SaveState();
         context.Translate(this.Position);
@@ -42,6 +46,6 @@ public class ListDisplay<TFont, TGlyph>(IReadOnlyList<IDisplay<TFont, TGlyph>> d
             displayAtom.Draw(context);
         context.RestoreState();
     }
-    /// <summary>The string returned is NOT real TeX! It's for debugging purposes only.</summary>
+    /// <summary>The string return ed is NOT real TeX! It's for debugging purposes only.</summary>
     public override string ToString() => string.Concat(Displays);
 }

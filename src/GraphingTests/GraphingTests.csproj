@@ -12,6 +12,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="9999.0.0-localbuild" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>
@@ -21,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Calculator\Calculator.csproj" />
     <ProjectReference Include="..\GraphControl\GraphControl.csproj" />
     <ProjectReference Include="..\Graphing.Symbolics\Graphing.Symbolics.csproj" />
     <ProjectReference Include="..\GraphingImpl\GraphingImpl.csproj" />

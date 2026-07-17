@@ -15,10 +15,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
-using  CalculatorApp;
-using  CalculatorApp.ViewModel.Common;
+using CalculatorApp;
+using CalculatorApp.ViewModel.Common;
 
 using System;
 using System.Collections.Generic;
@@ -27,22 +30,21 @@ using System.Threading.Tasks;
 using UCM = UnitConversionManager;
 using CurrencyRatioMap = System.Collections.Generic.Dictionary<string, UnitConversionManager.CurrencyRatio>;
 using SelectedUnits = (string first, string second);
-using  CalculatorApp.ViewModel.DataLoaders;
-using  CalculatorApp.ViewModel;
-using  UnitConversionManager;
-using  Windows.ApplicationModel.Resources.Core;
-using  Windows.Data.Json;
-using  Windows.Foundation;
-using  Windows.Foundation.Collections;
-using  Windows.Globalization.DateTimeFormatting;
-using  Windows.Globalization.NumberFormatting;
-using  Windows.Storage;
-using  Windows.System.UserProfile;
-using  Windows.UI.Core;
-using  Windows.Web.Http;
-using Microsoft.VisualBasic.CompilerServices;
+using CalculatorApp.ViewModel.DataLoaders;
+using CalculatorApp.ViewModel;
+using UnitConversionManager;
+using Windows.ApplicationModel.Resources.Core;
+using Windows.Data.Json;
+using Windows.Foundation;
+using Windows.Foundation.Collections;
+using Windows.Globalization.DateTimeFormatting;
+using Windows.Globalization.NumberFormatting;
+using Windows.Storage;
+using Windows.System.UserProfile;
+using Windows.UI.Core;
+using Windows.Web.Http;
 
-namespace CalculatorApp. ViewModel.DataLoaders;
+namespace CalculatorApp.ViewModel.DataLoaders;
 
 public partial class CurrencyDataLoader
 {
@@ -77,11 +79,6 @@ public partial class CurrencyDataLoader
         new KeyValuePair<string, int>("CurrencySymbol", 14)
     };
 
-    private static readonly KeyValuePair<string, int>[] ALL_RATIOS_DATA_PROPERTIES = {
-        new KeyValuePair<string, int>(RATIO_KEY, 2),
-        new KeyValuePair<string, int>(CURRENCY_CODE_KEY, 2)
-    };
-
     internal const string ALL_RATIOS_DATA_FILENAME = "CURRENCY_CONVERTER_ALL_RATIOS_DATA.txt";
     internal const string RATIO_KEY = "Rt";
     internal const string CURRENCY_CODE_KEY = "An";
@@ -97,7 +94,7 @@ public partial class CurrencyDataLoader
 
     // ParseLanguageCode returns language code in form of `lang-region`
     // TODO: unit testing.
-    string? ParseLanguageCode(string bcp47)
+    static string? ParseLanguageCode(string bcp47)
     {
         // the IETF BCP 47 language tag syntax is: language[-script][-region]...
         // Handle null or empty input string
@@ -205,7 +202,7 @@ public partial class CurrencyDataLoader
         else if (GlobalizationPreferences.Languages.Count > 0)
         {
             var lang = ParseLanguageCode(GlobalizationPreferences.Languages[0]);
-            if (!string.IsNullOrWhiteSpace(lang))
+            if (lang is { Length: > 0 })
             {
                 m_responseLanguage = lang;
             }
@@ -224,8 +221,8 @@ public partial class CurrencyDataLoader
         m_ratioFormatter.IsDecimalPointAlwaysDisplayed = true;
         m_ratioFormatter.FractionDigits = FORMATTER_RATE_FRACTION_PADDING;
 
-        m_ratioFormat = AppResourceProvider.GetInstance().GetResourceString("CurrencyFromToRatioFormat");
-        m_timestampFormat = AppResourceProvider.GetInstance().GetResourceString("CurrencyTimestampFormat");
+        m_ratioFormat = AppResourceProvider.Instance.GetResourceString("CurrencyFromToRatioFormat");
+        m_timestampFormat = AppResourceProvider.Instance.GetResourceString("CurrencyTimestampFormat");
     }
 
     ~CurrencyDataLoader()
@@ -235,16 +232,16 @@ public partial class CurrencyDataLoader
 
     void UnregisterForNetworkBehaviorChanges()
     {
-        m_networkManager.NetworkBehaviorChanged -= OnNetworkBehaviorChanged;
+        m_networkManager.NetworkBehaviorChanged -= HandleNetworkBehaviorChanged;
     }
 
     void RegisterForNetworkBehaviorChanges()
     {
         UnregisterForNetworkBehaviorChanges();
 
-        m_networkManager.NetworkBehaviorChanged += this.OnNetworkBehaviorChanged;
+        m_networkManager.NetworkBehaviorChanged += HandleNetworkBehaviorChanged;
 
-        OnNetworkBehaviorChanged(m_networkManager.GetNetworkAccessBehavior());
+        OnNetworkBehaviorChanged(NetworkManager.GetNetworkAccessBehavior());
     }
 
     void OnNetworkBehaviorChanged(NetworkAccessBehavior newBehavior)
@@ -254,6 +251,11 @@ public partial class CurrencyDataLoader
         {
             m_vmCallback.NetworkBehaviorChanged((int)(m_networkAccessBehavior));
         }
+    }
+
+    void HandleNetworkBehaviorChanged(object? sender, NetworkBehaviorChangedEventArgs eventArgs)
+    {
+        OnNetworkBehaviorChanged(eventArgs.Behavior);
     }
 
     bool LoadFinished()
@@ -276,7 +278,7 @@ public partial class CurrencyDataLoader
         m_loadStatus = CurrencyLoadStatus.NotLoaded;
     }
 
-// #pragma optimize("", off) // Optimization disabled for DevDiv 393321 compatibility
+    // #pragma optimize("", off) // Optimization disabled for DevDiv 393321 compatibility
 
     public async void LoadData() // Changed return type to void as original didn't use the task
     {
@@ -290,15 +292,15 @@ public partial class CurrencyDataLoader
             try
             {
                 // Simpler async flow in C#
-                didLoad = await TryLoadDataFromCacheAsync();
+                didLoad = await TryLoadDataFromCacheAsync().ConfigureAwait(false);
                 if (!didLoad)
                 {
-                    didLoad = await TryLoadDataFromWebAsync();
+                    didLoad = await TryLoadDataFromWebAsync().ConfigureAwait(false);
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (IsRecoverableCurrencyDataFailure(ex))
             {
-                TraceLogger.GetInstance().LogStandardException(ViewMode.Currency, "LoadData", ex);
+                TraceLogger.LogStandardException(ViewMode.Currency, "LoadData", ex);
                 didLoad = false;
             }
             finally // Ensure UI updates happen regardless of exceptions in loading
@@ -311,35 +313,37 @@ public partial class CurrencyDataLoader
         }
     }
 
-// #pragma optimize("", on)
+    // #pragma optimize("", on)
 
-    public List<UCM.Category> GetOrderedCategories()
+    public IList<UCM.Category> GetOrderedCategories()
     {
         // This function should not be called
         // The model will use the categories from UnitConverterDataLoader
         return new List<UCM.Category>();
     }
 
-    public List<UCM.Unit> GetOrderedUnits(UCM.Category category)
+    public IList<UCM.Unit> GetOrderedUnits(UCM.Category category)
     {
-        lock (m_currencyUnitsMutex)
-        {
-            return m_currencyUnits;
-        }
+        return Volatile.Read(ref m_currencyData).Units;
     }
 
     public Dictionary<UCM.Unit, UCM.ConversionData> LoadOrderedRatios(UCM.Unit unit)
     {
-        lock (m_currencyUnitsMutex)
-        {
-            return m_currencyRatioMap[unit];
-        }
+        CurrencyDataLoaderCurrencyDataState data = Volatile.Read(ref m_currencyData);
+        return data.Ratios.TryGetValue(unit, out Dictionary<UCM.Unit, UCM.ConversionData> ratios)
+            ? ratios
+            : new Dictionary<UCM.Unit, UCM.ConversionData>();
     }
 
     public bool SupportsCategory(UCM.Category target)
     {
+        if (target is null)
+        {
+            throw new ArgumentNullException(nameof(target));
+        }
+
         int currencyId = NavCategoryStates.Serialize(ViewMode.Currency);
-        return target.id == currencyId;
+        return target.Id == currencyId;
     }
 
     public void SetViewModelCallback(UCM.IViewModelCurrencyCallback callback)
@@ -350,24 +354,23 @@ public partial class CurrencyDataLoader
 
     public (string, string) GetCurrencySymbols(UCM.Unit unit1, UCM.Unit unit2)
     {
-        lock (m_currencyUnitsMutex) ;
-
         string symbol1 = "";
         string symbol2 = "";
+        CurrencyDataLoaderCurrencyDataState data = Volatile.Read(ref m_currencyData);
 
         // var itr1 = m_currencyMetadata.Try(unit1);
         // var itr2 = m_currencyMetadata.find(unit2);
-        if (m_currencyMetadata.TryGetValue(unit1, out var itr1)
-            && m_currencyMetadata.TryGetValue(unit2, out var itr2))
+        if (data.Metadata.TryGetValue(unit1, out var itr1)
+            && data.Metadata.TryGetValue(unit2, out var itr2))
         {
-            symbol1 = (itr1).symbol;
-            symbol2 = (itr2).symbol;
+            symbol1 = (itr1).Symbol;
+            symbol2 = (itr2).Symbol;
         }
 
         return (symbol1, symbol2);
     }
 
-    double RoundCurrencyRatio(double ratio)
+    static double RoundCurrencyRatio(double ratio)
     {
         // Compute how many decimals we need to display two meaningful digits at minimum
         // For example: 0.00000000342334 . 0.000000003423, 0.000212 . 0.000212
@@ -385,40 +388,37 @@ public partial class CurrencyDataLoader
 
     public (string, string) GetCurrencyRatioEquality(UCM.Unit unit1, UCM.Unit unit2)
     {
-        try
+        if (unit1 is null)
         {
-            // var  = m_currencyRatioMap.find(unit1);
-            if (m_currencyRatioMap.TryGetValue(unit1, out var iter)) //.end())
-            {
-                Dictionary<UCM.Unit, UCM.ConversionData> ratioMap = iter;
-
-                if (ratioMap.TryGetValue(unit2, out var iter2))
-                {
-                    double ratio = (iter2).ratio;
-                    double rounded = RoundCurrencyRatio(ratio);
-
-                    var digit = LocalizationSettings.GetInstance().GetDigitSymbolFromEnUsDigit('1');
-                    var digitSymbol = new String(digit, 1);
-                    var roundedFormat = m_ratioFormatter.Format(rounded);
-
-                    var ratioString = LocalizationStringUtil.GetLocalizedString(
-                        m_ratioFormat, digitSymbol, (unit1.abbreviation), roundedFormat, (unit2.abbreviation));
-
-                    var accessibleRatioString = LocalizationStringUtil.GetLocalizedString(
-                        m_ratioFormat, digitSymbol, (unit1.accessibleName), roundedFormat, (unit2.accessibleName));
-
-                    return (ratioString, accessibleRatioString);
-                }
-            }
+            throw new ArgumentNullException(nameof(unit1));
         }
-        catch
+
+        if (unit2 is null)
         {
+            throw new ArgumentNullException(nameof(unit2));
+        }
+
+        CurrencyDataLoaderCurrencyDataState data = Volatile.Read(ref m_currencyData);
+        if (data.Ratios.TryGetValue(unit1, out var ratioMap)
+            && ratioMap.TryGetValue(unit2, out var conversionData))
+        {
+            double rounded = RoundCurrencyRatio(conversionData.Ratio);
+            var digit = LocalizationSettings.Instance.GetDigitSymbolFromEnUsDigit('1');
+            var digitSymbol = new String(digit, 1);
+            var roundedFormat = m_ratioFormatter.Format(rounded);
+
+            var ratioString = LocalizationStringUtil.GetLocalizedString(
+                m_ratioFormat, digitSymbol, unit1.Abbreviation, roundedFormat, unit2.Abbreviation);
+            var accessibleRatioString = LocalizationStringUtil.GetLocalizedString(
+                m_ratioFormat, digitSymbol, unit1.AccessibleName, roundedFormat, unit2.AccessibleName);
+
+            return (ratioString, accessibleRatioString);
         }
 
         return ("", "");
     }
 
-// #pragma optimize("", off) // Optimization disabled for DevDiv 393321 compatibility
+    // #pragma optimize("", off) // Optimization disabled for DevDiv 393321 compatibility
     public async Task<bool> TryLoadDataFromCacheAsync()
     {
         try
@@ -427,33 +427,34 @@ public partial class CurrencyDataLoader
 
             var localSettings = ApplicationData.Current.LocalSettings;
             if (localSettings == null ||
-                !localSettings.Values.ContainsKey(CurrencyDataLoaderConstants.CacheTimestampKey))
+                !localSettings.Values.TryGetValue(CurrencyDataLoaderConstants.CacheTimestampKey, out object timestampValue) ||
+                timestampValue is not DateTime cachedTimestamp)
             {
                 return false;
             }
 
             bool loadComplete = false;
-            m_cacheTimestamp = (DateTime)(localSettings.Values[CurrencyDataLoaderConstants.CacheTimestampKey]);
+            m_cacheTimestamp = cachedTimestamp;
             if (Utilities.IsDateTimeOlderThan(m_cacheTimestamp, DAY_DURATION) && m_networkAccessBehavior == NetworkAccessBehavior.Normal)
             {
-                loadComplete = await TryLoadDataFromWebAsync();
+                loadComplete = await TryLoadDataFromWebAsync().ConfigureAwait(false);
             }
 
             if (!loadComplete)
             {
-                loadComplete = await TryFinishLoadFromCacheAsync();
+                loadComplete = await TryFinishLoadFromCacheAsync().ConfigureAwait(false);
             }
 
             return loadComplete;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (IsRecoverableCurrencyDataFailure(ex))
         {
-            TraceLogger.GetInstance().LogPlatformException(ViewMode.Currency, nameof(TryLoadDataFromWebAsync), ex);
+            TraceLogger.LogPlatformException(ViewMode.Currency, nameof(TryLoadDataFromCacheAsync), ex);
             return false;
         }
         // catch (const exception e)
         // {
-        //     TraceLogger.GetInstance().LogStandardException(ViewMode.Currency, __FUNCTIONW__, e);
+        //     TraceLogger.LogStandardException(ViewMode.Currency, __FUNCTIONW__, e);
         //     return false;
         // }
         // catch (...)
@@ -470,8 +471,9 @@ public partial class CurrencyDataLoader
             return false;
         }
 
-        if (!localSettings.Values.ContainsKey(CurrencyDataLoaderConstants.CacheLangcodeKey) ||
-            !(localSettings.Values[CurrencyDataLoaderConstants.CacheLangcodeKey]).Equals(m_responseLanguage))
+        if (!localSettings.Values.TryGetValue(CurrencyDataLoaderConstants.CacheLangcodeKey, out object cachedLanguageValue) ||
+            cachedLanguageValue is not string cachedLanguage ||
+            !cachedLanguage.Equals(m_responseLanguage, StringComparison.Ordinal))
         {
             return false;
         }
@@ -482,10 +484,15 @@ public partial class CurrencyDataLoader
             return false;
         }
 
-        String staticDataResponse =
-            await Utilities.ReadFileFromFolder(localCacheFolder, CurrencyDataLoaderConstants.StaticDataFilename);
-        String allRatiosResponse =
-            await Utilities.ReadFileFromFolder(localCacheFolder, CurrencyDataLoaderConstants.AllRatiosDataFilename);
+        String? staticDataResponse =
+            await Utilities.ReadFileFromFolder(localCacheFolder, CurrencyDataLoaderConstants.StaticDataFilename).ConfigureAwait(false);
+        String? allRatiosResponse =
+            await Utilities.ReadFileFromFolder(localCacheFolder, CurrencyDataLoaderConstants.AllRatiosDataFilename).ConfigureAwait(false);
+
+        if (staticDataResponse is null || allRatiosResponse is null)
+        {
+            return false;
+        }
 
         List<UCM.CurrencyStaticData> staticData = new();
         CurrencyRatioMap ratioMap = new();
@@ -497,7 +504,7 @@ public partial class CurrencyDataLoader
         }
 
         m_loadStatus = CurrencyLoadStatus.LoadedFromCache;
-        await FinalizeUnits(staticData, ratioMap);
+        await FinalizeUnits(staticData, ratioMap).ConfigureAwait(false);
 
         return true;
     }
@@ -514,8 +521,8 @@ public partial class CurrencyDataLoader
                 return false;
             }
 
-            String staticDataResponse = await m_client.GetCurrencyMetadataAsync();
-            String allRatiosResponse = await m_client.GetCurrencyRatiosAsync();
+            String staticDataResponse = await CurrencyHttpClient.GetCurrencyMetadataAsync().ConfigureAwait(false);
+            String allRatiosResponse = await CurrencyHttpClient.GetCurrencyRatiosAsync().ConfigureAwait(false);
             if (staticDataResponse == null || allRatiosResponse == null)
             {
                 return false;
@@ -534,7 +541,7 @@ public partial class CurrencyDataLoader
 
             try
             {
-                List<(String, String )> cachedFiles =
+                List<(String, String)> cachedFiles =
                     [(CurrencyDataLoaderConstants.StaticDataFilename, staticDataResponse),
                         (CurrencyDataLoaderConstants.AllRatiosDataFilename, allRatiosResponse)];
 
@@ -542,24 +549,25 @@ public partial class CurrencyDataLoader
                 foreach (var fileInfo in cachedFiles)
                 {
                     await Utilities.WriteFileToFolder(localCacheFolder, fileInfo.Item1, fileInfo.Item2,
-                        CreationCollisionOption.ReplaceExisting);
+                        CreationCollisionOption.ReplaceExisting).ConfigureAwait(false);
                 }
 
                 SaveLangCodeAndTimestamp();
             }
-            catch
+            catch (Exception ex) when (IsRecoverableCurrencyDataFailure(ex))
             {
                 // If we fail to save to cache it's okay, we should still continue.
+                TraceLogger.LogPlatformException(ViewMode.Currency, "SaveCurrencyDataToCache", ex);
             }
 
             m_loadStatus = CurrencyLoadStatus.LoadedFromWeb;
-            await FinalizeUnits(staticData, ratioMap);
+            await FinalizeUnits(staticData, ratioMap).ConfigureAwait(false);
 
             return true;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (IsRecoverableCurrencyDataFailure(ex))
         {
-            TraceLogger.GetInstance().LogPlatformException(ViewMode.Currency, nameof(TryLoadDataFromWebAsync), ex);
+            TraceLogger.LogPlatformException(ViewMode.Currency, nameof(TryLoadDataFromWebAsync), ex);
             return false;
         }
     }
@@ -567,19 +575,19 @@ public partial class CurrencyDataLoader
     public async Task<bool> TryLoadDataFromWebOverrideAsync()
     {
         m_meteredOverrideSet = true;
-        bool didLoad = await TryLoadDataFromWebAsync();
+        bool didLoad = await TryLoadDataFromWebAsync().ConfigureAwait(false);
         if (!didLoad)
         {
             m_loadStatus = CurrencyLoadStatus.FailedToLoad;
-            TraceLogger.GetInstance().LogError(ViewMode.Currency, "TryLoadDataFromWebOverrideAsync",
+            TraceLogger.LogError(ViewMode.Currency, "TryLoadDataFromWebOverrideAsync",
                 "UserRequestedRefreshFailed");
         }
 
         return didLoad;
     }
-// #pragma optimize("", on)
+    // #pragma optimize("", on)
 
-    bool TryParseWebResponses(
+    static bool TryParseWebResponses(
         String staticDataJson,
         String allRatiosJson,
         out List<UCM.CurrencyStaticData> staticData,
@@ -588,284 +596,274 @@ public partial class CurrencyDataLoader
         return TryParseStaticData(staticDataJson, out staticData) & TryParseAllRatiosData(allRatiosJson, out allRatiosData);
     }
 
-// bool TryParseStaticData(   String  rawJson,  ref  List<UCM.CurrencyStaticData> staticData)
-// {
-//     JsonArray  data = null;
-//     if (!JsonArray.TryParse(rawJson, &data))
-//     {
-//         return false;
-//     }
-//
-//     string countryCode =  "" ;
-//     string countryName =  "" ;
-//     string currencyCode =  "" ;
-//     string currencyName =  "" ;
-//     string currencySymbol =  "" ;
-//
-//     List<string> values = { &countryCode, &countryName, &currencyCode, &currencyName, &currencySymbol };
-//
-//     assert(valuesCount == STATIC_DATA_PROPERTIESCount);
-//     staticData.resize(size_t{ data.Size });
-//     for (uint i = 0; i < data.Size; i++)
-//     {
-//         JsonObject  obj;
-//         try
-//         {
-//             obj = data.GetAt(i).GetObject();
-//         }
-//         catch (COMException  e)
-//         {
-//             if (e.HResult == E_ILLEGAL_METHOD_CALL)
-//             {
-//                 continue;
-//             }
-//             else
-//             {
-//                 throw;
-//             }
-//         }
-//
-//         for (size_t j = 0; j < valuesCount; j++)
-//         {
-//             (*values[j]) = obj.GetNamedString(StringReference(STATIC_DATA_PROPERTIES[j].data()));
-//         }
-//
-//         staticData[i] = CurrencyStaticData{ countryCode, countryName, currencyCode, currencyName, currencySymbol };
-//     }
-//
-//     var sortCountryNames = [](UCM.CurrencyStaticData s) { return new String(s.countryName); };
-//
-//     LocalizationService.GetInstance().Sort<UCM.CurrencyStaticData>(staticData, sortCountryNames);
-//
-//     return true;
-// }
+    // bool TryParseStaticData(   String  rawJson,  ref  List<UCM.CurrencyStaticData> staticData)
+    // {
+    //     JsonArray  data = null;
+    //     if (!JsonArray.TryParse(rawJson, &data))
+    //     {
+    //         return false;
+    //     }
+    //
+    //     string countryCode =  "" ;
+    //     string countryName =  "" ;
+    //     string currencyCode =  "" ;
+    //     string currencyName =  "" ;
+    //     string currencySymbol =  "" ;
+    //
+    //     List<string> values = { &countryCode, &countryName, &currencyCode, &currencyName, &currencySymbol };
+    //
+    //     assert(valuesCount == STATIC_DATA_PROPERTIESCount);
+    //     staticData.resize(size_t{ data.Size });
+    //     for (uint i = 0; i < data.Size; i++)
+    //     {
+    //         JsonObject  obj;
+    //         try
+    //         {
+    //             obj = data.GetAt(i).GetObject();
+    //         }
+    //         catch (COMException  e)
+    //         {
+    //             if (e.HResult == E_ILLEGAL_METHOD_CALL)
+    //             {
+    //                 continue;
+    //             }
+    //             else
+    //             {
+    //                 throw;
+    //             }
+    //         }
+    //
+    //         for (size_t j = 0; j < valuesCount; j++)
+    //         {
+    //             (*values[j]) = obj.GetNamedString(StringReference(STATIC_DATA_PROPERTIES[j].data()));
+    //         }
+    //
+    //         staticData[i] = CurrencyStaticData{ countryCode, countryName, currencyCode, currencyName, currencySymbol };
+    //     }
+    //
+    //     var sortCountryNames = [](UCM.CurrencyStaticData s) { return new String(s.countryName); };
+    //
+    //     LocalizationService.GetInstance().Sort<UCM.CurrencyStaticData>(staticData, sortCountryNames);
+    //
+    //     return true;
+    // }
 
 
-    private bool TryParseStaticData(string rawJson, out List<UCM.CurrencyStaticData> staticData)
+    private static bool TryParseStaticData(string rawJson, out List<UCM.CurrencyStaticData> staticData)
     {
         staticData = new List<UCM.CurrencyStaticData>();
-        try
+        if (!JsonArray.TryParse(rawJson, out JsonArray? data) || data == null)
         {
-            if (JsonArray.TryParse(rawJson, out JsonArray? data) && data != null)
-            {
-                foreach (var item in data)
-                {
-                    if (item.ValueType == JsonValueType.Object)
-                    {
-                        JsonObject obj = item.GetObject();
-                        try
-                        {
-                            // Using KeyValuePair array like C++ version
-                            string countryCode = obj.GetNamedString(STATIC_DATA_PROPERTIES[0].Key, "");
-                            string countryName = obj.GetNamedString(STATIC_DATA_PROPERTIES[1].Key, "");
-                            string currencyCode = obj.GetNamedString(STATIC_DATA_PROPERTIES[2].Key, "");
-                            string currencyName = obj.GetNamedString(STATIC_DATA_PROPERTIES[3].Key, "");
-                            string currencySymbol = obj.GetNamedString(STATIC_DATA_PROPERTIES[4].Key, "");
-
-                            if (!string.IsNullOrEmpty(currencyCode)) // Basic validation
-                            {
-                                staticData.Add(new UCM.CurrencyStaticData
-                                {
-                                    countryCode = countryCode,
-                                    countryName = countryName,
-                                    currencyCode = currencyCode,
-                                    currencyName = currencyName,
-                                    currencySymbol = currencySymbol
-                                });
-                            }
-                        }
-                        catch (Exception ex) // Catch issues getting specific fields
-                        {
-                            TraceLogger.GetInstance().LogWarning("TryParseStaticData",
-                                $"Skipping item due to parsing error: {ex.Message}");
-                            continue; // Skip this item
-                        }
-                    }
-                    // else: item is not an object, skip it. Original C++ catches COMException E_ILLEGAL_METHOD_CALL
-                }
-
-                // Sort based on country name using LocalizationService
-                // Assuming LocalizationService.Sort takes a List and a Func<T, string> keySelector
-                LocalizationService.GetInstance().Sort(staticData, s => s.countryName);
-
-                return true;
-            }
-        }
-        catch (Exception ex) // Catch errors during initial parse or iteration
-        {
-            TraceLogger.GetInstance().LogPlatformException(ViewMode.Currency, "TryParseStaticData", ex);
-        }
-
-        return false;
-    }
-
-
-
-
-        private bool TryParseAllRatiosData(string rawJson, out CurrencyRatioMap allRatios)
-        {
-            allRatios = new CurrencyRatioMap();
-            try
-            {
-                if (JsonArray.TryParse(rawJson, out JsonArray? data) && data != null)
-                {
-                    string sourceCurrencyCode = LocalizationServiceProperties.DefaultCurrencyCode; // USD
-
-                    foreach (var item in data)
-                    {
-                         if (item.ValueType == JsonValueType.Object)
-                         {
-                             JsonObject obj = item.GetObject();
-                             try
-                             {
-                                 // Rt is ratio, An is target currency ISO code.
-                                 double relativeRatio = obj.GetNamedNumber(RATIO_KEY, 0.0); // Default to 0 if missing
-                                 string targetCurrencyCode = obj.GetNamedString(CURRENCY_CODE_KEY, "");
-
-                                 if (!string.IsNullOrEmpty(targetCurrencyCode) && relativeRatio > 0) // Basic validation
-                                 {
-                                     allRatios.Add(targetCurrencyCode, new UCM.CurrencyRatio (
-                                          relativeRatio,
-                                          sourceCurrencyCode,
-                                          targetCurrencyCode
-                                     ));
-                                 }
-                             }
-                             catch (Exception ex) // Catch issues getting specific fields
-                             {
-                                 TraceLogger.GetInstance().LogWarning("TryParseAllRatiosData", $"Skipping item due to parsing error: {ex.Message}");
-                                 continue; // Skip this item
-                             }
-                         }
-                         // else: item is not an object, skip it.
-                    }
-                    return true;
-                }
-            }
-            catch (Exception ex) // Catch errors during initial parse or iteration
-            {
-                TraceLogger.GetInstance().LogPlatformException(ViewMode.Currency, "TryParseAllRatiosData", ex);
-            }
             return false;
         }
 
-// FinalizeUnits
-//
-// There are a few ways we can get the data needed for Currency Converter, including from cache or from web.
-// This function accepts the data from any source, and acts as a 'last-steps' for the converter to be ready.
-// This includes identifying which units will be selected and building the map of currency ratios.
-// #pragma optimize("", off) // Optimization disabled for DevDiv 393321 compatibility
+        foreach (var item in data)
+        {
+            if (item.ValueType != JsonValueType.Object)
+            {
+                continue;
+            }
+
+            JsonObject obj = item.GetObject();
+            string countryCode = GetJsonStringOrEmpty(obj, STATIC_DATA_PROPERTIES[0].Key);
+            string countryName = GetJsonStringOrEmpty(obj, STATIC_DATA_PROPERTIES[1].Key);
+            string currencyCode = GetJsonStringOrEmpty(obj, STATIC_DATA_PROPERTIES[2].Key);
+            string currencyName = GetJsonStringOrEmpty(obj, STATIC_DATA_PROPERTIES[3].Key);
+            string currencySymbol = GetJsonStringOrEmpty(obj, STATIC_DATA_PROPERTIES[4].Key);
+
+            if (!string.IsNullOrEmpty(currencyCode))
+            {
+                staticData.Add(new UCM.CurrencyStaticData
+                {
+                    CountryCode = countryCode,
+                    CountryName = countryName,
+                    CurrencyCode = currencyCode,
+                    CurrencyName = currencyName,
+                    CurrencySymbol = currencySymbol
+                });
+            }
+        }
+
+        LocalizationService.GetInstance().Sort(staticData, staticDataItem => staticDataItem.CountryName);
+        return true;
+    }
+
+
+
+
+    private static bool TryParseAllRatiosData(string rawJson, out CurrencyRatioMap allRatios)
+    {
+        allRatios = new CurrencyRatioMap();
+        if (!JsonArray.TryParse(rawJson, out JsonArray? data) || data == null)
+        {
+            return false;
+        }
+
+        string sourceCurrencyCode = LocalizationServiceProperties.DefaultCurrencyCode;
+        foreach (var item in data)
+        {
+            if (item.ValueType != JsonValueType.Object)
+            {
+                continue;
+            }
+
+            JsonObject obj = item.GetObject();
+            double relativeRatio = GetJsonNumberOrZero(obj, RATIO_KEY);
+            string targetCurrencyCode = GetJsonStringOrEmpty(obj, CURRENCY_CODE_KEY);
+
+            if (!string.IsNullOrEmpty(targetCurrencyCode) && relativeRatio > 0)
+            {
+                allRatios[targetCurrencyCode] = new UCM.CurrencyRatio(
+                    relativeRatio,
+                    sourceCurrencyCode,
+                    targetCurrencyCode);
+            }
+        }
+
+        return true;
+    }
+
+    private static string GetJsonStringOrEmpty(JsonObject jsonObject, string propertyName)
+    {
+        if (jsonObject.TryGetValue(propertyName, out IJsonValue value)
+            && value.ValueType == JsonValueType.String)
+        {
+            return value.GetString();
+        }
+
+        return string.Empty;
+    }
+
+    private static double GetJsonNumberOrZero(JsonObject jsonObject, string propertyName)
+    {
+        if (jsonObject.TryGetValue(propertyName, out IJsonValue value)
+            && value.ValueType == JsonValueType.Number)
+        {
+            return value.GetNumber();
+        }
+
+        return 0;
+    }
+
+    // FinalizeUnits
+    //
+    // There are a few ways we can get the data needed for Currency Converter, including from cache or from web.
+    // This function accepts the data from any source, and acts as a 'last-steps' for the converter to be ready.
+    // This includes identifying which units will be selected and building the map of currency ratios.
+    // #pragma optimize("", off) // Optimization disabled for DevDiv 393321 compatibility
     async Task FinalizeUnits(List<UCM.CurrencyStaticData> staticData, CurrencyRatioMap ratioMap)
     {
         Dictionary<int, (UCM.Unit, double)> idToUnit = new();
+        List<UCM.Unit> currencyUnits = new();
+        Dictionary<UCM.Unit, CurrencyUnitMetadata> currencyMetadata = new();
+        UCM.UnitToUnitToConversionDataMap currencyRatioMap = new UCM.UnitToUnitToConversionDataMap();
 
-        SelectedUnits defaultCurrencies = await GetDefaultFromToCurrency();
+        SelectedUnits defaultCurrencies = await GetDefaultFromToCurrency().ConfigureAwait(false);
         string fromCurrency = defaultCurrencies.first;
         string toCurrency = defaultCurrencies.second;
 
-        lock (m_currencyUnitsMutex)
+        int i = 1;
+        bool isConversionSourceSet = false;
+        bool isConversionTargetSet = false;
+        foreach (UCM.CurrencyStaticData currencyUnit in staticData)
         {
-
-            int i = 1;
-            m_currencyUnits.Clear();
-            m_currencyMetadata.Clear();
-            bool isConversionSourceSet = false;
-            bool isConversionTargetSet = false;
-            foreach (UCM.CurrencyStaticData currencyUnit in staticData)
+            //var itr = ratioMap.find(currencyUnit.currencyCode);
+            if (ratioMap.TryGetValue(currencyUnit.CurrencyCode, out var itr))//itr  != ratioMap.end() && (itr.second).ratio > 0)
             {
-                //var itr = ratioMap.find(currencyUnit.currencyCode);
-                if ( ratioMap.TryGetValue(currencyUnit.currencyCode, out var itr) )//itr  != ratioMap.end() && (itr.second).ratio > 0)
-                {
-                    int id = (int)(UnitConverterUnits.UnitEnd + i);
+                int id = (int)(UnitConverterUnit.UnitEnd + i);
 
-                    bool isConversionSource = (fromCurrency == currencyUnit.currencyCode);
-                    isConversionSourceSet = isConversionSourceSet || isConversionSource;
+                bool isConversionSource = (fromCurrency == currencyUnit.CurrencyCode);
+                isConversionSourceSet = isConversionSourceSet || isConversionSource;
 
-                    bool isConversionTarget = (toCurrency == currencyUnit.currencyCode);
-                    isConversionTargetSet = isConversionTargetSet || isConversionTarget;
+                bool isConversionTarget = (toCurrency == currencyUnit.CurrencyCode);
+                isConversionTargetSet = isConversionTargetSet || isConversionTarget;
 
-                    UCM.Unit unit = new UCM.Unit(
-                        id, // id
-                        currencyUnit.currencyName, // currencyName
-                        currencyUnit.countryName, // countryName
-                        currencyUnit.currencyCode, // abbreviation
-                        m_isRtlLanguage, // isRtlLanguage
-                        isConversionSource, // isConversionSource
-                        isConversionTarget // isConversionTarget
-                    );
+                UCM.Unit unit = new UCM.Unit(
+                    id, // id
+                    currencyUnit.CurrencyName, // currencyName
+                    currencyUnit.CountryName, // countryName
+                    currencyUnit.CurrencyCode, // abbreviation
+                    m_isRtlLanguage, // isRtlLanguage
+                    isConversionSource, // isConversionSource
+                    isConversionTarget // isConversionTarget
+                );
 
-                    m_currencyUnits.Add(unit);
-                    m_currencyMetadata.Add(unit, new CurrencyUnitMetadata(currencyUnit.currencySymbol));
-                    idToUnit.Add(unit.id, (unit, (itr).ratio));
-                    i++;
-                }
+                currencyUnits.Add(unit);
+                currencyMetadata.Add(unit, new CurrencyUnitMetadata(currencyUnit.CurrencySymbol));
+                idToUnit.Add(
+                    unit.Id,
+                    (unit, itr.Ratio));
+                i++;
+            }
+        }
+
+        if (!isConversionSourceSet || !isConversionTargetSet)
+        {
+            GuaranteeSelectedUnits(currencyUnits);
+            defaultCurrencies = (DEFAULT_FROM_CURRENCY, DEFAULT_TO_CURRENCY);
+        }
+
+        foreach (var unit in currencyUnits)
+        {
+            Dictionary<UCM.Unit, UCM.ConversionData> conversions = new();
+            double unitFactor = idToUnit[unit.Id].Item2;
+            foreach (var itr in idToUnit)
+            {
+
+                UCM.Unit targetUnit = (itr.Value.Item1);
+                double conversionRatio = (itr.Value.Item2);
+                UCM.ConversionData parsedData = new(1.0, 0.0, false);
+                Debug.Assert(unitFactor > 0); // divide by zero assert
+                parsedData.Ratio = conversionRatio / unitFactor;
+                conversions.Add(targetUnit, parsedData);
             }
 
-            if (!isConversionSourceSet || !isConversionTargetSet)
-            {
-                GuaranteeSelectedUnits();
-                defaultCurrencies = (DEFAULT_FROM_CURRENCY, DEFAULT_TO_CURRENCY);
-            }
+            currencyRatioMap.Add(unit, conversions);
+        }
 
-            m_currencyRatioMap.Clear();
-            foreach (var unit in m_currencyUnits)
-            {
-                Dictionary<UCM.Unit, UCM.ConversionData> conversions = new();
-                double unitFactor = idToUnit[unit.id].Item2;
-                foreach(var itr in idToUnit)
-                {
-
-                    UCM.Unit targetUnit = (itr.Value.Item1);
-                    double conversionRatio = (itr.Value.Item2);
-                    UCM.ConversionData parsedData = new ( 1.0, 0.0, false );
-                    Debug.Assert(unitFactor > 0); // divide by zero assert
-                    parsedData.ratio = conversionRatio / unitFactor;
-                    conversions.Add(targetUnit, parsedData);
-                }
-
-                m_currencyRatioMap.Add(unit, conversions);
-            }
-        } // unlocked m_currencyUnitsMutex
+        Volatile.Write(
+            ref m_currencyData,
+            new CurrencyDataLoaderCurrencyDataState(currencyUnits, currencyRatioMap, currencyMetadata));
 
         SaveSelectedUnitsToLocalSettings(defaultCurrencies);
     }
-// #pragma optimize("", on)
+    // #pragma optimize("", on)
 
-    void GuaranteeSelectedUnits()
+    static void GuaranteeSelectedUnits(List<UCM.Unit> currencyUnits)
     {
         bool isConversionSourceSet = false;
         bool isConversionTargetSet = false;
-        foreach (UCM.Unit unit in m_currencyUnits)
+        foreach (UCM.Unit unit in currencyUnits)
         {
-            unit.isConversionSource = false;
-            unit.isConversionTarget = false;
+            unit.IsConversionSource = false;
+            unit.IsConversionTarget = false;
 
-            if (!isConversionSourceSet && unit.abbreviation == DEFAULT_FROM_CURRENCY)
+            if (!isConversionSourceSet && unit.Abbreviation == DEFAULT_FROM_CURRENCY)
             {
-                unit.isConversionSource = true;
+                unit.IsConversionSource = true;
                 isConversionSourceSet = true;
             }
 
-            if (!isConversionTargetSet && unit.abbreviation == DEFAULT_TO_CURRENCY)
+            if (!isConversionTargetSet && unit.Abbreviation == DEFAULT_TO_CURRENCY)
             {
-                unit.isConversionTarget = true;
+                unit.IsConversionTarget = true;
                 isConversionTargetSet = true;
             }
         }
 
         // If still not set for either source or target, just select the first currency in the list
 
-        if (m_currencyUnits.Count != 0)
+        if (currencyUnits.Count != 0)
         {
             if (!isConversionSourceSet)
             {
-                m_currencyUnits[0].isConversionSource = true;
+                currencyUnits[0].IsConversionSource = true;
                 isConversionSourceSet = true;
             }
 
             if (!isConversionTargetSet)
             {
-                m_currencyUnits[0].isConversionTarget = true;
+                currencyUnits[0].IsConversionTarget = true;
                 isConversionTargetSet = true;
             }
         }
@@ -924,7 +922,7 @@ public partial class CurrencyDataLoader
         return "";
     }
 
-// #pragma optimize("", off) // Optimization disabled for DevDiv 393321 compatibility
+    // #pragma optimize("", off) // Optimization disabled for DevDiv 393321 compatibility
     async Task<SelectedUnits> GetDefaultFromToCurrency()
     {
         string fromCurrency = DEFAULT_FROM_CURRENCY;
@@ -942,27 +940,46 @@ public partial class CurrencyDataLoader
                 if (defaultFromToCurrencyFile != null)
                 {
                     String fileContents = await FileIO.ReadTextAsync(defaultFromToCurrencyFile);
-                    JsonObject fromToObject = JsonObject.Parse(fileContents);
-                    JsonObject regionalDefaults = fromToObject.GetNamedObject(m_responseLanguage);
-
-                    // Get both values before assignment in-case either fails.
-                    String selectedFrom = regionalDefaults.GetNamedString((FROM_KEY));
-                    String selectedTo = regionalDefaults.GetNamedString((TO_KEY));
-
-                    fromCurrency = selectedFrom;
-                    toCurrency = selectedTo;
+                    if (JsonObject.TryParse(fileContents, out JsonObject? fromToObject)
+                        && fromToObject != null
+                        && fromToObject.TryGetValue(m_responseLanguage, out IJsonValue regionalValue)
+                        && regionalValue.ValueType == JsonValueType.Object)
+                    {
+                        JsonObject regionalDefaults = regionalValue.GetObject();
+                        String selectedFrom = GetJsonStringOrEmpty(regionalDefaults, FROM_KEY);
+                        String selectedTo = GetJsonStringOrEmpty(regionalDefaults, TO_KEY);
+                        if (!string.IsNullOrEmpty(selectedFrom) && !string.IsNullOrEmpty(selectedTo))
+                        {
+                            fromCurrency = selectedFrom;
+                            toCurrency = selectedTo;
+                        }
+                    }
                 }
             }
-            catch
+            catch (Exception ex) when (IsRecoverableCurrencyDataFailure(ex))
             {
+                TraceLogger.LogPlatformException(ViewMode.Currency, nameof(GetDefaultFromToCurrency), ex);
             }
         }
 
         return (fromCurrency, toCurrency);
     }
-// #pragma optimize("", on)
 
-    bool TryGetLastUsedCurrenciesFromLocalSettings(out string fromCurrency, out string toCurrency)
+    static bool IsRecoverableCurrencyDataFailure(Exception exception)
+    {
+        return exception is ArgumentException
+            or FormatException
+            or InvalidOperationException
+            or IOException
+            or UnauthorizedAccessException
+            or COMException
+            or HttpRequestException
+            or TaskCanceledException
+            or OverflowException;
+    }
+    // #pragma optimize("", on)
+
+    static bool TryGetLastUsedCurrenciesFromLocalSettings(out string fromCurrency, out string toCurrency)
     {
 
         String fromKey = UnitConverterResourceKeys.CurrencyUnitFromKey;
@@ -971,10 +988,13 @@ public partial class CurrencyDataLoader
         if (localSettings != null && localSettings.Values != null)
         {
             IPropertySet values = localSettings.Values;
-            if (values.ContainsKey(fromKey) && values.ContainsKey(toKey))
+            if (values.TryGetValue(fromKey, out object fromValue) &&
+                fromValue is string storedFromCurrency &&
+                values.TryGetValue(toKey, out object toValue) &&
+                toValue is string storedToCurrency)
             {
-                fromCurrency = (String)(values[fromKey]);
-                toCurrency = (String)(values[toKey]);
+                fromCurrency = storedFromCurrency;
+                toCurrency = storedToCurrency;
 
                 return true;
             }
@@ -986,7 +1006,7 @@ public partial class CurrencyDataLoader
         return false;
     }
 
-    void SaveSelectedUnitsToLocalSettings(SelectedUnits selectedUnits)
+    static void SaveSelectedUnitsToLocalSettings(SelectedUnits selectedUnits)
     {
         String fromKey = UnitConverterResourceKeys.CurrencyUnitFromKey;
         String toKey = UnitConverterResourceKeys.CurrencyUnitToKey;
@@ -994,8 +1014,8 @@ public partial class CurrencyDataLoader
         if (localSettings != null && localSettings.Values != null)
         {
             IPropertySet values = localSettings.Values;
-            values.TryAdd(fromKey, (selectedUnits.first));
-            values.TryAdd(toKey, (selectedUnits.second));
+            values[fromKey] = selectedUnits.first;
+            values[toKey] = selectedUnits.second;
         }
     }
 }

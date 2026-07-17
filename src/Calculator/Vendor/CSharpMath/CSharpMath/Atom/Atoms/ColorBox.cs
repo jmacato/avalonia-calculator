@@ -3,7 +3,8 @@ using System.Drawing;
 
 namespace CSharpMath.Atom.Atoms;
 
-public sealed class ColorBox(Color color, MathList innerList) : MathAtom(string.Empty), IMathListContainer {
+public sealed class ColorBox(Color color, MathList innerList) : MathAtom(string.Empty), IMathListContainer
+{
     public Color Color { get; set; } = color;
     public MathList InnerList { get; } = innerList;
 

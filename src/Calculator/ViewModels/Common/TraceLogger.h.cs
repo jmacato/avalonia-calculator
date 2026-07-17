@@ -1,77 +1,25 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 // #pragma  once
-
 // #include  "NavCategory.h"
 // #include  "CalculatorButtonUser.h"
-
 // A trace logging provider can only be instantiated and registered once per module.
 // This class implements a singleton model ensure that only one instance is created.
-
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading.Channels;
 
 namespace CalculatorApp.ViewModel.Common;
-
-public struct ButtonLog
-{
-    public int count;
-    public CalculatorApp.ViewModel.Common.NumbersAndOperatorsEnum button;
-    public CalculatorApp.ViewModel.Common.ViewMode mode;
-
-    public ButtonLog(CalculatorApp.ViewModel.Common.NumbersAndOperatorsEnum btn,
-        CalculatorApp.ViewModel.Common.ViewMode vMode)
-    {
-        button = btn;
-        mode = vMode;
-        count = 1;
-    }
-};
-
-public enum GraphSettingsType
-{
-    Grid,
-    TrigUnits,
-    Theme
-};
-
-public enum GraphButton
-{
-    StylePicker,
-    RemoveFunction,
-    ActiveTracingChecked,
-    ActiveTracingUnchecked,
-    GraphSettings,
-    Share,
-    ZoomIn,
-    ZoomOut,
-    GraphView
-};
-
-public enum GraphButtonValue
-{
-    None,
-    AutomaticBestFit,
-    ManualAdjustment
-};
-
-public enum LineStyleType
-{
-    Color,
-    Pattern
-};
 
 public partial class TraceLogger
 {
     // public:
     //     static TraceLogger  GetInstance();
-
     // void LogModeChange(CalculatorApp.ViewModel.Common.ViewMode mode);
     // void LogHistoryItemLoad(CalculatorApp.ViewModel.Common.ViewMode mode, int historyListSize, int loadedIndex);
     // void LogMemoryItemLoad(CalculatorApp.ViewModel.Common.ViewMode mode, int memoryListSize, int loadedIndex);
-    // void UpdateButtonUsage(CalculatorApp.ViewModel.Common.NumbersAndOperatorsEnum button, CalculatorApp.ViewModel.Common.ViewMode mode);
+    // void UpdateButtonUsage(CalculatorApp.ViewModel.Common.CalculatorButtonId button, CalculatorApp.ViewModel.Common.ViewMode mode);
     // void LogButtonUsage();
     // void LogDateCalculationModeUsed(bool AddSubtractMode);
     // void UpdateWindowCount(ulong windowCount);
@@ -98,12 +46,11 @@ public partial class TraceLogger
     // internal:
     // void LogPlatformException(CalculatorApp.ViewModel.Common.ViewMode mode, string functionName, Exception e);
     // void LogStandardException(CalculatorApp.ViewModel.Common.ViewMode mode, string functionName,  Exception e);
-
     // private:
     //     // Create an instance of TraceLogger
     //     TraceLogger();
-
-    List<ButtonLog> buttonLog = new List<ButtonLog>();
-    ConcurrentBag<int> windowIdLog = new ConcurrentBag<int>();
-    ulong currentWindowCount = 0;
+    private readonly Channel<ButtonLog> _buttonLog = Channel.CreateBounded<ButtonLog>(new BoundedChannelOptions(512) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true, SingleWriter = false, AllowSynchronousContinuations = false });
+    private readonly ConcurrentDictionary<int, byte> _windowIds = new();
+    private int _buttonLogDrainActive;
+    private long _currentWindowCount;
 };

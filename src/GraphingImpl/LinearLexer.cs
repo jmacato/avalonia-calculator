@@ -4,45 +4,11 @@ using Graphing;
 
 namespace GraphingImpl;
 
-internal enum TokenKind
-{
-    End,
-    Number,
-    Identifier,
-    Plus,
-    Minus,
-    Star,
-    Slash,
-    Caret,
-    OpenParenthesis,
-    CloseParenthesis,
-    OpenBracket,
-    CloseBracket,
-    OpenBrace,
-    CloseBrace,
-    Comma,
-    Semicolon,
-    Equal,
-    Less,
-    LessOrEqual,
-    Greater,
-    GreaterOrEqual,
-    Bang,
-    Radical
-}
-
-internal readonly record struct Token(
-    TokenKind Kind,
-    SourceSpan Span,
-    string Text,
-    ExactRational Number = default);
-
 internal sealed class LinearLexer
 {
     private readonly string _source;
     private readonly char _decimalSeparator;
     private int _position;
-
     public LinearLexer(string source, LocalizationType localization)
     {
         _source = source;
@@ -84,10 +50,7 @@ internal sealed class LinearLexer
             '\u2061' => Next(),
             _ when char.IsDigit(current) || current == _decimalSeparator => ReadNumber(start),
             _ when IsIdentifierStart(current) => ReadIdentifier(start),
-            _ => throw new GraphParseException(
-                SyntaxErrorCode.InvalidToken,
-                new SourceSpan(start, 1),
-                $"Invalid character U+{(int)current:X4}.")
+            _ => throw new GraphParseException(SyntaxErrorCode.InvalidToken, new SourceSpan(start, 1), $"Invalid character U+{(int)current:X4}.")
         };
     }
 
@@ -96,7 +59,6 @@ internal sealed class LinearLexer
         bool sawDecimal = _source[start] == _decimalSeparator;
         bool sawDigit = char.IsDigit(_source[start]);
         int digitCount = sawDigit ? 1 : 0;
-
         while (_position < _source.Length)
         {
             char value = _source[_position];
@@ -112,10 +74,7 @@ internal sealed class LinearLexer
             {
                 if (sawDecimal)
                 {
-                    throw new GraphParseException(
-                        SyntaxErrorCode.TooManyDecimalPoints,
-                        new SourceSpan(start, _position - start + 1),
-                        "A number contains more than one decimal separator.");
+                    throw new GraphParseException(SyntaxErrorCode.TooManyDecimalPoints, new SourceSpan(start, _position - start + 1), "A number contains more than one decimal separator.");
                 }
 
                 sawDecimal = true;
@@ -128,20 +87,14 @@ internal sealed class LinearLexer
 
         if (!sawDigit)
         {
-            throw new GraphParseException(
-                SyntaxErrorCode.DecimalPointWithoutDigits,
-                new SourceSpan(start, _position - start),
-                "A decimal separator must have an adjacent digit.");
+            throw new GraphParseException(SyntaxErrorCode.DecimalPointWithoutDigits, new SourceSpan(start, _position - start), "A decimal separator must have an adjacent digit.");
         }
 
         // 4096 binary digits is approximately 1234 decimal digits. Rejecting
         // before conversion also avoids pathological parser work.
         if (digitCount > 1_234)
         {
-            throw new GraphParseException(
-                SyntaxErrorCode.GeneralError,
-                new SourceSpan(start, _position - start),
-                $"Exact values are limited to {GraphLimits.MaximumExactValueBits} bits.");
+            throw new GraphParseException(SyntaxErrorCode.GeneralError, new SourceSpan(start, _position - start), $"Exact values are limited to {GraphLimits.MaximumExactValueBits} bits.");
         }
 
         if (_position < _source.Length && (_source[_position] is 'e' or 'E'))
@@ -173,17 +126,11 @@ internal sealed class LinearLexer
         }
         catch (OverflowException)
         {
-            throw new GraphParseException(
-                SyntaxErrorCode.GeneralError,
-                new SourceSpan(start, _position - start),
-                $"Exact values are limited to {GraphLimits.MaximumExactValueBits} bits.");
+            throw new GraphParseException(SyntaxErrorCode.GeneralError, new SourceSpan(start, _position - start), $"Exact values are limited to {GraphLimits.MaximumExactValueBits} bits.");
         }
         catch (FormatException)
         {
-            throw new GraphParseException(
-                SyntaxErrorCode.InvalidNumberDigit,
-                new SourceSpan(start, _position - start),
-                "The numeric literal is invalid or outside the supported range.");
+            throw new GraphParseException(SyntaxErrorCode.InvalidNumberDigit, new SourceSpan(start, _position - start), "The numeric literal is invalid or outside the supported range.");
         }
 
         return new Token(TokenKind.Number, new SourceSpan(start, _position - start), text, number);
@@ -205,12 +152,8 @@ internal sealed class LinearLexer
         return new Token(TokenKind.Identifier, new SourceSpan(start, _position - start), value);
     }
 
-    private Token Single(TokenKind kind, int start) =>
-        new(kind, new SourceSpan(start, 1), _source.Substring(start, 1));
-
-    private Token TokenFrom(TokenKind kind, int start) =>
-        new(kind, new SourceSpan(start, _position - start), _source[start.._position]);
-
+    private Token Single(TokenKind kind, int start) => new(kind, new SourceSpan(start, 1), _source.Substring(start, 1));
+    private Token TokenFrom(TokenKind kind, int start) => new(kind, new SourceSpan(start, _position - start), _source[start.._position]);
     private bool Match(char expected)
     {
         if (_position >= _source.Length || _source[_position] != expected)
@@ -230,9 +173,6 @@ internal sealed class LinearLexer
         }
     }
 
-    private static bool IsIdentifierStart(char value) =>
-        char.IsLetter(value) || value is '_' or '\u03C0' or '\u03A0';
-
-    private static bool IsIdentifierPart(char value) =>
-        char.IsLetterOrDigit(value) || value is '_' or '\u2032' or '\u2033';
+    private static bool IsIdentifierStart(char value) => char.IsLetter(value) || value is '_' or '\u03C0' or '\u03A0';
+    private static bool IsIdentifierPart(char value) => char.IsLetterOrDigit(value) || value is '_' or '\u2032' or '\u2033';
 }

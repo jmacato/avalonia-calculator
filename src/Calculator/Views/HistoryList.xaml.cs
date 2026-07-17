@@ -155,7 +155,7 @@ public sealed partial class HistoryList : UserControl
         }
     }
 
-    private void OnDeleteSwipeInvoked(SwipeItem sender, SwipeItemInvokedEventArgs e)
+    private void OnDeleteSwipeInvoked(object? sender, SwipeItemInvokedEventArgs e)
     {
         if (e.SwipeControl.DataContext is HistoryItemViewModel swipedItem)
         {

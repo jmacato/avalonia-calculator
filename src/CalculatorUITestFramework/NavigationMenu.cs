@@ -1,44 +1,21 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 using OpenQA.Selenium.Appium.Windows;
-
 using System;
 
 namespace CalculatorUITestFramework
 {
-    public enum CalculatorMode
-    {
-        StandardCalculator,
-        ScientificCalculator,
-        ProgrammerCalculator,
-        DateCalculator,
-        Currency,
-        Volume,
-        Length,
-        Weight,
-        Temperature,
-        Energy,
-        Area,
-        Speed,
-        Time,
-        Power,
-        Data,
-        Pressure,
-        Angle
-    }
-
     public class NavigationMenu
     {
-        public WindowsElement NavigationMenuButton => this.session.TryFindElementByAccessibilityId("TogglePaneButton");
-        public WindowsElement NavigationMenuPane => this.session.TryFindElementByClassName("SplitViewPane");
-
-        private WindowsDriver<WindowsElement> session => CalculatorDriver.Instance.CalculatorSession;
+        public WindowsElement NavigationMenuButton => Session.TryFindElementByAccessibilityId("TogglePaneButton");
+        public WindowsElement NavigationMenuPane => Session.TryFindElementByClassName("SplitViewPane");
+        private readonly CalculatorDriver driver = CalculatorDriver.Instance;
+        private WindowsDriver<WindowsElement> Session => driver.CalculatorSession;
 
         /// <summary>
         /// Changes the mode using the navigation menu in the UI
         /// </summary>
-        /// <param name="mode">The mode to be changed to</param>
+        /// <param name = "mode">The mode to be changed to</param>
         public void ChangeCalculatorMode(CalculatorMode mode)
         {
             string modeAccessibilityId = mode switch
@@ -62,10 +39,9 @@ namespace CalculatorUITestFramework
                 CalculatorMode.Angle => "Angle",
                 _ => throw (new ArgumentException("The mode is not valid"))
             };
-
             this.NavigationMenuButton.Click();
             this.NavigationMenuPane.WaitForDisplayed();
-            this.session.TryFindElementByAccessibilityId(modeAccessibilityId).Click();
+            Session.TryFindElementByAccessibilityId(modeAccessibilityId).Click();
         }
     }
 }

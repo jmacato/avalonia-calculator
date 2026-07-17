@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Numerics;
 using System.Text;
 
 namespace Graphing.Symbolics;
@@ -53,12 +52,12 @@ internal sealed class UnivariatePolynomial : IEquatable<UnivariatePolynomial>
 
         if (length - 1 > AnalysisLimits.UnivariateDegree)
         {
-            throw new BudgetExceededException(nameof(AnalysisLimits.UnivariateDegree));
+            throw BudgetExceededException.ForLimit(nameof(AnalysisLimits.UnivariateDegree));
         }
 
         if (length > AnalysisLimits.Monomials)
         {
-            throw new BudgetExceededException(nameof(AnalysisLimits.Monomials));
+            throw BudgetExceededException.ForLimit(nameof(AnalysisLimits.Monomials));
         }
 
         var normalized = ImmutableArray.CreateBuilder<BigRational>(length);
@@ -120,7 +119,7 @@ internal sealed class UnivariatePolynomial : IEquatable<UnivariatePolynomial>
         int degree = checked(Degree + other.Degree);
         if (degree > AnalysisLimits.UnivariateDegree)
         {
-            throw new BudgetExceededException(nameof(AnalysisLimits.UnivariateDegree));
+            throw BudgetExceededException.ForLimit(nameof(AnalysisLimits.UnivariateDegree));
         }
 
         var result = new BigRational[degree + 1];
@@ -250,25 +249,25 @@ internal sealed class UnivariatePolynomial : IEquatable<UnivariatePolynomial>
             return Zero;
         }
 
-        BigInteger denominatorLcm = BigInteger.One;
+        ExactInteger denominatorLcm = ExactInteger.One;
         foreach (BigRational coefficient in _coefficients)
         {
             budget.Charge();
             denominatorLcm = Lcm(denominatorLcm, coefficient.Denominator);
         }
 
-        BigInteger content = BigInteger.Zero;
-        var integers = new BigInteger[_coefficients.Length];
+        ExactInteger content = ExactInteger.Zero;
+        var integers = new ExactInteger[_coefficients.Length];
         for (int index = 0; index < integers.Length; index++)
         {
             budget.Charge();
             integers[index] = _coefficients[index].Numerator * (denominatorLcm / _coefficients[index].Denominator);
-            content = BigInteger.GreatestCommonDivisor(content, BigInteger.Abs(integers[index]));
+            content = ExactInteger.GreatestCommonDivisor(content, ExactInteger.Abs(integers[index]));
         }
 
         if (integers[^1].Sign < 0)
         {
-            content = BigInteger.Negate(content);
+            content = ExactInteger.Negate(content);
         }
 
         return Create(integers.Select(value => new BigRational(value / content)), budget);
@@ -373,6 +372,6 @@ internal sealed class UnivariatePolynomial : IEquatable<UnivariatePolynomial>
 
     public override string ToString() => Canonical;
 
-    private static BigInteger Lcm(BigInteger left, BigInteger right) =>
-        BigInteger.Abs((left / BigInteger.GreatestCommonDivisor(left, right)) * right);
+    private static ExactInteger Lcm(ExactInteger left, ExactInteger right) =>
+        ExactInteger.Abs((left / ExactInteger.GreatestCommonDivisor(left, right)) * right);
 }

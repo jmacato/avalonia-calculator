@@ -7,7 +7,7 @@ using SkiaSharp;
 
 namespace Avalonia.Labs.Lottie;
 
-internal class LottieCompositionCustomVisualHandler : CompositionCustomVisualHandler
+internal sealed class LottieCompositionCustomVisualHandler : CompositionCustomVisualHandler, IDisposable
 {
     private TimeSpan _primaryTimeElapsed, _animationElapsed;
     private TimeSpan? _lastServerTime;
@@ -17,7 +17,6 @@ internal class LottieCompositionCustomVisualHandler : CompositionCustomVisualHan
     private Stretch? _stretch;
     private StretchDirection? _stretchDirection;
     private SkiaSharp.SceneGraph.InvalidationController? _ic;
-    private readonly object _sync = new();
     private int _repeatCount;
     private int _count;
     private int _playBackRate;
@@ -42,84 +41,84 @@ internal class LottieCompositionCustomVisualHandler : CompositionCustomVisualHan
                 RepeatCount: { } rp,
                 PlayBackRate: { } pbr
             }:
-            {
-                _running = true;
-                _paused = false;
-                _lastServerTime = null;
-                _stretch = st;
-                _stretchDirection = sd;
-                _animation = an;
-                _repeatCount = rp;
-                _playBackRate = pbr;
-                _count = 0;
-                _animationElapsed = TimeSpan.Zero;
-                _onAnimationCompleted = msg.OnAnimationCompleted;
-                _onAnimationCompletedRepetition = msg.OnAnimationCompletedRepetition;
-                RegisterForNextAnimationFrameUpdate();
-                break;
-            }
+                {
+                    _running = true;
+                    _paused = false;
+                    _lastServerTime = null;
+                    _stretch = st;
+                    _stretchDirection = sd;
+                    _animation = an;
+                    _repeatCount = rp;
+                    _playBackRate = pbr;
+                    _count = 0;
+                    _animationElapsed = TimeSpan.Zero;
+                    _onAnimationCompleted = msg.OnAnimationCompleted;
+                    _onAnimationCompletedRepetition = msg.OnAnimationCompletedRepetition;
+                    RegisterForNextAnimationFrameUpdate();
+                    break;
+                }
             case
             {
                 LottieCommand: LottieCommand.Pause
             }:
-            {
-                _paused = true;
-                break;
-            }
+                {
+                    _paused = true;
+                    break;
+                }
             case
             {
                 LottieCommand: LottieCommand.Resume
             }:
-            {
-                _paused = false;
-                RegisterForNextAnimationFrameUpdate();
-                break;
-            }
+                {
+                    _paused = false;
+                    RegisterForNextAnimationFrameUpdate();
+                    break;
+                }
             case
             {
                 LottieCommand: LottieCommand.Seek
             }:
-            {
-                if (msg.SeekFrame.HasValue)
                 {
-                    SeekToFrame(msg.SeekFrame.Value);
+                    if (msg.SeekFrame.HasValue)
+                    {
+                        SeekToFrame(msg.SeekFrame.Value);
+                    }
+                    else if (msg.SeekProgress.HasValue)
+                    {
+                        SeekToProgress(msg.SeekProgress.Value);
+                    }
+                    break;
                 }
-                else if (msg.SeekProgress.HasValue)
-                {
-                    SeekToProgress(msg.SeekProgress.Value);
-                }
-                break;
-            }
             case
             {
                 LottieCommand: LottieCommand.Update,
                 Stretch: { } st,
                 StretchDirection: { } sd
             }:
-            {
-                _stretch = st;
-                _stretchDirection = sd;
-                RegisterForNextAnimationFrameUpdate();
-                break;
-            }
+                {
+                    _stretch = st;
+                    _stretchDirection = sd;
+                    RegisterForNextAnimationFrameUpdate();
+                    break;
+                }
             case
             {
                 LottieCommand: LottieCommand.Stop
             }:
-            {
-                _running = false;
-                _animationElapsed = TimeSpan.Zero;
-                _count = 0;
-                break;
-            }
+                {
+                    _running = false;
+                    _animationElapsed = TimeSpan.Zero;
+                    _count = 0;
+                    break;
+                }
             case
             {
                 LottieCommand: LottieCommand.Dispose
             }:
-            {
-                DisposeImpl();
-                break;
-            }
+                {
+                    Dispose();
+                    break;
+                }
         }
     }
 
@@ -173,14 +172,14 @@ internal class LottieCompositionCustomVisualHandler : CompositionCustomVisualHan
 
     private void DisposeImpl()
     {
-        lock (_sync)
-        {
-            _animation?.Dispose();
-            _animation = null;
-            _ic?.End();
-            _ic?.Dispose();
-            _ic = null;
-        }
+        // CompositionCustomVisualHandler callbacks are serialized by the
+        // compositor that owns this handler. Keep Skottie lifetime on that
+        // owner thread instead of introducing render-thread lock contention.
+        _animation?.Dispose();
+        _animation = null;
+        _ic?.End();
+        _ic?.Dispose();
+        _ic = null;
     }
 
     private double GetFrameTime()
@@ -199,7 +198,7 @@ internal class LottieCompositionCustomVisualHandler : CompositionCustomVisualHan
             _ic?.Begin();
             _count++;
 
-            if (_repeatCount != Lottie.Infinity && _count >= _repeatCount)
+            if (_repeatCount != LottieView.Infinity && _count >= _repeatCount)
             {
                 // Animation has finished all repetitions
                 _running = false;
@@ -255,70 +254,73 @@ internal class LottieCompositionCustomVisualHandler : CompositionCustomVisualHan
 
     public override void OnRender(ImmediateDrawingContext context)
     {
-        lock (_sync)
+        if (_running)
         {
-            if (_running)
+            if (_lastServerTime.HasValue)
             {
-                if (_lastServerTime.HasValue)
-                {
-                    var delta = (CompositionNow - _lastServerTime.Value);
-                    _primaryTimeElapsed += delta;
-                    _animationElapsed += delta;
-                }
-
-                _lastServerTime = CompositionNow;
+                var delta = (CompositionNow - _lastServerTime.Value);
+                _primaryTimeElapsed += delta;
+                _animationElapsed += delta;
             }
 
-            if (_animation is not { } an 
-                || _stretch is not { } st 
-                || _stretchDirection is not { } sd)
-            {
-                return;
-            }
-
-
-            var leaseFeature = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
-            if (leaseFeature is null)
-            {
-                return;
-            }
-
-            var rb = GetRenderBounds();
-
-            var viewPort = new Rect(rb.Size);
-            var sourceSize = new Size(an.Size.Width, an.Size.Height);
-            if (sourceSize.Width <= 0 || sourceSize.Height <= 0)
-            {
-                return;
-            }
-
-            var scale = st.CalculateScaling(rb.Size, sourceSize, sd);
-            var scaledSize = sourceSize * scale;
-            var destRect = viewPort
-                .CenterRect(new Rect(scaledSize))
-                .Intersect(viewPort);
-            var sourceRect = new Rect(sourceSize)
-                .CenterRect(new Rect(destRect.Size / scale));
-
-            var bounds = SKRect.Create(new SKPoint(), an.Size);
-            var scaleMatrix = Matrix.CreateScale(
-                destRect.Width / sourceRect.Width,
-                destRect.Height / sourceRect.Height);
-            var translateMatrix = Matrix.CreateTranslation(
-                -sourceRect.X + destRect.X - bounds.Top,
-                -sourceRect.Y + destRect.Y - bounds.Left);
-
-            using (context.PushClip(destRect))
-            using (context.PushPostTransform(translateMatrix * scaleMatrix))
-            {
-                using var lease = leaseFeature.Lease();
-                var canvas = lease?.SkCanvas;
-                if (canvas is null)
-                {
-                    return;
-                }
-                Draw(canvas);
-            }
+            _lastServerTime = CompositionNow;
         }
+
+        if (_animation is not { } an
+            || _stretch is not { } st
+            || _stretchDirection is not { } sd)
+        {
+            return;
+        }
+
+        var leaseFeature = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
+        if (leaseFeature is null)
+        {
+            return;
+        }
+
+        var rb = GetRenderBounds();
+
+        var viewPort = new Rect(rb.Size);
+        var sourceSize = new Size(an.Size.Width, an.Size.Height);
+        if (sourceSize.Width <= 0 || sourceSize.Height <= 0)
+        {
+            return;
+        }
+
+        var scale = st.CalculateScaling(rb.Size, sourceSize, sd);
+        var scaledSize = sourceSize * scale;
+        var destRect = viewPort
+            .CenterRect(new Rect(scaledSize))
+            .Intersect(viewPort);
+        var sourceRect = new Rect(sourceSize)
+            .CenterRect(new Rect(destRect.Size / scale));
+
+        var bounds = SKRect.Create(new SKPoint(), an.Size);
+        var scaleMatrix = Matrix.CreateScale(
+            destRect.Width / sourceRect.Width,
+            destRect.Height / sourceRect.Height);
+        var translateMatrix = Matrix.CreateTranslation(
+            -sourceRect.X + destRect.X - bounds.Top,
+            -sourceRect.Y + destRect.Y - bounds.Left);
+
+        using (context.PushClip(destRect))
+        using (context.PushPostTransform(translateMatrix * scaleMatrix))
+        {
+            using var lease = leaseFeature.Lease();
+            var canvas = lease?.SkCanvas;
+            if (canvas is null)
+            {
+                return;
+            }
+
+            Draw(canvas);
+        }
+    }
+
+    public void Dispose()
+    {
+        DisposeImpl();
+        GC.SuppressFinalize(this);
     }
 }

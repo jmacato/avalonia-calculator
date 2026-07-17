@@ -3,19 +3,25 @@
 
 using CalculatorApp.ViewModel.Common;
 using System;
-using Microsoft.UI.Xaml.Markup;
+using Windows.UI.Xaml.Markup;
 
 namespace CalculatorApp.Utils
 {
     [MarkupExtensionReturnType(ReturnType = typeof(MyVirtualKey))]
-    public sealed class ResourceVirtualKey : MarkupExtension
+    internal sealed class ResourceVirtualKey : MarkupExtension
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         protected override object ProvideValue()
         {
-            var resourceString = AppResourceProvider.GetInstance().GetResourceString(this.Name);
-            return Enum.Parse(typeof(MyVirtualKey), resourceString);
+            string? name = Name;
+            if (name is null || name.Length == 0)
+            {
+                throw new InvalidOperationException("A resource name is required.");
+            }
+
+            string resourceString = AppResourceProvider.Instance.GetResourceString(name);
+            return (MyVirtualKey)Enum.Parse(typeof(MyVirtualKey), resourceString);
         }
     }
 }

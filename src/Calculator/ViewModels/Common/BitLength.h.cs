@@ -4,13 +4,14 @@ namespace CalculatorApp.ViewModel
 {
     namespace Common
     {
-        public enum BitLength : int
+        public enum BitLength
         {
-            BitLengthUnknown = -1,
-            BitLengthByte = 8,
-            BitLengthWord = 16,
-            BitLengthDWord = 32,
-            BitLengthQWord = 64,
-        };
+            Unknown = -1,
+            None = 0,
+            EightBits = 8,
+            SixteenBits = 16,
+            ThirtyTwoBits = 32,
+            SixtyFourBits = 64,
+        }
     }
 }

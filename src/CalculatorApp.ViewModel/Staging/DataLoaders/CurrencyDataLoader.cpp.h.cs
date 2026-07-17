@@ -1,59 +1,19 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 // #pragma once
-
 // #include "CalcManager/UnitConverter.h"
 // #include "Common/NetworkManager.h"
 // #include "CurrencyHttpClient.h"
-
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using UCM = UnitConversionManager;
 using CurrencyRatioMap = System.Collections.Generic.Dictionary<string, UnitConversionManager.CurrencyRatio>;
 using SelectedUnits = (string, string);
 
-
 namespace CalculatorApp.ViewModel.DataLoaders
 {
-    public enum CurrencyLoadStatus
-    {
-        NotLoaded = 0,
-        FailedToLoad = 1,
-        LoadedFromCache = 2,
-        LoadedFromWeb = 3
-    };
-
-    public partial class UnitConverterResourceKeys
-    {
-        public static string CurrencyUnitFromKey = CurrencyDataLoader.CURRENCY_UNIT_FROM_KEY;
-        public static string CurrencyUnitToKey = CurrencyDataLoader.CURRENCY_UNIT_TO_KEY;
-    }
-
-
-    public partial class CurrencyDataLoaderConstants
-    {
-        public static string CacheTimestampKey = CurrencyDataLoader.CACHE_TIMESTAMP_KEY;
-        public static string CacheLangcodeKey = CurrencyDataLoader.CACHE_LANGCODE_KEY;
-        public static string CacheDelimiter = CurrencyDataLoader.CACHE_DELIMITER;
-        public static string StaticDataFilename = CurrencyDataLoader.STATIC_DATA_FILENAME;
-        public static string AllRatiosDataFilename = CurrencyDataLoader.ALL_RATIOS_DATA_FILENAME;
-        public static long DayDuration = CurrencyDataLoader.DAY_DURATION;
-    }
-
-
-    public struct CurrencyUnitMetadata
-    {
-       public CurrencyUnitMetadata(string s)
-
-        {
-            symbol = (s);
-        }
-
-        public string symbol;
-    };
-
     public partial class CurrencyDataLoader : UCM.IConverterDataLoader, UCM.ICurrencyConverterDataLoader
     {
         // // public:
@@ -71,7 +31,6 @@ namespace CalculatorApp.ViewModel.DataLoaders
         // Dictionary<UCM.Unit, UCM.ConversionData, UCM.UnitHash> LoadOrderedRatios(const UCM.Unit unit) override;
         // bool SupportsCategory(const UnitConversionManager.Category target) override;
         // // IConverterDataLoader
-
         // // ICurrencyConverterDataLoader
         // void SetViewModelCallback(const UCM.IViewModelCurrencyCallback callback) override;
         // (string, string) GetCurrencySymbols(const UCM.Unit unit1, const UCM.Unit unit2) override;
@@ -86,7 +45,6 @@ namespace CalculatorApp.ViewModel.DataLoaders
         // // ICurrencyConverterDataLoader
         //
         // void OnNetworkBehaviorChanged(CalculatorApp.ViewModel.Common.NetworkAccessBehavior newBehavior);
-
         // private:
         // void ResetLoadStatus();
         // void NotifyDataLoadFinished(bool didLoad);
@@ -112,33 +70,20 @@ namespace CalculatorApp.ViewModel.DataLoaders
         // concurrency.task<SelectedUnits> GetDefaultFromToCurrency();
         // bool TryGetLastUsedCurrenciesFromLocalSettings(out string const fromCurrency, out string const toCurrency);
         // void SaveSelectedUnitsToLocalSettings(   const SelectedUnits selectedUnits);
-
         // private:
         string m_responseLanguage;
-        CurrencyHttpClient m_client = new ();
-
+        CurrencyHttpClient m_client = new();
         bool m_isRtlLanguage;
-
-        object m_currencyUnitsMutex = new ();
-        List<UCM.Unit> m_currencyUnits = [];
-        UCM.UnitToUnitToConversionDataMap m_currencyRatioMap = new UCM.UnitToUnitToConversionDataMap();
-        Dictionary<UCM.Unit, CurrencyUnitMetadata /*, UCM.UnitHash*/> m_currencyMetadata = [];
-
-        UCM.IViewModelCurrencyCallback m_vmCallback;
-
+        CurrencyDataLoaderCurrencyDataState m_currencyData = CurrencyDataLoaderCurrencyDataState.Empty;
+        UCM.IViewModelCurrencyCallback? m_vmCallback;
         Windows.Globalization.NumberFormatting.DecimalFormatter m_ratioFormatter;
         string m_ratioFormat;
         DateTime m_cacheTimestamp;
         string m_timestampFormat;
-
         CurrencyLoadStatus m_loadStatus;
-
         CalculatorApp.ViewModel.Common.NetworkManager m_networkManager;
-
         CalculatorApp.ViewModel.Common.NetworkAccessBehavior m_networkAccessBehavior;
-
         //Windows.Foundation.EventRegistrationToken m_networkBehaviorToken;
         bool m_meteredOverrideSet;
     };
 }
-

@@ -7,20 +7,15 @@ namespace CalculatorApp.ViewModel.Common.Automation
 {
     public sealed class NarratorNotifier : DependencyObject
     {
-        private static DependencyProperty s_announcementProperty;
-        private TextBlock m_announcementElement;
-        static NarratorNotifier()
-        {
-            RegisterDependencyProperties();
-        }
+        private TextBlock? m_announcementElement;
 
         public NarratorNotifier()
         {
         }
 
-        public void Announce(NarratorAnnouncement announcement)
+        public void Announce(NarratorAnnouncement? announcement)
         {
-            if (NarratorAnnouncement.IsValid(announcement))
+            if (announcement is not null && NarratorAnnouncement.IsValid(announcement))
             {
                 if (m_announcementElement == null)
                 {
@@ -39,45 +34,44 @@ namespace CalculatorApp.ViewModel.Common.Automation
             }
         }
 
-        public static void RegisterDependencyProperties()
-        {
-            s_announcementProperty = DependencyProperty.Register(
-                "Announcement",
-                typeof(NarratorAnnouncement),
-                typeof(NarratorNotifier),
-                new PropertyMetadata(
-                    null,
-                    OnAnnouncementChanged));
-        }
-
         private static void OnAnnouncementChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
         {
-            var instance = dependencyObject as NarratorNotifier;
-            if (instance != null)
+            if (dependencyObject is NarratorNotifier instance)
             {
                 instance.Announce(e.NewValue as NarratorAnnouncement);
             }
         }
 
-        public NarratorAnnouncement Announcement
+        public NarratorAnnouncement? Announcement
         {
-            get { return (NarratorAnnouncement)GetValue(AnnouncementProperty); }
+            get { return GetValue(AnnouncementProperty) as NarratorAnnouncement; }
             set { SetValue(AnnouncementProperty, value); }
         }
 
-        public static DependencyProperty AnnouncementProperty
+        public static DependencyProperty AnnouncementProperty { get; } = DependencyProperty.Register(
+            nameof(Announcement),
+            typeof(NarratorAnnouncement),
+            typeof(NarratorNotifier),
+            new PropertyMetadata(null, OnAnnouncementChanged));
+
+        public static NarratorAnnouncement? GetAnnouncement(DependencyObject element)
         {
-            get { return s_announcementProperty; }
+            if (element is null)
+            {
+                throw new ArgumentNullException(nameof(element));
+            }
+
+            return element.GetValue(AnnouncementProperty) as NarratorAnnouncement;
         }
 
-        public static NarratorAnnouncement GetAnnouncement(DependencyObject element)
+        public static void SetAnnouncement(DependencyObject element, NarratorAnnouncement? value)
         {
-            return (NarratorAnnouncement)element.GetValue(s_announcementProperty);
-        }
+            if (element is null)
+            {
+                throw new ArgumentNullException(nameof(element));
+            }
 
-        public static void SetAnnouncement(DependencyObject element, NarratorAnnouncement value)
-        {
-            element.SetValue(s_announcementProperty, value);
+            element.SetValue(AnnouncementProperty, value);
         }
     }
 }

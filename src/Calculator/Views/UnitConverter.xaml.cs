@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 using System.ComponentModel;
 using System.Globalization;
 using Avalonia;
@@ -21,24 +20,22 @@ using FluentAvalonia.Core;
 
 namespace CalculatorApp;
 
-public sealed partial class UnitConverter : UserControl
+public sealed partial class UnitConverter : UserControl, IDisposable
 {
-    private static readonly AttachedProperty<double> ConverterScaleProperty =
-        AvaloniaProperty.RegisterAttached<UnitConverter, Grid, double>("ConverterScale", 1d);
-
+    private static readonly AttachedProperty<double> ConverterScaleProperty = AvaloniaProperty.RegisterAttached<UnitConverter, Grid, double>("ConverterScale", 1d);
     private UnitConverterViewModel? _subscribedModel;
     private CalculationResult? _contextMenuTarget;
     private DispatcherTimer? _currencyLoadingDelayTimer;
+    private CancellationTokenSource? _entranceAnimationCancellation;
     private bool _isUnitLoaded = true;
     private readonly FlowDirection _layoutDirection;
     private readonly HorizontalAlignment _flowDirectionHorizontalAlignment;
-
+    private int _disposed;
     static UnitConverter()
     {
         ConverterScaleProperty.Changed.AddClassHandler<Grid>(static (grid, args) =>
         {
-            if (grid.RenderTransform is ScaleTransform transform
-                && args.NewValue is double scale)
+            if (grid.RenderTransform is ScaleTransform transform && args.NewValue is double scale)
             {
                 transform.ScaleX = scale;
                 transform.ScaleY = scale;
@@ -48,13 +45,8 @@ public sealed partial class UnitConverter : UserControl
 
     public UnitConverter()
     {
-        _layoutDirection = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft
-            ? FlowDirection.RightToLeft
-            : FlowDirection.LeftToRight;
-        _flowDirectionHorizontalAlignment = _layoutDirection == FlowDirection.RightToLeft
-            ? HorizontalAlignment.Right
-            : HorizontalAlignment.Left;
-
+        _layoutDirection = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+        _flowDirectionHorizontalAlignment = _layoutDirection == FlowDirection.RightToLeft ? HorizontalAlignment.Right : HorizontalAlignment.Left;
         InitializeComponent();
         ApplyFlowDirection();
         InitializeOfflineStatus();
@@ -72,7 +64,7 @@ public sealed partial class UnitConverter : UserControl
         var animation = new Animation
         {
             Duration = TimeSpan.FromMilliseconds(367),
-            Easing = new WinUiExponentialEaseOut(5),
+            Easing = new UnitConverterWinUiExponentialEaseOut(5),
             Children =
             {
                 new KeyFrame
@@ -93,20 +85,26 @@ public sealed partial class UnitConverter : UserControl
                 }
             }
         };
+        _entranceAnimationCancellation?.Cancel();
+        _entranceAnimationCancellation?.Dispose();
+        _entranceAnimationCancellation = new CancellationTokenSource();
+        _ = RunConverterAnimationAsync(animation, _entranceAnimationCancellation.Token);
+    }
 
-        _ = animation.RunAsync(ConverterNumPad);
+    private async Task RunConverterAnimationAsync(Animation animation, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await animation.RunAsync(ConverterNumPad, cancellationToken).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
     }
 
     public void SetDefaultFocus()
     {
-        Control[] focusPrecedence =
-        [
-            Value1,
-            CurrencyRefreshBlock,
-            OfflineNetworkSettingsButton,
-            ClearEntryButtonPos0
-        ];
-
+        Control[] focusPrecedence = [Value1, CurrencyRefreshBlock, OfflineNetworkSettingsButton, ClearEntryButtonPos0];
         foreach (Control control in focusPrecedence)
         {
             if (control.Focus())
@@ -156,28 +154,22 @@ public sealed partial class UnitConverter : UserControl
 
     private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(UnitConverterViewModel.Value1Active)
-            or nameof(UnitConverterViewModel.Value2Active))
+        if (e.PropertyName is nameof(UnitConverterViewModel.Value1Active) or nameof(UnitConverterViewModel.Value2Active))
         {
             UpdateActiveValueState();
         }
 
-        if (e.PropertyName is nameof(UnitConverterViewModel.DisplayUnit1OnRight)
-            or nameof(UnitConverterViewModel.DisplayUnit2OnRight)
-            or nameof(UnitConverterViewModel.DisplayUnit1UseSpace)
-            or nameof(UnitConverterViewModel.DisplayUnit2UseSpace))
+        if (e.PropertyName is nameof(UnitConverterViewModel.DisplayUnit1OnRight) or nameof(UnitConverterViewModel.DisplayUnit2OnRight) or nameof(UnitConverterViewModel.DisplayUnit1UseSpace) or nameof(UnitConverterViewModel.DisplayUnit2UseSpace))
         {
             UpdateDisplayUnitLayout();
         }
 
-        if (e.PropertyName is nameof(UnitConverterViewModel.IsCurrencyLoadingVisible)
-            or nameof(UnitConverterViewModel.IsCurrencyCurrentCategory))
+        if (e.PropertyName is nameof(UnitConverterViewModel.IsCurrencyLoadingVisible) or nameof(UnitConverterViewModel.IsCurrencyCurrentCategory))
         {
             UpdateCurrencyLoadingState();
         }
 
-        if (e.PropertyName is nameof(UnitConverterViewModel.NetworkBehavior)
-            or nameof(UnitConverterViewModel.CurrencyDataLoadFailed))
+        if (e.PropertyName is nameof(UnitConverterViewModel.NetworkBehavior) or nameof(UnitConverterViewModel.CurrencyDataLoadFailed))
         {
             UpdateCurrencyNetworkState();
         }
@@ -187,8 +179,7 @@ public sealed partial class UnitConverter : UserControl
             UpdateCurrencyTimestampState();
         }
 
-        if (e.PropertyName == nameof(UnitConverterViewModel.IsDropDownEnabled)
-            && Model?.IsDropDownEnabled == true)
+        if (e.PropertyName == nameof(UnitConverterViewModel.IsDropDownEnabled) && Model?.IsDropDownEnabled == true)
         {
             SetDefaultFocus();
         }
@@ -219,7 +210,6 @@ public sealed partial class UnitConverter : UserControl
         Units1.FlowDirection = _layoutDirection;
         Units2.FlowDirection = _layoutDirection;
         SupplementaryResultsPanelInGrid.FlowDirection = _layoutDirection;
-
         Value1Container.HorizontalAlignment = _flowDirectionHorizontalAlignment;
         Value2Container.HorizontalAlignment = _flowDirectionHorizontalAlignment;
         Units1.HorizontalAlignment = _flowDirectionHorizontalAlignment;
@@ -234,39 +224,25 @@ public sealed partial class UnitConverter : UserControl
             return;
         }
 
-        ApplyDisplayUnitLayout(
-            CurrencySymbol1Block,
-            model.DisplayUnit1OnRight,
-            model.DisplayUnit1UseSpace);
-        ApplyDisplayUnitLayout(
-            CurrencySymbol2Block,
-            model.DisplayUnit2OnRight,
-            model.DisplayUnit2UseSpace);
+        ApplyDisplayUnitLayout(CurrencySymbol1Block, model.DisplayUnit1OnRight, model.DisplayUnit1UseSpace);
+        ApplyDisplayUnitLayout(CurrencySymbol2Block, model.DisplayUnit2OnRight, model.DisplayUnit2UseSpace);
     }
 
-    private static void ApplyDisplayUnitLayout(
-        TextBlock displayUnit,
-        bool onRight,
-        bool useSpace)
+    private static void ApplyDisplayUnitLayout(TextBlock displayUnit, bool onRight, bool useSpace)
     {
         Grid.SetColumn(displayUnit, onRight ? 2 : 0);
         double innerSpace = useSpace ? 8 : 0;
-        displayUnit.Padding = onRight
-            ? new Thickness(innerSpace, 0, 12, 0)
-            : new Thickness(16, 0, innerSpace, 0);
+        displayUnit.Padding = onRight ? new Thickness(innerSpace, 0, 12, 0) : new Thickness(16, 0, innerSpace, 0);
     }
 
     private void UpdateCurrencyLoadingState()
     {
         bool isCurrency = Model?.IsCurrencyCurrentCategory == true;
         bool isLoading = isCurrency && Model?.IsCurrencyLoadingVisible == true;
-        bool isLoaded = !isCurrency
-            || (!isLoading && !string.IsNullOrEmpty(Model?.CurrencyTimestamp));
+        bool isLoaded = !isCurrency || (!isLoading && !string.IsNullOrEmpty(Model?.CurrencyTimestamp));
         bool animateLoadedState = isCurrency && !_isUnitLoaded && isLoaded;
         _isUnitLoaded = isLoaded;
-
         ApplyUnitLoadedState(isLoaded, animateLoadedState);
-
         if (isLoading)
         {
             StartProgressRingWithDelay();
@@ -287,40 +263,27 @@ public sealed partial class UnitConverter : UserControl
         NumberPad.IsEnabled = isLoaded;
         ClearEntryButtonPos0.IsEnabled = isLoaded;
         BackSpaceButtonSmall.IsEnabled = isLoaded;
-
-        bool shouldAnimate = isLoaded
-            && animateLoadedState
-            && FAUISettings.AreAnimationsEnabled();
+        bool shouldAnimate = isLoaded && animateLoadedState && FAUISettings.AreAnimationsEnabled();
         foreach (Visual target in GetCurrencyLoadedAnimationTargets())
         {
-            target.Transitions = shouldAnimate
-                ? new Transitions
+            target.Transitions = shouldAnimate ? new Transitions
+            {
+                new DoubleTransition
                 {
-                    new DoubleTransition
-                    {
-                        Property = Visual.OpacityProperty,
-                        Duration = TimeSpan.FromSeconds(1)
-                    }
+                    Property = Visual.OpacityProperty,
+                    Duration = TimeSpan.FromSeconds(1)
                 }
-                : null;
+            }
+
+            : null;
             target.Opacity = isLoaded ? 1 : 0;
         }
     }
 
-    private Visual[] GetCurrencyLoadedAnimationTargets() =>
-    [
-        CurrencyRatioEqualityBlock,
-        CurrencyTimestampTextBlock,
-        Units1,
-        Value1Container,
-        Units2,
-        Value2Container
-    ];
-
+    private Visual[] GetCurrencyLoadedAnimationTargets() => [CurrencyRatioEqualityBlock, CurrencyTimestampTextBlock, Units1, Value1Container, Units2, Value2Container];
     private void StartProgressRingWithDelay()
     {
         HideProgressRing();
-
         _currencyLoadingDelayTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(500)
@@ -338,8 +301,7 @@ public sealed partial class UnitConverter : UserControl
         }
 
         _currencyLoadingDelayTimer = null;
-        CurrencyLoadingProgressRing.IsActive =
-            Model is { IsCurrencyCurrentCategory: true, IsCurrencyLoadingVisible: true };
+        CurrencyLoadingProgressRing.IsActive = Model is { IsCurrencyCurrentCategory: true, IsCurrencyLoadingVisible: true };
     }
 
     private void HideProgressRing()
@@ -357,21 +319,13 @@ public sealed partial class UnitConverter : UserControl
     private void InitializeOfflineStatus()
     {
         const string delimiter = "%HL%";
-        string status = AppResourceProvider.GetInstance()
-            .GetResourceString("OfflineStatusHyperlinkText");
+        string status = AppResourceProvider.Instance.GetResourceString("OfflineStatusHyperlinkText");
         int firstDelimiter = status.IndexOf(delimiter, StringComparison.Ordinal);
-        int secondDelimiter = firstDelimiter < 0
-            ? -1
-            : status.IndexOf(
-                delimiter,
-                firstDelimiter + delimiter.Length,
-                StringComparison.Ordinal);
-
+        int secondDelimiter = firstDelimiter < 0 ? -1 : status.IndexOf(delimiter, firstDelimiter + delimiter.Length, StringComparison.Ordinal);
         if (firstDelimiter >= 0 && secondDelimiter >= 0)
         {
             OfflineRunBeforeLink.Text = status[..firstDelimiter];
-            OfflineRunLink.Text = status[
-                (firstDelimiter + delimiter.Length)..secondDelimiter];
+            OfflineRunLink.Text = status[(firstDelimiter + delimiter.Length)..secondDelimiter];
             OfflineRunAfterLink.Text = status[(secondDelimiter + delimiter.Length)..];
         }
         else
@@ -381,22 +335,9 @@ public sealed partial class UnitConverter : UserControl
             OfflineRunAfterLink.Text = string.Empty;
         }
 
-        AutomationProperties.SetName(
-            OfflineBlock,
-            string.Join(
-                ' ',
-                OfflineRunBeforeLink.Text,
-                OfflineRunLink.Text,
-                OfflineRunAfterLink.Text));
-        AutomationProperties.SetName(
-            OfflineNetworkSettingsButton,
-            OfflineRunLink.Text);
-
-        OfflineNetworkSettingsButton.NavigateUri = OperatingSystem.IsWindows()
-            ? new Uri("ms-settings:network-status")
-            : OperatingSystem.IsMacOS()
-                ? new Uri("x-apple.systempreferences:com.apple.Network-Settings.extension")
-                : null;
+        AutomationProperties.SetName(OfflineBlock, string.Join(' ', OfflineRunBeforeLink.Text, OfflineRunLink.Text, OfflineRunAfterLink.Text));
+        AutomationProperties.SetName(OfflineNetworkSettingsButton, OfflineRunLink.Text);
+        OfflineNetworkSettingsButton.NavigateUri = OperatingSystem.IsWindows() ? new Uri("ms-settings:network-status") : OperatingSystem.IsMacOS() ? new Uri("x-apple.systempreferences:com.apple.Network-Settings.extension") : null;
         OfflineNetworkSettingsButton.IsEnabled = OfflineNetworkSettingsButton.NavigateUri is not null;
     }
 
@@ -413,21 +354,16 @@ public sealed partial class UnitConverter : UserControl
         bool isOffline = model.NetworkBehavior == NetworkAccessBehavior.Offline;
         CurrencyRefreshBlockControl.IsVisible = !isOffline;
         OfflineBlock.IsVisible = isOffline;
-
         CurrencySecondaryStatus.Text = model.NetworkBehavior switch
         {
-            NetworkAccessBehavior.Normal when model.CurrencyDataLoadFailed =>
-                AppResourceProvider.GetInstance().GetResourceString("FailedToRefresh"),
-            NetworkAccessBehavior.OptIn when model.CurrencyDataLoadFailed =>
-                AppResourceProvider.GetInstance().GetResourceString("FailedToRefresh"),
-            NetworkAccessBehavior.OptIn =>
-                AppResourceProvider.GetInstance().GetResourceString("DataChargesMayApply"),
+            NetworkAccessBehavior.Normal when model.CurrencyDataLoadFailed => AppResourceProvider.Instance.GetResourceString("FailedToRefresh"),
+            NetworkAccessBehavior.OptIn when model.CurrencyDataLoadFailed => AppResourceProvider.Instance.GetResourceString("FailedToRefresh"),
+            NetworkAccessBehavior.OptIn => AppResourceProvider.Instance.GetResourceString("DataChargesMayApply"),
             _ => string.Empty
         };
     }
 
     private void OnSizeChanged(object? sender, SizeChangedEventArgs e) => ApplyResponsiveLayout();
-
     /// <summary>
     /// Direct equivalent of UnitConverter.xaml's AspectRatioTrigger and sizing
     /// VisualStates. The aspect trigger observes this control, while WinUI's
@@ -443,14 +379,10 @@ public sealed partial class UnitConverter : UserControl
         bool landscape = Bounds.Width >= Bounds.Height;
         var columns = UnitConverterRootGrid.ColumnDefinitions;
         var rows = UnitConverterRootGrid.RowDefinitions;
-
         columns[0].Width = new GridLength(0);
         columns[1].Width = new GridLength(1, GridUnitType.Star);
-        columns[2].Width = landscape
-            ? new GridLength(1, GridUnitType.Star)
-            : new GridLength(0);
+        columns[2].Width = landscape ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
         columns[3].Width = new GridLength(0);
-
         if (landscape)
         {
             rows[1].Height = new GridLength(4, GridUnitType.Star);
@@ -460,7 +392,6 @@ public sealed partial class UnitConverter : UserControl
             rows[5].Height = new GridLength(2, GridUnitType.Star);
             rows[6].MinHeight = 0;
             rows[6].Height = new GridLength(0);
-
             Grid.SetRow(ConverterNumPad, 1);
             Grid.SetRowSpan(ConverterNumPad, 5);
             Grid.SetColumn(ConverterNumPad, 2);
@@ -477,7 +408,6 @@ public sealed partial class UnitConverter : UserControl
             rows[5].Height = GridLength.Auto;
             rows[6].MinHeight = 0;
             rows[6].Height = new GridLength(272, GridUnitType.Star);
-
             Grid.SetRow(ConverterNumPad, 6);
             Grid.SetRowSpan(ConverterNumPad, 1);
             Grid.SetColumn(ConverterNumPad, 1);
@@ -488,13 +418,11 @@ public sealed partial class UnitConverter : UserControl
 
         Size adaptiveTriggerSize = TopLevel.GetTopLevel(this)?.ClientSize ?? Bounds.Size;
         bool wide = adaptiveTriggerSize.Width >= 640;
-        bool extraWide = adaptiveTriggerSize.Width >= 1280
-            && adaptiveTriggerSize.Height >= 768;
+        bool extraWide = adaptiveTriggerSize.Width >= 1280 && adaptiveTriggerSize.Height >= 768;
         double currencyFontSize = wide ? 32 : 20;
         double unitHeight = wide ? 44 : 32;
         double commandFontSize = extraWide ? 24 : wide ? 20 : 14;
         double numberFontSize = extraWide ? 46 : wide ? 28 : 18;
-
         Value1.MaxFontSize = wide ? 46 : 40;
         Value2.MaxFontSize = wide ? 46 : 40;
         Value1.DisplayMargin = wide ? new Thickness(0, 0, 0, 12) : new Thickness(0, 0, 0, 4);
@@ -518,8 +446,9 @@ public sealed partial class UnitConverter : UserControl
         UnitConverterRootGrid.RowDefinitions[5].MinHeight = Math.Max(48, e.NewSize.Height + 0.01);
     }
 
-    private void OnValueSelected(object sender)
+    private static void OnValueSelected(object? sender, EventArgs e)
     {
+        _ = e;
         if (sender is CalculationResult value)
         {
             value.UpdateTextState();
@@ -535,21 +464,18 @@ public sealed partial class UnitConverter : UserControl
         }
 
         _contextMenuTarget = target;
-        OnValueSelected(target);
-
+        OnValueSelected(target, EventArgs.Empty);
         foreach (MenuItem item in target.ContextMenu?.Items.OfType<MenuItem>() ?? [])
         {
             if (item.Classes.Contains("paste"))
             {
                 item.IsEnabled = false;
-                item.IsEnabled = await CopyPasteManager.HasStringToPasteAsync();
+                item.IsEnabled = await CopyPasteManager.HasStringToPasteAsync().ConfigureAwait(true);
             }
         }
     }
 
-    private void OnResultContextMenuClosed(object? sender, RoutedEventArgs e) =>
-        _contextMenuTarget = null;
-
+    private void OnResultContextMenuClosed(object? sender, RoutedEventArgs e) => _contextMenuTarget = null;
     private void OnCopyMenuItemClicked(object? sender, RoutedEventArgs e)
     {
         if (_contextMenuTarget is { } target)
@@ -565,11 +491,7 @@ public sealed partial class UnitConverter : UserControl
             return;
         }
 
-        string pastedString = await CopyPasteManager.GetStringToPaste(
-            model.Mode,
-            CategoryGroupType.Converter,
-            NumberBase.Unknown,
-            BitLength.BitLengthUnknown);
+        string pastedString = await CopyPasteManager.GetStringToPaste(model.Mode, CategoryGroupType.Converter, NumberBase.Unknown, BitLength.Unknown).ConfigureAwait(true);
         model.OnPaste(pastedString);
     }
 
@@ -596,22 +518,14 @@ public sealed partial class UnitConverter : UserControl
             return;
         }
 
-        bool commandModifier = OperatingSystem.IsMacOS()
-            ? e.KeyModifiers.HasFlag(KeyModifiers.Meta)
-            : e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        bool commandModifier = OperatingSystem.IsMacOS() ? e.KeyModifiers.HasFlag(KeyModifiers.Meta) : e.KeyModifiers.HasFlag(KeyModifiers.Control);
         if (OperatingSystem.IsBrowser())
         {
-            commandModifier = e.KeyModifiers.HasFlag(KeyModifiers.Meta)
-                || e.KeyModifiers.HasFlag(KeyModifiers.Control);
+            commandModifier = e.KeyModifiers.HasFlag(KeyModifiers.Meta) || e.KeyModifiers.HasFlag(KeyModifiers.Control);
         }
 
-        bool alternateCopy = !OperatingSystem.IsMacOS()
-            && e.Key == Key.Insert
-            && e.KeyModifiers.HasFlag(KeyModifiers.Control);
-        bool alternatePaste = !OperatingSystem.IsMacOS()
-            && e.Key == Key.Insert
-            && e.KeyModifiers.HasFlag(KeyModifiers.Shift);
-
+        bool alternateCopy = !OperatingSystem.IsMacOS() && e.Key == Key.Insert && e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        bool alternatePaste = !OperatingSystem.IsMacOS() && e.Key == Key.Insert && e.KeyModifiers.HasFlag(KeyModifiers.Shift);
         if ((commandModifier && e.Key == Key.C) || alternateCopy)
         {
             model.CopyCommand.Execute(null);
@@ -631,45 +545,50 @@ public sealed partial class UnitConverter : UserControl
             return;
         }
 
-        NumbersAndOperatorsEnum operation = e.Key switch
+        CalculatorButtonId operation = e.Key switch
         {
-            Key.D0 or Key.NumPad0 => NumbersAndOperatorsEnum.Zero,
-            Key.D1 or Key.NumPad1 => NumbersAndOperatorsEnum.One,
-            Key.D2 or Key.NumPad2 => NumbersAndOperatorsEnum.Two,
-            Key.D3 or Key.NumPad3 => NumbersAndOperatorsEnum.Three,
-            Key.D4 or Key.NumPad4 => NumbersAndOperatorsEnum.Four,
-            Key.D5 or Key.NumPad5 => NumbersAndOperatorsEnum.Five,
-            Key.D6 or Key.NumPad6 => NumbersAndOperatorsEnum.Six,
-            Key.D7 or Key.NumPad7 => NumbersAndOperatorsEnum.Seven,
-            Key.D8 or Key.NumPad8 => NumbersAndOperatorsEnum.Eight,
-            Key.D9 or Key.NumPad9 => NumbersAndOperatorsEnum.Nine,
-            Key.Decimal or Key.OemPeriod or Key.OemComma => NumbersAndOperatorsEnum.Decimal,
-            Key.Back => NumbersAndOperatorsEnum.Backspace,
-            Key.Delete or Key.Escape => NumbersAndOperatorsEnum.Clear,
-            Key.Subtract or Key.OemMinus => NumbersAndOperatorsEnum.Negate,
-            _ => NumbersAndOperatorsEnum.None
+            Key.D0 or Key.NumPad0 => CalculatorButtonId.Zero,
+            Key.D1 or Key.NumPad1 => CalculatorButtonId.One,
+            Key.D2 or Key.NumPad2 => CalculatorButtonId.Two,
+            Key.D3 or Key.NumPad3 => CalculatorButtonId.Three,
+            Key.D4 or Key.NumPad4 => CalculatorButtonId.Four,
+            Key.D5 or Key.NumPad5 => CalculatorButtonId.Five,
+            Key.D6 or Key.NumPad6 => CalculatorButtonId.Six,
+            Key.D7 or Key.NumPad7 => CalculatorButtonId.Seven,
+            Key.D8 or Key.NumPad8 => CalculatorButtonId.Eight,
+            Key.D9 or Key.NumPad9 => CalculatorButtonId.Nine,
+            Key.Decimal or Key.OemPeriod or Key.OemComma => CalculatorButtonId.DecimalSeparator,
+            Key.Back => CalculatorButtonId.Backspace,
+            Key.Delete or Key.Escape => CalculatorButtonId.Clear,
+            Key.Subtract or Key.OemMinus => CalculatorButtonId.Negate,
+            _ => CalculatorButtonId.None
         };
-
-        if (operation != NumbersAndOperatorsEnum.None)
+        if (operation != CalculatorButtonId.None)
         {
             model.ButtonPressed.Execute(operation);
             e.Handled = true;
         }
     }
 
-    private sealed class WinUiExponentialEaseOut(double exponent) : Easing
+    public void Dispose()
     {
-        public override double Ease(double progress)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
-            if (Math.Abs(exponent) <= double.Epsilon)
-            {
-                return progress;
-            }
-
-            double inverseProgress = 1 - progress;
-            double easeIn = (Math.Exp(exponent * inverseProgress) - 1)
-                / (Math.Exp(exponent) - 1);
-            return 1 - easeIn;
+            return;
         }
+
+        _entranceAnimationCancellation?.Cancel();
+        _entranceAnimationCancellation?.Dispose();
+        _entranceAnimationCancellation = null;
+        HideProgressRing();
+        if (_subscribedModel is not null)
+        {
+            _subscribedModel.PropertyChanged -= OnModelPropertyChanged;
+            _subscribedModel = null;
+        }
+
+        _contextMenuTarget = null;
+        DataContext = null;
+        GC.SuppressFinalize(this);
     }
 }

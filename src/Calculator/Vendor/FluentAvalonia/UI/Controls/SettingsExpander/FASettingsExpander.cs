@@ -1,4 +1,4 @@
-﻿using System.Collections.Specialized;
+using System.Collections.Specialized;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
@@ -17,7 +17,7 @@ namespace FluentAvalonia.UI.Controls;
 /// Control used to display or group settings options within an app, like in
 /// the Windows 11 Settings app
 /// </summary>
-public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
+public sealed partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
 {
     public FASettingsExpander()
     {
@@ -26,7 +26,19 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
+        ArgumentNullException.ThrowIfNull(e);
         base.OnApplyTemplate(e);
+
+        if (_expander is not null)
+        {
+            _expander.Loaded -= ExpanderLoaded;
+            _expander.Expanding -= ExpanderExpanding;
+        }
+
+        if (_expanderToggleButton is not null)
+        {
+            _expanderToggleButton.Click -= ExpanderToggleButtonClick;
+        }
 
         _expander = e.NameScope.Get<Expander>(s_tpExpander);
         // The Expander's template hasn't been loaded yet, so defer until later when it has
@@ -42,6 +54,7 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
 
         if (change.Property == IsClickEnabledProperty)
@@ -51,7 +64,7 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
             {
                 throw new InvalidOperationException("Cannot set Items and mark IsClickEnabled to true on a SettingsExpander");
             }
-                       
+
             if (_expanderToggleButton != null)
             {
                 // Disable pointerover/pressed styles if we aren't clickable (empty or !IsClickEnabled)
@@ -61,7 +74,7 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
                 // ControlThemes don't let is drill into sub-templates so we have to do this manually here
                 // Set a style on the ToggleButton to indicate we want to hide the expand/collapse chevron
                 ((IPseudoClasses)_expanderToggleButton.Classes).Set(s_pcEmpty, newVal);
-            }                
+            }
         }
         else if (change.Property == IsExpandedProperty)
         {
@@ -81,7 +94,7 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
         {
             if (((ILogical)this).IsAttachedToLogicalTree)
             {
-                var (oldValue, newValue) = change.GetOldAndNewValue<ICommand>();
+                var (oldValue, newValue) = change.GetOldAndNewValue<ICommand?>();
                 if (oldValue != null)
                 {
                     oldValue.CanExecuteChanged -= CanExecuteChanged;
@@ -113,7 +126,7 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
         }
     }
 
-    private void ItemsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+    private void ItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         // This fires for collection changes, whether they originate from Items or ItemsSource
 
@@ -125,18 +138,18 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
             // Disable the interaction states if items collection is cleared
             bool isInteractable = ItemCount > 0;
             ((IPseudoClasses)_expanderToggleButton.Classes).Set(FASharedPseudoclasses.s_pcAllowClick, isInteractable);
-            ((IPseudoClasses)_expanderToggleButton.Classes).Set(s_pcEmpty, !isInteractable); 
+            ((IPseudoClasses)_expanderToggleButton.Classes).Set(s_pcEmpty, !isInteractable);
         }
     }
 
-    protected override bool NeedsContainerOverride(object item, int index, out object recycleKey)
+    protected override bool NeedsContainerOverride(object? item, int index, out object? recycleKey)
     {
         bool isItem = item is FASettingsExpanderItem;
         recycleKey = isItem ? null : nameof(FASettingsExpanderItem);
         return !isItem;
     }
 
-    protected override Control CreateContainerForItemOverride(object item, int index, object recycleKey)
+    protected override Control CreateContainerForItemOverride(object? item, int index, object? recycleKey)
     {
         var cont = this.FindDataTemplate(item, ItemTemplate)?.Build(item);
 
@@ -150,18 +163,22 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
         return new FASettingsExpanderItem();
     }
 
-    protected override void PrepareContainerForItemOverride(Control container, object item, int index)
+    protected override void PrepareContainerForItemOverride(Control container, object? item, int index)
     {
-        var sei = container as FASettingsExpanderItem;
+        ArgumentNullException.ThrowIfNull(container);
+        if (container is not FASettingsExpanderItem settingsItem)
+        {
+            throw new InvalidOperationException("A settings expander item container was expected.");
+        }
 
         // If the container was created from a DataTemplate, do NOT call PrepareContainer or it will
         // do another template lookup and then put a item within an item as it sets the normal
         // ContentControl properties. Items created from a DataTemplate are assumed to be
         // initialized, to be sure the DataContext is set in CreateContainer
-        if (!sei.IsContainerFromTemplate)
+        if (!settingsItem.IsContainerFromTemplate)
             base.PrepareContainerForItemOverride(container, item, index);
 
-        if (sei.IconSource != null)
+        if (settingsItem.IconSource != null)
             _iconCount++;
     }
 
@@ -186,7 +203,7 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
     /// <summary>
     /// Invoked when the SettingsExpander is clicked when IsClickEnabled = true
     /// </summary>
-    protected internal virtual void OnClick()
+    private void OnClick()
     {
         var args = new RoutedEventArgs(ClickEvent);
         RaiseEvent(args);
@@ -198,16 +215,21 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
             command.Execute(@param);
         }
     }
-       
-    private void ExpanderLoaded(object sender, RoutedEventArgs e)
+
+    private void ExpanderLoaded(object? sender, RoutedEventArgs e)
     {
+        if (sender is not Expander expander)
+        {
+            return;
+        }
+
         // Don't need this anymore, clear it
-        _expander.Loaded -= ExpanderLoaded;
+        expander.Loaded -= ExpanderLoaded;
 
         if (_expanderToggleButton != null)
             _expanderToggleButton.Click -= ExpanderToggleButtonClick;
 
-        var header = _expander.GetTemplateDescendants().OfType<ToggleButton>().FirstOrDefault();
+        var header = expander.GetTemplateDescendants().OfType<ToggleButton>().FirstOrDefault();
         if (header == null)
             throw new InvalidOperationException("Invalid template for SettingsExpander. Unable to find ToggleButton inside Expander");
 
@@ -224,8 +246,8 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
         // Set a style on the ToggleButton to indicate we want to hide the expand/collapse chevron
         ((IPseudoClasses)_expanderToggleButton.Classes).Set(s_pcEmpty, IsClickEnabled || ItemCount == 0);
     }
-    
-    private void ExpanderExpanding(object sender, CancelRoutedEventArgs e)
+
+    private void ExpanderExpanding(object? sender, CancelRoutedEventArgs e)
     {
         if (ItemCount == 0 && IsClickEnabled)
         {
@@ -234,7 +256,7 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
         }
     }
 
-    private void ExpanderToggleButtonClick(object sender, RoutedEventArgs e)
+    private void ExpanderToggleButtonClick(object? sender, RoutedEventArgs e)
     {
         if (!(e.Source == _expanderToggleButton))
             return;
@@ -243,7 +265,7 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
         OnClick();
     }
 
-    private void CanExecuteChanged(object sender, EventArgs e)
+    private void CanExecuteChanged(object? sender, EventArgs e)
     {
         var command = Command;
         var canExecute = command == null || command.CanExecute(CommandParameter);
@@ -255,7 +277,7 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
         }
     }
 
-    void ICommandSource.CanExecuteChanged(object sender, EventArgs e) =>
+    void ICommandSource.CanExecuteChanged(object? sender, EventArgs e) =>
        CanExecuteChanged(sender, e);
 
     private void SetIcons()
@@ -268,10 +290,14 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
         if (ItemCount == 0)
             return;
 
-        bool usePlaceholder = _iconCount > 0;
-        ((IPseudoClasses)_contentHost.Classes).Set(s_pcIconPlaceholder, usePlaceholder);
+        if (_contentHost is not { } contentHost)
+        {
+            return;
+        }
 
-        var rc = GetRealizedContainers();
+        bool usePlaceholder = _iconCount > 0;
+        ((IPseudoClasses)contentHost.Classes).Set(s_pcIconPlaceholder, usePlaceholder);
+
         foreach (var item in GetRealizedContainers())
         {
             ((IPseudoClasses)item.Classes).Set(s_pcIconPlaceholder, usePlaceholder);
@@ -287,9 +313,9 @@ public partial class FASettingsExpander : HeaderedItemsControl, ICommandSource
     }
 
     private bool _commandCanExecute = true;
-    private Expander _expander;
-    private ToggleButton _expanderToggleButton;
-    private FASettingsExpanderItem _contentHost;
-    private int _iconCount = 0;
+    private Expander? _expander;
+    private ToggleButton? _expanderToggleButton;
+    private FASettingsExpanderItem? _contentHost;
+    private int _iconCount;
     private bool _hasAppliedTemplate;
 }

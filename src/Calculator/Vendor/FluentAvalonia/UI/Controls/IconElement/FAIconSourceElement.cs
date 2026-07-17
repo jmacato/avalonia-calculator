@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Layout;
@@ -8,18 +8,18 @@ namespace FluentAvalonia.UI.Controls;
 /// <summary>
 /// Represents an icon that uses an IconSource as its content.
 /// </summary>
-public class FAIconSourceElement : FAIconElement
+public sealed class FAIconSourceElement : FAIconElement
 {
     /// <summary>
     /// Defines the <see cref="IconSource"/> property
     /// </summary>
-    public static readonly StyledProperty<FAIconSource> IconSourceProperty =
-         AvaloniaProperty.Register<FAIconSourceElement, FAIconSource>(nameof(IconSource));
+    public static readonly StyledProperty<FAIconSource?> IconSourceProperty =
+         AvaloniaProperty.Register<FAIconSourceElement, FAIconSource?>(nameof(IconSource));
 
     /// <summary>
     /// Gets or sets the IconSource used as the icon content.
     /// </summary>
-    public FAIconSource IconSource
+    public FAIconSource? IconSource
     {
         get => GetValue(IconSourceProperty);
         set => SetValue(IconSourceProperty, value);
@@ -27,6 +27,7 @@ public class FAIconSourceElement : FAIconElement
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
 
         if (change.Property == IconSourceProperty)
@@ -38,23 +39,27 @@ public class FAIconSourceElement : FAIconElement
 
     private void OnIconSourceChanged(AvaloniaPropertyChangedEventArgs args)
     {
-        var newIcon = (FAIconSource)args.NewValue;
+        ArgumentNullException.ThrowIfNull(args);
+        FAIconSource? newIcon = args.GetNewValue<FAIconSource?>();
 
-        if (_child != null)
+        if (_child is { } oldChild)
         {
-            ((ISetLogicalParent)_child).SetParent(null);
+            ((ISetLogicalParent)oldChild).SetParent(null);
             LogicalChildren.Clear();
-            VisualChildren.Remove(_child);
+            VisualChildren.Remove(oldChild);
+            (oldChild as IDisposable)?.Dispose();
+            _child = null;
         }
 
         if (newIcon != null)
         {
-            _child = FAIconHelpers.CreateFromUnknown(newIcon);
-            if (_child != null)
+            Control? newChild = FAIconHelpers.CreateFromUnknown(newIcon);
+            if (newChild != null)
             {
-                ((ISetLogicalParent)_child).SetParent(this);
-                VisualChildren.Add(_child);
-                LogicalChildren.Add(_child);
+                _child = newChild;
+                ((ISetLogicalParent)newChild).SetParent(this);
+                VisualChildren.Add(newChild);
+                LogicalChildren.Add(newChild);
             }
         }
     }
@@ -69,5 +74,5 @@ public class FAIconSourceElement : FAIconElement
         return LayoutHelper.ArrangeChild(_child, finalSize, new Thickness());
     }
 
-    private Control _child;
+    private Control? _child;
 }

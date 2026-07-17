@@ -2,10 +2,12 @@ using System;
 
 namespace CSharpMath.Atom.Atoms;
 
-public sealed class Space : MathAtom {
+public sealed class Space : MathAtom
+{
     private readonly Structures.Space _space;
 
-    public Space(Structures.Space space) {
+    public Space(Structures.Space space)
+    {
         _space = space;
     }
 
@@ -19,7 +21,10 @@ public sealed class Space : MathAtom {
         where TFont : Display.FrontEnd.IFont<TGlyph> => _space.ActualLength(mathTable, font);
     public override string DebugString => " ";
     public override bool Equals(object? obj) => obj is Space s && EqualsSpace(s);
-    public bool EqualsSpace(Space otherSpace) =>
-        EqualsAtom(otherSpace) && Math.Abs(Length - otherSpace.Length) < float.Epsilon && IsMu == otherSpace.IsMu;
+    public bool EqualsSpace(Space otherSpace)
+    {
+        System.ArgumentNullException.ThrowIfNull(otherSpace);
+        return EqualsAtom(otherSpace) && Math.Abs(Length - otherSpace.Length) < float.Epsilon && IsMu == otherSpace.IsMu;
+    }
     public override int GetHashCode() => (base.GetHashCode(), _space).GetHashCode();
 }

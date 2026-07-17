@@ -2,7 +2,8 @@ using System.Text;
 
 namespace CSharpMath.Atom.Atoms;
 
-public sealed class Radical(MathList degree, MathList radicand) : MathAtom, IMathListContainer {
+public sealed class Radical(MathList degree, MathList radicand) : MathAtom, IMathListContainer
+{
     public MathList Degree { get; } = degree;
 
     /// <summary>Whatever is under the square root sign</summary>

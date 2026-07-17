@@ -1,26 +1,15 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 // #pragma  once
-
 // #include  "Utils.h"
-
 using System;
 using System.ComponentModel;
 
 namespace CalculatorApp.ViewModel.Common
 {
-    public enum TokenType
-    {
-        Operator,
-        Operand,
-        Separator
-    };
-
     public partial class DisplayExpressionToken : INotifyPropertyChanged
     {
         public DisplayExpressionToken(string token, int tokenPosition, bool fEditable, TokenType type)
-
         {
             m_Token = token;
             m_TokenPosition = tokenPosition;
@@ -37,9 +26,7 @@ namespace CalculatorApp.ViewModel.Common
         private TokenType m_Type;
         private string m_OriginalToken;
         private bool m_InEditMode;
-
         public event PropertyChangedEventHandler? PropertyChanged;
-
         public string Token
         {
             get => m_Token;
@@ -105,10 +92,7 @@ namespace CalculatorApp.ViewModel.Common
             }
         }
 
-        public string OriginalToken
-        {
-            get => m_OriginalToken;
-        }
+        public string OriginalToken { get => m_OriginalToken; }
 
         public bool IsTokenInEditMode
         {

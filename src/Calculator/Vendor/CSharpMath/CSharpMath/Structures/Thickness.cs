@@ -1,6 +1,7 @@
 namespace CSharpMath.Structures;
 
-public readonly struct Thickness : System.IEquatable<Thickness> {
+public readonly struct Thickness : System.IEquatable<Thickness>
+{
     public Thickness(float uniformSize) { Left = Right = Top = Bottom = uniformSize; }
     public Thickness(float horizontalSize, float verticalSize)
     { Left = Right = horizontalSize; Top = Bottom = verticalSize; }

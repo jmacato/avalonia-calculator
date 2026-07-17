@@ -3,6 +3,7 @@
 
 using OpenQA.Selenium;
 using OpenQA.Selenium.Appium.Windows;
+using System;
 
 namespace CalculatorUITestFramework
 {
@@ -14,13 +15,16 @@ namespace CalculatorUITestFramework
         /// </summary>
         public static WindowsElement TryFindElementByAccessibilityId(this WindowsDriver<WindowsElement> driver, string id)
         {
+            ArgumentNullException.ThrowIfNull(driver);
+            ArgumentNullException.ThrowIfNull(id);
+
             try
             {
                 return driver.FindElementByAccessibilityId(id);
             }
             catch (WebDriverException ex)
             {
-                if (ex.Message.Contains("Currently selected window has been closed"))
+                if (ex.Message.Contains("Currently selected window has been closed", System.StringComparison.Ordinal))
                 {
                     driver.SwitchToCurrentWindowHandle();
                     return driver.FindElementByAccessibilityId(id);
@@ -36,13 +40,16 @@ namespace CalculatorUITestFramework
         /// </summary>
         public static WindowsElement TryFindElementByClassName(this WindowsDriver<WindowsElement> driver, string name)
         {
+            ArgumentNullException.ThrowIfNull(driver);
+            ArgumentNullException.ThrowIfNull(name);
+
             try
             {
                 return driver.FindElementByClassName(name);
             }
             catch (WebDriverException ex)
             {
-                if (ex.Message.Contains("Currently selected window has been closed"))
+                if (ex.Message.Contains("Currently selected window has been closed", System.StringComparison.Ordinal))
                 {
                     driver.SwitchToCurrentWindowHandle();
                     return driver.FindElementByClassName(name);
@@ -57,6 +64,8 @@ namespace CalculatorUITestFramework
         /// </summary>
         public static void SwitchToCurrentWindowHandle(this WindowsDriver<WindowsElement> driver)
         {
+            ArgumentNullException.ThrowIfNull(driver);
+
             // Identify the current window handle. You can check through inspect.exe which window this is.
             var currentWindowHandle = driver.CurrentWindowHandle;
             // Return all window handles associated with this process/application.

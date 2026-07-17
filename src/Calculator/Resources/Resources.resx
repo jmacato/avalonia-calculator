@@ -4094,6 +4094,10 @@
   <data name="KGFAnalysisCouldNotBePerformed" xml:space="preserve">
     <value>Analysis could not be performed for the function.</value>
   </data>
+  <data name="KGFCalculating" xml:space="preserve">
+    <value>Calculating...</value>
+    <comment>Placeholder displayed for each function analysis result while calculation is in progress.</comment>
+  </data>
   <data name="KGFDomainNone" xml:space="preserve">
     <value>Unable to calculate the domain for this function.</value>
     <comment>Error displayed when Domain is not returned from the analyzer.</comment>

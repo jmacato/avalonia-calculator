@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls.Documents;
 using Avalonia.Media;
 
@@ -36,7 +36,7 @@ public class FAFontIconSource : FAIconSource
     /// <summary>
     /// Defines the <see cref="Glyph"/> property
     /// </summary>
-    public static readonly StyledProperty<string> GlyphProperty =
+    public static readonly StyledProperty<string?> GlyphProperty =
         FAFontIcon.GlyphProperty.AddOwner<FAFontIconSource>();
 
     /// <summary>
@@ -81,7 +81,7 @@ public class FAFontIconSource : FAIconSource
     /// <summary>
     /// Gets or sets the glyph this FontIcon renders
     /// </summary>
-    public string Glyph
+    public string? Glyph
     {
         get => GetValue(GlyphProperty);
         set => SetValue(GlyphProperty, value);

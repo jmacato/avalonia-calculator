@@ -9,8 +9,10 @@ using GraphControl;
 
 namespace CalculatorApp;
 
-public sealed partial class GraphingSettings : UserControl
+public sealed partial class GraphingSettings : UserControl, IDisposable
 {
+    private int _disposed;
+
     public GraphingSettings()
     {
         InitializeComponent();
@@ -22,7 +24,7 @@ public sealed partial class GraphingSettings : UserControl
 
     public bool IsMatchAppTheme => Model.IsMatchAppTheme;
 
-    public event Action<bool>? GraphThemeSettingChanged
+    public event EventHandler<GraphThemeSettingChangedEventArgs>? GraphThemeSettingChanged
     {
         add => Model.GraphThemeSettingChanged += value;
         remove => Model.GraphThemeSettingChanged -= value;
@@ -46,4 +48,16 @@ public sealed partial class GraphingSettings : UserControl
     }
 
     private void OnResetViewClicked(object? sender, RoutedEventArgs e) => Model.ResetView();
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        Model.ClearGrapher();
+        DataContext = null;
+        GC.SuppressFinalize(this);
+    }
 }

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace CSharpMath.Rendering.BackEnd;
 
-public sealed class GlyphFinder : Display.FrontEnd.IGlyphFinder<Fonts, Glyph>
+public sealed class GlyphFinder : Display.FrontEnd.IGlyphFinder<MathFontSet, Glyph>
 {
     private GlyphFinder()
     {
@@ -15,9 +15,9 @@ public sealed class GlyphFinder : Display.FrontEnd.IGlyphFinder<Fonts, Glyph>
 
     public static GlyphFinder Instance { get; } = new();
 
-    public Glyph Lookup(Fonts fonts, int codepoint)
+    private static Glyph Lookup(MathFontSet fontSet, int codepoint)
     {
-        foreach (FontFace font in fonts.Typefaces)
+        foreach (FontFace font in fontSet.Typefaces)
         {
             ushort glyphId = font.FindGlyph(codepoint);
             if (glyphId != 0)
@@ -26,28 +26,32 @@ public sealed class GlyphFinder : Display.FrontEnd.IGlyphFinder<Fonts, Glyph>
             }
         }
 
-        return codepoint == GlyphNotFound ? Glyph.Empty : Lookup(fonts, GlyphNotFound);
+        return codepoint == GlyphNotFound ? Glyph.Empty : Lookup(fontSet, GlyphNotFound);
     }
 
-    public int GetCodepoint(string value, int index) =>
-        index + 1 < value.Length &&
-        char.IsHighSurrogate(value[index]) &&
-        char.IsLowSurrogate(value[index + 1])
-            ? char.ConvertToUtf32(value[index], value[index + 1])
+    private static int GetCodepoint(string text, int index) =>
+        index + 1 < text.Length &&
+        char.IsHighSurrogate(text[index]) &&
+        char.IsLowSurrogate(text[index + 1])
+            ? char.ConvertToUtf32(text[index], text[index + 1])
             : index > 0 &&
-              char.IsHighSurrogate(value[index - 1]) &&
-              char.IsLowSurrogate(value[index])
-                ? char.ConvertToUtf32(value[index - 1], value[index])
-                : value[index];
+              char.IsHighSurrogate(text[index - 1]) &&
+              char.IsLowSurrogate(text[index])
+                ? char.ConvertToUtf32(text[index - 1], text[index])
+                : text[index];
 
-    public Glyph FindGlyphForCharacterAtIndex(Fonts fonts, int index, string value) =>
-        Lookup(fonts, GetCodepoint(value, index));
-
-    public IEnumerable<Glyph> FindGlyphs(Fonts fonts, string value)
+    public Glyph FindGlyphForCharacterAtIndex(MathFontSet font, int index, string str)
     {
-        foreach (Rune rune in value.EnumerateRunes())
+        ArgumentNullException.ThrowIfNull(str);
+        return Lookup(font, GetCodepoint(str, index));
+    }
+
+    public IEnumerable<Glyph> FindGlyphs(MathFontSet font, string str)
+    {
+        ArgumentNullException.ThrowIfNull(str);
+        foreach (Rune rune in str.EnumerateRunes())
         {
-            yield return Lookup(fonts, rune.Value);
+            yield return Lookup(font, rune.Value);
         }
     }
 

@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System;
+
 using CalculatorUITestFramework;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -8,7 +10,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace CalculatorUITests
 {
     [TestClass]
-    public class ScientificModeFunctionalTests
+    public sealed class ScientificModeFunctionalTests
     {
         private static readonly ScientificCalculatorPage page = new ScientificCalculatorPage();
 
@@ -63,7 +65,7 @@ namespace CalculatorUITests
         #region Smoke Tests
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_Cube()
+        public void SmokeTestCube()
         {
             page.StandardOperators.NumberPad.Input(3);
             page.ScientificOperators.ShiftButton.Click();
@@ -74,7 +76,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_Sin()
+        public void SmokeTestSin()
         {
             page.StandardOperators.NumberPad.Input(90);
             page.ScientificOperators.TrigButton.Click();
@@ -85,7 +87,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_Tanh()
+        public void SmokeTestTanh()
         {
             page.StandardOperators.NumberPad.Input(90);
             page.ScientificOperators.TrigButton.Click();
@@ -97,7 +99,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_InvCos()
+        public void SmokeTestInvCos()
         {
             page.StandardOperators.NumberPad.Input(1);
             page.ScientificOperators.TrigButton.Click();
@@ -109,7 +111,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_Floor()
+        public void SmokeTestFloor()
         {
             page.StandardOperators.NumberPad.Input(5.9);
             page.ScientificOperators.FuncButton.Click();
@@ -120,7 +122,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_Parentheses()
+        public void SmokeTestParentheses()
         {
             page.StandardOperators.NumberPad.Input(3);
             page.StandardOperators.MultiplyButton.Click();
@@ -135,7 +137,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_RadianAngleOperator()
+        public void SmokeTestRadianAngleOperator()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Radians);
 
@@ -148,7 +150,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_GradianAngleOperator()
+        public void SmokeTestGradianAngleOperator()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Gradians);
 
@@ -161,7 +163,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_FixedToExponential()
+        public void SmokeTestFixedToExponential()
         {
             page.ScientificOperators.FixedToExponentialButton.Click();
             page.StandardOperators.EqualButton.Click();
@@ -172,7 +174,7 @@ namespace CalculatorUITests
         #region Advanced Arithmetic Tests
         [TestMethod]
         [Priority(1)]
-        public void Operator_XPowerY()
+        public void OperatorXPowerY()
         {
             page.StandardOperators.NumberPad.Input(3);
             page.ScientificOperators.XPowerYButton.Click();
@@ -183,7 +185,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Operator_PowerOf10Button()
+        public void OperatorPowerOf10Button()
         {
             page.StandardOperators.NumberPad.Input(5);
             page.ScientificOperators.PowerOf10Button.Click();
@@ -193,7 +195,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Operator_LogButton()
+        public void OperatorLogButton()
         {
             page.StandardOperators.NumberPad.Input(10000);
             page.ScientificOperators.LogButton.Click();
@@ -203,7 +205,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Operator_LnButton()
+        public void OperatorLnButton()
         {
             page.ScientificOperators.EulerButton.Click();
             page.ScientificOperators.LnButton.Click();
@@ -213,7 +215,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Operator_AbsButton()
+        public void OperatorAbsButton()
         {
             page.StandardOperators.NumberPad.Input(25);
             page.ScientificOperators.NegateButton.Click();
@@ -224,7 +226,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Operator_ExpButton()
+        public void OperatorExpButton()
         {
             page.StandardOperators.NumberPad.Input(4);
             page.ScientificOperators.ExpButton.Click();
@@ -235,7 +237,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Operator_ModButton()
+        public void OperatorModButton()
         {
             page.StandardOperators.NumberPad.Input(53);
             page.ScientificOperators.ModButton.Click();
@@ -246,7 +248,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Operator_FactorialButton()
+        public void OperatorFactorialButton()
         {
             page.StandardOperators.NumberPad.Input(4);
             page.ScientificOperators.FactorialButton.Click();
@@ -256,7 +258,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Operator_CeilingButton()
+        public void OperatorCeilingButton()
         {
             page.StandardOperators.NumberPad.Input(4.1);
             page.ScientificOperators.FuncButton.Click();
@@ -267,17 +269,17 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Operator_RandomButton()
+        public void OperatorRandomButton()
         {
             page.ScientificOperators.FuncButton.Click();
             page.ScientificOperators.RandButton.Click();
             page.StandardOperators.EqualButton.Click();
-            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("0."));
+            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("0.", StringComparison.Ordinal));
         }
 
         [TestMethod]
         [Priority(1)]
-        public void Operator_DmsButton()
+        public void OperatorDmsButton()
         {
             page.StandardOperators.NumberPad.Input(2.999);
             page.ScientificOperators.FuncButton.Click();
@@ -288,7 +290,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Operator_DegreesButton()
+        public void OperatorDegreesButton()
         {
             page.StandardOperators.NumberPad.Input(2.59564);
             page.ScientificOperators.FuncButton.Click();
@@ -301,7 +303,7 @@ namespace CalculatorUITests
         #region Trigonometry Tests
         [TestMethod]
         [Priority(2)]
-        public void Trig_CosButton()
+        public void TrigCosButton()
         {
 
             page.StandardOperators.NumberPad.Input(180);
@@ -314,7 +316,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_TanButton()
+        public void TrigTanButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -328,7 +330,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_SecButton()
+        public void TrigSecButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -342,7 +344,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_CscButton()
+        public void TrigCscButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -356,7 +358,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_CotButton()
+        public void TrigCotButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -370,7 +372,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_InvSinButton()
+        public void TrigInvSinButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -385,7 +387,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_InvTanButton()
+        public void TrigInvTanButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -400,7 +402,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_InvSecButton()
+        public void TrigInvSecButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -416,7 +418,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_InvCscButton()
+        public void TrigInvCscButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -431,7 +433,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_InvCotButton()
+        public void TrigInvCotButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -446,7 +448,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_SinhButton()
+        public void TrigSinhButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -455,13 +457,13 @@ namespace CalculatorUITests
             page.ScientificOperators.HypShiftButton.Click();
             page.ScientificOperators.SinhButton.Click();
             page.StandardOperators.EqualButton.Click();
-            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("1.175201"));
+            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("1.175201", StringComparison.Ordinal));
 
         }
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_CoshButton()
+        public void TrigCoshButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -470,13 +472,13 @@ namespace CalculatorUITests
             page.ScientificOperators.HypShiftButton.Click();
             page.ScientificOperators.CoshButton.Click();
             page.StandardOperators.EqualButton.Click();
-            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("1.54308"));
+            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("1.54308", StringComparison.Ordinal));
 
         }
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_SechButton()
+        public void TrigSechButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -485,13 +487,13 @@ namespace CalculatorUITests
             page.ScientificOperators.HypShiftButton.Click();
             page.ScientificOperators.SechButton.Click();
             page.StandardOperators.EqualButton.Click();
-            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("0.64805"));
+            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("0.64805", StringComparison.Ordinal));
 
         }
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_CschButton()
+        public void TrigCschButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -500,13 +502,13 @@ namespace CalculatorUITests
             page.ScientificOperators.HypShiftButton.Click();
             page.ScientificOperators.CschButton.Click();
             page.StandardOperators.EqualButton.Click();
-            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("0.850918"));
+            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("0.850918", StringComparison.Ordinal));
 
         }
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_CothButton()
+        public void TrigCothButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -521,7 +523,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_InvSinhButton()
+        public void TrigInvSinhButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -531,13 +533,13 @@ namespace CalculatorUITests
             page.ScientificOperators.HypShiftButton.Click();
             page.ScientificOperators.InvSinhButton.Click();
             page.StandardOperators.EqualButton.Click();
-            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("0.881373"));
+            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("0.881373", StringComparison.Ordinal));
 
         }
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_InvCoshButton()
+        public void TrigInvCoshButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -553,7 +555,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_InvTanhButton()
+        public void TrigInvTanhButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -569,7 +571,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_InvSechButton()
+        public void TrigInvSechButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -585,7 +587,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_InvCschButton()
+        public void TrigInvCschButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -595,13 +597,13 @@ namespace CalculatorUITests
             page.ScientificOperators.HypShiftButton.Click();
             page.ScientificOperators.InvCschButton.Click();
             page.StandardOperators.EqualButton.Click();
-            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("0.881373"));
+            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("0.881373", StringComparison.Ordinal));
 
         }
 
         [TestMethod]
         [Priority(2)]
-        public void Trig_InvCothButton()
+        public void TrigInvCothButton()
         {
             page.ScientificOperators.SetAngleOperator(AngleOperatorState.Degrees);
 
@@ -611,7 +613,7 @@ namespace CalculatorUITests
             page.ScientificOperators.HypShiftButton.Click();
             page.ScientificOperators.InvCothButton.Click();
             page.StandardOperators.EqualButton.Click();
-            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("0.549306"));
+            Assert.IsTrue(page.CalculatorResults.GetCalculatorResultText().StartsWith("0.549306", StringComparison.Ordinal));
 
         }
         #endregion

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>Calculator.LegacyUwpSupport</AssemblyName>
+    <RootNamespace>Calculator.LegacyUwpSupport</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Calculator\Common\KeyboardShortcutManager*.cs" />
+    <Compile Include="..\Calculator\Common\LaunchExtensions.LaunchArguments.cs" />
+    <Compile Include="..\Calculator\Common\SnapshotLaunchArguments.LaunchArguments.cs" />
+    <Compile Include="..\Calculator\Utils\*JsonUtils.cs" />
+    <Compile Include="..\Calculator\Utils\DeflateUtils.cs" />
+    <Compile Include="..\Calculator\Utils\DelegateCommandUtils.cs" />
+    <Compile Include="..\Calculator\Utils\ResourceVirtualKey.cs" />
+    <Compile Include="App.cs" />
+    <Compile Include="CompatibilityTypeRoots.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.26100.4948" />
+    <PackageReference Include="System.Text.Json" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CalculatorApp.ViewModel\CalculatorApp.ViewModel.csproj" />
+  </ItemGroup>
+</Project>

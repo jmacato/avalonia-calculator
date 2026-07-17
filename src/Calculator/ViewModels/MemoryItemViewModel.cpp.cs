@@ -25,5 +25,5 @@ public partial class MemoryItemViewModel
     {
         m_calcVM.OnMemorySubtract(Position);
     }
-    
+
 }

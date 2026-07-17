@@ -3,12 +3,12 @@
 using uint32_t = System.UInt32;
 using uint64_t = System.UInt64;
 using int32_t = System.Int32;
-using wstring = string;
-using PRAT = CalcEngine.RatPak.RAT;
+using WString = string;
+using PRAT = CalcEngine.RatPakRAT;
 
 namespace CalcEngine;
 
-public partial class Rational
+internal sealed partial class Rational
 {
     public Number P { get; }
     public Number Q { get; }
@@ -16,8 +16,8 @@ public partial class Rational
     private readonly RatPak _ratPak;
 
     public Rational(RatPak ratPak)
+        : this(ratPak, 0)
     {
-        _ratPak = ratPak;
     }
 
     public Rational(RatPak ratPak, Number n)
@@ -30,8 +30,8 @@ public partial class Rational
             qExp -= n.Exp;
         }
 
-        P = new Number(_ratPak, n.Sign, 0,n.CDigits, n.Mantissa);
-        Q = new Number(_ratPak, 1, qExp,n.CDigits, [1]);
+        P = new Number(_ratPak, n.Sign, 0, n.CDigits, n.Mantissa);
+        Q = new Number(_ratPak, 1, qExp, n.CDigits, [1]);
     }
 
     public Rational(RatPak ratPak, Number p, Number q)
@@ -46,12 +46,11 @@ public partial class Rational
     {
         _ratPak = ratPak;
 
-        PRAT pr = _ratPak.i32torat((i));
+        PRAT pr = RatPak.i32torat(i);
 
         P = new Number(ratPak, pr.pp);
         Q = new Number(ratPak, pr.pq);
 
-        _ratPak.destroyrat(ref pr);
     }
 
 
@@ -59,12 +58,11 @@ public partial class Rational
     {
         _ratPak = ratPak;
 
-        PRAT pr = _ratPak.Ui32torat((i));
+        PRAT pr = RatPak.Ui32torat(i);
 
         P = new Number(ratPak, pr.pp);
         Q = new Number(ratPak, pr.pq);
 
-        _ratPak.destroyrat(ref pr);
     }
 
     public Rational(RatPak ratPak, uint64_t ui)
@@ -77,20 +75,20 @@ public partial class Rational
                          new Rational(_ratPak, 32)) |
                         new Rational(_ratPak, lo);
 
-        P = new Number(_ratPak, temp.P.Sign, 0,  temp.P.CDigits,temp.P.Mantissa);
-        Q = new Number(_ratPak, temp.Q.Sign, 0,  temp.Q.CDigits,temp.Q.Mantissa);
+        P = new Number(_ratPak, temp.P.Sign, 0, temp.P.CDigits, temp.P.Mantissa);
+        Q = new Number(_ratPak, temp.Q.Sign, 0, temp.Q.CDigits, temp.Q.Mantissa);
     }
 
     public Rational(RatPak ratPak, PRAT prat)
     {
         _ratPak = ratPak;
-        P = new Number(_ratPak, prat.pp.sign, 0,prat.pp.cdigit, prat.pp.mant);
-        Q = new Number(_ratPak, prat.pq.sign, 0,prat.pp.cdigit,  prat.pq.mant);
+        P = new Number(_ratPak, prat.pp.sign, 0, prat.pp.cdigit, prat.pp.mant);
+        Q = new Number(_ratPak, prat.pq.sign, 0, prat.pp.cdigit, prat.pq.mant);
     }
 
     public PRAT ToPRAT()
     {
-        PRAT ret = _ratPak.createrat();
+        PRAT ret = RatPak.createrat();
 
         ret.pp = P.ToPNUMBER();
         ret.pq = Q.ToPNUMBER();
@@ -105,10 +103,8 @@ public partial class Rational
         RatPak pak = lhs._ratPak;
 
         pak.addrat(ref lhsRat, rhsRat, RATIONAL_PRECISION);
-        pak.destroyrat(ref rhsRat);
 
         var ret = new Rational(pak, lhsRat);
-        pak.destroyrat(ref lhsRat);
         return ret;
     }
 
@@ -121,7 +117,6 @@ public partial class Rational
         pak.mulrat(ref lhsRat, pak.rat_neg_one, RATIONAL_PRECISION);
 
         var ret = new Rational(pak, lhsRat);
-        pak.destroyrat(ref lhsRat);
         return ret;
     }
 
@@ -133,10 +128,8 @@ public partial class Rational
         RatPak pak = lhs._ratPak;
 
         pak.subrat(ref lhsRat, rhsRat, RATIONAL_PRECISION);
-        pak.destroyrat(ref rhsRat);
 
         var ret = new Rational(pak, lhsRat);
-        pak.destroyrat(ref lhsRat);
         return ret;
     }
 
@@ -148,10 +141,8 @@ public partial class Rational
         RatPak pak = lhs._ratPak;
 
         pak.mulrat(ref lhsRat, rhsRat, RATIONAL_PRECISION);
-        pak.destroyrat(ref rhsRat);
 
         var ret = new Rational(pak, lhsRat);
-        pak.destroyrat(ref lhsRat);
         return ret;
     }
 
@@ -163,10 +154,8 @@ public partial class Rational
         RatPak pak = lhs._ratPak;
 
         pak.divrat(ref lhsRat, rhsRat, RATIONAL_PRECISION);
-        pak.destroyrat(ref rhsRat);
 
         var ret = new Rational(pak, lhsRat);
-        pak.destroyrat(ref lhsRat);
         return ret;
     }
 
@@ -183,11 +172,9 @@ public partial class Rational
         PRAT rhsRat = rhs.ToPRAT();
         RatPak pak = lhs._ratPak;
 
-        pak.remrat(ref lhsRat, rhsRat);
-        pak.destroyrat(ref rhsRat);
+        RatPak.remrat(ref lhsRat, rhsRat);
 
         var ret = new Rational(pak, lhsRat);
-        pak.destroyrat(ref lhsRat);
         return ret;
     }
 
@@ -199,24 +186,20 @@ public partial class Rational
         RatPak pak = lhs._ratPak;
 
         pak.lshrat(ref lhsRat, rhsRat, RATIONAL_BASE, RATIONAL_PRECISION);
-        pak.destroyrat(ref rhsRat);
 
         var ret = new Rational(pak, lhsRat);
-        pak.destroyrat(ref lhsRat);
         return ret;
     }
 
-    public static Rational operator >> (Rational lhs, Rational rhs)
+    public static Rational operator >>(Rational lhs, Rational rhs)
     {
         PRAT lhsRat = lhs.ToPRAT();
         PRAT rhsRat = rhs.ToPRAT();
         RatPak pak = lhs._ratPak;
 
         pak.rshrat(ref lhsRat, rhsRat, RATIONAL_BASE, RATIONAL_PRECISION);
-        pak.destroyrat(ref rhsRat);
 
         var ret = new Rational(pak, lhsRat);
-        pak.destroyrat(ref lhsRat);
         return ret;
     }
 
@@ -228,10 +211,8 @@ public partial class Rational
         RatPak pak = lhs._ratPak;
 
         pak.andrat(ref lhsRat, rhsRat, RATIONAL_BASE, RATIONAL_PRECISION);
-        pak.destroyrat(ref rhsRat);
 
         var ret = new Rational(pak, lhsRat);
-        pak.destroyrat(ref lhsRat);
         return ret;
     }
 
@@ -242,10 +223,8 @@ public partial class Rational
         RatPak pak = lhs._ratPak;
 
         pak.orrat(ref lhsRat, rhsRat, RATIONAL_BASE, RATIONAL_PRECISION);
-        pak.destroyrat(ref rhsRat);
 
         var ret = new Rational(pak, lhsRat);
-        pak.destroyrat(ref lhsRat);
         return ret;
     }
 
@@ -257,27 +236,29 @@ public partial class Rational
         RatPak pak = lhs._ratPak;
 
         pak.xorrat(ref lhsRat, rhsRat, RATIONAL_BASE, RATIONAL_PRECISION);
-        pak.destroyrat(ref rhsRat);
 
         var ret = new Rational(pak, lhsRat);
-        pak.destroyrat(ref lhsRat);
 
         return ret;
     }
 
     public static bool operator ==(Rational? lhs, Rational? rhs)
     {
-        //TODO: this could be better.
-        if (rhs is null && lhs is not null) return false;
-        if (lhs is null && rhs is not null) return false;
+        if (ReferenceEquals(lhs, rhs))
+        {
+            return true;
+        }
+
+        if (lhs is null || rhs is null)
+        {
+            return false;
+        }
 
         PRAT lhsRat = lhs.ToPRAT();
         PRAT rhsRat = rhs.ToPRAT();
         RatPak pak = lhs._ratPak;
 
         var ret = pak.rat_equ(lhsRat, rhsRat, RATIONAL_PRECISION);
-        pak.destroyrat(ref lhsRat);
-        pak.destroyrat(ref rhsRat);
         return ret;
     }
 
@@ -288,15 +269,23 @@ public partial class Rational
         RatPak pak = lhs._ratPak;
 
         var ret = pak.rat_lt(lhsRat, rhsRat, RATIONAL_PRECISION);
-        pak.destroyrat(ref lhsRat);
-        pak.destroyrat(ref rhsRat);
 
         return ret;
     }
 
-    public static bool operator !=(Rational lhs, Rational rhs)
+    public static bool operator !=(Rational? lhs, Rational? rhs)
     {
         return !(lhs == rhs);
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is Rational other && this == other;
+    }
+
+    public override int GetHashCode()
+    {
+        return StringComparer.Ordinal.GetHashCode(ToString(10, RatPakNumberFormat.Scientific, RATIONAL_PRECISION));
     }
 
     public static bool operator >(Rational lhs, Rational rhs)
@@ -314,12 +303,11 @@ public partial class Rational
         return !(lhs < rhs);
     }
 
-    public wstring ToString(uint32_t radix, RatPak.NumberFormat fmt, int32_t precision)
+    public WString ToString(uint32_t radix, RatPakNumberFormat fmt, int32_t precision)
     {
         var rat = ToPRAT();
 
         var result = _ratPak.RatToString(ref rat, fmt, radix, precision);
-        _ratPak.destroyrat(ref rat);
 
         return result;
     }
@@ -329,7 +317,6 @@ public partial class Rational
         var rat = ToPRAT();
 
         var result = _ratPak.rattoUi64(rat, RATIONAL_BASE, RATIONAL_PRECISION);
-        _ratPak.destroyrat(ref rat);
 
         return result;
     }

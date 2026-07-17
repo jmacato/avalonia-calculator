@@ -3,7 +3,6 @@
 
 using CalculatorApp.ViewModel.Common;
 using CalculatorApp.ViewModel;
-using CalculatorApp.ViewModel.Common;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System;
 using System.Collections.ObjectModel;
@@ -24,17 +23,17 @@ namespace CalculatorApp.ViewModel
     {
 
         [ObservableProperty]
-        private StandardCalculatorViewModel _calculatorViewModel;
+        private StandardCalculatorViewModel? _calculatorViewModel;
 
         [ObservableProperty]
-        private DateCalculatorViewModel _dateCalcViewModel;
+        private DateCalculatorViewModel? _dateCalcViewModel;
 
         [ObservableProperty]
-        private GraphingCalculatorViewModel _graphingCalcViewModel;
+        private GraphingCalculatorViewModel? _graphingCalcViewModel;
 
 
         [ObservableProperty]
-        private UnitConverterViewModel _converterViewModel;
+        private UnitConverterViewModel? _converterViewModel;
 
 
         [ObservableProperty]
@@ -45,15 +44,15 @@ namespace CalculatorApp.ViewModel
         private bool _isAlwaysOnTop;
 
         [ObservableProperty]
-        private string _categoryName;
+        private string _categoryName = string.Empty;
 
         [ObservableProperty]
         private bool _displayNormalAlwaysOnTopOption;
 
         [ObservableProperty]
-        public ObservableCollection<NavCategoryGroup> _categories;
+        private ObservableCollection<NavCategoryGroup> _categories = new();
 
-        private ICommand donotuse_CopyCommand;
+        private ICommand? donotuse_CopyCommand;
         public ICommand CopyCommand
         {
             get
@@ -68,7 +67,7 @@ namespace CalculatorApp.ViewModel
             }
         }
 
-        private ICommand donotuse_PasteCommand;
+        private ICommand? donotuse_PasteCommand;
         public ICommand PasteCommand
         {
             get
@@ -151,7 +150,7 @@ namespace CalculatorApp.ViewModel
             }
             catch (Exception e)
             {
-                TraceLogger.GetInstance().LogError(mode, "ApplicationViewModel::Initialize", e.Message);
+                TraceLogger.LogError(mode, "ApplicationViewModel::Initialize", e.Message);
                 if (!TryRecoverFromNavigationModeFailure())
                 {
                     // Could not navigate to standard mode either.
@@ -163,10 +162,17 @@ namespace CalculatorApp.ViewModel
 
         public void RestoreFromSnapshot(CalculatorApp.ViewModel.Snapshot.ApplicationSnapshot snapshot)
         {
-            Mode = (ViewMode)(snapshot.Mode);
-            if (snapshot.StandardCalculator is null)
+            if (snapshot is null)
             {
-                CalculatorViewModel.Snapshot = snapshot.StandardCalculator;
+                throw new ArgumentNullException(nameof(snapshot));
+            }
+
+            Mode = (ViewMode)(snapshot.Mode);
+            if (snapshot.StandardCalculator is not null)
+            {
+                StandardCalculatorViewModel calculator = CalculatorViewModel
+                    ?? throw new InvalidOperationException("The calculator view model is unavailable in calculator mode.");
+                calculator.Snapshot = snapshot.StandardCalculator;
             }
         }
 
@@ -180,7 +186,7 @@ namespace CalculatorApp.ViewModel
                 Mode = ViewMode.Standard;
                 return true;
             }
-            catch (Exception _)
+            catch (InvalidOperationException)
             {
                 return false;
             }
@@ -193,7 +199,7 @@ namespace CalculatorApp.ViewModel
             {
                 if (CalculatorViewModel is null)
                 {
-                    CalculatorViewModel = new  ();
+                    CalculatorViewModel = new();
                 }
 
                 CalculatorViewModel.SetCalculatorType(m_mode);
@@ -202,7 +208,7 @@ namespace CalculatorApp.ViewModel
             {
                 if (GraphingCalcViewModel is null)
                 {
-                    GraphingCalcViewModel = new  ();
+                    GraphingCalcViewModel = new();
                 }
             }
             else if (NavCategory.IsDateCalculatorViewMode(m_mode))
@@ -216,12 +222,12 @@ namespace CalculatorApp.ViewModel
             {
                 if (ConverterViewModel is null)
                 {
-                    ConverterViewModel = new  ();
+                    ConverterViewModel = new();
                 }
                 ConverterViewModel.Mode = m_mode;
             }
 
-            var resProvider = ViewModel.Common.AppResourceProvider.GetInstance();
+            var resProvider = ViewModel.Common.AppResourceProvider.Instance;
             CategoryName = resProvider.GetResourceString(NavCategoryStates.GetNameResourceKey(m_mode));
 
             // Cast mode to an int in order to save it to app data.
@@ -232,11 +238,11 @@ namespace CalculatorApp.ViewModel
             // Log ModeChange event when not first launch, log WindowCreated on first launch
             if (NavCategoryStates.IsValidViewMode((ViewModel.Common.ViewMode)PreviousMode))
             {
-                TraceLogger.GetInstance().LogModeChange(m_mode);
+                TraceLogger.LogModeChange(m_mode);
             }
             else
             {
-                TraceLogger.GetInstance().LogWindowCreated(m_mode, ApplicationView.GetApplicationViewIdForWindow(CoreWindow.GetForCurrentThread()));
+                TraceLogger.Instance.LogWindowCreated(m_mode, ApplicationView.GetApplicationViewIdForWindow(CoreWindow.GetForCurrentThread()));
             }
 
             OnPropertyChanged(nameof(ClearMemoryVisibility));
@@ -246,15 +252,15 @@ namespace CalculatorApp.ViewModel
         {
             if (NavCategory.IsConverterViewMode(m_mode))
             {
-                ConverterViewModel.OnCopyCommand(parameter);
+                ConverterViewModel?.OnCopyCommand(parameter);
             }
             else if (NavCategory.IsDateCalculatorViewMode(m_mode))
             {
-                DateCalcViewModel.OnCopyCommand(parameter);
+                DateCalcViewModel?.OnCopyCommand(parameter);
             }
             else if (NavCategory.IsCalculatorViewMode(m_mode))
             {
-                CalculatorViewModel.OnCopyCommand(parameter);
+                CalculatorViewModel?.OnCopyCommand(parameter);
             }
         }
 
@@ -262,11 +268,11 @@ namespace CalculatorApp.ViewModel
         {
             if (NavCategory.IsConverterViewMode(m_mode))
             {
-                ConverterViewModel.OnPasteCommand(parameter);
+                ConverterViewModel?.OnPasteCommand(parameter);
             }
             else if (NavCategory.IsCalculatorViewMode(m_mode))
             {
-                CalculatorViewModel.OnPasteCommand(parameter);
+                CalculatorViewModel?.OnPasteCommand(parameter);
             }
         }
 
@@ -285,6 +291,9 @@ namespace CalculatorApp.ViewModel
 
         async void HandleToggleAlwaysOnTop(float width, float height)
         {
+            StandardCalculatorViewModel calculator = CalculatorViewModel
+                ?? throw new InvalidOperationException("Always-on-top mode requires a calculator view model.");
+
             if (ApplicationView.GetForCurrentView().ViewMode == ApplicationViewMode.CompactOverlay)
             {
                 ApplicationDataContainer localSettings = ApplicationData.Current.LocalSettings;
@@ -292,8 +301,8 @@ namespace CalculatorApp.ViewModel
                 localSettings.Values[HeightLocalSettings] = height;
 
                 bool success = await ApplicationView.GetForCurrentView().TryEnterViewModeAsync(ApplicationViewMode.Default);
-                CalculatorViewModel.HistoryVM.AreHistoryShortcutsEnabled = success;
-                CalculatorViewModel.IsAlwaysOnTop = !success;
+                calculator.HistoryVM.AreHistoryShortcutsEnabled = success;
+                calculator.IsAlwaysOnTop = !success;
                 IsAlwaysOnTop = !success;
             }
             else
@@ -319,8 +328,8 @@ namespace CalculatorApp.ViewModel
                 }
 
                 bool success = await ApplicationView.GetForCurrentView().TryEnterViewModeAsync(ApplicationViewMode.CompactOverlay, compactOptions);
-                CalculatorViewModel.HistoryVM.AreHistoryShortcutsEnabled = !success;
-                CalculatorViewModel.IsAlwaysOnTop = success;
+                calculator.HistoryVM.AreHistoryShortcutsEnabled = !success;
+                calculator.IsAlwaysOnTop = success;
                 IsAlwaysOnTop = success;
             }
             SetDisplayNormalAlwaysOnTopOption();

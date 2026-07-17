@@ -18,12 +18,12 @@ public sealed partial class NarratorNotifier
 
     public void Announce(NarratorAnnouncement? announcement)
     {
-        if (!NarratorAnnouncement.IsValid(announcement))
+        if (announcement is null || !NarratorAnnouncement.IsValid(announcement))
         {
             return;
         }
 
-        AutomationLiveSetting liveSetting = announcement!.Processing is
+        AutomationLiveSetting liveSetting = announcement.Processing is
             AutomationNotificationProcessing.ImportantMostRecent
             or AutomationNotificationProcessing.CurrentThenMostRecent
                 ? AutomationLiveSetting.Assertive
@@ -35,6 +35,7 @@ public sealed partial class NarratorNotifier
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
+        System.ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
         if (change.Property == AnnouncementProperty)
         {

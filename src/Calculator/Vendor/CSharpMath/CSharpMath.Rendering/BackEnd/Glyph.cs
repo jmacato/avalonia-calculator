@@ -2,7 +2,7 @@ using System;
 
 namespace CSharpMath.Rendering.BackEnd;
 
-public readonly struct Glyph
+public readonly record struct Glyph
 {
     internal Glyph(FontFace typeface, ushort glyphId)
     {
@@ -16,5 +16,5 @@ public readonly struct Glyph
 
     public bool IsEmpty => Typeface is null;
 
-    public static readonly Glyph Empty = default;
+    public static readonly Glyph Empty;
 }

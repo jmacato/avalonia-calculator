@@ -3,7 +3,9 @@ const cacheBustVersion = new URL(import.meta.url).searchParams.get('v') ?? `${Da
 const pageUrl = new URL(globalThis.location.href);
 const aotProfileDelaySeconds = Number(pageUrl.searchParams.get('collect-aot-profile'));
 const collectAotProfile = Number.isFinite(aotProfileDelaySeconds) && aotProfileDelaySeconds > 0;
+const inputReplaySessionId = pageUrl.searchParams.get('replay-input');
 let browserTelemetry = null;
+let inputReplayScheduled = false;
 
 if (!isBrowser) {
     throw new Error('Expected to run in a browser');
@@ -72,6 +74,7 @@ function dismissSplashWhenAvaloniaStarts() {
 
         loadingProgress.root?.remove();
         browserTelemetry?.mark('avalonia-canvas-ready');
+        scheduleInputReplay();
         return true;
     };
 
@@ -88,20 +91,32 @@ function dismissSplashWhenAvaloniaStarts() {
     observer.observe(host, { childList: true });
 }
 
-function scheduleAotProfileCapture(dotnetRuntime, mainAssemblyName) {
+function scheduleInputReplay() {
+    if (inputReplayScheduled || !inputReplaySessionId) {
+        return;
+    }
+
+    inputReplayScheduled = true;
+    setTimeout(async () => {
+        try {
+            browserTelemetry?.mark('input-replay-start', `session=${inputReplaySessionId}`);
+            const replayModule = await import(`./browser-input-replay.js?v=${encodeURIComponent(cacheBustVersion)}`);
+            const result = await replayModule.replayBrowserInputSession(pageUrl, inputReplaySessionId);
+            browserTelemetry?.mark('input-replay-complete', `events=${result.eventCount}; durationMs=${Math.round(result.durationMs)}`);
+        } catch (error) {
+            browserTelemetry?.recordError('input-replay-error', error);
+            console.error('Browser input replay failed:', error);
+        }
+    }, 1000);
+}
+
+function scheduleAotProfileCapture(dotnetRuntime) {
     if (!collectAotProfile) {
         return;
     }
 
     setTimeout(async () => {
         try {
-            const assemblyExports = await dotnetRuntime.getAssemblyExports(mainAssemblyName);
-            const stopProfile = assemblyExports?.CalculatorApp?.Browser?.AotProfileExports?.Stop;
-            if (typeof stopProfile !== 'function') {
-                throw new Error('The AOT profile collector is not present in this build.');
-            }
-
-            stopProfile();
             const profileData = dotnetRuntime.INTERNAL.aotProfileData;
             if (!(profileData instanceof Uint8Array) || profileData.byteLength === 0) {
                 throw new Error('The AOT profiler returned no data.');
@@ -120,7 +135,7 @@ function scheduleAotProfileCapture(dotnetRuntime, mainAssemblyName) {
         } catch (error) {
             console.error('AOT profile capture failed:', error);
         }
-    }, aotProfileDelaySeconds * 1000);
+    }, (aotProfileDelaySeconds * 1000) + 250);
 }
 
 async function boot() {
@@ -146,11 +161,13 @@ async function boot() {
         .withApplicationArgumentsFromQuery();
 
     if (collectAotProfile) {
-        dotnetBuilder = dotnetBuilder.withConfig({
-            aotProfilerOptions: {
-                sendTo: 'System.Runtime.InteropServices.JavaScript.JavaScriptExports::DumpAotProfileData',
-            },
-        });
+        dotnetBuilder = dotnetBuilder
+            .withEnvironmentVariable('CALCULATOR_AOT_PROFILE_DELAY_SECONDS', String(aotProfileDelaySeconds))
+            .withConfig({
+                aotProfilerOptions: {
+                    sendTo: 'System.Runtime.InteropServices.JavaScript.JavaScriptExports::DumpAotProfileData',
+                },
+            });
     }
 
     const dotnetRuntime = await dotnetBuilder.create();
@@ -160,13 +177,12 @@ async function boot() {
     await waitForPaint();
 
     const config = dotnetRuntime.getConfig();
-    await browserTelemetry?.attachRuntime(dotnetRuntime, config.mainAssemblyName);
+    browserTelemetry?.attachRuntime(dotnetRuntime);
     dismissSplashWhenAvaloniaStarts();
-    scheduleAotProfileCapture(dotnetRuntime, config.mainAssemblyName);
+    scheduleAotProfileCapture(dotnetRuntime);
     browserTelemetry?.setBootStage('run-main-start');
     browserTelemetry?.mark('run-main-start');
     await dotnetRuntime.runMain(config.mainAssemblyName, [globalThis.location.href]);
-    await browserTelemetry?.startManagedProbe();
     browserTelemetry?.setBootStage('running');
     browserTelemetry?.mark('run-main-complete');
 }

@@ -2,10 +2,8 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <MicroComGeneratorRuntimeNamespace>MicroCom.Runtime</MicroComGeneratorRuntimeNamespace>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <AssemblyName>FluentAvalonia</AssemblyName>
     <RootNamespace>FluentAvalonia</RootNamespace>
@@ -25,9 +23,8 @@
     <!-- Keep only the FluentAvalonia controls Calculator actually instantiates. The
          full gallery theme otherwise roots every optional control in NativeAOT. -->
     <AvaloniaXaml Remove="Styling\ControlThemes\FAControls\**\*.axaml" />
-    <AvaloniaXaml Include="Styling\ControlThemes\FAControls\NavigationView\**\*.axaml" />
+    <AvaloniaXaml Include="Styling\ControlThemes\FAControls\NavigationView\NavigationViewSharedStyles.axaml" />
     <AvaloniaXaml Include="Styling\ControlThemes\FAControls\SettingsExpander\**\*.axaml" />
-    <AvaloniaXaml Include="Styling\ControlThemes\FAControls\CommandBar\CommandBarFlyoutCommandBarStyles.axaml" />
     <AvaloniaXaml Include="Styling\ControlThemes\FAControls\ProgressRingStyles.axaml" />
     <!-- Calculator's authored views do not use these optional Avalonia control
          themes, so do not compile them into the vendored theme assembly. -->
@@ -60,9 +57,5 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Skia" />
-    <PackageReference Include="MicroCom.CodeGenerator.MSBuild" PrivateAssets="All" />
-    <PackageReference Include="MicroCom.Runtime" />
-    <MicroComIdl Include="$(MSBuildThisFileDirectory)Interop\WinRT\WinRT.idl"
-                 CSharpInteropPath="$(IntermediateOutputPath)WinRT.Generated.cs" />
   </ItemGroup>
 </Project>

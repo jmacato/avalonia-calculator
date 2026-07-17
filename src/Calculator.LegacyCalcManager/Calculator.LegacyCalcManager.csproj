@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Calculator.LegacyCalcManager</AssemblyName>
+    <RootNamespace>Calculator.LegacyCalcManager</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Calculator\CalcManager\**\*.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+</Project>

@@ -11,7 +11,7 @@ public interface IConverterDataLoader
 {
     void LoadData();
     IList<Category> GetOrderedCategories();
-    IList<Unit> GetOrderedUnits(Category c);
-    Dictionary<Unit, ConversionData> LoadOrderedRatios(Unit u);
+    IList<Unit> GetOrderedUnits(Category category);
+    Dictionary<Unit, ConversionData> LoadOrderedRatios(Unit unit);
     bool SupportsCategory(Category target);
 }

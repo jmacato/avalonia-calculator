@@ -280,10 +280,3 @@ public static class RatPakDecimal
         return isNegative ? "-" + result : result;
     }
 }
-
-public enum RatPakRoundingMode
-{
-    ToEven,
-    AwayFromZero,
-    HalfDown
-}

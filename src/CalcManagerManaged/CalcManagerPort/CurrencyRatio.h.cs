@@ -7,18 +7,18 @@ using UnitConversionManager;
 
 namespace UnitConversionManager;
 
-public class CurrencyRatio
+public sealed class CurrencyRatio
 {
-    public string Ratio { get; set; }
+    public double Ratio { get; set; }
 
     public wstring SourceCurrencyCode { get; set; }
 
     public wstring TargetCurrencyCode { get; set; }
 
-    public CurrencyRatio(string ratio, string sourceCurrencyCode, string targetCurrencyCode)
+    public CurrencyRatio(double ratio, string sourceCurrencyCode, string targetCurrencyCode)
     {
-        this.Ratio = ratio;
-        this.SourceCurrencyCode = sourceCurrencyCode;
-        this.TargetCurrencyCode = targetCurrencyCode;
+        Ratio = ratio;
+        SourceCurrencyCode = sourceCurrencyCode;
+        TargetCurrencyCode = targetCurrencyCode;
     }
 }

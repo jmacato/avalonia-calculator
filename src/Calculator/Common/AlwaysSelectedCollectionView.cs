@@ -1,10 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
-
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Microsoft.UI.Xaml.Data;
@@ -23,23 +21,21 @@ namespace CalculatorApp
             {
                 CurrentPosition = -1;
                 m_source = source;
-
                 if (source is Microsoft.UI.Xaml.Interop.IBindableObservableVector observable)
                 {
                     observable.VectorChanged += OnSourceBindableVectorChanged;
-                } else if (source is INotifyCollectionChanged incc)
+                }
+                else if (source is INotifyCollectionChanged incc)
                 {
                     incc.CollectionChanged += (x, e) =>
                     {
                         VectorChangedEventArgs args = new VectorChangedEventArgs();
-
                         switch (e.Action)
                         {
                             case NotifyCollectionChangedAction.Add:
                                 args.CollectionChange = CollectionChange.ItemInserted;
                                 args.Index = (uint)e.NewStartingIndex;
                                 break;
-
                             case NotifyCollectionChangedAction.Remove:
                                 args.CollectionChange = CollectionChange.ItemRemoved;
                                 args.Index = (uint)e.OldStartingIndex;
@@ -67,7 +63,7 @@ namespace CalculatorApp
                     if (newCurrentPosition != -1)
                     {
                         CurrentPosition = newCurrentPosition;
-                        CurrentChanged?.Invoke(this, null);
+                        CurrentChanged?.Invoke(this, EventArgs.Empty);
                         return true;
                     }
                 }
@@ -79,9 +75,10 @@ namespace CalculatorApp
                 {
                     Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
                     {
-                        CurrentChanged?.Invoke(this, null);
+                        CurrentChanged?.Invoke(this, EventArgs.Empty);
                     }).AsTask().GetResultOrDefault();
                 }
+
                 return false;
             }
 
@@ -93,12 +90,11 @@ namespace CalculatorApp
                 }
 
                 CurrentPosition = index;
-                CurrentChanged?.Invoke(this, null);
+                CurrentChanged?.Invoke(this, EventArgs.Empty);
                 return true;
             }
 
             #region no implementations
-
             public bool MoveCurrentToFirst()
             {
                 throw new NotImplementedException();
@@ -162,19 +158,12 @@ namespace CalculatorApp
             public bool IsReadOnly => throw new NotImplementedException();
 
             #endregion no implementations
-
-            public object this[int index]
-            {
-                get => m_source[index];
-
-                set => throw new NotImplementedException();
-            }
+            public object this[int index] { get => m_source[index] ?? DependencyProperty.UnsetValue; set => throw new NotImplementedException(); }
 
             public int Count => m_source.Count;
-
             public IObservableVector<object> CollectionGroups => (IObservableVector<object>)new List<object>();
 
-            public object CurrentItem
+            public object? CurrentItem
             {
                 get
                 {
@@ -182,16 +171,14 @@ namespace CalculatorApp
                     {
                         return m_source[CurrentPosition];
                     }
+
                     return null;
                 }
             }
 
             public int CurrentPosition { get; private set; }
-
             public bool HasMoreItems => false;
-
             public bool IsCurrentAfterLast => CurrentPosition >= m_source.Count;
-
             public bool IsCurrentBeforeFirst => CurrentPosition < 0;
 
             public int IndexOf(object item)
@@ -216,37 +203,11 @@ namespace CalculatorApp
                 VectorChanged?.Invoke(this, args);
             }
 
-            public event EventHandler<object> CurrentChanged;
-            public event VectorChangedEventHandler<object> VectorChanged;
-            public event CurrentChangingEventHandler CurrentChanging
-            {
-                add => throw new NotImplementedException();
-                remove => throw new NotImplementedException();
-            }
+            public event EventHandler<object>? CurrentChanged;
+            public event VectorChangedEventHandler<object>? VectorChanged;
+            public event CurrentChangingEventHandler CurrentChanging { add => throw new NotImplementedException(); remove => throw new NotImplementedException(); }
 
             private readonly IList m_source;
         }
-
-        public sealed class AlwaysSelectedCollectionViewConverter : IValueConverter
-        {
-            public AlwaysSelectedCollectionViewConverter()
-            {
-            }
-
-            public object Convert(object value, Type targetType, object parameter, string language)
-            {
-                if (value is IList result)
-                {
-                    return new AlwaysSelectedCollectionView(result);
-                }
-                return DependencyProperty.UnsetValue; // Can't convert
-            }
-
-            public object ConvertBack(object value, Type targetType, object parameter, string language)
-            {
-                return DependencyProperty.UnsetValue;
-            }
-        }
     }
 }
-

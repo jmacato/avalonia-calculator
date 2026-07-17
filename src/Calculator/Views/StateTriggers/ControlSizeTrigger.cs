@@ -6,7 +6,7 @@ using Microsoft.UI.Xaml;
 
 namespace CalculatorApp.Views.StateTriggers
 {
-    public sealed class ControlSizeTrigger : Microsoft.UI.Xaml.StateTriggerBase
+    internal sealed class ControlSizeTrigger : Microsoft.UI.Xaml.StateTriggerBase
     {
         public ControlSizeTrigger()
         {

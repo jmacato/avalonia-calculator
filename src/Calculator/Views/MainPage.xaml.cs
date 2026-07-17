@@ -4,18 +4,23 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Selection;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using CalculatorApp.ViewModel;
 using CalculatorApp.ViewModel.Common;
-using FluentAvalonia.UI.Controls;
 
 namespace CalculatorApp;
 
-public sealed partial class MainPage : UserControl
+public sealed partial class MainPage : UserControl, IDisposable
 {
     private bool _isSettingsVisible;
+    private bool _updatingNavigationSelection;
+    private int _disposed;
 
     public MainPage()
     {
@@ -26,16 +31,25 @@ public sealed partial class MainPage : UserControl
         DataContext = this;
 
         Model.PropertyChanged += OnAppPropertyChanged;
-        Model.Categories.CollectionChanged += (_, _) =>
-            NavViewCategoriesSource = ExpandNavViewCategoryGroups(Model.Categories);
+        Model.Categories.CollectionChanged += OnCategoriesChanged;
         Model.Initialize(ViewMode.Standard);
         CalcHolder.Child = new Calculator { DataContext = Model.CalculatorViewModel };
         UpdateModeHolders();
+        UpdatePaneToggleAutomation();
     }
 
     public ApplicationViewModel Model { get; }
 
-    public List<object> NavViewCategoriesSource { get; private set; }
+    public IReadOnlyList<object> NavViewCategoriesSource { get; private set; }
+
+    private void OnCategoriesChanged(
+        object? sender,
+        System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        _ = sender;
+        _ = e;
+        NavViewCategoriesSource = ExpandNavViewCategoryGroups(Model.Categories);
+    }
 
     private static List<object> ExpandNavViewCategoryGroups(
         ObservableCollection<NavCategoryGroup> groups)
@@ -55,7 +69,7 @@ public sealed partial class MainPage : UserControl
 
     private void OnNavLoaded(object? sender, RoutedEventArgs e)
     {
-        if (NavView.SelectedItem is null)
+        if (NavList.SelectedItem is null)
         {
             SelectNavigationItemByModel();
         }
@@ -63,27 +77,41 @@ public sealed partial class MainPage : UserControl
 
     private void OnNavSelectionChanged(
         object? sender,
-        FANavigationViewSelectionChangedEventArgs e)
+        SelectionChangedEventArgs e)
     {
-        if (e.IsSettingsSelected)
+        Dispatcher.UIThread.VerifyAccess();
+
+        if (_updatingNavigationSelection)
         {
-            _isSettingsVisible = true;
-            EnsureSettingsView();
-            UpdateModeHolders();
-            NavView.IsPaneOpen = false;
             return;
         }
 
-        if (e.SelectedItem is NavCategory category)
+        if (NavList.SelectedItem is NavCategory { IsEnabled: true } category)
         {
             _isSettingsVisible = false;
             Model.Mode = category.ViewMode;
-            NavView.IsPaneOpen = false;
+            NavSplitView.IsPaneOpen = false;
         }
+    }
+
+    private void OnSettingsClick(object? sender, RoutedEventArgs e)
+    {
+        _isSettingsVisible = true;
+        EnsureSettingsView();
+        UpdateModeHolders();
+        NavSplitView.IsPaneOpen = false;
+    }
+
+    private void OnPaneToggleClick(object? sender, RoutedEventArgs e)
+    {
+        NavSplitView.IsPaneOpen = !NavSplitView.IsPaneOpen;
+        UpdatePaneToggleAutomation();
     }
 
     private void OnAppPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        Dispatcher.UIThread.VerifyAccess();
+
         if (e.PropertyName == nameof(ApplicationViewModel.Mode))
         {
             SelectNavigationItemByModel();
@@ -101,6 +129,16 @@ public sealed partial class MainPage : UserControl
         {
             AutomationProperties.SetName(Header, Model.CategoryName);
         }
+        else if (e.PropertyName == nameof(ApplicationViewModel.ConverterViewModel) &&
+                 NavCategory.IsConverterViewMode(Model.Mode))
+        {
+            UpdateModeHolders();
+            if (ConverterHolder.Child is UnitConverter converter)
+            {
+                converter.AnimateConverter();
+                converter.SetDefaultFocus();
+            }
+        }
     }
 
     private void SelectNavigationItemByModel()
@@ -108,17 +146,32 @@ public sealed partial class MainPage : UserControl
         var flatIndex = NavCategoryStates.GetFlatIndex(Model.Mode);
         if (flatIndex >= 0 && flatIndex < NavViewCategoriesSource.Count)
         {
-            NavView.SelectedItem = NavViewCategoriesSource[flatIndex];
+            _updatingNavigationSelection = true;
+            try
+            {
+                NavList.SelectedItem = NavViewCategoriesSource[flatIndex];
+            }
+            finally
+            {
+                _updatingNavigationSelection = false;
+            }
         }
     }
 
     private void UpdateModeHolders()
     {
-        if (NavCategory.IsCalculatorViewMode(Model.Mode)
-            && CalcHolder.Child is Calculator calculator
-            && !ReferenceEquals(calculator.DataContext, Model.CalculatorViewModel))
+        if (NavCategory.IsCalculatorViewMode(Model.Mode))
         {
-            calculator.DataContext = Model.CalculatorViewModel;
+            if (CalcHolder.Child is not Calculator calculator)
+            {
+                calculator = new Calculator();
+                CalcHolder.Child = calculator;
+            }
+
+            if (!ReferenceEquals(calculator.DataContext, Model.CalculatorViewModel))
+            {
+                calculator.DataContext = Model.CalculatorViewModel;
+            }
         }
 
         if (NavCategory.IsDateCalculatorViewMode(Model.Mode))
@@ -137,15 +190,31 @@ public sealed partial class MainPage : UserControl
 
         if (NavCategory.IsConverterViewMode(Model.Mode))
         {
-            if (ConverterHolder.Child is not UnitConverter converter)
+            if (Model.ConverterViewModel is null)
             {
-                converter = new UnitConverter();
-                ConverterHolder.Child = converter;
+                if (ConverterHolder.Child is not ProgressBar)
+                {
+                    ConverterHolder.Child = new ProgressBar
+                    {
+                        Width = 160,
+                        IsIndeterminate = true,
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                    };
+                }
             }
-
-            if (!ReferenceEquals(converter.DataContext, Model.ConverterViewModel))
+            else
             {
-                converter.DataContext = Model.ConverterViewModel;
+                if (ConverterHolder.Child is not UnitConverter converter)
+                {
+                    converter = new UnitConverter();
+                    ConverterHolder.Child = converter;
+                }
+
+                if (!ReferenceEquals(converter.DataContext, Model.ConverterViewModel))
+                {
+                    converter.DataContext = Model.ConverterViewModel;
+                }
             }
         }
 
@@ -168,17 +237,63 @@ public sealed partial class MainPage : UserControl
         SetHolderVisibility("ConverterHolder", !_isSettingsVisible && NavCategory.IsConverterViewMode(Model.Mode));
         SetHolderVisibility("CalcHolder", !_isSettingsVisible && NavCategory.IsCalculatorViewMode(Model.Mode));
         SetHolderVisibility("SettingsHolder", _isSettingsVisible);
-        NavView.IsVisible = !_isSettingsVisible;
+        NavSplitView.IsVisible = !_isSettingsVisible;
+        PaneToggleButton.IsVisible = !_isSettingsVisible;
+
+#if CALCULATOR_BROWSER
+        ReleaseInactiveBrowserViews();
+#endif
     }
 
-    private void EnsureSettingsView()
+#if CALCULATOR_BROWSER
+    private void ReleaseInactiveBrowserViews()
     {
-        if (SettingsHolder.Child is Settings)
+        // A hidden Avalonia control remains attached and retains its complete
+        // scene graph, graph geometry, text layouts, and native render objects.
+        // Browser builds keep the view models but recreate dormant mode views
+        // on demand to bound the live render-tree and native-object footprint.
+        if (_isSettingsVisible || !NavCategory.IsCalculatorViewMode(Model.Mode))
+        {
+            ReleaseHolderChild(CalcHolder);
+        }
+
+        if (_isSettingsVisible || !NavCategory.IsDateCalculatorViewMode(Model.Mode))
+        {
+            ReleaseHolderChild(DateCalcHolder);
+        }
+
+        if (_isSettingsVisible || !NavCategory.IsGraphingCalculatorViewMode(Model.Mode))
+        {
+            ReleaseHolderChild(GraphingCalcHolder);
+        }
+
+        if (_isSettingsVisible || !NavCategory.IsConverterViewMode(Model.Mode))
+        {
+            ReleaseHolderChild(ConverterHolder);
+        }
+    }
+#endif
+
+    private static void ReleaseHolderChild(Border holder)
+    {
+        if (holder.Child is not Control child)
         {
             return;
         }
 
-        var settings = new Settings(App.SettingsStore);
+        child.DataContext = null;
+        holder.Child = null;
+        ReleasedViewDisposer.Dispose(child);
+    }
+
+    private void EnsureSettingsView()
+    {
+        if (SettingsHolder.Child is PreferencesPage)
+        {
+            return;
+        }
+
+        var settings = new PreferencesPage(App.SettingsStore);
         settings.BackButtonClick += OnSettingsBackButtonClick;
         SettingsHolder.Child = settings;
     }
@@ -191,12 +306,22 @@ public sealed partial class MainPage : UserControl
         SetDefaultFocus();
     }
 
-    private void OnNavPaneClosed(FANavigationView sender, EventArgs e) =>
+    private void OnNavPaneClosed(object? sender, RoutedEventArgs e)
+    {
+        UpdatePaneToggleAutomation();
         SetDefaultFocus();
+    }
+
+    private void UpdatePaneToggleAutomation()
+    {
+        string name = NavSplitView.IsPaneOpen ? "Close Navigation" : "Open Navigation";
+        AutomationProperties.SetName(PaneToggleButton, name);
+        ToolTip.SetTip(PaneToggleButton, name);
+    }
 
     private void SetDefaultFocus()
     {
-        if (_isSettingsVisible && SettingsHolder.Child is Settings settings)
+        if (_isSettingsVisible && SettingsHolder.Child is PreferencesPage settings)
         {
             settings.SetDefaultFocus();
         }
@@ -225,5 +350,36 @@ public sealed partial class MainPage : UserControl
         {
             holder.IsVisible = isVisible;
         }
+    }
+
+    protected override void OnDetachedFromVisualTree(
+        VisualTreeAttachmentEventArgs e)
+    {
+        Dispose();
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        Model.PropertyChanged -= OnAppPropertyChanged;
+        Model.Categories.CollectionChanged -= OnCategoriesChanged;
+        if (SettingsHolder.Child is PreferencesPage settings)
+        {
+            settings.BackButtonClick -= OnSettingsBackButtonClick;
+        }
+
+        ReleaseHolderChild(CalcHolder);
+        ReleaseHolderChild(DateCalcHolder);
+        ReleaseHolderChild(GraphingCalcHolder);
+        ReleaseHolderChild(ConverterHolder);
+        ReleaseHolderChild(SettingsHolder);
+        Model.Dispose();
+        DataContext = null;
+        GC.SuppressFinalize(this);
     }
 }

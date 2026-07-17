@@ -1,27 +1,27 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-  // #pragma  once
-  // #include  "LocalizationService.h"
+// #pragma  once
+// #include  "LocalizationService.h"
 
-  // #include  <iterator>
+// #include  <iterator>
 
-  using System;
-  using System.Diagnostics;
-  using System.Globalization;
-  using System.Linq;
+using System;
+using System.Diagnostics;
+using System.Globalization;
+using System.Linq;
 
-  namespace CalculatorApp.ViewModel
+namespace CalculatorApp.ViewModel
 {
     namespace Common
     {
         public partial class LocalizationSettings
         {
             LocalizationSettings()
-                // Use DecimalFormatter as it respects the locale and the user setting
+            // Use DecimalFormatter as it respects the locale and the user setting
             {
                 Initialize(LocalizationService.GetInstance()
-                    .GetCurrentCultureInfo());  //LocalizationService.GetInstance().GetRegionalSettingsAwareDecimalFormatter());
+                    .CurrentCulture);  //LocalizationService.GetInstance().GetRegionalSettingsAwareDecimalFormatter());
             }
 
             // This is only public for unit testing purposes.
@@ -29,26 +29,25 @@
             // {
             //     Initialize(formatter);
             // }
-            static LocalizationSettings localizationSettings = new   ();
+            static readonly LocalizationSettings localizationSettings = new();
 
             // Provider of the singleton LocalizationSettings instance.
-            public static LocalizationSettings GetInstance()
-            {
-                return localizationSettings;
-            }
+            public static LocalizationSettings Instance => localizationSettings;
 
-         public   string  GetLocaleName()
-            {
-                return m_resolvedName;
-            }
+            public string LocaleName => m_resolvedName;
 
-         public   bool IsDigitEnUsSetting()
+            public bool IsDigitEnUsSetting()
             {
                 return (this.GetDigitSymbolFromEnUsDigit('0') == '0');
             }
 
-          public  string  GetEnglishValueFromLocalizedDigits(string  localizedString)
+            public string GetEnglishValueFromLocalizedDigits(string localizedString)
             {
+                if (localizedString is null)
+                {
+                    throw new ArgumentNullException(nameof(localizedString));
+                }
+
                 if (m_resolvedName == "en-US")
                 {
                     return localizedString;
@@ -65,7 +64,7 @@
                         int index = Array.IndexOf(m_digitSymbols, ch);
                         if (index != -1)
                         {
-                            convertedChar = index.ToString()[0];
+                            convertedChar = index.ToString(CultureInfo.InvariantCulture)[0];
                         }
                     }
                     if (ch == m_decimalSeparator)
@@ -102,7 +101,7 @@
                 // return new  string(englishString);
             }
 
-           public string  RemoveGroupSeparators(string  source)
+            public string RemoveGroupSeparators(string source)
             {
                 return string.Concat(source.Where(c => c != ' ' && c != m_numberGroupSeparator));
                 // string destination;
@@ -112,56 +111,38 @@
                 // return new  string(destination.c_str());
             }
 
-            public string  GetCalendarIdentifier()
-            {
-                return m_calendarIdentifier;
-            }
+            public string CalendarIdentifier => m_calendarIdentifier;
 
-            public   DayOfWeek GetFirstDayOfWeek()
-            {
-                return m_firstDayOfWeek;
-            }
+            public DayOfWeek FirstDayOfWeek => m_firstDayOfWeek;
 
-            public int GetCurrencyTrailingDigits()
-            {
-                return m_currencyTrailingDigits;
-            }
+            public int CurrencyTrailingDigits => m_currencyTrailingDigits;
 
-            public int GetCurrencySymbolPrecedence()
-            {
-                return m_currencySymbolPrecedence;
-            }
+            public int CurrencySymbolPrecedence => m_currencySymbolPrecedence;
 
-            public   char  GetDecimalSeparator()
-            {
-                return m_decimalSeparator;
-            }
+            public char DecimalSeparator => m_decimalSeparator;
 
-            public   char  GetDigitSymbolFromEnUsDigit( char  digitSymbol)
+            public char GetDigitSymbolFromEnUsDigit(char digitSymbol)
             {
                 Debug.Assert(digitSymbol >= '0' && digitSymbol <= '9');
                 int digit = digitSymbol - '0';
                 return m_digitSymbols[digit]; // throws on out of range
             }
 
-          public   char  GetNumberGroupSeparator()
-            {
-                return m_numberGroupSeparator;
-            }
+            public char NumberGroupSeparator => m_numberGroupSeparator;
 
-            public     bool IsEnUsDigit( char  digit)
+            public static bool IsEnUsDigit(char digit)
             {
                 return (digit >= '0' && digit <= '9');
             }
 
-            public       bool IsLocalizedDigit( char  digit)
+            public bool IsLocalizedDigit(char digit)
             {
                 return
                     m_digitSymbols
                         .Contains(digit); //find(m_digitSymbols.begin(), m_digitSymbols.end(), digit) != m_digitSymbols.end();
             }
 
-           public  bool IsLocalizedHexDigit( char  digit)
+            public bool IsLocalizedHexDigit(char digit)
             {
                 if (IsLocalizedDigit(digit))
                 {
@@ -171,21 +152,23 @@
                 return s_hexSymbols.Contains(digit);
             }
 
-            public string  GetListSeparatorWinRT()
-            {
-                return GetListSeparator();
-            }
+            public string ListSeparatorWinRt => ListSeparator;
 
-            public string  GetDecimalSeparatorStrWinRT()
+            public string GetDecimalSeparatorStrWinRT()
             {
                 return GetDecimalSeparatorStr();
             }
 
-            public void LocalizeDisplayValue(ref string stringToLocalize)
+            public static void LocalizeDisplayValue(ref string stringToLocalize)
 
 
             {
-                if (ViewModel.Common.LocalizationSettings.GetInstance().IsDigitEnUsSetting())
+                if (stringToLocalize is null)
+                {
+                    throw new ArgumentNullException(nameof(stringToLocalize));
+                }
+
+                if (ViewModel.Common.LocalizationSettings.Instance.IsDigitEnUsSetting())
                 {
                     return;
                 }
@@ -195,9 +178,9 @@
                 for (int chI = 0; chI < ret.Length; chI++)
                 {
                     var ch = ret[chI];
-                    if (ViewModel.Common.LocalizationSettings.GetInstance().IsEnUsDigit(ch))
+                    if (ViewModel.Common.LocalizationSettings.IsEnUsDigit(ch))
                     {
-                        ret[chI] = ViewModel.Common.LocalizationSettings.GetInstance().GetDigitSymbolFromEnUsDigit(ch);
+                        ret[chI] = ViewModel.Common.LocalizationSettings.Instance.GetDigitSymbolFromEnUsDigit(ch);
                     }
                 }
 
@@ -207,23 +190,17 @@
 
             public string GetDecimalSeparatorStr()
             {
-                return  m_decimalSeparator.ToString();
+                return m_decimalSeparator.ToString();
             }
 
-            public     string GetNumberGroupingSeparatorStr()
+            public string GetNumberGroupingSeparatorStr()
             {
-                return  m_numberGroupSeparator.ToString();
+                return m_numberGroupSeparator.ToString();
             }
 
-            public     string GetNumberGroupingStr()
-            {
-                return m_numberGrouping;
-            }
+            public string NumberGrouping => m_numberGrouping;
 
-            public    string GetListSeparator()
-            {
-                return m_listSeparator;
-            }
+            public string ListSeparator => m_listSeparator;
 
             private void Initialize(CultureInfo cultureInfo)
             {
@@ -241,7 +218,7 @@
 
                 // Convert number grouping to string representation similar to Win32 API
                 int[] groupSizes = numberFormat.NumberGroupSizes;
-                m_numberGrouping = string.Join(";", groupSizes.Select(size => size.ToString()));
+                m_numberGrouping = string.Join(";", groupSizes.Select(size => size.ToString(CultureInfo.InvariantCulture)));
                 //TODO: Do this better. Need to find cross platform way of getting the proper digit grouping.
                 m_numberGrouping += ";0";
 
@@ -280,19 +257,18 @@
                 else
                     return "GregorianCalendar"; // Default
             }
-             char  m_decimalSeparator;
-             char  m_numberGroupSeparator;
-            string m_numberGrouping;
-            char[]  m_digitSymbols = new char[10] ;
+            char m_decimalSeparator;
+            char m_numberGroupSeparator;
+            string m_numberGrouping = string.Empty;
+            char[] m_digitSymbols = new char[10];
             // Hexadecimal characters are not currently localized
-            static char[] s_hexSymbols = [ 'A', 'B', 'C', 'D', 'E', 'F' ];
-            string m_listSeparator;
-            string  m_calendarIdentifier;
+            static char[] s_hexSymbols = ['A', 'B', 'C', 'D', 'E', 'F'];
+            string m_listSeparator = string.Empty;
+            string m_calendarIdentifier = string.Empty;
             System.DayOfWeek m_firstDayOfWeek;
             int m_currencySymbolPrecedence;
-            string  m_resolvedName;
+            string m_resolvedName = string.Empty;
             int m_currencyTrailingDigits;
-              const uint LocaleSettingBufferSize = 16;
         };
     }
 }

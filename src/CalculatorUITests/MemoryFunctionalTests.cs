@@ -13,7 +13,7 @@ using System;
 namespace CalculatorUITests
 {
     [TestClass]
-    public class MemoryFunctionalTests
+    public sealed class MemoryFunctionalTests
     {
         private static readonly StandardCalculatorPage page = new StandardCalculatorPage();
 
@@ -70,7 +70,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void StandardMemory_Panel()
+        public void StandardMemoryPanel()
         {
             //Verify context menu MC, M+, M-, and verify the clear memory button in the Memory panel
             page.StandardOperators.NumberPad.Num3Button.Click();
@@ -84,16 +84,16 @@ namespace CalculatorUITests
             moveToListView.ContextClick(memoryItems[0].Item);
             moveToListView.Perform();
             CalculatorApp.Window.SendKeys(Keys.ArrowDown + Keys.ArrowDown + Keys.Enter);
-            Assert.IsTrue(memoryItems[0].GetValue().Equals("0", StringComparison.InvariantCultureIgnoreCase));
+            Assert.IsTrue(memoryItems[0].Value.Equals("0", StringComparison.OrdinalIgnoreCase));
 
             moveToListView.Perform();
             CalculatorApp.Window.SendKeys(Keys.ArrowUp + Keys.ArrowUp + Keys.Enter);
-            Assert.IsTrue(memoryItems[0].GetValue().Equals("3", StringComparison.InvariantCultureIgnoreCase));
+            Assert.IsTrue(memoryItems[0].Value.Equals("3", StringComparison.OrdinalIgnoreCase));
 
             moveToListView.Perform();
             CalculatorApp.Window.SendKeys(Keys.ArrowDown + Keys.ArrowUp + Keys.Enter);
             var memoryItems2 = page.MemoryPanel.GetAllMemoryListViewItems();
-            Assert.IsTrue(memoryItems2[0].GetValue().Equals("3", StringComparison.InvariantCultureIgnoreCase));
+            Assert.IsTrue(memoryItems2[0].Value.Equals("3", StringComparison.OrdinalIgnoreCase));
 
             page.MemoryPanel.PanelClearMemoryButton.Click();
             Assert.IsNotNull(CalculatorDriver.Instance.CalculatorSession.FindElementByAccessibilityId("MemoryPaneEmpty"));
@@ -101,7 +101,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void StandardMemory_Flyout()
+        public void StandardMemoryFlyout()
         {
             //Verify context menu MC, M+, M-, and ClearMemoryItemButton, and verify the clear memory button in the Memory flyout
             page.StandardOperators.NumberPad.Num3Button.Click();
@@ -115,18 +115,18 @@ namespace CalculatorUITests
             moveToListView.ContextClick(memoryItems[0].Item);
             moveToListView.Perform();
             CalculatorApp.Window.SendKeys(Keys.ArrowDown + Keys.ArrowDown + Keys.Enter);
-            Assert.IsTrue(memoryItems[0].GetValue().Equals("0", StringComparison.InvariantCultureIgnoreCase));
+            Assert.IsTrue(memoryItems[0].Value.Equals("0", StringComparison.OrdinalIgnoreCase));
 
             page.MemoryPanel.OpenMemoryFlyout();
             moveToListView.Perform();
             CalculatorApp.Window.SendKeys(Keys.ArrowUp + Keys.ArrowUp + Keys.Enter);
-            Assert.IsTrue(memoryItems[0].GetValue().Equals("3", StringComparison.InvariantCultureIgnoreCase));
+            Assert.IsTrue(memoryItems[0].Value.Equals("3", StringComparison.OrdinalIgnoreCase));
 
             page.MemoryPanel.OpenMemoryFlyout();
             moveToListView.Perform();
             CalculatorApp.Window.SendKeys(Keys.ArrowDown + Keys.ArrowUp + Keys.Enter);
             var memoryItems2 = page.MemoryPanel.GetAllMemoryListViewItems();
-            Assert.IsTrue(memoryItems2[0].GetValue().Equals("3", StringComparison.InvariantCultureIgnoreCase));
+            Assert.IsTrue(memoryItems2[0].Value.Equals("3", StringComparison.OrdinalIgnoreCase));
 
             page.MemoryPanel.OpenMemoryFlyout();
             page.MemoryPanel.PanelClearMemoryButton.Click();

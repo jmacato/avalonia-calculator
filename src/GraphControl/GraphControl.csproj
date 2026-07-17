@@ -12,8 +12,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="GraphingTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\GraphingInterfaces\GraphingInterfaces.csproj" />
     <ProjectReference Include="..\GraphingImpl\GraphingImpl.csproj" />
-    <PackageReference Include="Avalonia" Version="12.1.0" />
+    <PackageReference Include="Avalonia" Version="9999.0.0-localbuild" />
   </ItemGroup>
 </Project>

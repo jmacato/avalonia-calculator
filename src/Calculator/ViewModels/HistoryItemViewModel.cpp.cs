@@ -7,6 +7,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using CalcEngine;
 using CalculatorApp.ViewModel.Common;
 
@@ -18,13 +19,14 @@ namespace CalculatorApp.ViewModel
         public HistoryItemViewModel(
             string expression,
             string result,
-            IList<(string, int)> spTokens,
-            IList<IExpressionCommand> spCommands)
+            IEnumerable<(string, int)> spTokens,
+            IEnumerable<IExpressionCommand> spCommands)
         {
+            System.ArgumentNullException.ThrowIfNull(spTokens);
             m_expression = (expression);
             m_result = (result);
-            m_spTokens = spTokens.ToList();
-            m_spCommands = spCommands.ToList();
+            m_spTokens = spTokens.ToImmutableArray();
+            m_spCommands = spCommands.ToImmutableArray();
             // updating accessibility names for expression and result
             m_accExpression = HistoryItemViewModel.GetAccessibleExpressionFromTokens(spTokens, m_expression);
             m_accResult = LocalizationStringUtil.GetNarratorReadableString(m_result);
@@ -32,7 +34,7 @@ namespace CalculatorApp.ViewModel
 
         static String
             GetAccessibleExpressionFromTokens(
-                IList<(string, int)> spTokens,
+                IEnumerable<(string, int)> spTokens,
                 string fallbackExpression)
         {
             // updating accessibility names for expression and result

@@ -10,7 +10,8 @@ public class InnerDisplay<TFont, TGlyph>(
     IGlyphDisplay<TFont, TGlyph>? right,
     Range range)
     : IDisplay<TFont, TGlyph>
-    where TFont : IFont<TGlyph> {
+    where TFont : IFont<TGlyph>
+{
     ///<summary>A display representing the inner list that can be wrapped in delimiters.
     ///It's position is relative to the parent is not treated as a sub-display.</summary>
     public ListDisplay<TFont, TGlyph> Inner { get; } = inner;
@@ -29,14 +30,18 @@ public class InnerDisplay<TFont, TGlyph>(
 
     public Range Range { get; } = range;
 
-    public PointF Position {
+    public PointF Position
+    {
         get;
-        set {
+        set
+        {
             field = value;
-            if (Left != null) {
+            if (Left != null)
+            {
                 Left.Position = value;
                 Inner.Position = value with { X = value.X + Left.Width };
-            } else Inner.Position = value;
+            }
+            else Inner.Position = value;
 
             if (Right != null)
                 Right.Position = value with { X = Inner.Position.X + Inner.Width };
@@ -44,7 +49,8 @@ public class InnerDisplay<TFont, TGlyph>(
     }
 
     public bool HasScript { get; set; }
-    public void Draw(IGraphicsContext<TFont, TGlyph> context) {
+    public void Draw(IGraphicsContext<TFont, TGlyph> context)
+    {
         this.DrawBackground(context);
         Left?.Draw(context);
         Right?.Draw(context);
@@ -52,7 +58,8 @@ public class InnerDisplay<TFont, TGlyph>(
     }
 
     public Color? TextColor { get; set; }
-    public void SetTextColorRecursive(Color? textColor) {
+    public void SetTextColorRecursive(Color? textColor)
+    {
         TextColor ??= textColor;
         Left?.SetTextColorRecursive(textColor);
         Right?.SetTextColorRecursive(textColor);

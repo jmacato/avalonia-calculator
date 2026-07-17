@@ -13,7 +13,7 @@ using System.Linq;
 using System.Threading;
 using CalculatorApp;
 using CalculatorApp.ViewModel.Common;
-using CalculatorApp.ViewModel; 
+using CalculatorApp.ViewModel;
 using Windows.Foundation;
 using Windows.Foundation.Diagnostics;
 using Windows.Foundation.Metadata;
@@ -25,14 +25,6 @@ namespace CalculatorApp.ViewModel.Common;
 
 public partial class TraceLogger
 {
-    static string[] s_programmerType =
-    [
-        "N/A", "QwordType", "DwordType", "WordType", "ByteType",
-        "HexBase", "DecBase", "OctBase", "BinBase"
-    ];
-
-    private static ReaderWriterLockSlim s_traceLoggerLock = new();
-
     // Diagnostics events. Uploaded to asimov.
     const string EVENT_NAME_WINDOW_ON_CREATED = "WindowCreated";
     const string EVENT_NAME_BUTTON_USAGE = "ButtonUsageInSession";
@@ -65,30 +57,18 @@ public partial class TraceLogger
     {
     }
 
-    static TraceLogger s_selfInstance = new();
+    static readonly TraceLogger s_selfInstance = new();
 
 
-    public static TraceLogger GetInstance()
-    {
-        return s_selfInstance;
-    }
+    public static TraceLogger Instance => s_selfInstance;
 
     // return true if windowId is logged once else return false
     public bool IsWindowIdInLog(int windowId)
     {
-        // Writer lock for the windowIdLog resource
-        // reader_writer_lock.scoped_lock lock(s_traceLoggerLock);
-
-        if (windowIdLog
-            .Contains(windowId)) //(find(windowIdLog.begin(), windowIdLog.end(), windowId) == windowIdLog.end())
-        {
-            return false;
-        }
-
-        return true;
+        return !windowIdLog.ContainsKey(windowId);
     }
 
-    public void LogVisualStateChanged(ViewMode mode, String state, bool isAlwaysOnTop)
+    public static void LogVisualStateChanged(ViewMode mode, String state, bool isAlwaysOnTop)
     {
         var fields = new LoggingFields();
 
@@ -100,19 +80,17 @@ public partial class TraceLogger
 
     public void LogWindowCreated(ViewMode mode, int windowId)
     {
-        // store windowId in windowIdLog which says we have logged mode for the present windowId.
-        if (!IsWindowIdInLog(windowId))
-        {
-            windowIdLog.Add(windowId);
-        }
+        // Publish registration atomically so simultaneous window callbacks do
+        // not mutate a shared collection or add duplicates.
+        windowIdLog.TryAdd(windowId, 0);
 
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), NavCategoryStates.GetFriendlyName(mode));
-        fields.AddUInt64(("NumOfOpenWindows"), currentWindowCount);
+        fields.AddUInt64(("NumOfOpenWindows"), (ulong)Math.Max(0, Volatile.Read(ref currentWindowCount)));
         CommonLogLevel2Event((EVENT_NAME_WINDOW_ON_CREATED), fields);
     }
 
-    public void LogModeChange(ViewMode mode)
+    public static void LogModeChange(ViewMode mode)
     {
         if (NavCategoryStates.IsValidViewMode(mode))
         {
@@ -122,7 +100,7 @@ public partial class TraceLogger
         }
     }
 
-    public void LogHistoryItemLoad(ViewMode mode, int historyListSize, int loadedIndex)
+    public static void LogHistoryItemLoad(ViewMode mode, int historyListSize, int loadedIndex)
     {
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), NavCategoryStates.GetFriendlyName(mode));
@@ -131,7 +109,7 @@ public partial class TraceLogger
         CommonLogLevel2Event((EVENT_NAME_HISTORY_ITEM_LOAD), fields);
     }
 
-    public void LogMemoryItemLoad(ViewMode mode, int memoryListSize, int loadedIndex)
+    public static void LogMemoryItemLoad(ViewMode mode, int memoryListSize, int loadedIndex)
     {
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), NavCategoryStates.GetFriendlyName(mode));
@@ -140,7 +118,7 @@ public partial class TraceLogger
         CommonLogLevel2Event((EVENT_NAME_MEMORY_ITEM_LOAD), fields);
     }
 
-    public void LogError(ViewMode mode, string functionName, string errorString)
+    public static void LogError(ViewMode mode, string functionName, string errorString)
     {
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), NavCategoryStates.GetFriendlyName(mode));
@@ -149,8 +127,13 @@ public partial class TraceLogger
         CommonLogLevel2Event((EVENT_NAME_EXCEPTION), fields);
     }
 
-    public void LogStandardException(ViewMode mode, string functionName, Exception e)
+    public static void LogStandardException(ViewMode mode, string functionName, Exception e)
     {
+        if (e is null)
+        {
+            throw new ArgumentNullException(nameof(e));
+        }
+
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), NavCategoryStates.GetFriendlyName(mode));
         fields.AddString(("FunctionName"), (functionName));
@@ -160,7 +143,7 @@ public partial class TraceLogger
         CommonLogLevel2Event((EVENT_NAME_EXCEPTION), fields);
     }
 
-    public void LogPlatformExceptionInfo(CalculatorApp.ViewModel.Common.ViewMode mode, string functionName,
+    public static void LogPlatformExceptionInfo(CalculatorApp.ViewModel.Common.ViewMode mode, string functionName,
         string message, int hresult)
     {
         var fields = new LoggingFields();
@@ -171,44 +154,31 @@ public partial class TraceLogger
         CommonLogLevel2Event((EVENT_NAME_EXCEPTION), fields);
     }
 
-    public void LogPlatformException(ViewMode mode, string functionName, Exception e)
+    public static void LogPlatformException(ViewMode mode, string functionName, Exception e)
     {
+        if (e is null)
+        {
+            throw new ArgumentNullException(nameof(e));
+        }
+
         LogPlatformExceptionInfo(mode, functionName, e.Message, e.HResult);
     }
 
-    public void UpdateButtonUsage(NumbersAndOperatorsEnum button, ViewMode mode)
+    public void UpdateButtonUsage(CalculatorButtonId button, ViewMode mode)
     {
         // IsProgrammerMode, IsScientificMode, IsStandardMode and None are not actual buttons, so ignore them
-        if (button == NumbersAndOperatorsEnum.IsProgrammerMode || button == NumbersAndOperatorsEnum.IsScientificMode
-                                                               || button == NumbersAndOperatorsEnum.IsStandardMode ||
-                                                               button == NumbersAndOperatorsEnum.None)
+        if (button == CalculatorButtonId.IsProgrammerMode || button == CalculatorButtonId.IsScientificMode
+                                                               || button == CalculatorButtonId.IsStandardMode ||
+                                                               button == CalculatorButtonId.None)
         {
             return;
         }
 
-        {
-            // Writer lock for the buttonLog resource
-            using var lockScope = new WriterLockScope(s_traceLoggerLock);
-
-
-            if (buttonLog.Any(x => x.button == button && x.mode == mode))
-                buttonLog.Add(new ButtonLog(button, mode));
-
-
-            // List<ButtonLog>.iterator it = find_if(
-            //     buttonLog.begin(), buttonLog.end(), [button, mode](const ButtonLog& bLog) . bool { return bLog.button == button && bLog.mode == mode; });
-            // if (it != buttonLog.end())
-            // {
-            //     it.count++;
-            // }
-            // else
-            // {
-            //     buttonLog.push_back(ButtonLog(button, mode));
-            // }
-        }
+        buttonLog.Enqueue(new ButtonLog(button, mode));
+        int pending = Interlocked.Increment(ref pendingButtonLogCount);
 
         // Periodically log the button usage so that we do not lose all button data if the app is foricibly closed or crashes
-        if (buttonLog.Count >= 10)
+        if (pending >= 10)
         {
             LogButtonUsage();
         }
@@ -218,50 +188,67 @@ public partial class TraceLogger
     {
         if (windowCount == 0)
         {
-            currentWindowCount--;
+            while (true)
+            {
+                long current = Volatile.Read(ref currentWindowCount);
+                if (current == 0 || Interlocked.CompareExchange(ref currentWindowCount, current - 1, current) == current)
+                {
+                    break;
+                }
+            }
             return;
         }
 
-        currentWindowCount = (ulong)windowCount;
+        Volatile.Write(ref currentWindowCount, Math.Max(0, windowCount));
     }
 
     public void DecreaseWindowCount()
     {
-        currentWindowCount = 0;
+        Volatile.Write(ref currentWindowCount, 0);
     }
 
     public void LogButtonUsage()
     {
-        // Writer lock for the buttonLog resource
-        using var lockScope = new WriterLockScope(s_traceLoggerLock);
-
-        if (buttonLog.Count == 0)
+        if (Interlocked.CompareExchange(ref buttonLogDrainActive, 1, 0) != 0)
         {
             return;
         }
 
-        string buttonUsageString = "";
-        for (var i = 0; i < buttonLog.Count; i++)
+        try
         {
-            buttonUsageString += NavCategoryStates.GetFriendlyName(buttonLog[i].mode);
-            buttonUsageString += "|";
-            buttonUsageString += buttonLog[i].button.ToString();
-            buttonUsageString += "|";
-            buttonUsageString += buttonLog[i].count;
-            if (i != buttonLog.Count - 1)
+            Dictionary<(CalculatorButtonId Button, ViewMode Mode), int> counts =
+                new Dictionary<(CalculatorButtonId Button, ViewMode Mode), int>();
+            int drained = 0;
+            while (buttonLog.TryDequeue(out ButtonLog entry))
             {
-                buttonUsageString += ",";
+                var key = (entry.Button, entry.Mode);
+                counts[key] = counts.TryGetValue(key, out int count) ? count + entry.Count : entry.Count;
+                drained++;
             }
+
+            if (drained != 0)
+            {
+                Interlocked.Add(ref pendingButtonLogCount, -drained);
+            }
+
+            if (counts.Count == 0)
+            {
+                return;
+            }
+
+            string buttonUsageString = string.Join(",", counts.Select(entry =>
+                $"{NavCategoryStates.GetFriendlyName(entry.Key.Mode)}|{entry.Key.Button}|{entry.Value}"));
+            var fields = new LoggingFields();
+            fields.AddString(("ButtonUsage"), buttonUsageString);
+            CommonLogLevel2Event((EVENT_NAME_BUTTON_USAGE), fields);
         }
-
-        var fields = new LoggingFields();
-        fields.AddString(("ButtonUsage"), buttonUsageString);
-        CommonLogLevel2Event((EVENT_NAME_BUTTON_USAGE), fields);
-
-        buttonLog.Clear();
+        finally
+        {
+            Volatile.Write(ref buttonLogDrainActive, 0);
+        }
     }
 
-    public void LogDateCalculationModeUsed(bool AddSubtractMode)
+    public static void LogDateCalculationModeUsed(bool AddSubtractMode)
     {
         string calculationType = AddSubtractMode ? "AddSubtractMode" : "DateDifferenceMode";
         var fields = new LoggingFields();
@@ -270,27 +257,27 @@ public partial class TraceLogger
         CommonLogLevel2Event((EVENT_NAME_DATE_CALCULATION_MODE_USED), fields);
     }
 
-    public void LogConverterInputReceived(ViewMode mode)
+    public static void LogConverterInputReceived(ViewMode mode)
     {
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), NavCategoryStates.GetFriendlyName(mode));
         CommonLogLevel2Event((EVENT_NAME_CONVERTER_INPUT_RECEIVED), fields);
     }
 
-    public void LogNavBarOpened()
+    public static void LogNavBarOpened()
     {
         var fields = new LoggingFields();
         CommonLogLevel2Event((EVENT_NAME_NAV_BAR_OPENED), fields);
     }
 
-    public void LogInputPasted(ViewMode mode)
+    public static void LogInputPasted(ViewMode mode)
     {
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), NavCategoryStates.GetFriendlyName(mode));
         CommonLogLevel2Event((EVENT_NAME_INPUT_PASTED), fields);
     }
 
-    public void LogShowHideButtonClicked(bool isHideButton)
+    public static void LogShowHideButtonClicked(bool isHideButton)
     {
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), (GRAPHING_MODE));
@@ -298,7 +285,7 @@ public partial class TraceLogger
         CommonLogLevel2Event((EVENT_NAME_SHOW_HIDE_BUTTON_CLICKED), fields);
     }
 
-    public void LogGraphButtonClicked(GraphButton buttonName, GraphButtonValue buttonValue)
+    public static void LogGraphButtonClicked(GraphButton buttonName, GraphButtonValue buttonValue)
     {
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), (GRAPHING_MODE));
@@ -307,7 +294,7 @@ public partial class TraceLogger
         CommonLogLevel2Event((EVENT_NAME_GRAPH_BUTTON_CLICKED), fields);
     }
 
-    public void LogGraphLineStyleChanged(LineStyleType style)
+    public static void LogGraphLineStyleChanged(LineStyleType style)
     {
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), (GRAPHING_MODE));
@@ -315,7 +302,7 @@ public partial class TraceLogger
         CommonLogLevel2Event((EVENT_NAME_GRAPH_LINE_STYLE_CHANGED), fields);
     }
 
-    public void LogVariableChanged(String inputChangedType, String variableName)
+    public static void LogVariableChanged(String inputChangedType, String variableName)
     {
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), (GRAPHING_MODE));
@@ -324,7 +311,7 @@ public partial class TraceLogger
         CommonLogLevel2Event((EVENT_NAME_VARIABLE_CHANGED), fields);
     }
 
-    public void LogVariableSettingsChanged(String setting)
+    public static void LogVariableSettingsChanged(String setting)
     {
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), (GRAPHING_MODE));
@@ -332,7 +319,7 @@ public partial class TraceLogger
         CommonLogLevel2Event((EVENT_NAME_VARIABLE_SETTING_CHANGED), fields);
     }
 
-    public void LogGraphSettingsChanged(GraphSettingsType settingType, String settingValue)
+    public static void LogGraphSettingsChanged(GraphSettingsType settingType, String settingValue)
     {
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), (GRAPHING_MODE));
@@ -342,7 +329,7 @@ public partial class TraceLogger
         CommonLogLevel2Event((EVENT_NAME_GRAPH_SETTINGS_CHANGED), fields);
     }
 
-    public void LogGraphTheme(String graphTheme)
+    public static void LogGraphTheme(String graphTheme)
     {
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), (GRAPHING_MODE));
@@ -351,21 +338,21 @@ public partial class TraceLogger
         CommonLogLevel2Event((EVENT_NAME_GRAPH_THEME), fields);
     }
 
-    public void LogRecallSnapshot(ViewMode mode)
+    public static void LogRecallSnapshot(ViewMode mode)
     {
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), NavCategoryStates.GetFriendlyName(mode));
         CommonLogLevel2Event((EVENT_NAME_RECALL_SNAPSHOT), fields);
     }
 
-    public void LogRecallRestore(ViewMode mode)
+    public static void LogRecallRestore(ViewMode mode)
     {
         var fields = new LoggingFields();
         fields.AddString((CALC_MODE), NavCategoryStates.GetFriendlyName(mode));
         CommonLogLevel2Event((EVENT_NAME_RECALL_RESTORE), fields);
     }
 
-    public void LogRecallError(string message)
+    public static void LogRecallError(string message)
     {
         var fields = new LoggingFields();
         fields.AddString(("FunctionName"), "Recal");
@@ -373,14 +360,14 @@ public partial class TraceLogger
         CommonLogLevel2Event((EVENT_NAME_EXCEPTION), fields);
     }
 
-    public void LogWarning(string methodname, string msg)
+    public static void LogWarning(string methodname, string msg)
     {
         Trace.WriteLine(msg, methodname);
     }
 
 
 
-    private void CommonLogLevel2Event(string eventName, LoggingFields fields)
+    private static void CommonLogLevel2Event(string eventName, LoggingFields fields)
     {
         Trace.TraceInformation($"$---{eventName}:\n{fields.ToString()}");
     }

@@ -1,107 +1,110 @@
-﻿using Avalonia;
-using Avalonia.Controls.Documents;
+using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
+using Avalonia.VisualTree;
+using System.Threading;
 
 namespace FluentAvalonia.UI.Controls;
 
 /// <summary>
-/// Represents an icon that uses a glyph from the SymbolThemeFontFamily resource as its content.
+/// Represents an icon that uses a glyph from the bundled Fluent symbol font.
 /// </summary>
-public class FASymbolIcon : FAIconElement
+public sealed class FASymbolIcon : FAIconElement, IDisposable
 {
-    static FASymbolIcon()
-    {
-        FontSizeProperty.OverrideDefaultValue<FASymbolIcon>(18d);
-        _symbolFontFamily = new FontFamily("avares://FluentAvalonia/Fonts#Symbols");
-    }
-
-    /// <summary>
-    /// Defines the <see cref="Symbol"/> property
-    /// </summary>
     public static readonly StyledProperty<FASymbol> SymbolProperty =
         AvaloniaProperty.Register<FASymbolIcon, FASymbol>(nameof(Symbol));
 
-    /// <summary>
-    /// Defines the <see cref="FontSize"/> property
-    /// </summary>
     public static readonly StyledProperty<double> FontSizeProperty =
-        TextElement.FontSizeProperty.AddOwner<FASymbolIcon>();
+        AvaloniaProperty.Register<FASymbolIcon, double>(nameof(FontSize), 18d);
 
-    /// <summary>
-    /// Gets or sets the <see cref="Controls.FASymbol"/> this icon displays
-    /// </summary>
     public FASymbol Symbol
     {
         get => GetValue(SymbolProperty);
         set => SetValue(SymbolProperty, value);
     }
 
-    /// <summary>
-    /// Gets or sets the font size this icon uses when rendering
-    /// </summary>
     public double FontSize
     {
         get => GetValue(FontSizeProperty);
         set => SetValue(FontSizeProperty, value);
     }
 
+    public void Dispose()
+    {
+        ReleaseTextLayout();
+        GC.SuppressFinalize(this);
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
-        if (change.Property == TextElement.FontSizeProperty ||
-            change.Property == SymbolProperty)
+        if (change.Property == FontSizeProperty || change.Property == SymbolProperty)
         {
-            _textLayout = null;
+            ReleaseTextLayout();
             InvalidateMeasure();
         }
-        else if (change.Property == TextElement.ForegroundProperty)
+        else if (change.Property == ForegroundProperty)
         {
-            _textLayout = null;  
-            // FAIconElement calls InvalidateVisual
+            ReleaseTextLayout();
         }
     }
 
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        base.OnAttachedToVisualTree(e);
-
-        // Force invalidation of text for inherited properties now that we've attached to the tree
-        if (_textLayout != null)
-            GenerateText();
+        ArgumentNullException.ThrowIfNull(e);
+        ReleaseTextLayout();
+        base.OnDetachedFromVisualTree(e);
     }
 
     protected override Size MeasureOverride(Size availableSize)
     {
-        if (_textLayout == null)
-            GenerateText();
-
-        return new Size(_textLayout.Width, _textLayout.Height);
+        TextLayout layout = GetTextLayout();
+        return new Size(layout.Width, layout.Height);
     }
 
     public override void Render(DrawingContext context)
     {
-        if (_textLayout == null)
-            GenerateText();
-
-        var dstRect = new Rect(Bounds.Size);
-        using (context.PushClip(dstRect))
+        ArgumentNullException.ThrowIfNull(context);
+        TextLayout layout = GetTextLayout();
+        var destination = new Rect(Bounds.Size);
+        using (context.PushClip(destination))
         {
-            var pt = new Point(dstRect.Center.X - _textLayout.Width * 0.5,
-                               dstRect.Center.Y - _textLayout.Height * 0.5);
-            _textLayout.Draw(context, pt);
+            var origin = new Point(
+                destination.Center.X - (layout.Width * 0.5),
+                destination.Center.Y - (layout.Height * 0.5));
+            layout.Draw(context, origin);
         }
     }
 
-    private void GenerateText()
+    private TextLayout GetTextLayout()
     {
-        var glyph = char.ConvertFromUtf32((int)Symbol).ToString();
+        TextLayout? current = Volatile.Read(ref _textLayout);
+        if (current is not null)
+        {
+            return current;
+        }
 
-        _textLayout = new TextLayout(glyph,
-            new Typeface(_symbolFontFamily),
-           FontSize, Foreground, TextAlignment.Left);
+        string glyph = char.ConvertFromUtf32((int)Symbol);
+        var created = new TextLayout(
+            glyph,
+            new Typeface(SymbolFontFamily),
+            FontSize,
+            Foreground,
+            TextAlignment.Left);
+        TextLayout? existing = Interlocked.CompareExchange(ref _textLayout, created, null);
+        if (existing is not null)
+        {
+            created.Dispose();
+            return existing;
+        }
+
+        return created;
     }
 
-    private TextLayout _textLayout;
-    private static FontFamily _symbolFontFamily;
+    private void ReleaseTextLayout() => Interlocked.Exchange(ref _textLayout, null)?.Dispose();
+
+    private static readonly FontFamily SymbolFontFamily =
+        new("avares://FluentAvalonia/Fonts#Symbols");
+    private TextLayout? _textLayout;
 }

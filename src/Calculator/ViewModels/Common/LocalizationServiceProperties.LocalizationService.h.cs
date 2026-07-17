@@ -1,0 +1,15 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+// #pragma  once
+// #include  "Utils.h"
+using System.Collections.Generic;
+using System.Globalization;
+using Windows.UI.Text;
+using Microsoft.UI.Xaml;
+
+namespace CalculatorApp.ViewModel.Common;
+
+internal static class LocalizationServiceProperties
+{
+    public static string DefaultCurrencyCode = "USD";
+}

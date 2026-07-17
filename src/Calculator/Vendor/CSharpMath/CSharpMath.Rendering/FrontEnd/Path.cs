@@ -14,7 +14,13 @@ public abstract class Path : IDisposable
 
     public abstract void CloseContour();
 
-    public abstract void Dispose();
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected abstract void Dispose(bool disposing);
 
     public abstract System.Drawing.Color? Foreground { get; set; }
 }

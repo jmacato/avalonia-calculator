@@ -13,7 +13,7 @@ public partial class EngineResourceProvider : IResourceProvider
 {
     public string GetCEngineString(string id)
     {
-        LocalizationSettings localizationSettings = LocalizationSettings.GetInstance();
+        LocalizationSettings localizationSettings = LocalizationSettings.Instance;
 
         if (id == ("sDecima") || id == ("sDecimal"))
         {
@@ -33,12 +33,12 @@ public partial class EngineResourceProvider : IResourceProvider
             //   3;2;0           0x023          - group 1st 3 and then every 2 digits
             //   4;0             0x004          - group every 4 digits
             //   5;3;2;0         0x235          - group 5, then 3, then every 2
-            string numberGroupingString = localizationSettings.GetNumberGroupingStr();
+            string numberGroupingString = localizationSettings.NumberGrouping;
             return numberGroupingString;
         }
 
         // StringReference idRef(id.data
         // (), id.length());
-        return AppResourceProvider.GetInstance().GetCEngineString(id);
+        return AppResourceProvider.Instance.GetCEngineString(id);
     }
 }

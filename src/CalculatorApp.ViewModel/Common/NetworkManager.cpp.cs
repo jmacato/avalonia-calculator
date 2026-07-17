@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
 // #include  "pch.h"
@@ -24,7 +24,7 @@ public partial class NetworkManager
         NetworkInformation.NetworkStatusChanged -= OnNetworkStatusChange;
     }
 
-    public NetworkAccessBehavior GetNetworkAccessBehavior()
+    public static NetworkAccessBehavior GetNetworkAccessBehavior()
     {
         NetworkAccessBehavior behavior = NetworkAccessBehavior.Offline;
         ConnectionProfile connectionProfile = NetworkInformation.GetInternetConnectionProfile();
@@ -42,14 +42,19 @@ public partial class NetworkManager
         return behavior;
     }
 
-    public  void OnNetworkStatusChange(Object sender)
+    public void OnNetworkStatusChange(Object sender)
     {
-        NetworkBehaviorChanged(GetNetworkAccessBehavior());
+        NetworkBehaviorChanged?.Invoke(this, new NetworkBehaviorChangedEventArgs(GetNetworkAccessBehavior()));
     }
 
-// See app behavior guidelines at https://msdn.microsoft.com/en-us/library/windows/apps/xaml/jj835821(v=win.10).aspx
-    public NetworkAccessBehavior ConvertCostInfoToBehavior(ConnectionCost connectionCost)
+    // See app behavior guidelines at https://msdn.microsoft.com/en-us/library/windows/apps/xaml/jj835821(v=win.10).aspx
+    public static NetworkAccessBehavior ConvertCostInfoToBehavior(ConnectionCost connectionCost)
     {
+        if (connectionCost is null)
+        {
+            throw new ArgumentNullException(nameof(connectionCost));
+        }
+
         if (connectionCost.Roaming || connectionCost.OverDataLimit ||
             connectionCost.NetworkCostType == NetworkCostType.Variable
             || connectionCost.NetworkCostType == NetworkCostType.Fixed)

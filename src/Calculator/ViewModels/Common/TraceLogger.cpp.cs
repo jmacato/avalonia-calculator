@@ -12,30 +12,26 @@ namespace CalculatorApp.ViewModel.Common;
 public partial class TraceLogger
 {
     private static readonly TraceLogger s_selfInstance = new();
-    private readonly object _sync = new();
 
     private TraceLogger()
     {
     }
 
-    public static TraceLogger GetInstance() => s_selfInstance;
+    public static TraceLogger Instance => s_selfInstance;
 
-    public bool IsWindowIdInLog(int windowId) => !windowIdLog.Contains(windowId);
+    public bool IsWindowIdInLog(int windowId) => !_windowIds.ContainsKey(windowId);
 
-    public void LogVisualStateChanged(ViewMode mode, string state, bool isAlwaysOnTop) =>
+    public static void LogVisualStateChanged(ViewMode mode, string state, bool isAlwaysOnTop) =>
         Information("VisualStateChanged", mode, ("VisualState", state), ("IsAlwaysOnTop", isAlwaysOnTop));
 
     public void LogWindowCreated(ViewMode mode, int windowId)
     {
-        if (IsWindowIdInLog(windowId))
-        {
-            windowIdLog.Add(windowId);
-        }
+        _windowIds.TryAdd(windowId, 0);
 
-        Information("WindowCreated", mode, ("NumOfOpenWindows", currentWindowCount));
+        Information("WindowCreated", mode, ("NumOfOpenWindows", Volatile.Read(ref _currentWindowCount)));
     }
 
-    public void LogModeChange(ViewMode mode)
+    public static void LogModeChange(ViewMode mode)
     {
         if (NavCategoryStates.IsValidViewMode(mode))
         {
@@ -43,108 +39,114 @@ public partial class TraceLogger
         }
     }
 
-    public void LogHistoryItemLoad(ViewMode mode, int historyListSize, int loadedIndex) =>
+    public static void LogHistoryItemLoad(ViewMode mode, int historyListSize, int loadedIndex) =>
         Information("HistoryItemLoad", mode, ("HistoryListSize", historyListSize), ("HistoryItemIndex", loadedIndex));
 
-    public void LogMemoryItemLoad(ViewMode mode, int memoryListSize, int loadedIndex) =>
+    public static void LogMemoryItemLoad(ViewMode mode, int memoryListSize, int loadedIndex) =>
         Information("MemoryItemLoad", mode, ("MemoryListSize", memoryListSize), ("MemoryItemIndex", loadedIndex));
 
-    public void LogError(ViewMode mode, string functionName, string errorString) =>
+    public static void LogError(ViewMode mode, string functionName, string errorString) =>
         Log.Error("{Event} {CalcMode} {FunctionName}: {Message}", "Exception", FriendlyName(mode), functionName, errorString);
 
-    public void LogStandardException(ViewMode mode, string functionName, Exception exception) =>
+    public static void LogStandardException(ViewMode mode, string functionName, Exception exception) =>
         Log.Error(exception, "{Event} {CalcMode} {FunctionName}", "Exception", FriendlyName(mode), functionName);
 
-    public void LogPlatformExceptionInfo(ViewMode mode, string functionName, string message, int hresult) =>
+    public static void LogPlatformExceptionInfo(ViewMode mode, string functionName, string message, int hresult) =>
         Log.Error("{Event} {CalcMode} {FunctionName}: {Message} ({HResult})", "Exception", FriendlyName(mode), functionName, message, hresult);
 
-    public void LogPlatformException(ViewMode mode, string functionName, Exception exception) =>
-        LogPlatformExceptionInfo(mode, functionName, exception.Message, exception.HResult);
-
-    public void UpdateButtonUsage(NumbersAndOperatorsEnum button, ViewMode mode)
+    public static void LogPlatformException(ViewMode mode, string functionName, Exception exception)
     {
-        if (button is NumbersAndOperatorsEnum.IsProgrammerMode
-            or NumbersAndOperatorsEnum.IsScientificMode
-            or NumbersAndOperatorsEnum.IsStandardMode
-            or NumbersAndOperatorsEnum.None)
+        ArgumentNullException.ThrowIfNull(exception);
+        LogPlatformExceptionInfo(mode, functionName, exception.Message, exception.HResult);
+    }
+
+    public void UpdateButtonUsage(CalculatorButtonId button, ViewMode mode)
+    {
+        if (button is CalculatorButtonId.IsProgrammerMode
+            or CalculatorButtonId.IsScientificMode
+            or CalculatorButtonId.IsStandardMode
+            or CalculatorButtonId.None)
         {
             return;
         }
 
-        lock (_sync)
-        {
-            int index = buttonLog.FindIndex(entry => entry.button == button && entry.mode == mode);
-            if (index >= 0)
-            {
-                ButtonLog entry = buttonLog[index];
-                entry.count++;
-                buttonLog[index] = entry;
-            }
-            else
-            {
-                buttonLog.Add(new ButtonLog(button, mode));
-            }
-        }
+        _buttonLog.Writer.TryWrite(new ButtonLog(button, mode));
     }
 
-    public void UpdateWindowCount(long windowCount) => currentWindowCount = windowCount > 0 ? (ulong)windowCount : 0;
+    public void UpdateWindowCount(long windowCount) =>
+        Volatile.Write(ref _currentWindowCount, Math.Max(0, windowCount));
 
-    public void DecreaseWindowCount() => currentWindowCount = 0;
+    public void DecreaseWindowCount() => Volatile.Write(ref _currentWindowCount, 0);
 
     public void LogButtonUsage()
     {
-        lock (_sync)
+        if (Interlocked.CompareExchange(ref _buttonLogDrainActive, 1, 0) != 0)
         {
-            if (buttonLog.Count == 0)
+            return;
+        }
+
+        try
+        {
+            var counts = new Dictionary<(CalculatorButtonId Button, ViewMode Mode), int>();
+            while (_buttonLog.Reader.TryRead(out ButtonLog entry))
+            {
+                var key = (entry.Button, entry.Mode);
+                counts[key] = counts.GetValueOrDefault(key) + entry.Count;
+            }
+
+            if (counts.Count == 0)
             {
                 return;
             }
 
-            string usage = string.Join(",", buttonLog.Select(entry =>
-                $"{FriendlyName(entry.mode)}|{entry.button}|{entry.count}"));
+            string usage = string.Join(",", counts.Select(entry =>
+                $"{FriendlyName(entry.Key.Mode)}|{entry.Key.Button}|{entry.Value}"));
             Log.Information("{Event} {ButtonUsage}", "ButtonUsageInSession", usage);
-            buttonLog.Clear();
+        }
+        finally
+        {
+            Volatile.Write(ref _buttonLogDrainActive, 0);
         }
     }
 
-    public void LogDateCalculationModeUsed(bool addSubtractMode) =>
+    public static void LogDateCalculationModeUsed(bool addSubtractMode) =>
         Information("DateCalculationModeUsed", ViewMode.Date,
             ("CalculationType", addSubtractMode ? "AddSubtractMode" : "DateDifferenceMode"));
 
-    public void LogConverterInputReceived(ViewMode mode) => Information("ConverterInputReceived", mode);
+    public static void LogConverterInputReceived(ViewMode mode) => Information("ConverterInputReceived", mode);
 
-    public void LogNavBarOpened() => Log.Information("{Event}", "NavigationViewOpened");
+    public static void LogNavBarOpened() => Log.Information("{Event}", "NavigationViewOpened");
 
-    public void LogInputPasted(ViewMode mode) => Information("InputPasted", mode);
+    public static void LogInputPasted(ViewMode mode) => Information("InputPasted", mode);
 
-    public void LogShowHideButtonClicked(bool isHideButton) =>
+    public static void LogShowHideButtonClicked(bool isHideButton) =>
         Log.Information("{Event} {CalcMode} {IsHideButton}", "ShowHideButtonClicked", "Graphing", isHideButton);
 
-    public void LogGraphButtonClicked(GraphButton buttonName, GraphButtonValue buttonValue) =>
+    public static void LogGraphButtonClicked(GraphButton buttonName, GraphButtonValue buttonValue) =>
         Log.Information("{Event} {CalcMode} {ButtonName} {ButtonValue}", "GraphButtonClicked", "Graphing", buttonName, buttonValue);
 
-    public void LogGraphLineStyleChanged(LineStyleType style) =>
+    public static void LogGraphLineStyleChanged(LineStyleType style) =>
         Log.Information("{Event} {CalcMode} {StyleType}", "GraphLineStyleChanged", "Graphing", style);
 
-    public void LogVariableChanged(string inputChangedType, string variableName) =>
+    public static void LogVariableChanged(string inputChangedType, string variableName) =>
         Log.Information("{Event} {CalcMode} {InputChangedType} {VariableName}", "VariableChanged", "Graphing", inputChangedType, variableName);
 
-    public void LogVariableSettingsChanged(string setting) =>
+    public static void LogVariableSettingsChanged(string setting) =>
         Log.Information("{Event} {CalcMode} {SettingChanged}", "VariableSettingsChanged", "Graphing", setting);
 
-    public void LogGraphSettingsChanged(GraphSettingsType settingType, string settingValue) =>
+    public static void LogGraphSettingsChanged(GraphSettingsType settingType, string settingValue) =>
         Log.Information("{Event} {CalcMode} {SettingType} {SettingValue}", "GraphSettingsChanged", "Graphing", settingType, settingValue);
 
-    public void LogGraphTheme(string graphTheme) =>
+    public static void LogGraphTheme(string graphTheme) =>
         Log.Information("{Event} {CalcMode} {GraphTheme}", "GraphTheme", "Graphing", graphTheme);
 
-    public void LogRecallSnapshot(ViewMode mode) => Information("RecallSnapshot", mode);
+    public static void LogRecallSnapshot(ViewMode mode) => Information("RecallSnapshot", mode);
 
-    public void LogRecallRestore(ViewMode mode) => Information("RecallRestore", mode);
+    public static void LogRecallRestore(ViewMode mode) => Information("RecallRestore", mode);
 
-    public void LogRecallError(string message) => Log.Error("{Event} {FunctionName}: {Message}", "Exception", "Recall", message);
+    public static void LogRecallError(string message) => Log.Error("{Event} {FunctionName}: {Message}", "Exception", "Recall", message);
 
-    public void LogWarning(string methodName, string message) => Log.Warning("{MethodName}: {Message}", methodName, message);
+    public static void LogWarning(string methodName, string message) => Log.Warning("{MethodName}: {Message}", methodName, message);
 
     private static string FriendlyName(ViewMode mode) => NavCategoryStates.GetFriendlyName(mode);
 

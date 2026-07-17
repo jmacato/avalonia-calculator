@@ -8,7 +8,8 @@ public class AccentDisplay<TFont, TGlyph>(
     GlyphDisplay<TFont, TGlyph> accentGlyphDisplay,
     IDisplay<TFont, TGlyph> accentee)
     : IDisplay<TFont, TGlyph>
-    where TFont : IFont<TGlyph> {
+    where TFont : IFont<TGlyph>
+{
     ///<summary>A display representing the inner list that is accented.
     ///Its position is relative to the parent and it is not treated as a sub-display.</summary>
     public IDisplay<TFont, TGlyph> Accentee { get; } = accentee;
@@ -29,7 +30,9 @@ public class AccentDisplay<TFont, TGlyph>(
 
     public bool HasScript { get; set; }
 
-    public void Draw(IGraphicsContext<TFont, TGlyph> context) {
+    public void Draw(IGraphicsContext<TFont, TGlyph> context)
+    {
+        System.ArgumentNullException.ThrowIfNull(context);
         this.DrawBackground(context);
         Accentee.Draw(context);
         context.SaveState();
@@ -40,7 +43,8 @@ public class AccentDisplay<TFont, TGlyph>(
     }
 
     public Color? TextColor { get; set; }
-    public void SetTextColorRecursive(Color? textColor) {
+    public void SetTextColorRecursive(Color? textColor)
+    {
         TextColor ??= textColor;
         Accentee.SetTextColorRecursive(textColor);
         Accent.SetTextColorRecursive(textColor);

@@ -11,6 +11,6 @@ public sealed class RadixButton : RadioButton
     internal string GetRawDisplayValue()
     {
         string radixContent = Content?.ToString() ?? string.Empty;
-        return LocalizationSettings.GetInstance().RemoveGroupSeparators(radixContent);
+        return LocalizationSettings.Instance.RemoveGroupSeparators(radixContent);
     }
 }

@@ -8,8 +8,10 @@ using CalculatorApp.ViewModel;
 
 namespace CalculatorApp;
 
-public sealed partial class DateCalculator : UserControl
+public sealed partial class DateCalculator : UserControl, IDisposable
 {
+    private int _disposed;
+
     public DateCalculator()
     {
         InitializeComponent();
@@ -45,5 +47,17 @@ public sealed partial class DateCalculator : UserControl
         {
             viewModel.OnCopyCommand(null);
         }
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        CloseCalendarFlyout();
+        DataContext = null;
+        GC.SuppressFinalize(this);
     }
 }

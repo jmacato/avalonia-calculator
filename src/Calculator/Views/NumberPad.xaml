@@ -63,7 +63,7 @@
                                Grid.Row="3" Grid.Column="2" Classes="numeric"
                                AutomationProperties.AutomationId="decimalSeparatorButton"
                                AutomationProperties.Name="{utils:ResourceString Name='decimalSeparatorButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
-                               ButtonId="Decimal"
+                               ButtonId="DecimalSeparator"
                                IsEnabled="{CompiledBinding IsDecimalEnabled}" />
   </Grid>
 </UserControl>

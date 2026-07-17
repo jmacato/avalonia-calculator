@@ -3,71 +3,16 @@ using System.Collections.Immutable;
 using Graphing;
 
 namespace JsMath.Port;
-
-public delegate bool InequalityPredicate(double value);
-
-public sealed record InequalityMesh(
-    ImmutableArray<ImmutableArray<GraphPoint>> FilledPolygons,
-    ImmutableArray<ImmutableArray<GraphPoint>> Contours,
-    int EvaluationCount,
-    int VertexCount,
-    bool HasMissingData);
-
 /// <summary>
 /// Deterministic inequality meshing. Ambiguous saddle cells use the bilinear
 /// asymptotic decider before clipping the selected triangles.
 /// </summary>
-[PortedFrom(
-    "JSXGraph",
-    "src/math/implicitplot.js (component search and implicit boundary handling)",
-    "d4f153470e249a698a46d6e8078c1d68f0cbe2cd",
-    "MIT",
-    "sha256:cef005ac495f6ddbd67dc27a8dfbe8662484d496487090f34d63b09ce0fb68ad")]
+[PortedFrom("JSXGraph", "src/math/implicitplot.js (component search and implicit boundary handling)", "d4f153470e249a698a46d6e8078c1d68f0cbe2cd", "MIT", "sha256:cef005ac495f6ddbd67dc27a8dfbe8662484d496487090f34d63b09ce0fb68ad")]
 public static class MarchingSquares
 {
-    public static InequalityMesh Build(
-        ImplicitEvaluator evaluator,
-        InequalityPredicate predicate,
-        SamplingViewport viewport,
-        int columns = 96,
-        int rows = 96,
-        int maximumVertices = 65_536,
-        CancellationToken cancellationToken = default) => BuildCore(
-        evaluator,
-        predicate,
-        viewport,
-        columns,
-        rows,
-        maximumVertices,
-        includeFilledPolygons: true,
-        cancellationToken);
-
-    public static InequalityMesh BuildContours(
-        ImplicitEvaluator evaluator,
-        InequalityPredicate predicate,
-        SamplingViewport viewport,
-        int columns = 96,
-        int rows = 96,
-        int maximumVertices = 65_536,
-        CancellationToken cancellationToken = default) => BuildCore(
-        evaluator,
-        predicate,
-        viewport,
-        columns,
-        rows,
-        maximumVertices,
-        includeFilledPolygons: false,
-        cancellationToken);
-
-    private static InequalityMesh BuildCore(
-        ImplicitEvaluator evaluator,
-        InequalityPredicate predicate,
-        SamplingViewport viewport,
-        int columns,
-        int rows,
-        int maximumVertices,
-        bool includeFilledPolygons,
-        CancellationToken cancellationToken)
+    public static InequalityMesh Build(ImplicitEvaluator evaluator, InequalityPredicate predicate, SamplingViewport viewport, int columns = 96, int rows = 96, int maximumVertices = 65_536, CancellationToken cancellationToken = default) => BuildCore(evaluator, predicate, viewport, columns, rows, maximumVertices, includeFilledPolygons: true, cancellationToken);
+    public static InequalityMesh BuildContours(ImplicitEvaluator evaluator, InequalityPredicate predicate, SamplingViewport viewport, int columns = 96, int rows = 96, int maximumVertices = 65_536, CancellationToken cancellationToken = default) => BuildCore(evaluator, predicate, viewport, columns, rows, maximumVertices, includeFilledPolygons: false, cancellationToken);
+    private static InequalityMesh BuildCore(ImplicitEvaluator evaluator, InequalityPredicate predicate, SamplingViewport viewport, int columns, int rows, int maximumVertices, bool includeFilledPolygons, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(evaluator);
         ArgumentNullException.ThrowIfNull(predicate);
@@ -80,19 +25,9 @@ public static class MarchingSquares
         double[] values = ArrayPool<double>.Shared.Rent(valueCount);
         try
         {
-            (int evaluations, bool missing) = EvaluateGrid(
-                evaluator,
-                viewport,
-                columns,
-                rows,
-                values,
-                cancellationToken);
-
-            ImmutableArray<ImmutableArray<GraphPoint>>.Builder? polygons = includeFilledPolygons
-                ? ImmutableArray.CreateBuilder<ImmutableArray<GraphPoint>>()
-                : null;
-            BoundarySegment[] boundarySegments = ArrayPool<BoundarySegment>.Shared.Rent(
-                Math.Min(columns * rows, 512));
+            (int evaluations, bool missing) = EvaluateGrid(evaluator, viewport, columns, rows, values, cancellationToken);
+            ImmutableArray<ImmutableArray<GraphPoint>>.Builder? polygons = includeFilledPolygons ? ImmutableArray.CreateBuilder<ImmutableArray<GraphPoint>>() : null;
+            MarchingSquaresBoundarySegment[] boundarySegments = ArrayPool<MarchingSquaresBoundarySegment>.Shared.Rent(Math.Min(columns * rows, 512));
             int boundarySegmentCount = 0;
             int polygonVertices = 0;
             int boundaryVertices = 0;
@@ -112,8 +47,7 @@ public static class MarchingSquares
                         double f10 = Value(values, columns, column + 1, row);
                         double f11 = Value(values, columns, column + 1, row + 1);
                         double f01 = Value(values, columns, column, row + 1);
-                        if (!double.IsFinite(f00) || !double.IsFinite(f10) ||
-                            !double.IsFinite(f11) || !double.IsFinite(f01))
+                        if (!double.IsFinite(f00) || !double.IsFinite(f10) || !double.IsFinite(f11) || !double.IsFinite(f01))
                         {
                             continue;
                         }
@@ -156,7 +90,6 @@ public static class MarchingSquares
                             10 => q < 0,
                             _ => Math.Abs(f00) + Math.Abs(f11) <= Math.Abs(f10) + Math.Abs(f01)
                         };
-
                         if (diagonal00To11)
                         {
                             AddTriangle(p00, f00, p10, f10, p11, f11, predicate, polygons, ref boundarySegments, ref boundarySegmentCount, ref polygonVertices, ref boundaryVertices, ref budgetExceeded, maximumVertices);
@@ -170,19 +103,12 @@ public static class MarchingSquares
                     }
                 }
 
-                ImmutableArray<ImmutableArray<GraphPoint>> contours = Stitch(
-                    boundarySegments.AsSpan(0, boundarySegmentCount),
-                    viewport);
-                return new InequalityMesh(
-                    polygons?.ToImmutable() ?? ImmutableArray<ImmutableArray<GraphPoint>>.Empty,
-                    contours,
-                    evaluations,
-                    includeFilledPolygons ? Math.Max(polygonVertices, boundaryVertices) : boundaryVertices,
-                    missing || budgetExceeded);
+                ImmutableArray<ImmutableArray<GraphPoint>> contours = Stitch(boundarySegments.AsSpan(0, boundarySegmentCount), viewport);
+                return new InequalityMesh(polygons?.ToImmutable() ?? ImmutableArray<ImmutableArray<GraphPoint>>.Empty, contours, evaluations, includeFilledPolygons ? Math.Max(polygonVertices, boundaryVertices) : boundaryVertices, missing || budgetExceeded);
             }
             finally
             {
-                ArrayPool<BoundarySegment>.Shared.Return(boundarySegments, clearArray: false);
+                ArrayPool<MarchingSquaresBoundarySegment>.Shared.Return(boundarySegments, clearArray: false);
             }
         }
         finally
@@ -191,13 +117,7 @@ public static class MarchingSquares
         }
     }
 
-    private static (int Evaluations, bool HasMissingData) EvaluateGrid(
-        ImplicitEvaluator evaluator,
-        SamplingViewport viewport,
-        int columns,
-        int rows,
-        double[] values,
-        CancellationToken cancellationToken)
+    private static (int Evaluations, bool HasMissingData) EvaluateGrid(ImplicitEvaluator evaluator, SamplingViewport viewport, int columns, int rows, double[] values, CancellationToken cancellationToken)
     {
         int evaluations = 0;
         bool missing = false;
@@ -218,34 +138,29 @@ public static class MarchingSquares
         return (evaluations, missing);
     }
 
-    private static void AddTriangle(
-        GraphPoint a,
-        double fa,
-        GraphPoint b,
-        double fb,
-        GraphPoint c,
-        double fc,
-        InequalityPredicate predicate,
-        ImmutableArray<ImmutableArray<GraphPoint>>.Builder? polygons,
-        ref BoundarySegment[] boundaries,
-        ref int boundaryCount,
-        ref int polygonVertexCount,
-        ref int boundaryVertexCount,
-        ref bool budgetExceeded,
-        int maximumVertices)
+    private static void AddTriangle(GraphPoint a, double fa, GraphPoint b, double fb, GraphPoint c, double fc, InequalityPredicate predicate, ImmutableArray<ImmutableArray<GraphPoint>>.Builder? polygons, ref MarchingSquaresBoundarySegment[] boundaries, ref int boundaryCount, ref int polygonVertexCount, ref int boundaryVertexCount, ref bool budgetExceeded, int maximumVertices)
     {
-        Span<GraphPoint> points = stackalloc GraphPoint[3] { a, b, c };
-        Span<double> values = stackalloc double[3] { fa, fb, fc };
+        Span<GraphPoint> points = stackalloc GraphPoint[3]
+        {
+            a,
+            b,
+            c
+        };
+        Span<double> values = stackalloc double[3]
+        {
+            fa,
+            fb,
+            fc
+        };
         Span<bool> inside = stackalloc bool[3]
         {
-            predicate(fa), predicate(fb), predicate(fc)
+            predicate(fa),
+            predicate(fb),
+            predicate(fc)
         };
-        ImmutableArray<GraphPoint>.Builder? clipped = polygons is not null
-            ? ImmutableArray.CreateBuilder<GraphPoint>(5)
-            : null;
+        ImmutableArray<GraphPoint>.Builder? clipped = polygons is not null ? ImmutableArray.CreateBuilder<GraphPoint>(5) : null;
         Span<GraphPoint> crossings = stackalloc GraphPoint[2];
         int crossingCount = 0;
-
         for (int index = 0; index < 3; index++)
         {
             int next = (index + 1) % 3;
@@ -282,7 +197,7 @@ public static class MarchingSquares
         {
             if (boundaryVertexCount + 2 <= maximumVertices)
             {
-                AddBoundary(ref boundaries, ref boundaryCount, new BoundarySegment(crossings[0], crossings[1]));
+                AddBoundary(ref boundaries, ref boundaryCount, new MarchingSquaresBoundarySegment(crossings[0], crossings[1]));
                 boundaryVertexCount += 2;
             }
             else
@@ -292,26 +207,20 @@ public static class MarchingSquares
         }
     }
 
-    private static void AddBoundary(
-        ref BoundarySegment[] boundaries,
-        ref int count,
-        BoundarySegment boundary)
+    private static void AddBoundary(ref MarchingSquaresBoundarySegment[] boundaries, ref int count, MarchingSquaresBoundarySegment boundary)
     {
         if (count == boundaries.Length)
         {
-            BoundarySegment[] larger = ArrayPool<BoundarySegment>.Shared.Rent(
-                checked(boundaries.Length * 2));
+            MarchingSquaresBoundarySegment[] larger = ArrayPool<MarchingSquaresBoundarySegment>.Shared.Rent(checked(boundaries.Length * 2));
             boundaries.AsSpan(0, count).CopyTo(larger);
-            ArrayPool<BoundarySegment>.Shared.Return(boundaries, clearArray: false);
+            ArrayPool<MarchingSquaresBoundarySegment>.Shared.Return(boundaries, clearArray: false);
             boundaries = larger;
         }
 
         boundaries[count++] = boundary;
     }
 
-    private static ImmutableArray<ImmutableArray<GraphPoint>> Stitch(
-        ReadOnlySpan<BoundarySegment> segments,
-        SamplingViewport viewport)
+    private static ImmutableArray<ImmutableArray<GraphPoint>> Stitch(ReadOnlySpan<MarchingSquaresBoundarySegment> segments, SamplingViewport viewport)
     {
         if (segments.Length == 0)
         {
@@ -325,7 +234,7 @@ public static class MarchingSquares
         int[] next = ArrayPool<int>.Shared.Rent(nodeCount);
         bool[] visited = ArrayPool<bool>.Shared.Rent(segments.Length);
         int endpointCapacity = EndpointCapacity(nodeCount);
-        EndpointKey[] endpointKeys = ArrayPool<EndpointKey>.Shared.Rent(endpointCapacity);
+        MarchingSquaresEndpointKey[] endpointKeys = ArrayPool<MarchingSquaresEndpointKey>.Shared.Rent(endpointCapacity);
         int[] endpointHeads = ArrayPool<int>.Shared.Rent(endpointCapacity);
         int endpointMask = endpointCapacity - 1;
         Array.Fill(next, -1, 0, nodeCount);
@@ -335,10 +244,10 @@ public static class MarchingSquares
         {
             for (int node = 0; node < nodeCount; node++)
             {
-                BoundarySegment segment = segments[node >> 1];
+                MarchingSquaresBoundarySegment segment = segments[node >> 1];
                 (GraphPoint a, GraphPoint b) = (segment.A, segment.B);
                 GraphPoint point = (node & 1) == 0 ? a : b;
-                EndpointKey key = EndpointKeyFor(point, viewport, tolerance);
+                MarchingSquaresEndpointKey key = EndpointKeyFor(point, viewport, tolerance);
                 int slot = FindEndpointSlot(endpointKeys, endpointHeads, endpointMask, key);
                 int previous = endpointHeads[slot];
                 if (previous >= 0)
@@ -363,40 +272,16 @@ public static class MarchingSquares
                 }
 
                 visited[seed] = true;
-                BoundarySegment segment = segments[seed];
+                MarchingSquaresBoundarySegment segment = segments[seed];
                 (GraphPoint a, GraphPoint b) = (segment.A, segment.B);
-                var contour = new PooledPointBuffer(32);
-                var prefix = new PooledPointBuffer(8);
+                var contour = new MarchingSquaresPooledPointBuffer(32);
+                var prefix = new MarchingSquaresPooledPointBuffer(8);
                 try
                 {
                     contour.Add(a);
                     contour.Add(b);
-                    ExtendContour(
-                        b,
-                        ref contour,
-                        segments,
-                        endpointKeys,
-                        endpointHeads,
-                        endpointMask,
-                        next,
-                        visited,
-                        viewport,
-                        tolerance,
-                        toleranceSquared);
-
-                    ExtendContour(
-                        a,
-                        ref prefix,
-                        segments,
-                        endpointKeys,
-                        endpointHeads,
-                        endpointMask,
-                        next,
-                        visited,
-                        viewport,
-                        tolerance,
-                        toleranceSquared);
-
+                    ExtendContour(b, ref contour, segments, endpointKeys, endpointHeads, endpointMask, next, visited, viewport, tolerance, toleranceSquared);
+                    ExtendContour(a, ref prefix, segments, endpointKeys, endpointHeads, endpointMask, next, visited, viewport, tolerance, toleranceSquared);
                     var joined = ImmutableArray.CreateBuilder<GraphPoint>(prefix.Count + contour.Count);
                     for (int index = prefix.Count - 1; index >= 0; index--)
                     {
@@ -419,68 +304,33 @@ public static class MarchingSquares
         {
             ArrayPool<int>.Shared.Return(next, clearArray: false);
             ArrayPool<bool>.Shared.Return(visited, clearArray: false);
-            ArrayPool<EndpointKey>.Shared.Return(endpointKeys, clearArray: false);
+            ArrayPool<MarchingSquaresEndpointKey>.Shared.Return(endpointKeys, clearArray: false);
             ArrayPool<int>.Shared.Return(endpointHeads, clearArray: false);
         }
     }
 
-    private static void ExtendContour(
-        GraphPoint endpoint,
-        ref PooledPointBuffer output,
-        ReadOnlySpan<BoundarySegment> segments,
-        EndpointKey[] endpointKeys,
-        int[] endpointHeads,
-        int endpointMask,
-        int[] next,
-        bool[] visited,
-        SamplingViewport viewport,
-        double tolerance,
-        double toleranceSquared)
+    private static void ExtendContour(GraphPoint endpoint, ref MarchingSquaresPooledPointBuffer output, ReadOnlySpan<MarchingSquaresBoundarySegment> segments, MarchingSquaresEndpointKey[] endpointKeys, int[] endpointHeads, int endpointMask, int[] next, bool[] visited, SamplingViewport viewport, double tolerance, double toleranceSquared)
     {
-        while (TryTakeConnectedSegment(
-                   endpoint,
-                   segments,
-                   endpointKeys,
-                   endpointHeads,
-                   endpointMask,
-                   next,
-                   visited,
-                   viewport,
-                   tolerance,
-                   toleranceSquared,
-                   out int segmentIndex,
-                   out bool matchedFirst))
+        while (TryTakeConnectedSegment(endpoint, segments, endpointKeys, endpointHeads, endpointMask, next, visited, viewport, tolerance, toleranceSquared, out int segmentIndex, out bool matchedFirst))
         {
             visited[segmentIndex] = true;
-            BoundarySegment segment = segments[segmentIndex];
+            MarchingSquaresBoundarySegment segment = segments[segmentIndex];
             (GraphPoint a, GraphPoint b) = (segment.A, segment.B);
             endpoint = matchedFirst ? b : a;
             output.Add(endpoint);
         }
     }
 
-    private static bool TryTakeConnectedSegment(
-        GraphPoint endpoint,
-        ReadOnlySpan<BoundarySegment> segments,
-        EndpointKey[] endpointKeys,
-        int[] endpointHeads,
-        int endpointMask,
-        int[] next,
-        bool[] visited,
-        SamplingViewport viewport,
-        double tolerance,
-        double toleranceSquared,
-        out int segmentIndex,
-        out bool matchedFirst)
+    private static bool TryTakeConnectedSegment(GraphPoint endpoint, ReadOnlySpan<MarchingSquaresBoundarySegment> segments, MarchingSquaresEndpointKey[] endpointKeys, int[] endpointHeads, int endpointMask, int[] next, bool[] visited, SamplingViewport viewport, double tolerance, double toleranceSquared, out int segmentIndex, out bool matchedFirst)
     {
-        EndpointKey center = EndpointKeyFor(endpoint, viewport, tolerance);
+        MarchingSquaresEndpointKey center = EndpointKeyFor(endpoint, viewport, tolerance);
         int bestSegmentIndex = -1;
         bool bestMatchedFirst = false;
         for (long yOffset = -1; yOffset <= 1; yOffset++)
         {
             for (long xOffset = -1; xOffset <= 1; xOffset++)
             {
-                var key = new EndpointKey(center.X + xOffset, center.Y + yOffset);
+                var key = new MarchingSquaresEndpointKey(center.X + xOffset, center.Y + yOffset);
                 int slot = FindEndpointSlot(endpointKeys, endpointHeads, endpointMask, key);
                 int node = endpointHeads[slot];
                 if (node < 0)
@@ -497,7 +347,7 @@ public static class MarchingSquares
                     }
 
                     bool candidateIsFirst = (node & 1) == 0;
-                    BoundarySegment segment = segments[candidateIndex];
+                    MarchingSquaresBoundarySegment segment = segments[candidateIndex];
                     (GraphPoint a, GraphPoint b) = (segment.A, segment.B);
                     GraphPoint candidate = candidateIsFirst ? a : b;
                     if (DistanceSquared(endpoint, candidate) > toleranceSquared)
@@ -509,9 +359,7 @@ public static class MarchingSquares
                     // backwards and tested A before B. Search every neighboring
                     // spatial bucket before choosing so the indexed version keeps
                     // that exact deterministic priority at ambiguous junctions.
-                    if (candidateIndex > bestSegmentIndex ||
-                        (candidateIndex == bestSegmentIndex &&
-                         candidateIsFirst && !bestMatchedFirst))
+                    if (candidateIndex > bestSegmentIndex || (candidateIndex == bestSegmentIndex && candidateIsFirst && !bestMatchedFirst))
                     {
                         bestSegmentIndex = candidateIndex;
                         bestMatchedFirst = candidateIsFirst;
@@ -525,13 +373,7 @@ public static class MarchingSquares
         return bestSegmentIndex >= 0;
     }
 
-    private static EndpointKey EndpointKeyFor(
-        GraphPoint point,
-        SamplingViewport viewport,
-        double tolerance) => new(
-        (long)Math.Floor((point.X - viewport.XRange.Minimum) / tolerance),
-        (long)Math.Floor((point.Y - viewport.YRange.Minimum) / tolerance));
-
+    private static MarchingSquaresEndpointKey EndpointKeyFor(GraphPoint point, SamplingViewport viewport, double tolerance) => new((long)Math.Floor((point.X - viewport.XRange.Minimum) / tolerance), (long)Math.Floor((point.Y - viewport.YRange.Minimum) / tolerance));
     private static int EndpointCapacity(int nodeCount)
     {
         int required = checked(nodeCount * 2);
@@ -544,11 +386,7 @@ public static class MarchingSquares
         return capacity;
     }
 
-    private static int FindEndpointSlot(
-        EndpointKey[] keys,
-        int[] heads,
-        int mask,
-        EndpointKey key)
+    private static int FindEndpointSlot(MarchingSquaresEndpointKey[] keys, int[] heads, int mask, MarchingSquaresEndpointKey key)
     {
         int slot = HashCode.Combine(key.X, key.Y) & mask;
         while (heads[slot] >= 0 && keys[slot] != key)
@@ -559,66 +397,13 @@ public static class MarchingSquares
         return slot;
     }
 
-    private readonly record struct EndpointKey(long X, long Y);
-
-    private readonly record struct BoundarySegment(GraphPoint A, GraphPoint B);
-
-    private ref struct PooledPointBuffer
-    {
-        private GraphPoint[] _items;
-
-        public PooledPointBuffer(int initialCapacity)
-        {
-            _items = ArrayPool<GraphPoint>.Shared.Rent(initialCapacity);
-        }
-
-        public int Count { get; private set; }
-
-        public GraphPoint this[int index] => _items[index];
-
-        public void Add(GraphPoint point)
-        {
-            if (Count == _items.Length)
-            {
-                GraphPoint[] larger = ArrayPool<GraphPoint>.Shared.Rent(checked(_items.Length * 2));
-                _items.AsSpan(0, Count).CopyTo(larger);
-                ArrayPool<GraphPoint>.Shared.Return(_items, clearArray: false);
-                _items = larger;
-            }
-
-            _items[Count++] = point;
-        }
-
-        public ReadOnlySpan<GraphPoint> AsSpan() => _items.AsSpan(0, Count);
-
-        public void Dispose()
-        {
-            GraphPoint[] items = _items;
-            _items = Array.Empty<GraphPoint>();
-            Count = 0;
-            ArrayPool<GraphPoint>.Shared.Return(items, clearArray: false);
-        }
-    }
-
-    private static GraphPoint Point(
-        SamplingViewport viewport,
-        int column,
-        int row,
-        int columns,
-        int rows) => new(
-        viewport.XRange.Minimum + (viewport.XRange.Length * column / columns),
-        viewport.YRange.Minimum + (viewport.YRange.Length * row / rows));
-
-    private static double Value(double[] values, int columns, int column, int row) =>
-        values[(row * (columns + 1)) + column];
-
+    private static GraphPoint Point(SamplingViewport viewport, int column, int row, int columns, int rows) => new(viewport.XRange.Minimum + (viewport.XRange.Length * column / columns), viewport.YRange.Minimum + (viewport.YRange.Length * row / rows));
+    private static double Value(double[] values, int columns, int column, int row) => values[(row * (columns + 1)) + column];
     private static GraphPoint Interpolate(GraphPoint left, double leftValue, GraphPoint right, double rightValue)
     {
         double denominator = leftValue - rightValue;
         double amount = denominator == 0 ? 0.5 : Math.Clamp(leftValue / denominator, 0, 1);
-        return new GraphPoint(
-            left.X + ((right.X - left.X) * amount),
-            left.Y + ((right.Y - left.Y) * amount));
+        return new GraphPoint(left.X + ((right.X - left.X) * amount), left.Y + ((right.Y - left.Y) * amount));
     }
 
     private static double DistanceSquared(GraphPoint left, GraphPoint right)

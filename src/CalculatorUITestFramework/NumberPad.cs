@@ -10,20 +10,21 @@ namespace CalculatorUITestFramework
 {
     public class NumberPad
     {
-        public WindowsElement Num0Button => this.session.TryFindElementByAccessibilityId("num0Button");
-        public WindowsElement Num1Button => this.session.TryFindElementByAccessibilityId("num1Button");
-        public WindowsElement Num2Button => this.session.TryFindElementByAccessibilityId("num2Button");
-        public WindowsElement Num3Button => this.session.TryFindElementByAccessibilityId("num3Button");
-        public WindowsElement Num4Button => this.session.TryFindElementByAccessibilityId("num4Button");
-        public WindowsElement Num5Button => this.session.TryFindElementByAccessibilityId("num5Button");
-        public WindowsElement Num6Button => this.session.TryFindElementByAccessibilityId("num6Button");
-        public WindowsElement Num7Button => this.session.TryFindElementByAccessibilityId("num7Button");
-        public WindowsElement Num8Button => this.session.TryFindElementByAccessibilityId("num8Button");
-        public WindowsElement Num9Button => this.session.TryFindElementByAccessibilityId("num9Button");
-        public WindowsElement DecimalButton => this.session.TryFindElementByAccessibilityId("decimalSeparatorButton");
-        public WindowsElement NegateButton => this.session.TryFindElementByAccessibilityId("negateButton");
+        public WindowsElement Num0Button => Session.TryFindElementByAccessibilityId("num0Button");
+        public WindowsElement Num1Button => Session.TryFindElementByAccessibilityId("num1Button");
+        public WindowsElement Num2Button => Session.TryFindElementByAccessibilityId("num2Button");
+        public WindowsElement Num3Button => Session.TryFindElementByAccessibilityId("num3Button");
+        public WindowsElement Num4Button => Session.TryFindElementByAccessibilityId("num4Button");
+        public WindowsElement Num5Button => Session.TryFindElementByAccessibilityId("num5Button");
+        public WindowsElement Num6Button => Session.TryFindElementByAccessibilityId("num6Button");
+        public WindowsElement Num7Button => Session.TryFindElementByAccessibilityId("num7Button");
+        public WindowsElement Num8Button => Session.TryFindElementByAccessibilityId("num8Button");
+        public WindowsElement Num9Button => Session.TryFindElementByAccessibilityId("num9Button");
+        public WindowsElement DecimalButton => Session.TryFindElementByAccessibilityId("decimalSeparatorButton");
+        public WindowsElement NegateButton => Session.TryFindElementByAccessibilityId("negateButton");
 
-        private WindowsDriver<WindowsElement> session => CalculatorDriver.Instance.CalculatorSession;
+        private readonly CalculatorDriver driver = CalculatorDriver.Instance;
+        private WindowsDriver<WindowsElement> Session => driver.CalculatorSession;
 
         /// <summary>
         /// Translates a number into the Calculator button clicks.
@@ -32,9 +33,9 @@ namespace CalculatorUITestFramework
         public void Input(double number)
         {
             string numberStr = number.ToString(CultureInfo.InvariantCulture);
-            if (numberStr.StartsWith("-"))
+            if (numberStr.Length > 0 && numberStr[0] == '-')
             {
-                numberStr = numberStr.Substring(1) + "-";
+                numberStr = string.Concat(numberStr.AsSpan(1), "-");
             }
             foreach (char digit in numberStr)
             {

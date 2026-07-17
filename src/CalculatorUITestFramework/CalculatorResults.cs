@@ -10,10 +10,11 @@ namespace CalculatorUITestFramework
 {
     public class CalculatorResults
     {
-        private WindowsDriver<WindowsElement> session => CalculatorDriver.Instance.CalculatorSession;
-        private WindowsElement CalculatorAlwaysOnTopResults => this.session.TryFindElementByAccessibilityId("CalculatorAlwaysOnTopResults");
-        private WindowsElement CalculatorResult => this.session.TryFindElementByAccessibilityId("CalculatorResults");
-        private WindowsElement CalculatorExpression => this.session.TryFindElementByAccessibilityId("CalculatorExpression");
+        private readonly CalculatorDriver driver = CalculatorDriver.Instance;
+        private WindowsDriver<WindowsElement> Session => driver.CalculatorSession;
+        private WindowsElement CalculatorAlwaysOnTopResults => Session.TryFindElementByAccessibilityId("CalculatorAlwaysOnTopResults");
+        private WindowsElement CalculatorResult => Session.TryFindElementByAccessibilityId("CalculatorResults");
+        private WindowsElement CalculatorExpression => Session.TryFindElementByAccessibilityId("CalculatorExpression");
 
         /// <summary>
         /// Gets the text from the display control in AoT mode and removes the narrator text that is not displayed in the UI.
@@ -21,7 +22,7 @@ namespace CalculatorUITestFramework
         /// <returns>The string shown in the UI.</returns>
         public string GetAoTCalculatorResultText()
         {
-            return this.CalculatorAlwaysOnTopResults.Text.Replace("Display is", string.Empty).Trim();
+            return this.CalculatorAlwaysOnTopResults.Text.Replace("Display is", string.Empty, System.StringComparison.Ordinal).Trim();
         }
 
         /// <summary>
@@ -30,7 +31,7 @@ namespace CalculatorUITestFramework
         /// <returns>The string shown in the UI.</returns>
         public string GetCalculatorResultText()
         {
-            return this.CalculatorResult.Text.Replace("Display is", string.Empty).Trim();
+            return this.CalculatorResult.Text.Replace("Display is", string.Empty, System.StringComparison.Ordinal).Trim();
         }
 
         /// <summary>
@@ -39,7 +40,7 @@ namespace CalculatorUITestFramework
         /// <returns>The string shown in the UI.</returns>
         public string GetCalculatorExpressionText()
         {
-            return this.CalculatorExpression.Text.Replace("Expression is", string.Empty).Trim();
+            return this.CalculatorExpression.Text.Replace("Expression is", string.Empty, System.StringComparison.Ordinal).Trim();
         }
 
         /// <summary>
@@ -55,12 +56,12 @@ namespace CalculatorUITestFramework
         /// Verifies that Calculator Expression is clear
         /// </summary>
         /// <returns>The string shown in the UI.</returns>
-        public void IsResultsExpressionClear()
+        public static void IsResultsExpressionClear()
         {
             string source = CalculatorDriver.Instance.CalculatorSession.PageSource;
-            if (source.Contains("CalculatorExpression"))
+            if (source.Contains("CalculatorExpression", System.StringComparison.Ordinal))
             {
-                throw new Exception("The Calculator Expression is not clear");
+                throw new InvalidOperationException("The Calculator Expression is not clear");
             }
         }
     }

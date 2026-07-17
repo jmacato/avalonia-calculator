@@ -1,8 +1,8 @@
-﻿namespace FluentAvalonia.Core;
+namespace FluentAvalonia.Core;
 
 // These are pseudoclass names that are used in multiple controls. Share them so we don't have
 // a bunch of duplicate strings everywhere
-public static class FASharedPseudoclasses
+internal static class FASharedPseudoclasses
 {
     public const string s_pcOpen = ":open";
     public const string s_pcCompact = ":compact";

@@ -5,7 +5,7 @@
              xmlns:ts="using:CalculatorApp.TemplateSelectors"
              xmlns:utils="using:CalculatorApp.Utils"
              xmlns:vm="using:CalculatorApp.ViewModel"
-             x:DataType="vm:EquationViewModel"
+             x:DataType="vm:KeyGraphFeaturesViewModel"
              x:CompileBindings="True"
              Background="{DynamicResource ApplicationPageBackgroundThemeBrush}">
   <UserControl.Styles>

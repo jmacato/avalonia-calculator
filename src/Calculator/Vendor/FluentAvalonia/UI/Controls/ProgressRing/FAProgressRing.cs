@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Metadata;
 using Avalonia.Controls.Primitives;
@@ -8,7 +8,7 @@ using FluentAvalonia.UI.Controls.Primitives;
 namespace FluentAvalonia.UI.Controls;
 
 [TemplatePart(_tpAnimatedVisual, typeof(FAProgressRingAnimatedVisual))]
-public class FAProgressRing : RangeBase
+public sealed class FAProgressRing : RangeBase
 {
     /// <summary>
     /// Defines the <see cref="IsActive"/> property
@@ -44,12 +44,14 @@ public class FAProgressRing : RangeBase
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
+        ArgumentNullException.ThrowIfNull(e);
         base.OnApplyTemplate(e);
         _animatedVisualSource = e.NameScope.Get<FAProgressRingAnimatedVisual>(_tpAnimatedVisual);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
 
         if (change.Property == ValueProperty)
@@ -74,15 +76,15 @@ public class FAProgressRing : RangeBase
         }
         else if (change.Property == ForegroundProperty)
         {
-            _animatedVisualSource?.SetForeground((IBrush)change.NewValue);
+            _animatedVisualSource?.SetForeground(change.GetNewValue<IBrush?>());
         }
         else if (change.Property == BackgroundProperty)
         {
-            _animatedVisualSource?.SetBackground((IBrush)change.NewValue);
+            _animatedVisualSource?.SetBackground(change.GetNewValue<IBrush?>());
         }
     }
 
-    private FAProgressRingAnimatedVisual _animatedVisualSource;
+    private FAProgressRingAnimatedVisual? _animatedVisualSource;
 
     private const string _tpAnimatedVisual = "AnimatedVisual";
 }

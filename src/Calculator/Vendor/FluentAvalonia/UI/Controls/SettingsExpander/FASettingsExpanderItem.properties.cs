@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
@@ -12,54 +12,54 @@ namespace FluentAvalonia.UI.Controls;
 [PseudoClasses(FASharedPseudoclasses.s_pcAllowClick)]
 [PseudoClasses(FASharedPseudoclasses.s_pcPressed)]
 [PseudoClasses(FASharedPseudoclasses.s_pcIcon, s_pcActionIcon)]
-public partial class FASettingsExpanderItem : ContentControl
+public sealed partial class FASettingsExpanderItem : ContentControl
 {
     /// <summary>
     /// Defines the <see cref="Description"/> property
     /// </summary>
-    public static readonly StyledProperty<string> DescriptionProperty = 
+    public static readonly StyledProperty<string?> DescriptionProperty =
         FASettingsExpander.DescriptionProperty.AddOwner<FASettingsExpanderItem>();
 
     /// <summary>
     /// Defines the <see cref="IconSource"/> property
     /// </summary>
-    public static readonly StyledProperty<FAIconSource> IconSourceProperty = 
+    public static readonly StyledProperty<FAIconSource?> IconSourceProperty =
         FASettingsExpander.IconSourceProperty.AddOwner<FASettingsExpanderItem>();
 
     /// <summary>
     /// Defines the <see cref="Footer"/> property
     /// </summary>
-    public static readonly StyledProperty<object> FooterProperty = 
+    public static readonly StyledProperty<object?> FooterProperty =
         FASettingsExpander.FooterProperty.AddOwner<FASettingsExpanderItem>();
 
     /// <summary>
     /// Defines the <see cref="FooterTemplate"/> property
     /// </summary>
-    public static readonly StyledProperty<IDataTemplate> FooterTemplateProperty = 
+    public static readonly StyledProperty<IDataTemplate?> FooterTemplateProperty =
         FASettingsExpander.FooterTemplateProperty.AddOwner<FASettingsExpanderItem>();
 
     /// <summary>
     /// Defines the <see cref="ActionIconSource"/> property
     /// </summary>
-    public static readonly StyledProperty<FAIconSource> ActionIconSourceProperty = 
+    public static readonly StyledProperty<FAIconSource?> ActionIconSourceProperty =
         FASettingsExpander.ActionIconSourceProperty.AddOwner<FASettingsExpanderItem>();
 
     /// <summary>
     /// Defines the <see cref="IsClickEnabled"/> property
     /// </summary>
-    public static readonly StyledProperty<bool> IsClickEnabledProperty = 
+    public static readonly StyledProperty<bool> IsClickEnabledProperty =
         FASettingsExpander.IsClickEnabledProperty.AddOwner<FASettingsExpanderItem>();
-        
+
     /// <summary>
     /// Defines the <see cref="Command"/> property
     /// </summary>
-    public static readonly StyledProperty<ICommand> CommandProperty = 
+    public static readonly StyledProperty<ICommand?> CommandProperty =
         Button.CommandProperty.AddOwner<FASettingsExpanderItem>();
 
     /// <summary>
     /// Defines the <see cref="CommandParameter"/> property
     /// </summary>
-    public static readonly StyledProperty<object> CommandParameterProperty = 
+    public static readonly StyledProperty<object?> CommandParameterProperty =
         Button.CommandParameterProperty.AddOwner<FASettingsExpanderItem>();
 
     /// <summary>
@@ -77,7 +77,7 @@ public partial class FASettingsExpanderItem : ContentControl
     /// <summary>
     /// Gets or sets the description text
     /// </summary>
-    public string Description
+    public string? Description
     {
         get => GetValue(DescriptionProperty);
         set => SetValue(DescriptionProperty, value);
@@ -86,7 +86,7 @@ public partial class FASettingsExpanderItem : ContentControl
     /// <summary>
     /// Gets or sets the IconSource for the SettingsExpander
     /// </summary>
-    public FAIconSource IconSource
+    public FAIconSource? IconSource
     {
         get => GetValue(IconSourceProperty);
         set => SetValue(IconSourceProperty, value);
@@ -95,7 +95,7 @@ public partial class FASettingsExpanderItem : ContentControl
     /// <summary>
     /// Gets or sets the Footer content for the SettingsExpander
     /// </summary>
-    public object Footer
+    public object? Footer
     {
         get => GetValue(FooterProperty);
         set => SetValue(FooterProperty, value);
@@ -104,7 +104,7 @@ public partial class FASettingsExpanderItem : ContentControl
     /// <summary>
     /// Gets or sets the Footer template for the SettingsExpander
     /// </summary>
-    public IDataTemplate FooterTemplate
+    public IDataTemplate? FooterTemplate
     {
         get => GetValue(FooterTemplateProperty);
         set => SetValue(FooterTemplateProperty, value);
@@ -113,7 +113,7 @@ public partial class FASettingsExpanderItem : ContentControl
     /// <summary>
     /// Gets or sets the Action IconSource when <see cref="IsClickEnabled"/> is true
     /// </summary>
-    public FAIconSource ActionIconSource
+    public FAIconSource? ActionIconSource
     {
         get => GetValue(ActionIconSourceProperty);
         set => SetValue(ActionIconSourceProperty, value);
@@ -135,7 +135,7 @@ public partial class FASettingsExpanderItem : ContentControl
     /// <summary>
     /// Gets or sets the Command that is invoked upon clicking the item
     /// </summary>
-    public ICommand Command
+    public ICommand? Command
     {
         get => GetValue(CommandProperty);
         set => SetValue(CommandProperty, value);
@@ -144,7 +144,7 @@ public partial class FASettingsExpanderItem : ContentControl
     /// <summary>
     /// Gets or sets the command parameter
     /// </summary>
-    public object CommandParameter
+    public object? CommandParameter
     {
         get => GetValue(CommandParameterProperty);
         set => SetValue(CommandParameterProperty, value);

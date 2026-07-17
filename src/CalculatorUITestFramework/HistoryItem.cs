@@ -16,12 +16,12 @@ namespace CalculatorUITestFramework
 
         public string GetValue()
         {
-            var equalSignIndex = Item.Text.IndexOf("=");
+            var equalSignIndex = Item.Text.IndexOf('=', System.StringComparison.Ordinal);
             return Item.Text.Substring(equalSignIndex + 1).Trim();
         }
         public string GetExpression()
         {
-            var equalSignIndex = Item.Text.IndexOf("=");
+            var equalSignIndex = Item.Text.IndexOf('=', System.StringComparison.Ordinal);
             return Item.Text.Substring(0, equalSignIndex + 1).Trim();
         }
     }

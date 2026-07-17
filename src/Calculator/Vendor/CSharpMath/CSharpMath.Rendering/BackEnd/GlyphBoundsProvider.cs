@@ -6,7 +6,7 @@ using CSharpMath.Display.FrontEnd;
 
 namespace CSharpMath.Rendering.BackEnd;
 
-public sealed class GlyphBoundsProvider : IGlyphBoundsProvider<Fonts, Glyph>
+public sealed class GlyphBoundsProvider : IGlyphBoundsProvider<MathFontSet, Glyph>
 {
     private GlyphBoundsProvider()
     {
@@ -15,11 +15,12 @@ public sealed class GlyphBoundsProvider : IGlyphBoundsProvider<Fonts, Glyph>
     public static GlyphBoundsProvider Instance { get; } = new();
 
     public (IEnumerable<float> Advances, float Total) GetAdvancesForGlyphs(
-        Fonts font,
+        MathFontSet font,
         IEnumerable<Glyph> glyphs,
-        int glyphCount)
+        int nGlyphs)
     {
-        var advances = new List<float>(glyphCount);
+        System.ArgumentNullException.ThrowIfNull(glyphs);
+        var advances = new List<float>(nGlyphs);
         foreach (Glyph glyph in glyphs)
         {
             advances.Add(glyph.Typeface.GetAdvance(glyph.GlyphId) * font.ScaleFor(glyph.Typeface));
@@ -29,11 +30,12 @@ public sealed class GlyphBoundsProvider : IGlyphBoundsProvider<Fonts, Glyph>
     }
 
     public IEnumerable<RectangleF> GetBoundingRectsForGlyphs(
-        Fonts font,
+        MathFontSet font,
         IEnumerable<Glyph> glyphs,
-        int variantCount)
+        int nGlyphs)
     {
-        var rectangles = new List<RectangleF>(variantCount);
+        System.ArgumentNullException.ThrowIfNull(glyphs);
+        var rectangles = new List<RectangleF>(nGlyphs);
         foreach (Glyph glyph in glyphs)
         {
             Avalonia.Rect bounds = glyph.Typeface.GetInkBounds(glyph.GlyphId);
@@ -48,7 +50,10 @@ public sealed class GlyphBoundsProvider : IGlyphBoundsProvider<Fonts, Glyph>
         return rectangles;
     }
 
-    public float GetTypographicWidth(Fonts fonts, AttributedGlyphRun<Fonts, Glyph> run) =>
-        GetAdvancesForGlyphs(fonts, run.Glyphs, run.GlyphInfos.Count).Total +
-        run.GlyphInfos.Sum(glyph => glyph.KernAfterGlyph);
+    public float GetTypographicWidth(MathFontSet fonts, AttributedGlyphRun<MathFontSet, Glyph> run)
+    {
+        System.ArgumentNullException.ThrowIfNull(run);
+        return GetAdvancesForGlyphs(fonts, run.Glyphs, run.GlyphInfos.Count).Total +
+            run.GlyphInfos.Sum(glyph => glyph.KernAfterGlyph);
+    }
 }

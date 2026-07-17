@@ -7,7 +7,8 @@ namespace CSharpMath.Display.Displays;
 
 using FrontEnd;
 public class FractionDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph>
-    where TFont : IFont<TGlyph> {
+    where TFont : IFont<TGlyph>
+{
     private PointF _position;
     ///<summary>A display representing the numerator of the fraction.
     ///Its position is relative to the parent and it is not treated as a sub-display.</summary>
@@ -23,7 +24,8 @@ public class FractionDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph>
 
     public Range Range { get; }
 
-    public FractionDisplay(ListDisplay<TFont, TGlyph> numeratorDisplay, ListDisplay<TFont, TGlyph> denominatorDisplay, PointF currentPosition, Range range) {
+    public FractionDisplay(ListDisplay<TFont, TGlyph> numeratorDisplay, ListDisplay<TFont, TGlyph> denominatorDisplay, PointF currentPosition, Range range)
+    {
         Numerator = numeratorDisplay;
         Denominator = denominatorDisplay;
         _position = currentPosition;
@@ -37,15 +39,18 @@ public class FractionDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph>
 
     public float Width => Math.Max(Numerator.Width, Denominator.Width);
 
-    public void UpdateNumeratorAndDenominatorPositions() {
+    public void UpdateNumeratorAndDenominatorPositions()
+    {
         Numerator.Position =
             new PointF(Position.X + (Width - Numerator.Width) / 2, Position.Y + NumeratorUp);
         Denominator.Position =
             new PointF(Position.X + (Width - Denominator.Width) / 2, Position.Y - DenominatorDown);
     }
-    public PointF Position {
+    public PointF Position
+    {
         get => _position;
-        set {
+        set
+        {
             _position = value;
             UpdateNumeratorAndDenominatorPositions();
         }
@@ -53,7 +58,9 @@ public class FractionDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph>
 
     public bool HasScript { get; set; }
 
-    public void Draw(IGraphicsContext<TFont, TGlyph> context) {
+    public void Draw(IGraphicsContext<TFont, TGlyph> context)
+    {
+        System.ArgumentNullException.ThrowIfNull(context);
         this.DrawBackground(context);
         Numerator.Draw(context);
         Denominator.Draw(context);
@@ -62,7 +69,8 @@ public class FractionDisplay<TFont, TGlyph> : IDisplay<TFont, TGlyph>
         context.RestoreState();
     }
     public Color? TextColor { get; set; }
-    public void SetTextColorRecursive(Color? textColor) {
+    public void SetTextColorRecursive(Color? textColor)
+    {
         TextColor ??= textColor;
         Numerator.SetTextColorRecursive(textColor);
         Denominator.SetTextColorRecursive(textColor);

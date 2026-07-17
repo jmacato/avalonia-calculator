@@ -1,4 +1,6 @@
 using Graphing.Symbolics;
+using System.Globalization;
+using System.Resources;
 
 var source = new SourceRange(0, 1);
 InputExpression variable = InputExpression.Variable("x", source);
@@ -29,4 +31,5 @@ if (report.Expression is null ||
     throw new InvalidOperationException("Certified symbolic-analysis smoke test failed.");
 }
 
-Console.WriteLine("Certified symbolic-analysis smoke test passed.");
+var resources = new ResourceManager("Graphing.Symbolics.Smoke.SmokeResources", typeof(Program).Assembly);
+Console.WriteLine(resources.GetString("SuccessMessage", CultureInfo.CurrentUICulture));

@@ -12,6 +12,7 @@ namespace CalculatorApp;
 public sealed partial class CalculatorProgrammerDisplayPanel : UserControl
 {
     private bool _isErrorVisualState;
+    private StandardCalculatorViewModel? _subscribedModel;
 
     public CalculatorProgrammerDisplayPanel()
     {
@@ -48,22 +49,22 @@ public sealed partial class CalculatorProgrammerDisplayPanel : UserControl
         switch (buttonId)
         {
             case "0":
-                model.ValueBitLength = BitLength.BitLengthDWord;
+                model.ValueBitLength = BitLength.ThirtyTwoBits;
                 DwordButton.IsVisible = true;
                 DwordButton.Focus();
                 break;
             case "1":
-                model.ValueBitLength = BitLength.BitLengthWord;
+                model.ValueBitLength = BitLength.SixteenBits;
                 WordButton.IsVisible = true;
                 WordButton.Focus();
                 break;
             case "2":
-                model.ValueBitLength = BitLength.BitLengthByte;
+                model.ValueBitLength = BitLength.EightBits;
                 ByteButton.IsVisible = true;
                 ByteButton.Focus();
                 break;
             case "3":
-                model.ValueBitLength = BitLength.BitLengthQWord;
+                model.ValueBitLength = BitLength.SixtyFourBits;
                 QwordButton.IsVisible = true;
                 QwordButton.Focus();
                 break;
@@ -72,14 +73,34 @@ public sealed partial class CalculatorProgrammerDisplayPanel : UserControl
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
-        if (Model is not { } model)
+        SetSubscribedModel(Model);
+        if (_subscribedModel is not { } model)
         {
             return;
         }
 
-        model.PropertyChanged -= OnModelPropertyChanged;
-        model.PropertyChanged += OnModelPropertyChanged;
         UpdateInputMode(model.IsBitFlipChecked);
+    }
+
+    private void OnUnloaded(object? sender, RoutedEventArgs e) => SetSubscribedModel(null);
+
+    private void SetSubscribedModel(StandardCalculatorViewModel? model)
+    {
+        if (ReferenceEquals(_subscribedModel, model))
+        {
+            return;
+        }
+
+        if (_subscribedModel is not null)
+        {
+            _subscribedModel.PropertyChanged -= OnModelPropertyChanged;
+        }
+
+        _subscribedModel = model;
+        if (_subscribedModel is not null)
+        {
+            _subscribedModel.PropertyChanged += OnModelPropertyChanged;
+        }
     }
 
     private void OnInputModeClicked(object? sender, RoutedEventArgs e)

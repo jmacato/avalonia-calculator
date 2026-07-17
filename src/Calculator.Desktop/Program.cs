@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia;
 using CalculatorApp.Automation;
 using CalculatorApp.Services.Settings;
@@ -57,6 +58,7 @@ internal static class Program
             .MinimumLevel.Is(verbose ? LogEventLevel.Information : LogEventLevel.Warning)
             .WriteTo.File(
                 Path.Combine(logDirectory, "calculator-.log"),
+                formatProvider: CultureInfo.InvariantCulture,
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 7,
                 fileSizeLimitBytes: 1_048_576,

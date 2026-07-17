@@ -1,34 +1,26 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 //#include  "pch.h"
 //#include  " h"
 //#include  "Common/TraceLogger.h"
 //#include  "Common/LocalizationStringUtil.h"
 //#include  "Common/LocalizationSettings.h"
 //#include  "StandardCalculatorViewModel.h"
-
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using CalculatorApp.ViewModel.Common;
 using CalculatorApp.ViewModel.Common.Automation;
+
 namespace CalculatorApp.ViewModel;
-public static class HistoryResourceKeys
-{
-    public const string HistoryVectorLengthKey = ("HistoryVectorLength");
-    public const string ItemsSizeKey = ("ItemsCount");
-    public const string HistoryCleared = ("HistoryList_Cleared");
-    public const string HistorySlotCleared = ("Format_HistorySlotCleared");
-}
+
 public partial class HistoryViewModel
 {
     public HistoryViewModel(CalculationManager.CalculatorManager calculatorManager)
-
     {
         m_calculatorManager = (calculatorManager);
         AreHistoryShortcutsEnabled = true;
-
         Items = new ObservableCollection<HistoryItemViewModel>();
     }
 
@@ -50,21 +42,16 @@ public partial class HistoryViewModel
 
         var historyListModel = m_calculatorManager.GetHistoryItems(m_currentMode);
         var historyListVM = new ObservableCollection<HistoryItemViewModel>();
-        LocalizationSettings localizer = LocalizationSettings.GetInstance();
+        LocalizationSettings localizer = LocalizationSettings.Instance;
         if (historyListModel.Count > 0)
         {
-            foreach (var ritr in historyListModel)//.rbegin(); ritr != historyListModel.rend(); ++ritr)
+            foreach (var ritr in historyListModel) //.rbegin(); ritr != historyListModel.rend(); ++ritr)
             {
                 string expression = ritr.HistoryItemVector.Expression;
                 string result = ritr.HistoryItemVector.Result;
-                localizer.LocalizeDisplayValue(ref expression);
-                localizer.LocalizeDisplayValue(ref result);
-
-                var item = new HistoryItemViewModel(
-                   (expression),
-                   (result),
-                    ritr.HistoryItemVector.SpTokens,
-                    ritr.HistoryItemVector.SpCommands);
+                LocalizationSettings.LocalizeDisplayValue(ref expression);
+                LocalizationSettings.LocalizeDisplayValue(ref result);
+                var item = new HistoryItemViewModel((expression), (result), ritr.HistoryItemVector.SpTokens, ritr.HistoryItemVector.SpCommands);
                 historyListVM.Add(item);
             }
         }
@@ -76,17 +63,12 @@ public partial class HistoryViewModel
     public void OnHistoryItemAdded(uint addedItemIndex)
     {
         var newItem = m_calculatorManager.GetHistoryItem(addedItemIndex);
-        LocalizationSettings localizer = LocalizationSettings.GetInstance();
+        LocalizationSettings localizer = LocalizationSettings.Instance;
         string expression = newItem.HistoryItemVector.Expression;
         string result = newItem.HistoryItemVector.Result;
-        localizer.LocalizeDisplayValue(ref expression);
-        localizer.LocalizeDisplayValue(ref result);
-        var item = new HistoryItemViewModel(
-            (expression),
-            (result),
-            newItem.HistoryItemVector.SpTokens,
-            newItem.HistoryItemVector.SpCommands);
-
+        LocalizationSettings.LocalizeDisplayValue(ref expression);
+        LocalizationSettings.LocalizeDisplayValue(ref result);
+        var item = new HistoryItemViewModel((expression), (result), newItem.HistoryItemVector.SpTokens, newItem.HistoryItemVector.SpCommands);
         // check if we have not hit the max items
         if (Items.Count >= CalculationManager.CalculatorManager.MaxHistorySize())
         {
@@ -102,6 +84,7 @@ public partial class HistoryViewModel
 
     public void SetCalculatorDisplay(CalculatorDisplay calculatorDisplay)
     {
+        System.ArgumentNullException.ThrowIfNull(calculatorDisplay);
         WeakReference historyViewModel = new WeakReference(this);
         calculatorDisplay.SetHistoryCallback(historyViewModel);
     }
@@ -109,11 +92,11 @@ public partial class HistoryViewModel
     public void ShowItem(HistoryItemViewModel e)
     {
         int index = Items.IndexOf(e);
-        TraceLogger.GetInstance().LogHistoryItemLoad((ViewMode)m_currentMode, Items.Count, (int)(index));
-        HistoryItemClicked?.Invoke(e);
+        TraceLogger.LogHistoryItemLoad((ViewMode)m_currentMode, Items.Count, (int)(index));
+        HistoryItemClicked?.Invoke(this, new HistoryItemClickedEventArgs(e));
     }
 
-   public void DeleteItem(HistoryItemViewModel e)
+    public void DeleteItem(HistoryItemViewModel e)
     {
         int itemIndex = Items.IndexOf(e);
         if (itemIndex > -1)
@@ -124,10 +107,11 @@ public partial class HistoryViewModel
                 RaisePropertyChanged(HistoryResourceKeys.ItemsSizeKey);
             }
         }
+
         // Adding 1 to the history item index to provide 1-based numbering on announcements.
-        string localizedIndex = (itemIndex + 1).ToString();
-        LocalizationSettings.GetInstance().LocalizeDisplayValue(ref localizedIndex);
-        m_localizedHistorySlotCleared = AppResourceProvider.GetInstance().GetResourceString(HistoryResourceKeys.HistorySlotCleared);
+        string localizedIndex = (itemIndex + 1).ToString(CultureInfo.InvariantCulture);
+        LocalizationSettings.LocalizeDisplayValue(ref localizedIndex);
+        m_localizedHistorySlotCleared = AppResourceProvider.Instance.GetResourceString(HistoryResourceKeys.HistorySlotCleared);
         string announcement = LocalizationStringUtil.GetLocalizedString(m_localizedHistorySlotCleared, (localizedIndex));
         HistoryAnnouncement = NarratorAnnouncement.GetHistorySlotClearedAnnouncement(announcement);
     }
@@ -135,7 +119,7 @@ public partial class HistoryViewModel
     void OnHideCommand(object? e)
     {
         // added at VM layer so that the views do not have to individually raise events
-        HideHistoryClicked?.Invoke();
+        HideHistoryClicked?.Invoke(this, EventArgs.Empty);
     }
 
     void OnClearCommand(object? e)
@@ -143,7 +127,6 @@ public partial class HistoryViewModel
         if (AreHistoryShortcutsEnabled)
         {
             m_calculatorManager.ClearHistory();
-
             if (Items.Count > 0)
             {
                 Items.Clear();
@@ -152,14 +135,12 @@ public partial class HistoryViewModel
 
             if (m_localizedHistoryCleared.Length == 0)
             {
-                m_localizedHistoryCleared = AppResourceProvider.GetInstance().GetResourceString(HistoryResourceKeys.HistoryCleared);
+                m_localizedHistoryCleared = AppResourceProvider.Instance.GetResourceString(HistoryResourceKeys.HistoryCleared);
             }
+
             HistoryAnnouncement = NarratorAnnouncement.GetHistoryClearedAnnouncement(m_localizedHistoryCleared);
         }
     }
 
-    public int GetMaxItemSize()
-    {
-        return (int)CalculationManager.CalculatorManager.MaxHistorySize();
-    }
+    public static int MaxItemSize => (int)CalculationManager.CalculatorManager.MaxHistorySize();
 }

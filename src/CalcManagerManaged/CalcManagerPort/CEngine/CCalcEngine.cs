@@ -2188,11 +2188,11 @@ public class CCalcEngine
         // C# Substring is equivalent to C++ substr
         if (hasDecimal)
         {
-            formattedInteger += displayString[dec..];
+            formattedInteger += displayString.Substring(dec);
         }
         else if (hasExponent)
         {
-            formattedInteger += displayString[exp..];
+            formattedInteger += displayString.Substring(exp);
         }
 
         return formattedInteger;

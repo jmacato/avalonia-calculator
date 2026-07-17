@@ -11,6 +11,8 @@ namespace CalculatorApp;
 
 public sealed partial class CalculatorProgrammerOperators : UserControl
 {
+    private StandardCalculatorViewModel? _subscribedModel;
+
     public CalculatorProgrammerOperators()
     {
         InitializeComponent();
@@ -28,14 +30,34 @@ public sealed partial class CalculatorProgrammerOperators : UserControl
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
-        if (Model is not { } model)
+        SetSubscribedModel(Model);
+        if (_subscribedModel is not { } model)
         {
             return;
         }
 
-        model.PropertyChanged -= OnModelPropertyChanged;
-        model.PropertyChanged += OnModelPropertyChanged;
         SetRadixButton(model.CurrentRadixType);
+    }
+
+    private void OnUnloaded(object? sender, RoutedEventArgs e) => SetSubscribedModel(null);
+
+    private void SetSubscribedModel(StandardCalculatorViewModel? model)
+    {
+        if (ReferenceEquals(_subscribedModel, model))
+        {
+            return;
+        }
+
+        if (_subscribedModel is not null)
+        {
+            _subscribedModel.PropertyChanged -= OnModelPropertyChanged;
+        }
+
+        _subscribedModel = model;
+        if (_subscribedModel is not null)
+        {
+            _subscribedModel.PropertyChanged += OnModelPropertyChanged;
+        }
     }
 
     private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -47,20 +69,20 @@ public sealed partial class CalculatorProgrammerOperators : UserControl
     }
 
     private void DecButtonChecked(object? sender, RoutedEventArgs e) =>
-        SwitchBase(NumberBase.DecBase, NumbersAndOperatorsEnum.DecButton);
+        SwitchBase(NumberBase.DecBase, CalculatorButtonId.DecButton);
 
     private void HexButtonChecked(object? sender, RoutedEventArgs e) =>
-        SwitchBase(NumberBase.HexBase, NumbersAndOperatorsEnum.HexButton);
+        SwitchBase(NumberBase.HexBase, CalculatorButtonId.HexButton);
 
     private void BinButtonChecked(object? sender, RoutedEventArgs e) =>
-        SwitchBase(NumberBase.BinBase, NumbersAndOperatorsEnum.BinButton);
+        SwitchBase(NumberBase.BinBase, CalculatorButtonId.BinButton);
 
     private void OctButtonChecked(object? sender, RoutedEventArgs e) =>
-        SwitchBase(NumberBase.OctBase, NumbersAndOperatorsEnum.OctButton);
+        SwitchBase(NumberBase.OctBase, CalculatorButtonId.OctButton);
 
-    private void SwitchBase(NumberBase numberBase, NumbersAndOperatorsEnum operation)
+    private void SwitchBase(NumberBase numberBase, CalculatorButtonId operation)
     {
-        TraceLogger.GetInstance().UpdateButtonUsage(operation, ViewMode.Programmer);
+        TraceLogger.Instance.UpdateButtonUsage(operation, ViewMode.Programmer);
         Model?.SwitchProgrammerModeBase(numberBase);
     }
 }

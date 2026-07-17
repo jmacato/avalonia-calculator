@@ -310,6 +310,7 @@ namespace CalculationManager
         CommandEuler = Euler,
         CommandAnd = And,
         CommandOR = NumOR,
+        CommandNot = Com,
         CommandASIN = Asin,
         CommandACOS = Acos,
         CommandATAN = Atan,
@@ -326,6 +327,7 @@ namespace CalculationManager
         CommandWord = Word,
         CommandByte = Byte,
         CommandBINEDITSTART = BinEditStart,
+        CommandBINPOS0 = BinEditStart,
         CommandBINPOS1 = BinPos1,
         CommandBINPOS2 = BinPos2,
         CommandBINPOS3 = BinPos3,
@@ -388,6 +390,7 @@ namespace CalculationManager
         CommandBINPOS60 = BinPos60,
         CommandBINPOS61 = BinPos61,
         CommandBINPOS62 = BinPos62,
-        CommandBINPOS63 = BinPos63
+        CommandBINPOS63 = BinPos63,
+        CommandBINEDITEND = BinPos63
     };
 }

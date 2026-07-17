@@ -2,7 +2,8 @@ using System.Collections.Generic;
 
 namespace CSharpMath.Display.FrontEnd;
 
-public interface IGlyphBoundsProvider<TFont, TGlyph> where TFont: IFont<TGlyph> {
+public interface IGlyphBoundsProvider<TFont, TGlyph> where TFont : IFont<TGlyph>
+{
     /// <summary>The width of the glyph run.</summary>
     float GetTypographicWidth(TFont font, AttributedGlyphRun<TFont, TGlyph> run);
     /// <summary>This should treat the glyphs independently.

@@ -1,5 +1,5 @@
-	// Copyright (c) Microsoft Corporation. All rights reserved.
-	// Licensed under the MIT License.
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
 
 /****************************Module*Header***********************************
 * Module Name: CCommand.h
@@ -13,11 +13,11 @@
 *
 \****************************************************************************/
 
-	// #pragma once
+// #pragma once
 
-	// The following are the valid id's which can be passed to CCalcEngine::ProcessCommand
+// The following are the valid id's which can be passed to CCalcEngine::ProcessCommand
 
-public static class CCommand
+internal static class CCommand
 {
     public const int IDM_HEX = 313;
     public const int IDM_DEC = 314;
@@ -47,14 +47,14 @@ public static class CCommand
     public const int IDC_WORD = IDM_WORD;
     public const int IDC_BYTE = IDM_BYTE;
 
-	// Key IDs:
-	// These id's must be consecutive from IDC_FIRSTCONTROL to IDC_LASTCONTROL.
-	// The actual values don't matter but the order and sequence are very important.
-	// Also, the order of the controls must match the order of the control names
-	// in the string table.
-	// For example you want to declare the color for the control IDC_ST_AVE
-	// Find the string id for that control from the rc file
-	// Now define the control's id as IDC_FRISTCONTROL+stringID(IDC_ST_AVE)
+    // Key IDs:
+    // These id's must be consecutive from IDC_FIRSTCONTROL to IDC_LASTCONTROL.
+    // The actual values don't matter but the order and sequence are very important.
+    // Also, the order of the controls must match the order of the control names
+    // in the string table.
+    // For example you want to declare the color for the control IDC_ST_AVE
+    // Find the string id for that control from the rc file
+    // Now define the control's id as IDC_FRISTCONTROL+stringID(IDC_ST_AVE)
     public const int IDC_FIRSTCONTROL = IDC_SIGN;
     public const int IDC_SIGN = 80;
     public const int IDC_CLEAR = 81;
@@ -63,7 +63,7 @@ public static class CCommand
 
     public const int IDC_PNT = 84;
 
-	// Hole  85
+    // Hole  85
 
     public const int IDC_AND = 86; // Binary operators must be between IDC_AND and IDC_PWR
     public const int IDC_OR = 87;
@@ -143,21 +143,21 @@ public static class CCommand
 
     public const int IDC_SEC = 400; // Secant
 
-	// 401 reserved for inverse
+    // 401 reserved for inverse
     public const int IDC_CSC = 402; // Cosecant
 
-	// 403 reserved for inverse
+    // 403 reserved for inverse
     public const int IDC_COT = 404; // Cotangent
-	// 405 reserved for inverse
+                                    // 405 reserved for inverse
 
     public const int IDC_SECH = 406; // Hyperbolic Secant
 
-	// 407 reserved for inverse
+    // 407 reserved for inverse
     public const int IDC_CSCH = 408; // Hyperbolic Cosecant
 
-	// 409 reserved for inverse
+    // 409 reserved for inverse
     public const int IDC_COTH = 410; // Hyperbolic Cotangent
-	// 411 reserved for inverse
+                                     // 411 reserved for inverse
 
     public const int IDC_POW2 = 412; // 2 ^ x
     public const int IDC_ABS = 413; // Absolute Value
@@ -249,8 +249,8 @@ public static class CCommand
     public const int IDC_BINPOS63 = 763;
     public const int IDC_BINEDITEND = 763;
 
-	// The strings in the following range IDS_ENGINESTR_FIRST ... IDS_ENGINESTR_MAX are strings allocated in the
-	// resource for the purpose internal to Engine and cant be used by the clients
+    // The strings in the following range IDS_ENGINESTR_FIRST ... IDS_ENGINESTR_MAX are strings allocated in the
+    // resource for the purpose internal to Engine and cant be used by the clients
     public const int IDS_ENGINESTR_FIRST = 0;
     public const int IDS_ENGINESTR_MAX = 200;
 }

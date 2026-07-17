@@ -1,48 +1,39 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
-using CalculationManager;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using CalcEngine;
-using CalculationManager;
 using uint32_t = System.UInt32;
 using int32_t = System.Int32;
-using PNUMBER = CalcEngine.RatPak.NUMBER;
-using PRAT = CalcEngine.RatPak.RAT;
+using PNUMBER = CalcEngine.RatPakNUMBER;
+using PRAT = CalcEngine.RatPakRAT;
 using wchar_t = char;
 using wstring_view = string;
-using wstring = string;
+using WString = string;
 using size_t = ulong;
 using OpCode = uint;
 using System.Collections.Generic;
 
 namespace CalculationManager;
 
-public partial class CalculatorManager : ICalcDisplay
-
+internal sealed partial class CalculatorManager : ICalcDisplay
 //
 // #ifndef _MSC_VER
 // #define __pragma(x)
 // #endif
-
 {
     const size_t MAX_HISTORY_ITEMS = 20;
-
     public CalculatorManager(ICalcDisplay displayCallback, IResourceProvider resourceProvider)
-
     {
         m_displayCallback = displayCallback;
-        m_currentCalculatorEngine = (null);
         m_resourceProvider = (resourceProvider);
         m_inHistoryItemLoadMode = (false);
         m_persistedPrimaryValue = null;
         m_isExponentialFormat = (false);
-        m_currentDegreeMode = (Command.CommandNULL);
+        m_currentDegreeMode = (Command.NULL);
         m_pStdHistory = (new CalculatorHistory(MAX_HISTORY_ITEMS));
         m_pSciHistory = (new CalculatorHistory(MAX_HISTORY_ITEMS));
-        m_pHistory = (null);
-
         SetStandardMode();
     }
 
@@ -50,8 +41,8 @@ public partial class CalculatorManager : ICalcDisplay
     /// Call the callback function using passed in IDisplayHelper.
     /// Used to set the primary display value on ViewModel
     /// </summary>
-    /// <param name="text">wstring representing text to be displayed</param>
-    public void SetPrimaryDisplay(wstring displayString, bool isError)
+    /// <param name = "text">WString representing text to be displayed</param>
+    public void SetPrimaryDisplay(WString displayString, bool isError)
     {
         if (!m_inHistoryItemLoadMode)
         {
@@ -93,9 +84,8 @@ public partial class CalculatorManager : ICalcDisplay
     /// Call the callback function using passed in IDisplayHelper.
     /// Used to set the expression display value on ViewModel
     /// </summary>
-    /// <param name="expressionString">wstring representing expression to be displayed</param>
-    public void SetExpressionDisplay(List<(wstring, int)> tokens,
-        List<IExpressionCommand> commands)
+    /// <param name = "expressionString">WString representing expression to be displayed</param>
+    public void SetExpressionDisplay(List<(WString, int)> tokens, List<IExpressionCommand> commands)
     {
         if (!m_inHistoryItemLoadMode)
         {
@@ -107,8 +97,8 @@ public partial class CalculatorManager : ICalcDisplay
     /// Callback from the CalculatorControl
     /// Passed in string representations of memorized numbers get passed to the client
     /// </summary>
-    /// <param name="memorizedNumber">vector containing wstring values of memorized numbers</param>
-    public void SetMemorizedNumbers(List<wstring> memorizedNumbers)
+    /// <param name = "memorizedNumber">vector containing WString values of memorized numbers</param>
+    public void SetMemorizedNumbers(List<WString> memorizedNumbers)
     {
         m_displayCallback.SetMemorizedNumbers(memorizedNumbers);
     }
@@ -116,7 +106,7 @@ public partial class CalculatorManager : ICalcDisplay
     /// <summary>
     /// Callback from the engine
     /// </summary>
-    /// <param name="parenthesisCount">string containing the parenthesis count</param>
+    /// <param name = "parenthesisCount">string containing the parenthesis count</param>
     public void SetParenthesisNumber(uint parenthesisCount)
     {
         m_displayCallback.SetParenthesisNumber(parenthesisCount);
@@ -140,12 +130,10 @@ public partial class CalculatorManager : ICalcDisplay
     public void Reset(bool clearMemory = true)
     {
         SetStandardMode();
-
         if (m_scientificCalculatorEngine != null)
         {
             m_scientificCalculatorEngine.ProcessCommand(CCommand.IDC_DEG);
             m_scientificCalculatorEngine.ProcessCommand(CCommand.IDC_CLEAR);
-
             if (m_isExponentialFormat)
             {
                 m_isExponentialFormat = false;
@@ -167,14 +155,12 @@ public partial class CalculatorManager : ICalcDisplay
     /// <summary>
     /// Change the current calculator engine to standard calculator engine.
     /// </summary>
-  public   void SetStandardMode()
+    [MemberNotNull(nameof(m_currentCalculatorEngine), nameof(m_pHistory))]
+    public void SetStandardMode()
     {
         if (m_standardCalculatorEngine is null)
         {
-            m_standardCalculatorEngine =
-                new CCalcEngine(false /* Respect Order of Operations */, false /* Set to Integer Mode */,
-                    m_resourceProvider, this, m_pStdHistory);
-
+            m_standardCalculatorEngine = new CCalcEngine(false /* Respect Order of Operations */, false /* Set to Integer Mode */, m_resourceProvider, this, m_pStdHistory);
             m_standardCalculatorEngine.InitialOneTimeOnlySetup(m_resourceProvider);
         }
 
@@ -189,14 +175,12 @@ public partial class CalculatorManager : ICalcDisplay
     /// <summary>
     /// Change the current calculator engine to scientific calculator engine.
     /// </summary>
-    public  void SetScientificMode()
+    [MemberNotNull(nameof(m_currentCalculatorEngine), nameof(m_pHistory))]
+    public void SetScientificMode()
     {
         if (m_scientificCalculatorEngine is null)
         {
-            m_scientificCalculatorEngine =
-                new CCalcEngine(true /* Respect Order of Operations */, false /* Set to Integer Mode */,
-                    m_resourceProvider, this, m_pSciHistory);
-
+            m_scientificCalculatorEngine = new CCalcEngine(true /* Respect Order of Operations */, false /* Set to Integer Mode */, m_resourceProvider, this, m_pSciHistory);
             m_scientificCalculatorEngine.InitialOneTimeOnlySetup(m_resourceProvider);
         }
 
@@ -210,14 +194,12 @@ public partial class CalculatorManager : ICalcDisplay
     /// <summary>
     /// Change the current calculator engine to scientific calculator engine.
     /// </summary>
+    [MemberNotNull(nameof(m_currentCalculatorEngine))]
     public void SetProgrammerMode()
     {
         if (m_programmerCalculatorEngine is null)
         {
-            m_programmerCalculatorEngine =
-                new CCalcEngine(true /* Respect Order of Operations */, true /* Set to Integer Mode */,
-                    m_resourceProvider, this, null);
-
+            m_programmerCalculatorEngine = new CCalcEngine(true /* Respect Order of Operations */, true /* Set to Integer Mode */, m_resourceProvider, this, null);
             m_programmerCalculatorEngine.InitialOneTimeOnlySetup(m_resourceProvider);
         }
 
@@ -232,14 +214,12 @@ public partial class CalculatorManager : ICalcDisplay
     /// Cast Command Enum to OpCode.
     /// Handle special commands such as mode change and combination of two commands.
     /// </summary>
-    /// <param name="command">Enum Command</command>
+    /// <param name = "command">Enum Command</command>
     public void SendCommand(Command command)
     {
         // When the expression line is cleared, we save the current state, which includes,
         // primary display, memory, and degree mode
-        if (command == Command.CommandCLEAR || command == Command.CommandEQU || command == Command.ModeBasic ||
-            command == Command.ModeScientific
-            || command == Command.ModeProgrammer)
+        if (command == Command.CLEAR || command == Command.EQU || command == Command.ModeBasic || command == Command.ModeScientific || command == Command.ModeProgrammer)
         {
             switch (command)
             {
@@ -261,66 +241,83 @@ public partial class CalculatorManager : ICalcDisplay
             return;
         }
 
-        if (command == Command.CommandDEG || command == Command.CommandRAD || command == Command.CommandGRAD)
+        if (command == Command.DEG || command == Command.RAD || command == Command.GRAD)
         {
             m_currentDegreeMode = command;
         }
 
+        _ = HandleSpecialCommandGroup1(command) || HandleSpecialCommandGroup2(command);
+        InputChanged();
+    }
+
+    private bool HandleSpecialCommandGroup1(global::CalculationManager.Command command)
+    {
         switch (command)
         {
-            case Command.CommandASIN:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandINV));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandSIN));
+            case Command.ASIN:
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.INV));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.SIN));
                 break;
-            case Command.CommandACOS:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandINV));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandCOS));
+            case Command.ACOS:
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.INV));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.COS));
                 break;
-            case Command.CommandATAN:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandINV));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandTAN));
+            case Command.ATAN:
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.INV));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.TAN));
                 break;
-            case Command.CommandPOWE:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandINV));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandLN));
+            case Command.POWE:
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.INV));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.LN));
                 break;
-            case Command.CommandASINH:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandINV));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandSINH));
+            case Command.ASINH:
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.INV));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.SINH));
                 break;
-            case Command.CommandACOSH:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandINV));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandCOSH));
+            case Command.ACOSH:
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.INV));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.COSH));
                 break;
-            case Command.CommandATANH:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandINV));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandTANH));
+            case Command.ATANH:
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.INV));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.TANH));
                 break;
-            case Command.CommandASEC:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandINV));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandSEC));
+            case Command.ASEC:
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.INV));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.SEC));
                 break;
-            case Command.CommandACSC:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandINV));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandCSC));
+            default:
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool HandleSpecialCommandGroup2(global::CalculationManager.Command command)
+    {
+        switch (command)
+        {
+            case Command.ACSC:
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.INV));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CSC));
                 break;
-            case Command.CommandACOT:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandINV));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandCOT));
+            case Command.ACOT:
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.INV));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.COT));
                 break;
-            case Command.CommandASECH:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandINV));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandSECH));
+            case Command.ASECH:
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.INV));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.SECH));
                 break;
-            case Command.CommandACSCH:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandINV));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandCSCH));
+            case Command.ACSCH:
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.INV));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CSCH));
                 break;
-            case Command.CommandACOTH:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandINV));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.CommandCOTH));
+            case Command.ACOTH:
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.INV));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.COTH));
                 break;
-            case Command.CommandFE:
+            case Command.FE:
                 m_isExponentialFormat = !m_isExponentialFormat;
                 goto default;
             default:
@@ -328,7 +325,7 @@ public partial class CalculatorManager : ICalcDisplay
                 break;
         }
 
-        InputChanged();
+        return true;
     }
 
     /// <summary>
@@ -336,7 +333,11 @@ public partial class CalculatorManager : ICalcDisplay
     /// </summary>
     public void LoadPersistedPrimaryValue()
     {
-        m_currentCalculatorEngine.PersistedMemObject(m_persistedPrimaryValue);
+        if (m_persistedPrimaryValue is not null)
+        {
+            m_currentCalculatorEngine.PersistedMemObject(m_persistedPrimaryValue);
+        }
+
         m_currentCalculatorEngine.ProcessCommand(CCommand.IDC_RECALL);
         InputChanged();
     }
@@ -353,7 +354,6 @@ public partial class CalculatorManager : ICalcDisplay
         }
 
         m_currentCalculatorEngine.ProcessCommand(CCommand.IDC_STORE);
-
         var memoryObjectPtr = m_currentCalculatorEngine.PersistedMemObject();
         if (memoryObjectPtr != null)
         {
@@ -363,8 +363,7 @@ public partial class CalculatorManager : ICalcDisplay
         if (m_memorizedNumbers.Count > m_maximumMemorySize)
         {
             //TODO: check
-            m_memorizedNumbers.RemoveRange((int)(m_maximumMemorySize - 1),
-                (int)(m_memorizedNumbers.Count - m_maximumMemorySize));
+            m_memorizedNumbers.RemoveRange((int)(m_maximumMemorySize - 1), (int)(m_memorizedNumbers.Count - m_maximumMemorySize));
         }
 
         this.SetMemorizedNumbersString();
@@ -374,7 +373,7 @@ public partial class CalculatorManager : ICalcDisplay
     /// Recall the memorized number.
     /// The memorized number gets loaded to the primary display
     /// </summary>
-    /// <param name="indexOfMemory">Index of the target memory</param>
+    /// <param name = "indexOfMemory">Index of the target memory</param>
     public void MemorizedNumberLoad(int indexOfMemory)
     {
         if (m_currentCalculatorEngine.FInErrorState())
@@ -392,7 +391,7 @@ public partial class CalculatorManager : ICalcDisplay
     /// It adds primary display value to the selected memory
     /// Notify the client with new the new memorize value vector
     /// </summary>
-    /// <param name="indexOfMemory">Index of the target memory</param>
+    /// <param name = "indexOfMemory">Index of the target memory</param>
     public void MemorizedNumberAdd(int indexOfMemory)
     {
         if (m_currentCalculatorEngine.FInErrorState())
@@ -408,9 +407,7 @@ public partial class CalculatorManager : ICalcDisplay
         {
             this.MemorizedNumberSelect(indexOfMemory);
             m_currentCalculatorEngine.ProcessCommand(CCommand.IDC_MPLUS);
-
             this.MemorizedNumberChanged(indexOfMemory);
-
             this.SetMemorizedNumbersString();
         }
 
@@ -430,7 +427,7 @@ public partial class CalculatorManager : ICalcDisplay
     /// It adds primary display value to the selected memory
     /// Notify the client with new the new memorize value vector
     /// </summary>
-    /// <param name="indexOfMemory">Index of the target memory</param>
+    /// <param name = "indexOfMemory">Index of the target memory</param>
     public void MemorizedNumberSubtract(int indexOfMemory)
     {
         if (m_currentCalculatorEngine.FInErrorState())
@@ -449,9 +446,7 @@ public partial class CalculatorManager : ICalcDisplay
         {
             this.MemorizedNumberSelect(indexOfMemory);
             m_currentCalculatorEngine.ProcessCommand(CCommand.IDC_MMINUS);
-
             this.MemorizedNumberChanged(indexOfMemory);
-
             this.SetMemorizedNumbersString();
         }
 
@@ -465,16 +460,15 @@ public partial class CalculatorManager : ICalcDisplay
     public void MemorizedNumberClearAll()
     {
         m_memorizedNumbers.Clear();
-
         m_currentCalculatorEngine.ProcessCommand(CCommand.IDC_MCLEAR);
         this.SetMemorizedNumbersString();
     }
 
     /// <summary>
     /// Helper function that selects a memory from the vector and set it to CCalcEngine
-    /// Saved RAT number needs to be copied and passed in, as CCalcEngine destroyed the passed in RAT
+    /// Saved RatPakRAT number needs to be copied and passed in, as CCalcEngine destroyed the passed in RatPakRAT
     /// </summary>
-    /// <param name="indexOfMemory">Index of the target memory</param>
+    /// <param name = "indexOfMemory">Index of the target memory</param>
     public void MemorizedNumberSelect(int indexOfMemory)
     {
         if (m_currentCalculatorEngine.FInErrorState())
@@ -488,9 +482,9 @@ public partial class CalculatorManager : ICalcDisplay
 
     /// <summary>
     /// Helper function that needs to be executed when memory is modified
-    /// When memory is modified, destroy the old RAT and put the new RAT in vector
+    /// When memory is modified, destroy the old RatPakRAT and put the new RatPakRAT in vector
     /// </summary>
-    /// <param name="indexOfMemory">Index of the target memory</param>
+    /// <param name = "indexOfMemory">Index of the target memory</param>
     public void MemorizedNumberChanged(int indexOfMemory)
     {
         if (m_currentCalculatorEngine.FInErrorState())
@@ -515,7 +509,7 @@ public partial class CalculatorManager : ICalcDisplay
         return (mode == CalculatorMode.Standard) ? m_pStdHistory.GetHistory() : m_pSciHistory.GetHistory();
     }
 
-    public void SetHistoryItems(List<HISTORYITEM> historyItems)
+    public void SetHistoryItems(IEnumerable<HISTORYITEM> historyItems)
     {
         foreach (var historyItem in historyItems)
         {
@@ -569,12 +563,11 @@ public partial class CalculatorManager : ICalcDisplay
 
     public void SetMemorizedNumbersString()
     {
-        List<wstring> resultVector = new List<wstring>();
+        List<WString> resultVector = new List<WString>();
         foreach (var memoryItem in m_memorizedNumbers)
         {
             var radix = m_currentCalculatorEngine.GetCurrentRadix();
-            wstring stringValue = m_currentCalculatorEngine.GetStringForDisplay(memoryItem, radix);
-
+            WString stringValue = m_currentCalculatorEngine.GetStringForDisplay(memoryItem, radix);
             if (stringValue.Length != 0)
             {
                 resultVector.Add(m_currentCalculatorEngine.GroupDigitsPerRadix(stringValue, radix));
@@ -586,19 +579,17 @@ public partial class CalculatorManager : ICalcDisplay
 
     public Command GetCurrentDegreeMode()
     {
-        if (m_currentDegreeMode == Command.CommandNULL)
+        if (m_currentDegreeMode == Command.NULL)
         {
-            m_currentDegreeMode = Command.CommandDEG;
+            m_currentDegreeMode = Command.DEG;
         }
 
         return m_currentDegreeMode;
     }
 
-    public wstring GetResultForRadix(uint32_t radix, int32_t precision, bool groupDigitsPerRadix)
+    public WString GetResultForRadix(uint32_t radix, int32_t precision, bool groupDigitsPerRadix)
     {
-        return m_currentCalculatorEngine is not null
-            ? m_currentCalculatorEngine.GetCurrentResultForRadix(radix, precision, groupDigitsPerRadix)
-            : "";
+        return m_currentCalculatorEngine is not null ? m_currentCalculatorEngine.GetCurrentResultForRadix(radix, precision, groupDigitsPerRadix) : "";
     }
 
     public void SetPrecision(int32_t precision)
@@ -613,9 +604,7 @@ public partial class CalculatorManager : ICalcDisplay
 
     public wchar_t DecimalSeparator()
     {
-        return m_currentCalculatorEngine is not null
-            ? m_currentCalculatorEngine.DecimalSeparator()
-            : m_resourceProvider.GetCEngineString("sDecimal")[0];
+        return m_currentCalculatorEngine is not null ? m_currentCalculatorEngine.DecimalSeparator() : m_resourceProvider.GetCEngineString("sDecimal")[0];
     }
 
     public bool IsEngineRecording()
@@ -633,7 +622,7 @@ public partial class CalculatorManager : ICalcDisplay
         m_inHistoryItemLoadMode = isHistoryItemLoadMode;
     }
 
- public    List<IExpressionCommand> GetDisplayCommandsSnapshot()
+    public List<IExpressionCommand> GetDisplayCommandsSnapshot()
     {
         return m_currentCalculatorEngine.GetHistoryCollectorCommandsSnapshot();
     }

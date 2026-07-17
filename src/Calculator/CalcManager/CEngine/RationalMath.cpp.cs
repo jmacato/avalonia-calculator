@@ -4,10 +4,9 @@
 using uint32_t = System.UInt32;
 using int32_t = System.Int32;
 
-// ReSharper disable once CheckNamespace
 namespace CalcEngine;
 
-public static class RationalMath
+internal static class RationalMath
 {
     // Default Base/Radix to use for Rational calculations
     // RatPack calculations currently support up to Base64.
@@ -26,12 +25,12 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
@@ -45,12 +44,12 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
@@ -63,17 +62,17 @@ public static class RationalMath
         try
         {
             ratPak.powrat(ref baseRat, powRat, RATIONAL_BASE, RATIONAL_PRECISION);
-            ratPak.destroyrat(ref powRat);
+            RatPak.destroyrat(ref powRat);
         }
         catch
         {
-            ratPak.destroyrat(ref baseRat);
-            ratPak.destroyrat(ref powRat);
+            RatPak.destroyrat(ref baseRat);
+            RatPak.destroyrat(ref powRat);
             throw;
         }
 
         Rational result = new(ratPak, baseRat);
-        ratPak.destroyrat(ref baseRat);
+        RatPak.destroyrat(ref baseRat);
 
         return result;
     }
@@ -93,12 +92,12 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
@@ -113,12 +112,12 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
@@ -133,12 +132,12 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
@@ -163,7 +162,7 @@ public static class RationalMath
         //Number{ 1, rat.P().Exp(), rat.P().Mantissa() }, Number{ 1, rat.Q().Exp(), rat.Q().Mantissa() } };
     }
 
-    public static Rational Sin(RatPak ratPak, Rational rat, RatPak.AngleType angletype)
+    public static Rational Sin(RatPak ratPak, Rational rat, RatPakAngleType angletype)
     {
         var prat = rat.ToPRAT();
 
@@ -173,17 +172,17 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
 
-    public static Rational Cos(RatPak ratPak, Rational rat, RatPak.AngleType angletype)
+    public static Rational Cos(RatPak ratPak, Rational rat, RatPakAngleType angletype)
     {
         var prat = rat.ToPRAT();
 
@@ -193,17 +192,17 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
 
-    public static Rational Tan(RatPak ratPak, Rational rat, RatPak.AngleType angletype)
+    public static Rational Tan(RatPak ratPak, Rational rat, RatPakAngleType angletype)
     {
         var prat = rat.ToPRAT();
 
@@ -213,17 +212,17 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
 
-    public static Rational ASin(RatPak ratPak, Rational rat, RatPak.AngleType angletype)
+    public static Rational ASin(RatPak ratPak, Rational rat, RatPakAngleType angletype)
     {
         var prat = rat.ToPRAT();
 
@@ -233,17 +232,17 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
 
-    public static Rational ACos(RatPak ratPak, Rational rat, RatPak.AngleType angletype)
+    public static Rational ACos(RatPak ratPak, Rational rat, RatPakAngleType angletype)
     {
         var prat = rat.ToPRAT();
 
@@ -253,17 +252,17 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
 
-    public static Rational ATan(RatPak ratPak, Rational rat, RatPak.AngleType angletype)
+    public static Rational ATan(RatPak ratPak, Rational rat, RatPakAngleType angletype)
     {
         var prat = rat.ToPRAT();
 
@@ -273,12 +272,12 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
@@ -293,12 +292,12 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
@@ -313,12 +312,12 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
@@ -333,12 +332,12 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
@@ -353,12 +352,12 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
@@ -373,12 +372,12 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
@@ -393,12 +392,12 @@ public static class RationalMath
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref prat);
             throw;
         }
 
         Rational result = new(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
 
         return result;
     }
@@ -419,17 +418,17 @@ public static class RationalMath
         try
         {
             ratPak.modrat(ref prat, pn);
-            ratPak.destroyrat(ref pn);
+            RatPak.destroyrat(ref pn);
         }
         catch
         {
-            ratPak.destroyrat(ref prat);
-            ratPak.destroyrat(ref pn);
+            RatPak.destroyrat(ref prat);
+            RatPak.destroyrat(ref pn);
             throw;
         }
 
         var res = new Rational(ratPak, prat);
-        ratPak.destroyrat(ref prat);
+        RatPak.destroyrat(ref prat);
         return res;
     }
 }

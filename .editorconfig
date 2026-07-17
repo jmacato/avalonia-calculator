@@ -83,5 +83,5 @@ csharp_using_directive_placement = outside_namespace:suggestion
 indent_style = space
 indent_size = 2
 
-
-
+# The repository analyzer enforces one type per file and matching file names
+# directly. It has no unrelated style rules that would need to be disabled.

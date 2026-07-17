@@ -12,7 +12,7 @@ using System;
 namespace CalculatorUITests
 {
     [TestClass]
-    public class ProgrammerModeFunctionalTests
+    public sealed class ProgrammerModeFunctionalTests
     {
         private static readonly ProgrammerCalculatorPage page = new ProgrammerCalculatorPage();
 
@@ -71,7 +71,7 @@ namespace CalculatorUITests
         #region Smoke Tests
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_Arithmetic_Decimal_LeftShift()
+        public void SmokeTestArithmeticDecimalLeftShift()
         {
             page.StandardOperators.NumberPad.Input(5);
             page.ProgrammerOperators.LeftShiftButton.Click();
@@ -82,7 +82,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_Arithmetic_Decimal_RightShift()
+        public void SmokeTestArithmeticDecimalRightShift()
         {
             page.StandardOperators.NumberPad.Input(25);
             page.StandardOperators.NegateButton.Click();
@@ -94,7 +94,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_Arithmetic_Decimal_And()
+        public void SmokeTestArithmeticDecimalAnd()
         {
             page.StandardOperators.NumberPad.Input(25);
             page.ProgrammerOperators.BitwiseButton.Click();
@@ -106,7 +106,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_Arithmetic_Decimal_Nand()
+        public void SmokeTestArithmeticDecimalNand()
         {
             page.StandardOperators.NumberPad.Input(25);
             page.ProgrammerOperators.BitwiseButton.Click();
@@ -118,7 +118,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_Arithmetic_Decimal_Or()
+        public void SmokeTestArithmeticDecimalOr()
         {
             page.StandardOperators.NumberPad.Input(25);
             page.ProgrammerOperators.BitwiseButton.Click();
@@ -130,7 +130,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_Arithmetic_Decimal_Nor()
+        public void SmokeTestArithmeticDecimalNor()
         {
             page.StandardOperators.NumberPad.Input(25);
             page.ProgrammerOperators.BitwiseButton.Click();
@@ -142,7 +142,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_Arithmetic_Decimal_Not()
+        public void SmokeTestArithmeticDecimalNot()
         {
             page.StandardOperators.NumberPad.Input(25);
             page.ProgrammerOperators.BitwiseButton.Click();
@@ -153,7 +153,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_Arithmetic_Decimal_Xor()
+        public void SmokeTestArithmeticDecimalXor()
         {
             page.StandardOperators.NumberPad.Input(25);
             page.ProgrammerOperators.BitwiseButton.Click();
@@ -168,7 +168,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_WordSize()
+        public void SmokeTestWordSize()
         {
             page.ProgrammerOperators.BitFlip.Click();
             if (page.ProgrammerOperators.Bit63.GetAttribute("IsEnabled") != "True")
@@ -216,7 +216,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(0)]
-        public void SmokeTest_BitFlipKeypad()
+        public void SmokeTestBitFlipKeypad()
         {
             page.ProgrammerOperators.BitFlip.Click();
             page.ProgrammerOperators.Bit63.Click();
@@ -231,7 +231,7 @@ namespace CalculatorUITests
         #region Arithmetic logic operators
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Octal_LeftShift()
+        public void ArithmeticOperatorOctalLeftShift()
         {
             page.ProgrammerOperators.OctButton.Click();
             page.StandardOperators.NumberPad.Input(7);
@@ -243,7 +243,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Octal_RightShift()
+        public void ArithmeticOperatorOctalRightShift()
         {
             page.ProgrammerOperators.OctButton.Click();
             page.StandardOperators.NumberPad.Input(25);
@@ -256,7 +256,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Octal_And()
+        public void ArithmeticOperatorOctalAnd()
         {
             page.ProgrammerOperators.OctButton.Click();
             page.StandardOperators.NumberPad.Input(16);
@@ -269,7 +269,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Octal_Nand()
+        public void ArithmeticOperatorOctalNand()
         {
             page.ProgrammerOperators.OctButton.Click();
             page.StandardOperators.NumberPad.Input(16);
@@ -282,7 +282,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Octal_Or()
+        public void ArithmeticOperatorOctalOr()
         {
             page.ProgrammerOperators.OctButton.Click();
             page.StandardOperators.NumberPad.Input(16);
@@ -295,7 +295,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Octal_Nor()
+        public void ArithmeticOperatorOctalNor()
         {
             page.ProgrammerOperators.OctButton.Click();
             page.StandardOperators.NumberPad.Input(16);
@@ -308,7 +308,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Octal_Not()
+        public void ArithmeticOperatorOctalNot()
         {
             page.ProgrammerOperators.OctButton.Click();
             page.StandardOperators.NumberPad.Input(16);
@@ -320,7 +320,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Octal_Xor()
+        public void ArithmeticOperatorOctalXor()
         {
             page.ProgrammerOperators.OctButton.Click();
             page.StandardOperators.NumberPad.Input(16);
@@ -336,7 +336,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Binary_LeftShift()
+        public void ArithmeticOperatorBinaryLeftShift()
         {
             page.ProgrammerOperators.BinButton.Click();
             page.StandardOperators.NumberPad.Input(1010);
@@ -348,7 +348,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Binary_RightShift()
+        public void ArithmeticOperatorBinaryRightShift()
         {
             page.ProgrammerOperators.BinButton.Click();
             page.StandardOperators.NumberPad.Input(1010);
@@ -360,7 +360,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Binary_And()
+        public void ArithmeticOperatorBinaryAnd()
         {
             page.ProgrammerOperators.BinButton.Click();
             page.StandardOperators.NumberPad.Input(1010);
@@ -373,7 +373,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Binary_Nand()
+        public void ArithmeticOperatorBinaryNand()
         {
             page.ProgrammerOperators.BinButton.Click();
             page.StandardOperators.NumberPad.Input(1010);
@@ -386,7 +386,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Binary_Or()
+        public void ArithmeticOperatorBinaryOr()
         {
             page.ProgrammerOperators.BinButton.Click();
             page.StandardOperators.NumberPad.Input(1010);
@@ -399,7 +399,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Binary_Nor()
+        public void ArithmeticOperatorBinaryNor()
         {
             page.ProgrammerOperators.BinButton.Click();
             page.StandardOperators.NumberPad.Input(1010);
@@ -412,7 +412,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Binary_Not()
+        public void ArithmeticOperatorBinaryNot()
         {
             page.ProgrammerOperators.BinButton.Click();
             page.StandardOperators.NumberPad.Input(1010);
@@ -424,7 +424,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Binary_Xor()
+        public void ArithmeticOperatorBinaryXor()
         {
             page.ProgrammerOperators.BinButton.Click();
             page.StandardOperators.NumberPad.Input(1010);
@@ -440,7 +440,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Hex_LeftShift()
+        public void ArithmeticOperatorHexLeftShift()
         {
             page.ProgrammerOperators.HexButton.Click();
             page.ProgrammerOperators.AButton.Click();
@@ -452,7 +452,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Hex_RightShift()
+        public void ArithmeticOperatorHexRightShift()
         {
             page.ProgrammerOperators.HexButton.Click();
             page.ProgrammerOperators.FButton.Click();
@@ -464,7 +464,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Hex_And()
+        public void ArithmeticOperatorHexAnd()
         {
             page.ProgrammerOperators.HexButton.Click();
             page.ProgrammerOperators.AButton.Click();
@@ -479,7 +479,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Hex_Nand()
+        public void ArithmeticOperatorHexNand()
         {
             page.ProgrammerOperators.HexButton.Click();
             page.ProgrammerOperators.AButton.Click();
@@ -494,7 +494,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Hex_Or()
+        public void ArithmeticOperatorHexOr()
         {
             page.ProgrammerOperators.HexButton.Click();
             page.ProgrammerOperators.AButton.Click();
@@ -509,7 +509,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Hex_Nor()
+        public void ArithmeticOperatorHexNor()
         {
             page.ProgrammerOperators.HexButton.Click();
             page.ProgrammerOperators.AButton.Click();
@@ -524,7 +524,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Hex_Not()
+        public void ArithmeticOperatorHexNot()
         {
             page.ProgrammerOperators.HexButton.Click();
             page.ProgrammerOperators.AButton.Click();
@@ -538,7 +538,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Arithmetic_Operator_Hex_Xor()
+        public void ArithmeticOperatorHexXor()
         {
             page.ProgrammerOperators.HexButton.Click();
             page.ProgrammerOperators.AButton.Click();
@@ -558,7 +558,7 @@ namespace CalculatorUITests
         #region Logical-shift operators
         [TestMethod]
         [Priority(1)]
-        public void Logical_Operator_Decimal_LeftShift()
+        public void LogicalOperatorDecimalLeftShift()
         {
             page.ProgrammerOperators.DecButton.Click();
             page.ProgrammerOperators.SetLogicalShift();
@@ -571,7 +571,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Logical_Operator_Decimal_RightShift()
+        public void LogicalOperatorDecimalRightShift()
         {
             page.ProgrammerOperators.DecButton.Click();
             page.ProgrammerOperators.SetLogicalShift();
@@ -588,7 +588,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(1)]
-        public void Logical_Operator_Octal_LeftShift()
+        public void LogicalOperatorOctalLeftShift()
         {
             page.ProgrammerOperators.OctButton.Click();
             page.ProgrammerOperators.SetLogicalShift();
@@ -601,7 +601,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Logical_Operator_Octal_RightShift()
+        public void LogicalOperatorOctalRightShift()
         {
             page.ProgrammerOperators.OctButton.Click();
             page.ProgrammerOperators.SetLogicalShift();
@@ -618,7 +618,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(1)]
-        public void Logical_Operator_Binary_LeftShift()
+        public void LogicalOperatorBinaryLeftShift()
         {
             page.ProgrammerOperators.BinButton.Click();
             page.ProgrammerOperators.SetLogicalShift();
@@ -631,7 +631,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Logical_Operator_Binary_RightShift()
+        public void LogicalOperatorBinaryRightShift()
         {
             page.ProgrammerOperators.BinButton.Click();
             page.ProgrammerOperators.SetLogicalShift();
@@ -648,7 +648,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(1)]
-        public void Logical_Operator_Hex_LeftShift()
+        public void LogicalOperatorHexLeftShift()
         {
             page.ProgrammerOperators.HexButton.Click();
             page.ProgrammerOperators.SetLogicalShift();
@@ -661,7 +661,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Logical_Operator_Hex_RightShift()
+        public void LogicalOperatorHexRightShift()
         {
             page.ProgrammerOperators.HexButton.Click();
             page.ProgrammerOperators.SetLogicalShift();
@@ -680,7 +680,7 @@ namespace CalculatorUITests
         #region Rotate-Circular-shift operators
         [TestMethod]
         [Priority(1)]
-        public void Circular_Operator_Decimal_LeftShift()
+        public void CircularOperatorDecimalLeftShift()
         {
             page.ProgrammerOperators.SetRotateCircularShift();
             page.StandardOperators.NumberPad.Input(7);
@@ -691,7 +691,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Circular_Operator_Decimal_RightShift()
+        public void CircularOperatorDecimalRightShift()
         {
             page.ProgrammerOperators.SetRotateCircularShift();
             page.StandardOperators.NumberPad.Input(16);
@@ -706,7 +706,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(1)]
-        public void Circular_Operator_Octal_LeftShift()
+        public void CircularOperatorOctalLeftShift()
         {
             page.ProgrammerOperators.OctButton.Click();
             page.ProgrammerOperators.SetRotateCircularShift();
@@ -718,7 +718,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Circular_Operator_Octal_RightShift()
+        public void CircularOperatorOctalRightShift()
         {
             page.ProgrammerOperators.OctButton.Click();
             page.ProgrammerOperators.SetRotateCircularShift();
@@ -733,7 +733,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(1)]
-        public void Circular_Operator_Binary_LeftShift()
+        public void CircularOperatorBinaryLeftShift()
         {
             page.ProgrammerOperators.BinButton.Click();
             page.ProgrammerOperators.SetRotateCircularShift();
@@ -745,7 +745,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Circular_Operator_Binary_RightShift()
+        public void CircularOperatorBinaryRightShift()
         {
             page.ProgrammerOperators.BinButton.Click();
             page.ProgrammerOperators.SetRotateCircularShift();
@@ -760,7 +760,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(1)]
-        public void Circular_Operator_Hex_LeftShift()
+        public void CircularOperatorHexLeftShift()
         {
             page.ProgrammerOperators.HexButton.Click();
             page.ProgrammerOperators.SetRotateCircularShift();
@@ -772,7 +772,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Circular_Operator_Hex_RightShift()
+        public void CircularOperatorHexRightShift()
         {
             page.ProgrammerOperators.HexButton.Click();
             page.ProgrammerOperators.SetRotateCircularShift();
@@ -789,7 +789,7 @@ namespace CalculatorUITests
         #region Rotate-Through-Carry-Circular-shift operators
         [TestMethod]
         [Priority(1)]
-        public void ThroughCarry_Operator_Decimal_LeftShift()
+        public void ThroughCarryOperatorDecimalLeftShift()
         {
             page.ProgrammerOperators.SetRotateThroughCarryCircularShift();
             page.StandardOperators.NumberPad.Input(7);
@@ -801,7 +801,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void ThroughCarry_Operator_Decimal_RightShift()
+        public void ThroughCarryOperatorDecimalRightShift()
         {
             page.ProgrammerOperators.SetRotateThroughCarryCircularShift();
             page.StandardOperators.NumberPad.Input(17);
@@ -815,7 +815,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(1)]
-        public void ThroughCarry_Operator_Octal_LeftShift()
+        public void ThroughCarryOperatorOctalLeftShift()
         {
             page.ProgrammerOperators.OctButton.Click();
             page.ProgrammerOperators.SetRotateThroughCarryCircularShift();
@@ -827,7 +827,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void ThroughCarry_Operator_Octal_RightShift()
+        public void ThroughCarryOperatorOctalRightShift()
         {
             page.ProgrammerOperators.OctButton.Click();
             page.ProgrammerOperators.SetRotateThroughCarryCircularShift();
@@ -842,7 +842,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(1)]
-        public void ThroughCarry_Operator_Binary_LeftShift()
+        public void ThroughCarryOperatorBinaryLeftShift()
         {
             page.ProgrammerOperators.BinButton.Click();
             page.ProgrammerOperators.SetRotateThroughCarryCircularShift();
@@ -854,7 +854,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void ThroughCarry_Operator_Binary_RightShift()
+        public void ThroughCarryOperatorBinaryRightShift()
         {
             page.ProgrammerOperators.BinButton.Click();
             page.ProgrammerOperators.SetRotateThroughCarryCircularShift();
@@ -869,7 +869,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(1)]
-        public void ThroughCarry_Operator_Hex_LeftShift()
+        public void ThroughCarryOperatorHexLeftShift()
         {
             page.ProgrammerOperators.HexButton.Click();
             page.ProgrammerOperators.SetRotateThroughCarryCircularShift();
@@ -881,7 +881,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void ThroughCarry_Operator_Hex_RightShift()
+        public void ThroughCarryOperatorHexRightShift()
         {
             page.ProgrammerOperators.HexButton.Click();
             page.ProgrammerOperators.SetRotateThroughCarryCircularShift();
@@ -898,7 +898,7 @@ namespace CalculatorUITests
         #region Copy-Paste operations
         [TestMethod]
         [Priority(1)]
-        public void Copy_And_Paste_Simple_Number()
+        public void CopyAndPasteSimpleNumber()
         {
             page.ProgrammerOperators.BitFlip.Click();
             page.ProgrammerOperators.Bit1.Click();
@@ -911,7 +911,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(1)]
-        public void Copy_And_Paste_Invalid_Number()
+        public void CopyAndPasteInvalidNumber()
         {
             page.ProgrammerOperators.BitFlip.Click();
             page.ProgrammerOperators.Bit63.Click();

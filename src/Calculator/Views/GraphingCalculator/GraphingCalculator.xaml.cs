@@ -19,14 +19,16 @@ using AvaloniaColor = Avalonia.Media.Color;
 
 namespace CalculatorApp;
 
-public sealed partial class GraphingCalculator : UserControl
+public sealed partial class GraphingCalculator : UserControl, IDisposable
 {
     private const double SmallStateWidth = 800;
     private GraphingCalculatorViewModel? _model;
     private EquationInputArea? _equationInputAreaControl;
     private KeyGraphFeaturesPanel? _keyGraphFeaturesControl;
+    private CancellationTokenSource? _keyGraphFeaturesAnalysisCancellation;
     private GraphingSettings? _graphSettingsControl;
     private Flyout? _graphSettingsFlyout;
+    private int _disposed;
 
     public GraphingCalculator()
     {
@@ -35,9 +37,11 @@ public sealed partial class GraphingCalculator : UserControl
         GraphingControl.GraphPlotted += OnGraphPlotted;
         GraphingControl.TracingValueChanged += OnTracingValueChanged;
         GraphingControl.VariablesUpdated += OnVariablesUpdated;
-        ActualThemeVariantChanged += (_, _) => UpdateGraphTheme();
+        ActualThemeVariantChanged += OnActualThemeVariantChanged;
         UpdateGraphTheme();
     }
+
+    private void OnActualThemeVariantChanged(object? sender, EventArgs e) => UpdateGraphTheme();
 
     public void SetDefaultFocus()
     {
@@ -58,6 +62,7 @@ public sealed partial class GraphingCalculator : UserControl
 
     protected override void OnDataContextChanged(EventArgs e)
     {
+        DisposeKeyGraphFeaturesPanel();
         if (_model is not null)
         {
             _model.Equations.CollectionChanged -= OnEquationsCollectionChanged;
@@ -82,6 +87,9 @@ public sealed partial class GraphingCalculator : UserControl
         SynchronizeVariables();
         SetDefaultFocus();
     }
+
+    private void OnUnloaded(object? sender, RoutedEventArgs e) =>
+        DisposeKeyGraphFeaturesPanel();
 
     private void OnSizeChanged(object? sender, SizeChangedEventArgs e) => ApplyResponsiveLayout();
 
@@ -134,17 +142,17 @@ public sealed partial class GraphingCalculator : UserControl
         }
     }
 
-    private void OnTracingValueChanged(double x, double y)
+    private void OnTracingValueChanged(object? sender, TracingValueChangedEventArgs e)
     {
         if (GraphingControl.ActiveTracing)
         {
             TraceValue.Text = string.Create(
                 CultureInfo.CurrentCulture,
-                $"x = {x:G8}, y = {y:G8}");
+                $"x = {e.X:G8}, y = {e.Y:G8}");
         }
     }
 
-    private void OnGraphViewChanged(object? sender, GraphViewChangedReason reason)
+    private void OnGraphViewChanged(object? sender, GraphViewChangedEventArgs e)
     {
         _graphSettingsControl?.Model.InitRanges();
         UpdateGraphAutomationName();
@@ -162,10 +170,14 @@ public sealed partial class GraphingCalculator : UserControl
 
         GraphingSettings settings = EnsureGraphSettings();
         settings.SetGrapher(GraphingControl);
-        (_graphSettingsFlyout ??= new Flyout { Content = settings }).ShowAt(GraphSettingsButton);
+        Flyout flyout = _graphSettingsFlyout ??= new Flyout
+        {
+            Content = settings
+        };
+        flyout.ShowAt(GraphSettingsButton);
     }
 
-    private void OnEquationFormatRequested(object? sender, MathRichEditBoxFormatRequest e)
+    private void OnEquationFormatRequested(object? sender, MathRichEditBoxFormatRequestEventArgs e)
     {
         string linear = GraphingControl.ConvertToLinear(e.OriginalText);
         if (!string.IsNullOrEmpty(linear))
@@ -174,33 +186,74 @@ public sealed partial class GraphingCalculator : UserControl
         }
     }
 
-    private void OnKeyGraphFeaturesRequested(object? sender, EquationViewModel equation)
+    private async void OnKeyGraphFeaturesRequested(object? sender, KeyGraphFeaturesRequestedEventArgs e)
     {
-        KeyGraphFeaturesInfo? info = GraphingControl.AnalyzeEquation(equation.GraphEquation);
-        if (info is null)
-        {
-            return;
-        }
-
-        equation.PopulateKeyGraphFeatures(info);
-        KeyGraphFeaturesPanel panel = EnsureKeyGraphFeaturesPanel();
-        panel.DataContext = equation;
+        _ = sender;
+        EquationViewModel equation = e.Equation;
+        DisposeKeyGraphFeaturesPanel();
+        var cancellation = new CancellationTokenSource();
+        CancellationToken cancellationToken = cancellation.Token;
+        _keyGraphFeaturesAnalysisCancellation = cancellation;
+        var viewModel = new KeyGraphFeaturesViewModel(equation);
+        KeyGraphFeaturesPanel panel = CreateKeyGraphFeaturesPanel();
+        panel.DataContext = viewModel;
         KeyGraphFeaturesHost.IsVisible = true;
         EquationInputHost.IsVisible = false;
         GraphingNumPadHost.IsVisible = false;
+
+        try
+        {
+            KeyGraphFeaturesInfo info = await GraphingControl.AnalyzeEquationAsync(
+                equation.GraphEquation,
+                cancellationToken).ConfigureAwait(true);
+            if (cancellationToken.IsCancellationRequested ||
+                !ReferenceEquals(_keyGraphFeaturesControl, panel) ||
+                !ReferenceEquals(panel.DataContext, viewModel))
+            {
+                return;
+            }
+
+            viewModel.ApplyAnalysis(info);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // A closed or superseded panel must not receive a late result.
+        }
+        catch (InvalidOperationException)
+        {
+            ApplyAnalysisFailure(panel, viewModel, cancellationToken);
+        }
+        catch (NotSupportedException)
+        {
+            ApplyAnalysisFailure(panel, viewModel, cancellationToken);
+        }
+        finally
+        {
+            if (ReferenceEquals(_keyGraphFeaturesAnalysisCancellation, cancellation))
+            {
+                _keyGraphFeaturesAnalysisCancellation = null;
+                cancellation.Dispose();
+            }
+        }
+    }
+
+    private void ApplyAnalysisFailure(
+        KeyGraphFeaturesPanel panel,
+        KeyGraphFeaturesViewModel viewModel,
+        CancellationToken cancellationToken)
+    {
+        if (!cancellationToken.IsCancellationRequested &&
+            ReferenceEquals(_keyGraphFeaturesControl, panel) &&
+            ReferenceEquals(panel.DataContext, viewModel))
+        {
+            viewModel.ApplyAnalysis(
+                new KeyGraphFeaturesInfo(AnalysisErrorType.AnalysisCouldNotBePerformed));
+        }
     }
 
     private void OnKeyGraphFeaturesClosed(object? sender, RoutedEventArgs e)
     {
-        KeyGraphFeaturesHost.IsVisible = false;
-        if (_keyGraphFeaturesControl is not null)
-        {
-            // Keep the lightweight panel shell for reuse, but release the
-            // equation, generated item containers and math layouts while the
-            // analysis view is closed.
-            _keyGraphFeaturesControl.DataContext = null;
-        }
-
+        DisposeKeyGraphFeaturesPanel();
         EquationInputHost.IsVisible = true;
         GraphingNumPadHost.IsVisible = true;
         _equationInputAreaControl?.SetDefaultFocus();
@@ -210,23 +263,35 @@ public sealed partial class GraphingCalculator : UserControl
     {
         try
         {
-            ReadOnlyMemory<byte> png = await GraphingControl.GetGraphBitmapAsync();
+            ReadOnlyMemory<byte> png = await GraphingControl.GetGraphBitmapAsync().ConfigureAwait(true);
             if (png.IsEmpty || TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard)
             {
                 return;
             }
 
-            var bitmap = new Bitmap(new MemoryStream(png.ToArray(), writable: false));
+            using var pngStream = new MemoryStream(png.ToArray(), writable: false);
+            using var bitmap = new Bitmap(pngStream);
             var item = new DataTransferItem();
             item.SetBitmap(bitmap);
-            var transfer = new DataTransfer();
+            using var transfer = new DataTransfer();
             transfer.Add(item);
-            await clipboard.SetDataAsync(transfer);
+            await clipboard.SetDataAsync(transfer).ConfigureAwait(true);
         }
-        catch (Exception)
+        catch (UnauthorizedAccessException)
         {
-            // Clipboard access can be denied in sandboxed browser contexts; the
-            // graph and editor state remain unchanged in that case.
+            // Clipboard access can be denied in sandboxed browser contexts.
+        }
+        catch (InvalidOperationException)
+        {
+            // The platform clipboard can become unavailable during a focus transition.
+        }
+        catch (NotSupportedException)
+        {
+            // Some targets do not expose bitmap clipboard support.
+        }
+        catch (IOException)
+        {
+            // Bitmap encoding can fail without changing graph or editor state.
         }
     }
 
@@ -257,7 +322,7 @@ public sealed partial class GraphingCalculator : UserControl
     private void UpdateSwitchModeAccessibility()
     {
         bool equationMode = SwitchModeToggleButton.IsChecked == true;
-        string nextMode = AppResourceProvider.GetInstance().GetResourceString(
+        string nextMode = AppResourceProvider.Instance.GetResourceString(
             equationMode ? "GraphSwitchToGraphMode" : "GraphSwitchToEquationMode");
         AutomationProperties.SetName(SwitchModeToggleButton, nextMode);
         ToolTip.SetTip(SwitchModeToggleButton, nextMode);
@@ -331,13 +396,8 @@ public sealed partial class GraphingCalculator : UserControl
         return inputArea;
     }
 
-    private KeyGraphFeaturesPanel EnsureKeyGraphFeaturesPanel()
+    private KeyGraphFeaturesPanel CreateKeyGraphFeaturesPanel()
     {
-        if (_keyGraphFeaturesControl is not null)
-        {
-            return _keyGraphFeaturesControl;
-        }
-
         // This view owns MathExpressionView instances and the math font. Do not
         // construct either until analysis has actually been requested.
         var panel = new KeyGraphFeaturesPanel();
@@ -345,6 +405,25 @@ public sealed partial class GraphingCalculator : UserControl
         _keyGraphFeaturesControl = panel;
         KeyGraphFeaturesHost.Child = panel;
         return panel;
+    }
+
+    private void DisposeKeyGraphFeaturesPanel()
+    {
+        CancellationTokenSource? cancellation = _keyGraphFeaturesAnalysisCancellation;
+        _keyGraphFeaturesAnalysisCancellation = null;
+        cancellation?.Cancel();
+        cancellation?.Dispose();
+        KeyGraphFeaturesHost.IsVisible = false;
+        if (_keyGraphFeaturesControl is not { } panel)
+        {
+            KeyGraphFeaturesHost.Child = null;
+            return;
+        }
+
+        panel.KeyGraphFeaturesClosed -= OnKeyGraphFeaturesClosed;
+        KeyGraphFeaturesHost.Child = null;
+        panel.Dispose();
+        _keyGraphFeaturesControl = null;
     }
 
     private GraphingSettings EnsureGraphSettings()
@@ -360,5 +439,61 @@ public sealed partial class GraphingCalculator : UserControl
         return settings;
     }
 
-    private void OnGraphThemeSettingChanged(bool _) => UpdateGraphTheme();
+    private void OnGraphThemeSettingChanged(object? sender, GraphThemeSettingChangedEventArgs e)
+    {
+        _ = sender;
+        _ = e;
+        UpdateGraphTheme();
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        if (_model is not null)
+        {
+            _model.Equations.CollectionChanged -= OnEquationsCollectionChanged;
+            _model.VariableUpdated -= OnVariableUpdated;
+            _model = null;
+        }
+
+        DisposeKeyGraphFeaturesPanel();
+        _keyGraphFeaturesControl?.Dispose();
+        _keyGraphFeaturesControl = null;
+        GraphingControl.GraphViewChanged -= OnGraphViewChanged;
+        GraphingControl.GraphPlotted -= OnGraphPlotted;
+        GraphingControl.TracingValueChanged -= OnTracingValueChanged;
+        GraphingControl.VariablesUpdated -= OnVariablesUpdated;
+        ActualThemeVariantChanged -= OnActualThemeVariantChanged;
+        GraphingControl.Dispose();
+
+        if (_equationInputAreaControl is not null)
+        {
+            _equationInputAreaControl.EquationFormatRequested -= OnEquationFormatRequested;
+            _equationInputAreaControl.KeyGraphFeaturesRequested -= OnKeyGraphFeaturesRequested;
+            _equationInputAreaControl.DataContext = null;
+            _equationInputAreaControl.Dispose();
+            _equationInputAreaControl = null;
+        }
+
+        if (_graphSettingsControl is not null)
+        {
+            _graphSettingsControl.GraphThemeSettingChanged -= OnGraphThemeSettingChanged;
+            _graphSettingsControl.Dispose();
+            _graphSettingsControl = null;
+        }
+
+        if (_graphSettingsFlyout is not null)
+        {
+            _graphSettingsFlyout.Hide();
+            _graphSettingsFlyout.Content = null;
+            _graphSettingsFlyout = null;
+        }
+
+        DataContext = null;
+        GC.SuppressFinalize(this);
+    }
 }

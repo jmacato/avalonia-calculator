@@ -1,4 +1,4 @@
-﻿using System.Windows.Input;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Metadata;
@@ -11,31 +11,31 @@ namespace FluentAvalonia.UI.Controls;
 [PseudoClasses(FASharedPseudoclasses.s_pcAllowClick, s_pcEmpty)]
 [TemplatePart(s_tpExpander, typeof(Expander))]
 [TemplatePart(s_tpContentHost, typeof(FASettingsExpanderItem))]
-public partial class FASettingsExpander
+public sealed partial class FASettingsExpander
 {
     /// <summary>
     /// Defines the <see cref="Description"/> property
     /// </summary>
-    public static readonly StyledProperty<string> DescriptionProperty = 
-        AvaloniaProperty.Register<FASettingsExpander, string>(nameof(Description));
+    public static readonly StyledProperty<string?> DescriptionProperty =
+        AvaloniaProperty.Register<FASettingsExpander, string?>(nameof(Description));
 
     /// <summary>
     /// Defines the <see cref="IconSource"/> property
     /// </summary>
-    public static readonly StyledProperty<FAIconSource> IconSourceProperty = 
-        AvaloniaProperty.Register<FASettingsExpander, FAIconSource>(nameof(IconSource));
+    public static readonly StyledProperty<FAIconSource?> IconSourceProperty =
+        AvaloniaProperty.Register<FASettingsExpander, FAIconSource?>(nameof(IconSource));
 
     /// <summary>
     /// Defines the <see cref="Footer"/> property
     /// </summary>
-    public static readonly StyledProperty<object> FooterProperty = 
-        AvaloniaProperty.Register<FASettingsExpander, object>(nameof(Footer));
+    public static readonly StyledProperty<object?> FooterProperty =
+        AvaloniaProperty.Register<FASettingsExpander, object?>(nameof(Footer));
 
     /// <summary>
     /// Defines the <see cref="FooterTemplate"/> property
     /// </summary>
-    public static readonly StyledProperty<IDataTemplate> FooterTemplateProperty = 
-        AvaloniaProperty.Register<FASettingsExpander, IDataTemplate>(nameof(FooterTemplate));
+    public static readonly StyledProperty<IDataTemplate?> FooterTemplateProperty =
+        AvaloniaProperty.Register<FASettingsExpander, IDataTemplate?>(nameof(FooterTemplate));
 
     /// <summary>
     /// Defines the <see cref="IsExpanded"/> property
@@ -46,25 +46,25 @@ public partial class FASettingsExpander
     /// <summary>
     /// Defines the <see cref="ActionIconSource"/> property
     /// </summary>
-    public static readonly StyledProperty<FAIconSource> ActionIconSourceProperty = 
-        AvaloniaProperty.Register<FASettingsExpander, FAIconSource>(nameof(ActionIconSource));
+    public static readonly StyledProperty<FAIconSource?> ActionIconSourceProperty =
+        AvaloniaProperty.Register<FASettingsExpander, FAIconSource?>(nameof(ActionIconSource));
 
     /// <summary>
     /// Defines the <see cref="IsClickEnabled"/> property
     /// </summary>
-    public static readonly StyledProperty<bool> IsClickEnabledProperty = 
+    public static readonly StyledProperty<bool> IsClickEnabledProperty =
         AvaloniaProperty.Register<FASettingsExpander, bool>(nameof(IsClickEnabled));
 
     /// <summary>
     /// Defines the <see cref="Command"/> property
     /// </summary>
-    public static readonly StyledProperty<ICommand> CommandProperty = 
+    public static readonly StyledProperty<ICommand?> CommandProperty =
         Button.CommandProperty.AddOwner<FASettingsExpander>();
 
     /// <summary>
     /// Defines the <see cref="CommandParameter"/> property
     /// </summary>
-    public static readonly StyledProperty<object> CommandParameterProperty = 
+    public static readonly StyledProperty<object?> CommandParameterProperty =
         Button.CommandParameterProperty.AddOwner<FASettingsExpander>();
 
     // NOTE: Don't use Button.Click event here - when SettingsExpanderItem is in the top-level SettingsExpander
@@ -79,7 +79,7 @@ public partial class FASettingsExpander
     /// <summary>
     /// Gets or sets the description text
     /// </summary>
-    public string Description
+    public string? Description
     {
         get => GetValue(DescriptionProperty);
         set => SetValue(DescriptionProperty, value);
@@ -88,7 +88,7 @@ public partial class FASettingsExpander
     /// <summary>
     /// Gets or sets the IconSource for the SettingsExpander
     /// </summary>
-    public FAIconSource IconSource
+    public FAIconSource? IconSource
     {
         get => GetValue(IconSourceProperty);
         set => SetValue(IconSourceProperty, value);
@@ -97,7 +97,7 @@ public partial class FASettingsExpander
     /// <summary>
     /// Gets or sets the Footer content for the SettingsExpander
     /// </summary>
-    public object Footer
+    public object? Footer
     {
         get => GetValue(FooterProperty);
         set => SetValue(FooterProperty, value);
@@ -106,7 +106,7 @@ public partial class FASettingsExpander
     /// <summary>
     /// Gets or sets the Footer template for the SettingsExpander
     /// </summary>
-    public IDataTemplate FooterTemplate
+    public IDataTemplate? FooterTemplate
     {
         get => GetValue(FooterTemplateProperty);
         set => SetValue(FooterTemplateProperty, value);
@@ -124,7 +124,7 @@ public partial class FASettingsExpander
     /// <summary>
     /// Gets or sets the Action IconSource when <see cref="IsClickEnabled"/> is true
     /// </summary>
-    public FAIconSource ActionIconSource
+    public FAIconSource? ActionIconSource
     {
         get => GetValue(ActionIconSourceProperty);
         set => SetValue(ActionIconSourceProperty, value);
@@ -146,7 +146,7 @@ public partial class FASettingsExpander
     /// <summary>
     /// Gets or sets the Command that is invoked upon clicking the item
     /// </summary>
-    public ICommand Command
+    public ICommand? Command
     {
         get => GetValue(CommandProperty);
         set => SetValue(CommandProperty, value);
@@ -155,7 +155,7 @@ public partial class FASettingsExpander
     /// <summary>
     /// Gets or sets the command parameter
     /// </summary>
-    public object CommandParameter
+    public object? CommandParameter
     {
         get => GetValue(CommandParameterProperty);
         set => SetValue(CommandParameterProperty, value);

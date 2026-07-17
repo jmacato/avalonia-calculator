@@ -2,24 +2,22 @@
 // Licensed under the MIT License.
 
 using System.Collections.Generic;
-using CalculationManager;
 using System.Diagnostics;
 using System.Text;
 using CalcEngine;
-using CalculationManager;
 using uint32_t = System.UInt32;
 using int32_t = System.Int32;
-using PNUMBER = CalcEngine.RatPak.NUMBER;
-using PRAT = CalcEngine.RatPak.RAT;
+using PNUMBER = CalcEngine.RatPakNUMBER;
+using PRAT = CalcEngine.RatPakRAT;
 using wchar_t = char;
 using wstring_view = string;
-using wstring = string;
+using WString = string;
 
 namespace CalculationManager;
 
-public partial class CalculatorHistory
+internal sealed partial class CalculatorHistory
 {
-    static wstring GetGeneratedExpression(List<(wstring, int)> tokens)
+    static WString GetGeneratedExpression(List<(WString, int)> tokens)
     {
         StringBuilder expression = new StringBuilder();
         bool isFirst = true;

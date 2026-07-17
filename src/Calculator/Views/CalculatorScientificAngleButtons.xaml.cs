@@ -45,17 +45,17 @@ public sealed partial class CalculatorScientificAngleButtons : UserControl
         switch (buttonId)
         {
             case "0":
-                model.SwitchAngleType(NumbersAndOperatorsEnum.Radians);
+                model.SwitchAngleType(CalculatorButtonId.Radians);
                 RadianButton.IsVisible = true;
                 RadianButton.Focus();
                 break;
             case "1":
-                model.SwitchAngleType(NumbersAndOperatorsEnum.Grads);
+                model.SwitchAngleType(CalculatorButtonId.Grads);
                 GradsButton.IsVisible = true;
                 GradsButton.Focus();
                 break;
             case "2":
-                model.SwitchAngleType(NumbersAndOperatorsEnum.Degree);
+                model.SwitchAngleType(CalculatorButtonId.Degree);
                 DegreeButton.IsVisible = true;
                 DegreeButton.Focus();
                 break;

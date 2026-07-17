@@ -16,7 +16,7 @@ using System.Windows.Input;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.UI.Xaml.Data;
-using  GraphControl;
+using GraphControl;
 
 namespace CalculatorApp.ViewModel
 {
@@ -24,7 +24,7 @@ namespace CalculatorApp.ViewModel
     public sealed partial class GraphingCalculatorViewModel : INotifyPropertyChanged
     {
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         internal void RaisePropertyChanged(string p)
         {
@@ -33,7 +33,18 @@ namespace CalculatorApp.ViewModel
 
         public void UpdateVariables(IDictionary<string, Variable> variables)
         {
-            throw new NotImplementedException();
+            if (variables is null)
+            {
+                throw new ArgumentNullException(nameof(variables));
+            }
+
+            Variables.Clear();
+            foreach (KeyValuePair<string, Variable> variableEntry in variables)
+            {
+                var variable = new VariableViewModel(variableEntry.Key, variableEntry.Value);
+                variable.VariableUpdated += (_, args) => VariableUpdated?.Invoke(variable, args);
+                Variables.Add(variable);
+            }
         }
 
         public bool IsDecimalEnabled
@@ -93,7 +104,7 @@ namespace CalculatorApp.ViewModel
 
         private ObservableCollection<VariableViewModel> m_Variables;
 
-        public EquationViewModel SelectedEquation
+        public EquationViewModel? SelectedEquation
         {
             get
             {
@@ -110,7 +121,7 @@ namespace CalculatorApp.ViewModel
             }
         }
 
-        private EquationViewModel m_SelectedEquation;
+        private EquationViewModel? m_SelectedEquation;
 
         public ICommand ButtonPressed
         {
@@ -124,9 +135,9 @@ namespace CalculatorApp.ViewModel
             }
         }
 
-        private ICommand donotuse_ButtonPressed;
+        private ICommand? donotuse_ButtonPressed;
 
-        public event EventHandler<VariableChangedEventArgs> VariableUpdated;
+        public event EventHandler<VariableChangedEventArgs>? VariableUpdated;
 
     }
 }

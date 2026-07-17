@@ -7,7 +7,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace CalculatorUITests
 {
     [TestClass]
-    public class CurrencyConverterFunctionalTests
+    public sealed class CurrencyConverterFunctionalTests
     {
         private static readonly UnitConverterPage page = new UnitConverterPage();
 
@@ -52,9 +52,9 @@ namespace CalculatorUITests
             page.ClearAll();
         }
 
-        private string NormalizeCurrencyText(string realValue, int fractionDigits)
+        private static string NormalizeCurrencyText(string realValue, int fractionDigits)
         {
-            if (!realValue.Contains('.')) return realValue;
+            if (!realValue.Contains('.', System.StringComparison.Ordinal)) return realValue;
 
             var parts = realValue.Split('.');
             if (parts[1].Length < fractionDigits)
@@ -76,7 +76,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(0)]
-        public void MouseInput_EnterInputAndCheckTheResult()
+        public void MouseInputEnterInputAndCheckTheResult()
         {
             //Verifies the 2 is entered and clear is functional
             page.UnitConverterOperators.NumberPad.Num2Button.Click();
@@ -90,7 +90,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(1)]
-        public void MouseInput_EnterInputWithFullDecimalAndClear()
+        public void MouseInputEnterInputWithFullDecimalAndClear()
         {
             //Verifies the 20.42 is entered and clear is functional
             page.UnitConverterOperators.NumberPad.Num2Button.Click();
@@ -120,7 +120,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(1)]
-        public void MouseInput_EnterInputWithFullDecimalAndClearWithBackspace()
+        public void MouseInputEnterInputWithFullDecimalAndClearWithBackspace()
         {
             //Verifies the 20.42 is entered and clear is functional
             page.UnitConverterOperators.NumberPad.Num2Button.Click();
@@ -154,14 +154,14 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(0)]
-        public void MouseInput_SelectCurrencyWith3FractionalDigitsEnterInputAndCheckTheFormat()
+        public void MouseInputSelectCurrencyWith3FractionalDigitsEnterInputAndCheckTheFormat()
         {
             var currency = (string)TestContext.Properties["CurrencyWith3FractionalDigits"];
             var fractionDigits = 3;
 
             //Verifies fraction digits in given currency
             page.SelectUnits1(currency);
-            Assert.AreEqual(currency.Replace(" - ", " "), page.UnitConverterOperators.Units1.Text); // Text is the AccessibleName of Unit
+            Assert.AreEqual(currency.Replace(" - ", " ", System.StringComparison.Ordinal), page.UnitConverterOperators.Units1.Text); // Text is the AccessibleName of Unit
             page.UnitConverterOperators.NumberPad.Num2Button.Click();
             Assert.AreEqual(NormalizeCurrencyText("2", fractionDigits), page.UnitConverterResults.GetCalculationResult1Text()); //verifies 2 button
             page.UnitConverterOperators.NumberPad.DecimalButton.Click();
@@ -182,14 +182,14 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(0)]
-        public void MouseInput_SelectCurrencyWithoutFractionalDigitEnterInputAndCheckTheFormat()
+        public void MouseInputSelectCurrencyWithoutFractionalDigitEnterInputAndCheckTheFormat()
         {
             var currency = (string)TestContext.Properties["CurrencyWithoutFractionalDigits"];
             var fractionDigits = 0;
 
             //Verifies fraction digits in given currency
             page.SelectUnits1(currency);
-            Assert.AreEqual(currency.Replace(" - ", " "), page.UnitConverterOperators.Units1.Text); // Text is the AccessibleName of Unit
+            Assert.AreEqual(currency.Replace(" - ", " ", System.StringComparison.Ordinal), page.UnitConverterOperators.Units1.Text); // Text is the AccessibleName of Unit
             page.UnitConverterOperators.NumberPad.Num2Button.Click();
             Assert.AreEqual(NormalizeCurrencyText("2", fractionDigits), page.UnitConverterResults.GetCalculationResult1Text()); //verifies 2 button
             page.UnitConverterOperators.NumberPad.DecimalButton.Click(); // It should be disabled, so no decimal will be displayed
@@ -204,7 +204,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(0)]
-        public void MouseInput_SwitchCurrencyWithDifferentFractionalDigitsAndCheckTheFormat()
+        public void MouseInputSwitchCurrencyWithDifferentFractionalDigitsAndCheckTheFormat()
         {
             var currencyWith3FractionalDigits = (string)TestContext.Properties["CurrencyWith3FractionalDigits"];
             var currencyWithoutFractionalDigits = (string)TestContext.Properties["CurrencyWithoutFractionalDigits"];
@@ -232,7 +232,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(0)]
-        public void MouseInput_SwitchCurrencyWithLessFractionalDigitsAndEnterInput()
+        public void MouseInputSwitchCurrencyWithLessFractionalDigitsAndEnterInput()
         {
             var currencyWith3FractionalDigits = (string)TestContext.Properties["CurrencyWith3FractionalDigits"];
             var currencyWithoutFractionalDigits = (string)TestContext.Properties["CurrencyWithoutFractionalDigits"];
@@ -262,7 +262,7 @@ namespace CalculatorUITests
         /// </summary>
         [TestMethod]
         [Priority(0)]
-        public void MouseInput_SwitchCurrencyWithLessFractionalDigitsAndCheckIfTheResultIsConsistent()
+        public void MouseInputSwitchCurrencyWithLessFractionalDigitsAndCheckIfTheResultIsConsistent()
         {
             var currencyWith3FractionalDigits = (string)TestContext.Properties["CurrencyWith3FractionalDigits"];
             var currencyWithoutFractionalDigits = (string)TestContext.Properties["CurrencyWithoutFractionalDigits"];

@@ -252,7 +252,7 @@ public class CalcInput
         {
             if (!m_exponent.IsEmpty())
             {
-                m_exponent.Value = m_exponent.Value[..^1];
+                m_exponent.Value = m_exponent.Value.Remove(m_exponent.Value.Length - 1);
                 if (m_exponent.IsEmpty())
                 {
                     m_exponent.Clear();
@@ -267,11 +267,11 @@ public class CalcInput
         {
             if (!m_base.IsEmpty())
             {
-                m_base.Value = m_base.Value[..^1];
+                m_base.Value = m_base.Value.Remove(m_base.Value.Length - 1);
 
                 if (m_base.Value == "0")
                 {
-                    m_base.Value = m_base.Value[..^1];
+                    m_base.Value = m_base.Value.Remove(m_base.Value.Length - 1);
                 }
             }
 

@@ -4,9 +4,12 @@ using System.Text;
 
 namespace CSharpMath.Atom;
 
-public abstract class MathAtom : IMathObject, IEquatable<MathAtom> {
-    public string TypeName {
-        get {
+public abstract class MathAtom : IMathObject, IEquatable<MathAtom>
+{
+    public string TypeName
+    {
+        get
+        {
             // Insert a space before every capital letter other than the first one.
             var chars = new StringBuilder(GetType().Name);
             for (int i = chars.Length - 1; i > 0; i--)
@@ -29,7 +32,7 @@ public abstract class MathAtom : IMathObject, IEquatable<MathAtom> {
     /// of atoms that were fused to create this one. This is used in the finalizing
     /// and preprocessing steps.
     /// </summary>
-    public List<MathAtom>? FusedAtoms { get; private set; }
+    public IList<MathAtom>? FusedAtoms { get; private set; }
 
     /// <summary>
     /// Whether or not the atom allows superscripts and subscripts.
@@ -37,7 +40,9 @@ public abstract class MathAtom : IMathObject, IEquatable<MathAtom> {
     public abstract bool ScriptsAllowed { get; }
     protected abstract MathAtom CloneInside(bool finalize);
     protected TAtom ApplyCommonPropertiesOn<TAtom>(bool finalize, TAtom newAtom)
-        where TAtom : MathAtom {
+        where TAtom : MathAtom
+    {
+        System.ArgumentNullException.ThrowIfNull(newAtom);
         if (string.IsNullOrEmpty(newAtom.Nucleus))
             // newAtom.Nucleus may have already been initialized by newAtom's constructor
             newAtom.Nucleus = Nucleus;
@@ -52,25 +57,35 @@ public abstract class MathAtom : IMathObject, IEquatable<MathAtom> {
     public MathAtom Clone(bool finalize) =>
         ApplyCommonPropertiesOn(finalize, CloneInside(finalize));
 
-    protected MathAtom(string nucleus = "") {
+    protected MathAtom(string nucleus = "")
+    {
         Nucleus = nucleus;
         Superscript = ScriptsAllowed ? new MathList() : new DisabledMathList();
         Subscript = ScriptsAllowed ? new MathList() : new DisabledMathList();
     }
-    public void Fuse(MathAtom otherAtom) {
-        if (Subscript.IsNonEmpty()) {
+    public void Fuse(MathAtom otherAtom)
+    {
+        System.ArgumentNullException.ThrowIfNull(otherAtom);
+        if (Subscript.IsNonEmpty())
+        {
             throw new InvalidOperationException("Cannot fuse into an atom with a subscript");
         }
-        if (Superscript.IsNonEmpty()) {
+        if (Superscript.IsNonEmpty())
+        {
             throw new InvalidOperationException("Cannot fuse into an atom with a superscript");
         }
-        if (otherAtom.GetType() != GetType()) {
+        if (otherAtom.GetType() != GetType())
+        {
             throw new InvalidOperationException("Cannot fuse atoms with different types");
         }
         FusedAtoms ??= new List<MathAtom> { Clone(false) };
-        if (otherAtom.FusedAtoms != null) {
-            FusedAtoms.AddRange(otherAtom.FusedAtoms);
-        } else {
+        if (otherAtom.FusedAtoms != null)
+        {
+            foreach (var atom in otherAtom.FusedAtoms)
+                FusedAtoms.Add(atom);
+        }
+        else
+        {
             FusedAtoms.Add(otherAtom);
         }
         Nucleus += otherAtom.Nucleus;

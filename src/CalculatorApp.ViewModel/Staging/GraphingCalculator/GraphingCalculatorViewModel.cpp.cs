@@ -4,11 +4,11 @@
 // #include "pch.h"
 // #include "GraphingCalculatorViewModel.cpp.h"
 
-using  CalculatorApp.ViewModel;
-using  Windows.Foundation;
-using  Windows.Foundation.Collections;
-using  Windows.UI.Xaml.Data;
-using  GraphControl;
+using CalculatorApp.ViewModel;
+using Windows.Foundation;
+using Windows.Foundation.Collections;
+using Windows.UI.Xaml.Data;
+using GraphControl;
 using System.Collections.Generic;
 
 namespace CalculatorApp.ViewModel;
@@ -23,7 +23,7 @@ public partial class GraphingCalculatorViewModel
         m_Variables = new();
     }
 
-    void OnButtonPressed(object  parameter)
+    void OnButtonPressed(object parameter)
     {
     }
 
@@ -40,7 +40,7 @@ public partial class GraphingCalculatorViewModel
     //    }
     //}
 
-    public void SetSelectedEquation(EquationViewModel  equation)
+    public void SetSelectedEquation(EquationViewModel equation)
     {
         SelectedEquation = equation;
     }

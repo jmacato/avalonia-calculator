@@ -26,8 +26,8 @@ public sealed partial class NumberPad : UserControl
     {
         InitializeComponent();
 
-        LocalizationSettings localizationSettings = LocalizationSettings.GetInstance();
-        DecimalSeparatorButton.Content = localizationSettings.GetDecimalSeparator();
+        LocalizationSettings localizationSettings = LocalizationSettings.Instance;
+        DecimalSeparatorButton.Content = localizationSettings.DecimalSeparator;
         Num0Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('0');
         Num1Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('1');
         Num2Button.Content = localizationSettings.GetDigitSymbolFromEnUsDigit('2');
@@ -88,6 +88,7 @@ public sealed partial class NumberPad : UserControl
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
+        System.ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
         if (change.Property == CurrentRadixTypeProperty)
         {

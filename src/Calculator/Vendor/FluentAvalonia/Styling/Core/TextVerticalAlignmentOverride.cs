@@ -1,4 +1,4 @@
-﻿namespace FluentAvalonia.Styling;
+namespace FluentAvalonia.Styling;
 
 /// <summary>
 /// Specifies constants for when text alignment style overrides should be applied

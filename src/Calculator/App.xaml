@@ -25,8 +25,6 @@
                       ResourceKey="SystemControlTransparentBrush" />
       <Thickness x:Key="NavigationViewContentPresenterMargin">0</Thickness>
       <Thickness x:Key="NavigationViewMinimalContentGridBorderThickness">0</Thickness>
-      <StaticResource x:Key="NavigationViewDefaultPaneBackground"
-                      ResourceKey="AcrylicInAppFillColorDefaultBrush" />
 
       <!-- Exact outlines extracted from the Windows 11 Segoe Fluent Icons
            runtime font. The font itself remains an ignored visual-test fixture
@@ -60,6 +58,8 @@
 
       <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Dark">
+          <StaticResource x:Key="NavigationViewDefaultPaneBackground"
+                          ResourceKey="AcrylicInAppFillColorDefaultBrush" />
           <Color x:Key="CalcButtonBaseFillColor">#FFFFFF</Color>
           <StaticResource x:Key="CalcButtonTextFillColorDefaultBrush"
                           ResourceKey="TextFillColorPrimaryBrush" />
@@ -83,6 +83,8 @@
           <SolidColorBrush x:Key="AppControlTransparentButtonBackgroundBrush" Color="Transparent" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Light">
+          <StaticResource x:Key="NavigationViewDefaultPaneBackground"
+                          ResourceKey="AcrylicInAppFillColorDefaultBrush" />
           <Color x:Key="CalcButtonBaseFillColor">#FFFFFF</Color>
           <StaticResource x:Key="CalcButtonTextFillColorDefaultBrush"
                           ResourceKey="TextFillColorPrimaryBrush" />
@@ -106,6 +108,8 @@
           <SolidColorBrush x:Key="AppControlTransparentButtonBackgroundBrush" Color="Transparent" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="{x:Static fa:FluentAvaloniaTheme.HighContrastTheme}">
+          <StaticResource x:Key="NavigationViewDefaultPaneBackground"
+                          ResourceKey="AcrylicInAppFillColorDefaultBrush" />
           <Thickness x:Key="ConverterComboBoxBorderThemeThickness">1</Thickness>
           <StaticResource x:Key="ConverterComboBoxBorderBrush"
                           ResourceKey="SystemControlForegroundBaseMediumLowBrush" />

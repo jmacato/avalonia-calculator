@@ -5,7 +5,8 @@ using CSharpMathColor = System.Drawing.Color;
 
 namespace CSharpMath.Avalonia;
 
-public sealed class MathPainter : MathPainter<AvaloniaCanvas, AvaloniaColor> {
+public sealed class MathPainter : MathPainter<AvaloniaCanvas, AvaloniaColor>
+{
     public override AvaloniaColor UnwrapColor(CSharpMathColor color) => color.ToAvaloniaColor();
 
     public override ICanvas WrapCanvas(AvaloniaCanvas canvas) => canvas;

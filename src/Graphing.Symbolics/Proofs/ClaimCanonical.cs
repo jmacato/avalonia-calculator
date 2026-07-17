@@ -38,8 +38,14 @@ internal static class ClaimCanonical
     private static string Periodicity(Periodicity value) =>
         $"periodicity:{(int)value.Kind}:{(value.FundamentalPeriod is null ? "none" : ExactRealCanonical.Format(value.FundamentalPeriod))}";
 
-    private static string FeaturePoint(FeaturePoint point) =>
-        $"point[{RealFamily(point.X)},{ExactRealCanonical.Format(point.Y)}]";
+    private static string FeaturePoint(FeaturePoint point) => point switch
+    {
+        ConstantYFeaturePoint constant =>
+            $"point[{RealFamily(constant.X)},{ExactRealCanonical.Format(constant.Y)}]",
+        IntegerAffineFeaturePoint affine =>
+            $"integer-affine-point[{ExactRealCanonical.Format(affine.XOffset)},{ExactRealCanonical.Format(affine.XStep)},{ExactRealCanonical.Format(affine.YOffset)},{ExactRealCanonical.Format(affine.YStep)},{affine.Parameter},{affine.Constraint.Canonical}]",
+        _ => throw new ArgumentOutOfRangeException(nameof(point))
+    };
 
     private static string Asymptote(Asymptote asymptote) =>
         $"asymptote[{(int)asymptote.Orientation},{RealFamily(asymptote.Coordinate)},{Maybe(asymptote.Slope)},{Maybe(asymptote.Intercept)}]";
@@ -54,6 +60,7 @@ internal static class ClaimCanonical
             $"periodic:{ExactRealCanonical.Format(periodic.Offset)}:{ExactRealCanonical.Format(periodic.Period)}:{periodic.Parameter}:{periodic.Constraint.Canonical}",
         LatticeReal lattice =>
             $"lattice:{lattice.Expression}:{string.Join(',', lattice.Parameters)}:{string.Join(',', lattice.Predicates)}",
+        PolynomialPhasePreimageReal phase => phase.Preimage.Canonical,
         _ => throw new ArgumentOutOfRangeException(nameof(family))
     };
 

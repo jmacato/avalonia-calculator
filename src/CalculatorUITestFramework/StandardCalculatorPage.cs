@@ -10,14 +10,15 @@ namespace CalculatorUITestFramework
     /// </summary>
     public class StandardCalculatorPage
     {
-        public StandardOperatorsPanel StandardOperators = new StandardOperatorsPanel();
-        public MemoryPanel MemoryPanel = new MemoryPanel();
-        public HistoryPanel HistoryPanel = new HistoryPanel();
-        public NavigationMenu NavigationMenu = new NavigationMenu();
-        public StandardAoTCalculatorPage StandardAoTCalculatorPage = new StandardAoTCalculatorPage();
-        public CalculatorResults CalculatorResults = new CalculatorResults();
+        public StandardOperatorsPanel StandardOperators { get; } = new();
+        public MemoryPanel MemoryPanel { get; } = new();
+        public HistoryPanel HistoryPanel { get; } = new();
+        public NavigationMenu NavigationMenu { get; } = new();
+        public StandardAoTCalculatorPage StandardAoTCalculatorPage { get; } = new();
+        public CalculatorResults CalculatorResults { get; } = new();
 
-        private WindowsDriver<WindowsElement> session => CalculatorDriver.Instance.CalculatorSession;
+        private readonly CalculatorDriver driver = CalculatorDriver.Instance;
+        private WindowsDriver<WindowsElement> Session => driver.CalculatorSession;
 
         /// <summary>
         /// Navigates the calculator to Standard mode and ensures that it is in standard mode
@@ -58,7 +59,7 @@ namespace CalculatorUITestFramework
         public void EnsureCalculatorIsInStandardMode()
         {
             string source = CalculatorDriver.Instance.CalculatorSession.PageSource;
-            if (source.Contains("Header"))
+            if (source.Contains("Header", System.StringComparison.Ordinal))
             {
                 string header = CalculatorApp.Header.Text;
                 if (header == "Standard")

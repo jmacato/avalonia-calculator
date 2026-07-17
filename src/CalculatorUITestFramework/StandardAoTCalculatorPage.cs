@@ -16,29 +16,30 @@ namespace CalculatorUITestFramework
     /// </summary>
     public class StandardAoTCalculatorPage
     {
-        public StandardOperatorsPanel StandardOperators = new StandardOperatorsPanel();
-        public NavigationMenu NavigationMenu = new NavigationMenu();
-        public WindowsElement EnterAlwaysOnTopButton => this.session.TryFindElementByAccessibilityId("NormalAlwaysOnTopButton");
-        public WindowsElement ExitAlwaysOnTopButton => this.session.TryFindElementByAccessibilityId("ExitAlwaysOnTopButton");
-        public AppiumWebElement ToolTip => CalculatorDriver.Instance.CalculatorSession.FindElementByClassName("ToolTip").FindElementByClassName("TextBlock");
+        public StandardOperatorsPanel StandardOperators { get; } = new();
+        public NavigationMenu NavigationMenu { get; } = new();
+        public WindowsElement EnterAlwaysOnTopButton => Session.TryFindElementByAccessibilityId("NormalAlwaysOnTopButton");
+        public WindowsElement ExitAlwaysOnTopButton => Session.TryFindElementByAccessibilityId("ExitAlwaysOnTopButton");
+        public AppiumWebElement ToolTip => Session.FindElementByClassName("ToolTip").FindElementByClassName("TextBlock");
 
-        private WindowsDriver<WindowsElement> session => CalculatorDriver.Instance.CalculatorSession;
+        private readonly CalculatorDriver driver = CalculatorDriver.Instance;
+        private WindowsDriver<WindowsElement> Session => driver.CalculatorSession;
 
         ///// <summary>
         ///// Navigates from AoT(Keep on top) to Standard
         ///// </summary>
         public void NavigateToStandardMode()
         {
-            string source = this.session.PageSource;
-            if (source.Contains("ExitAlwaysOnTopButton"))
+            string source = Session.PageSource;
+            if (source.Contains("ExitAlwaysOnTopButton", System.StringComparison.Ordinal))
             {
                 this.ExitAlwaysOnTopButton.Click();
-                Assert.AreEqual("Standard", CalculatorApp.GetCalculatorHeaderText());
+                Assert.AreEqual("Standard", CalculatorApp.CalculatorHeaderText);
             }
             else
             {
-                source = this.session.PageSource;
-                if (source.Contains("NormalAlwaysOnTopButton"))
+                source = Session.PageSource;
+                if (source.Contains("NormalAlwaysOnTopButton", System.StringComparison.Ordinal))
                 {
                     return;
                 }
@@ -54,13 +55,13 @@ namespace CalculatorUITestFramework
         ///// </summary>
         public void NavigateToStandardAoTMode()
         {
-            string source = this.session.PageSource;
-            if (source.Contains("NormalAlwaysOnTopButton"))
+            string source = Session.PageSource;
+            if (source.Contains("NormalAlwaysOnTopButton", System.StringComparison.Ordinal))
             {
                 this.EnterAlwaysOnTopButton.Click();
                 this.ExitAlwaysOnTopButton.WaitForDisplayed();
                 source = CalculatorDriver.Instance.CalculatorSession.PageSource;
-                if (source.Contains("Header"))
+                if (source.Contains("Header", System.StringComparison.Ordinal))
                 {
                     throw new NotFoundException("Failed to enter 'Keep on top' mode; In AoT mode, Calculator does not have header");
                 }
@@ -72,10 +73,10 @@ namespace CalculatorUITestFramework
         ///// </summary>
         public string GetAoTToolTipText()
         {
-            string source = this.session.PageSource;
-            if ((source.Contains("Keep on top")) || (source.Contains("Back to full view")))
+            string source = Session.PageSource;
+            if ((source.Contains("Keep on top", System.StringComparison.Ordinal)) || (source.Contains("Back to full view", System.StringComparison.Ordinal)))
             {
-                if (source.Contains("Keep on top"))
+                if (source.Contains("Keep on top", System.StringComparison.Ordinal))
                 {
                     Actions moveToAoTButton = new Actions(CalculatorDriver.Instance.CalculatorSession);
                     moveToAoTButton.MoveToElement(EnterAlwaysOnTopButton);
@@ -100,8 +101,8 @@ namespace CalculatorUITestFramework
         /// </summary>
         public bool IsKeepOnTopButtonPresent()
         {
-            string source = this.session.PageSource;
-            return source.Contains("Keep on top");
+            string source = Session.PageSource;
+            return source.Contains("Keep on top", System.StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -109,8 +110,8 @@ namespace CalculatorUITestFramework
         /// </summary>
         public bool IsInAlwaysOnTopMode()
         {
-            string source = this.session.PageSource;
-            if ((source.Contains("Keep on top")) && (source.Contains("Header")))
+            string source = Session.PageSource;
+            if ((source.Contains("Keep on top", System.StringComparison.Ordinal)) && (source.Contains("Header", System.StringComparison.Ordinal)))
             {
                 return false;
             }
@@ -141,7 +142,7 @@ namespace CalculatorUITestFramework
                 throw new NotFoundException("Could not find the Invert Button");
             }
 
-            if (!this.session.PageSource.Contains("invertButton"))
+            if (!Session.PageSource.Contains("invertButton", System.StringComparison.Ordinal))
             {
                 var width = CalculatorDriver.Instance.CalculatorSession.Manage().Window.Size.Width;
                 CalculatorDriver.Instance.CalculatorSession.Manage().Window.Size = new Size(width, height);

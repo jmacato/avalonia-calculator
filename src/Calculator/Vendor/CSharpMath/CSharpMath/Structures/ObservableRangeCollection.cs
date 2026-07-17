@@ -7,22 +7,25 @@ using System.Linq;
 
 namespace CSharpMath.Structures;
 // No need to scream at helper "disposables"
-#pragma warning disable CA1001 // Types that own disposable fields should be disposable
-public class ObservableRangeCollection<T> : ObservableCollection<T> {
-#pragma warning restore CA1001 // Types that own disposable fields should be disposable
+public class ObservableRangeCollection<T> : ObservableCollection<T>
+{
     public ObservableRangeCollection() { }
     public ObservableRangeCollection(IEnumerable<T> collection) : base(collection) { }
-    public ObservableRangeCollection(List<T> list) : base(list) { }
-    private readonly BatchOperation _batch = new();
-    /// <summary>You should use this in a using block.</summary>
-    private BatchOperation BatchOperationBlock() => _batch.Deploy();
-    protected override void OnCollectionChanged(NotifyCollectionChangedEventArgs e) {
+    private bool _isBatching;
+
+    protected override void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
+    {
         // intercept this when it gets called inside the AddRange method.
-        if (!_batch.IsInForce) base.OnCollectionChanged(e);
+        if (!_isBatching) base.OnCollectionChanged(e);
     }
-    public void AddRange(IEnumerable<T> items) {
+
+    public void AddRange(IEnumerable<T> items)
+    {
         var enumerable = items as T[] ?? items.ToArray();
-        using (BatchOperationBlock()) foreach (var item in enumerable) Add(item);
+        RunBatch(() =>
+        {
+            foreach (var item in enumerable) Add(item);
+        });
         base.OnCollectionChanged(
             new NotifyCollectionChangedEventArgs(
                 NotifyCollectionChangedAction.Add,
@@ -30,9 +33,13 @@ public class ObservableRangeCollection<T> : ObservableCollection<T> {
             )
         );
     }
-    public void RemoveRange(IEnumerable<T> items) {
+    public void RemoveRange(IEnumerable<T> items)
+    {
         var enumerable = items as T[] ?? items.ToArray();
-        using (BatchOperationBlock()) foreach (var item in enumerable) Remove(item);
+        RunBatch(() =>
+        {
+            foreach (var item in enumerable) Remove(item);
+        });
         base.OnCollectionChanged(
             new NotifyCollectionChangedEventArgs(
                 NotifyCollectionChangedAction.Remove,
@@ -40,11 +47,17 @@ public class ObservableRangeCollection<T> : ObservableCollection<T> {
             )
         );
     }
-#pragma warning disable CA1034 // Nested types should not be visible
-    public sealed class BatchOperation : IDisposable {
-#pragma warning restore CA1034 // Nested types should not be visible
-        public bool IsInForce { get; private set; }
-        internal BatchOperation Deploy() { IsInForce = true; return this; }
-        public void Dispose() => IsInForce = false;
+    private void RunBatch(Action operation)
+    {
+        bool wasBatching = _isBatching;
+        _isBatching = true;
+        try
+        {
+            operation();
+        }
+        finally
+        {
+            _isBatching = wasBatching;
+        }
     }
 }

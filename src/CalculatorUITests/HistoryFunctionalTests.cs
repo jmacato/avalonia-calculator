@@ -13,7 +13,7 @@ using System;
 namespace CalculatorUITests
 {
     [TestClass]
-    public class HistoryFunctionalTests
+    public sealed class HistoryFunctionalTests
     {
         private static readonly StandardCalculatorPage page = new StandardCalculatorPage();
 
@@ -74,7 +74,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void StandardHistory_Panel()
+        public void StandardHistoryPanel()
         {
 
             //Verify selecting history items form the history panel, and clearing the history panel
@@ -91,10 +91,10 @@ namespace CalculatorUITests
             page.StandardOperators.EqualButton.Click();
 
             var historyItems = page.HistoryPanel.GetAllHistoryListViewItems();
-            Assert.IsTrue(historyItems[0].GetValue().Equals("Minus (1", StringComparison.InvariantCultureIgnoreCase));
-            Assert.IsTrue(historyItems[0].GetExpression().Equals("2 Minus ( 3=", StringComparison.InvariantCultureIgnoreCase));
-            Assert.IsTrue(historyItems[1].GetValue().Equals("Minus (5.6", StringComparison.InvariantCultureIgnoreCase));
-            Assert.IsTrue(historyItems[1].GetExpression().Equals("-3 + -2.6=", StringComparison.InvariantCultureIgnoreCase));
+            Assert.IsTrue(historyItems[0].GetValue().Equals("Minus (1", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(historyItems[0].GetExpression().Equals("2 Minus ( 3=", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(historyItems[1].GetValue().Equals("Minus (5.6", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(historyItems[1].GetExpression().Equals("-3 + -2.6=", StringComparison.OrdinalIgnoreCase));
 
             Assert.AreEqual("-1", page.CalculatorResults.GetCalculatorResultText());
 
@@ -117,7 +117,7 @@ namespace CalculatorUITests
 
         [TestMethod]
         [Priority(2)]
-        public void StandardHistory_Flyout()
+        public void StandardHistoryFlyout()
         {
 
             //Verify selecting history items form the history flyout, using up/down arrows and [enter] to select history items,
@@ -136,18 +136,18 @@ namespace CalculatorUITests
             page.StandardOperators.EqualButton.Click();
 
             var historyPanelItems = page.HistoryPanel.GetAllHistoryListViewItems();
-            Assert.IsTrue(historyPanelItems[0].GetValue().Equals("Minus (1", StringComparison.InvariantCultureIgnoreCase));
-            Assert.IsTrue(historyPanelItems[0].GetExpression().Equals("2 Minus ( 3=", StringComparison.InvariantCultureIgnoreCase));
-            Assert.IsTrue(historyPanelItems[1].GetValue().Equals("Minus (5.6", StringComparison.InvariantCultureIgnoreCase));
-            Assert.IsTrue(historyPanelItems[1].GetExpression().Equals("-3 + -2.6=", StringComparison.InvariantCultureIgnoreCase));
+            Assert.IsTrue(historyPanelItems[0].GetValue().Equals("Minus (1", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(historyPanelItems[0].GetExpression().Equals("2 Minus ( 3=", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(historyPanelItems[1].GetValue().Equals("Minus (5.6", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(historyPanelItems[1].GetExpression().Equals("-3 + -2.6=", StringComparison.OrdinalIgnoreCase));
 
             Assert.AreEqual("-1", page.CalculatorResults.GetCalculatorResultText());
 
             var historyItems = page.HistoryPanel.GetAllHistoryFlyoutListViewItems();
-            Assert.IsTrue(historyItems[0].GetValue().Equals("Minus (1", StringComparison.InvariantCultureIgnoreCase));
-            Assert.IsTrue(historyItems[0].GetExpression().Equals("2 Minus ( 3=", StringComparison.InvariantCultureIgnoreCase));
-            Assert.IsTrue(historyItems[1].GetValue().Equals("Minus (5.6", StringComparison.InvariantCultureIgnoreCase));
-            Assert.IsTrue(historyItems[1].GetExpression().Equals("-3 + -2.6=", StringComparison.InvariantCultureIgnoreCase));
+            Assert.IsTrue(historyItems[0].GetValue().Equals("Minus (1", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(historyItems[0].GetExpression().Equals("2 Minus ( 3=", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(historyItems[1].GetValue().Equals("Minus (5.6", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(historyItems[1].GetExpression().Equals("-3 + -2.6=", StringComparison.OrdinalIgnoreCase));
 
             Assert.AreEqual("-1", page.CalculatorResults.GetCalculatorResultText());
 

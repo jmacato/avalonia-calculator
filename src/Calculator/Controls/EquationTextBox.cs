@@ -9,6 +9,7 @@ using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using CalculatorApp.ViewModel;
 
 namespace CalculatorApp.Controls;
 
@@ -143,11 +144,13 @@ public sealed class EquationTextBox : TemplatedControl
 
     public event EventHandler<RoutedEventArgs>? KeyGraphFeaturesButtonClicked;
 
-    public event EventHandler<MathRichEditBoxSubmission>? EquationSubmitted;
+    public event EventHandler<MathRichEditBoxSubmissionEventArgs>? EquationSubmitted;
 
-    public event EventHandler<MathRichEditBoxFormatRequest>? EquationFormatRequested;
+    public event EventHandler<MathRichEditBoxFormatRequestEventArgs>? EquationFormatRequested;
 
     public event EventHandler<RoutedEventArgs>? EquationButtonClicked;
+
+    public event EventHandler? EditorFocused;
 
     public void SetEquationText(string equationText) => MathEquation = equationText;
 
@@ -156,8 +159,34 @@ public sealed class EquationTextBox : TemplatedControl
     public void InsertText(string text, int cursorOffset, int selectionLength) =>
         _richEditBox?.InsertText(text, cursorOffset, selectionLength);
 
+    protected override void OnGotFocus(FocusChangedEventArgs e)
+    {
+        base.OnGotFocus(e);
+        PseudoClasses.Set(":editor-focused", true);
+        if (DataContext is EquationViewModel equation)
+        {
+            equation.IsSelected = true;
+        }
+
+        EditorFocused?.Invoke(this, EventArgs.Empty);
+        UpdateVisualState();
+    }
+
+    protected override void OnLostFocus(FocusChangedEventArgs e)
+    {
+        base.OnLostFocus(e);
+        PseudoClasses.Set(":editor-focused", false);
+        if (DataContext is EquationViewModel equation)
+        {
+            equation.IsSelected = false;
+        }
+
+        UpdateVisualState();
+    }
+
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
+        System.ArgumentNullException.ThrowIfNull(e);
         DetachTemplateParts();
         base.OnApplyTemplate(e);
 
@@ -176,8 +205,6 @@ public sealed class EquationTextBox : TemplatedControl
                 _richEditBox.MathText = MathEquation;
             }
 
-            _richEditBox.GotFocus += OnEditorGotFocus;
-            _richEditBox.LostFocus += OnEditorLostFocus;
             _richEditBox.TextChanged += OnEditorTextChanged;
             _richEditBox.EquationSubmitted += OnEquationSubmitted;
             _richEditBox.FormatRequest += OnEquationFormatRequested;
@@ -212,8 +239,6 @@ public sealed class EquationTextBox : TemplatedControl
     {
         if (_richEditBox is not null)
         {
-            _richEditBox.GotFocus -= OnEditorGotFocus;
-            _richEditBox.LostFocus -= OnEditorLostFocus;
             _richEditBox.TextChanged -= OnEditorTextChanged;
             _richEditBox.EquationSubmitted -= OnEquationSubmitted;
             _richEditBox.FormatRequest -= OnEquationFormatRequested;
@@ -257,18 +282,6 @@ public sealed class EquationTextBox : TemplatedControl
         }
     }
 
-    private void OnEditorGotFocus(object? sender, FocusChangedEventArgs e)
-    {
-        PseudoClasses.Set(":editor-focused", true);
-        UpdateVisualState();
-    }
-
-    private void OnEditorLostFocus(object? sender, FocusChangedEventArgs e)
-    {
-        PseudoClasses.Set(":editor-focused", false);
-        UpdateVisualState();
-    }
-
     private void OnEditorTextChanged(object? sender, TextChangedEventArgs e)
     {
         if (_richEditBox is not null)
@@ -281,7 +294,7 @@ public sealed class EquationTextBox : TemplatedControl
 
     private void OnEditorErrorStateChanged(object? sender, EventArgs e) => UpdateVisualState();
 
-    private void OnEquationSubmitted(object? sender, MathRichEditBoxSubmission e)
+    private void OnEquationSubmitted(object? sender, MathRichEditBoxSubmissionEventArgs e)
     {
         if (_richEditBox is not null)
         {
@@ -293,7 +306,7 @@ public sealed class EquationTextBox : TemplatedControl
         UpdateVisualState();
     }
 
-    private void OnEquationFormatRequested(object? sender, MathRichEditBoxFormatRequest e) =>
+    private void OnEquationFormatRequested(object? sender, MathRichEditBoxFormatRequestEventArgs e) =>
         EquationFormatRequested?.Invoke(this, e);
 
     private void OnEquationButtonClicked(object? sender, RoutedEventArgs e)

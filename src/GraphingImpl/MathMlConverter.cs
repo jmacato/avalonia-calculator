@@ -64,7 +64,7 @@ internal static class MathMlConverter
             throw Invalid(element, SyntaxErrorCode.GeneralError, "MathML is nested too deeply.");
         }
 
-        string name = element.Name.LocalName.ToLowerInvariant();
+        string name = IdentifierNormalizer.ToCanonicalLowerInvariant(element.Name.LocalName);
         return name switch
         {
             "math" or "mrow" or "mstyle" or "mpadded" or "mphantom" =>

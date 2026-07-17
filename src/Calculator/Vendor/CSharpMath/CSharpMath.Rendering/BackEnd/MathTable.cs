@@ -6,7 +6,7 @@ using HarfBuzzSharp;
 
 namespace CSharpMath.Rendering.BackEnd;
 
-public sealed class MathTable : FontMathTable<Fonts, Glyph>
+public sealed class MathTable : FontMathTable<MathFontSet, Glyph>
 {
     private MathTable()
     {
@@ -14,43 +14,43 @@ public sealed class MathTable : FontMathTable<Fonts, Glyph>
 
     public static MathTable Instance { get; } = new();
 
-    private static float ReadConstant(OpenTypeMathConstant constant, Fonts fonts) =>
+    private static float ReadConstant(OpenTypeMathConstant constant, MathFontSet fonts) =>
         fonts.MathTypeface.GetConstant(constant) * fonts.ScaleFor(fonts.MathTypeface);
 
-    protected override short ScriptPercentScaleDown(Fonts fonts) =>
+    protected override short ScriptPercentScaleDown(MathFontSet fonts) =>
         checked((short)fonts.MathTypeface.GetConstant(OpenTypeMathConstant.ScriptPercentScaleDown));
 
-    protected override short ScriptScriptPercentScaleDown(Fonts fonts) =>
+    protected override short ScriptScriptPercentScaleDown(MathFontSet fonts) =>
         checked((short)fonts.MathTypeface.GetConstant(OpenTypeMathConstant.ScriptScriptPercentScaleDown));
 
-    public override float AxisHeight(Fonts fonts) =>
+    public override float AxisHeight(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.AxisHeight, fonts);
 
-    public override float FractionDenomDisplayStyleGapMin(Fonts fonts) =>
+    public override float FractionDenomDisplayStyleGapMin(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.FractionDenomDisplayStyleGapMin, fonts);
 
-    public override float FractionDenominatorDisplayStyleShiftDown(Fonts fonts) =>
+    public override float FractionDenominatorDisplayStyleShiftDown(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.FractionDenominatorDisplayStyleShiftDown, fonts);
 
-    public override float FractionDenominatorGapMin(Fonts fonts) =>
+    public override float FractionDenominatorGapMin(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.FractionDenominatorGapMin, fonts);
 
-    public override float FractionDenominatorShiftDown(Fonts fonts) =>
+    public override float FractionDenominatorShiftDown(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.FractionDenominatorShiftDown, fonts);
 
-    public override float FractionNumDisplayStyleGapMin(Fonts fonts) =>
+    public override float FractionNumDisplayStyleGapMin(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.FractionNumDisplayStyleGapMin, fonts);
 
-    public override float FractionNumeratorDisplayStyleShiftUp(Fonts fonts) =>
+    public override float FractionNumeratorDisplayStyleShiftUp(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.FractionNumeratorDisplayStyleShiftUp, fonts);
 
-    public override float FractionNumeratorGapMin(Fonts fonts) =>
+    public override float FractionNumeratorGapMin(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.FractionNumeratorGapMin, fonts);
 
-    public override float FractionNumeratorShiftUp(Fonts fonts) =>
+    public override float FractionNumeratorShiftUp(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.FractionNumeratorShiftUp, fonts);
 
-    public override float FractionRuleThickness(Fonts fonts) =>
+    public override float FractionRuleThickness(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.FractionRuleThickness, fonts);
 
     private static (IEnumerable<Glyph> Variants, int Count) GetVariants(
@@ -70,10 +70,10 @@ public sealed class MathTable : FontMathTable<Fonts, Glyph>
     public override (IEnumerable<Glyph> variants, int count) GetVerticalVariantsForGlyph(Glyph rawGlyph) =>
         GetVariants(rawGlyph, Direction.TopToBottom);
 
-    public override float GetItalicCorrection(Fonts fonts, Glyph glyph) =>
+    public override float GetItalicCorrection(MathFontSet fonts, Glyph glyph) =>
         glyph.Typeface.GetItalicCorrection(glyph.GlyphId) * fonts.ScaleFor(glyph.Typeface);
 
-    public override Glyph GetLargerGlyph(Fonts fonts, Glyph glyph)
+    public override Glyph GetLargerGlyph(MathFontSet fonts, Glyph glyph)
     {
         foreach (OpenTypeMathGlyphVariant variant in
                  glyph.Typeface.GetVariants(glyph.GlyphId, Direction.TopToBottom))
@@ -88,7 +88,7 @@ public sealed class MathTable : FontMathTable<Fonts, Glyph>
         return glyph;
     }
 
-    public override IEnumerable<GlyphPart<Glyph>>? GetVerticalGlyphAssembly(Glyph rawGlyph, Fonts fonts)
+    public override IEnumerable<GlyphPart<Glyph>>? GetVerticalGlyphAssembly(Glyph rawGlyph, MathFontSet fonts)
     {
         OpenTypeMathGlyphPart[] parts =
             rawGlyph.Typeface.GetAssembly(rawGlyph.GlyphId, Direction.TopToBottom);
@@ -106,98 +106,98 @@ public sealed class MathTable : FontMathTable<Fonts, Glyph>
             (part.Flags & OpenTypeMathGlyphPartFlags.Extender) != 0));
     }
 
-    public override float LowerLimitBaselineDropMin(Fonts fonts) =>
+    public override float LowerLimitBaselineDropMin(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.LowerLimitBaselineDropMin, fonts);
 
-    public override float LowerLimitGapMin(Fonts fonts) =>
+    public override float LowerLimitGapMin(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.LowerLimitGapMin, fonts);
 
-    public override float MinConnectorOverlap(Fonts fonts) =>
+    public override float MinConnectorOverlap(MathFontSet fonts) =>
         fonts.MathTypeface.GetMinConnectorOverlap(Direction.TopToBottom) *
         fonts.ScaleFor(fonts.MathTypeface);
 
-    protected override short RadicalDegreeBottomRaisePercent(Fonts fonts) =>
+    protected override short RadicalDegreeBottomRaisePercent(MathFontSet fonts) =>
         checked((short)fonts.MathTypeface.GetConstant(OpenTypeMathConstant.RadicalDegreeBottomRaisePercent));
 
-    public override float RadicalDisplayStyleVerticalGap(Fonts fonts) =>
+    public override float RadicalDisplayStyleVerticalGap(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.RadicalDisplayStyleVerticalGap, fonts);
 
-    public override float RadicalExtraAscender(Fonts fonts) =>
+    public override float RadicalExtraAscender(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.RadicalExtraAscender, fonts);
 
-    public override float RadicalKernAfterDegree(Fonts fonts) =>
+    public override float RadicalKernAfterDegree(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.RadicalKernAfterDegree, fonts);
 
-    public override float RadicalKernBeforeDegree(Fonts fonts) =>
+    public override float RadicalKernBeforeDegree(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.RadicalKernBeforeDegree, fonts);
 
-    public override float RadicalRuleThickness(Fonts fonts) =>
+    public override float RadicalRuleThickness(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.RadicalRuleThickness, fonts);
 
-    public override float RadicalVerticalGap(Fonts fonts) =>
+    public override float RadicalVerticalGap(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.RadicalVerticalGap, fonts);
 
-    public override float SpaceAfterScript(Fonts fonts) =>
+    public override float SpaceAfterScript(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.SpaceAfterScript, fonts);
 
-    public override float StackBottomDisplayStyleShiftDown(Fonts fonts) =>
+    public override float StackBottomDisplayStyleShiftDown(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.StackBottomDisplayStyleShiftDown, fonts);
 
-    public override float StackBottomShiftDown(Fonts fonts) =>
+    public override float StackBottomShiftDown(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.StackBottomShiftDown, fonts);
 
-    public override float StackDisplayStyleGapMin(Fonts fonts) =>
+    public override float StackDisplayStyleGapMin(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.StackDisplayStyleGapMin, fonts);
 
-    public override float StackGapMin(Fonts fonts) =>
+    public override float StackGapMin(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.StackGapMin, fonts);
 
-    public override float StackTopDisplayStyleShiftUp(Fonts fonts) =>
+    public override float StackTopDisplayStyleShiftUp(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.StackTopDisplayStyleShiftUp, fonts);
 
-    public override float StackTopShiftUp(Fonts fonts) =>
+    public override float StackTopShiftUp(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.StackTopShiftUp, fonts);
 
-    public override float SubscriptBaselineDropMin(Fonts fonts) =>
+    public override float SubscriptBaselineDropMin(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.SubscriptBaselineDropMin, fonts);
 
-    public override float SubscriptShiftDown(Fonts fonts) =>
+    public override float SubscriptShiftDown(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.SubscriptShiftDown, fonts);
 
-    public override float SubscriptTopMax(Fonts fonts) =>
+    public override float SubscriptTopMax(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.SubscriptTopMax, fonts);
 
-    public override float SubSuperscriptGapMin(Fonts fonts) =>
+    public override float SubSuperscriptGapMin(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.SubSuperscriptGapMin, fonts);
 
-    public override float SuperscriptBaselineDropMax(Fonts fonts) =>
+    public override float SuperscriptBaselineDropMax(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.SuperscriptBaselineDropMax, fonts);
 
-    public override float SuperscriptBottomMaxWithSubscript(Fonts fonts) =>
+    public override float SuperscriptBottomMaxWithSubscript(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.SuperscriptBottomMaxWithSubscript, fonts);
 
-    public override float SuperscriptBottomMin(Fonts fonts) =>
+    public override float SuperscriptBottomMin(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.SuperscriptBottomMin, fonts);
 
-    public override float SuperscriptShiftUp(Fonts fonts) =>
+    public override float SuperscriptShiftUp(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.SuperscriptShiftUp, fonts);
 
-    public override float SuperscriptShiftUpCramped(Fonts fonts) =>
+    public override float SuperscriptShiftUpCramped(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.SuperscriptShiftUpCramped, fonts);
 
-    public override float UpperLimitBaselineRiseMin(Fonts fonts) =>
+    public override float UpperLimitBaselineRiseMin(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.UpperLimitBaselineRiseMin, fonts);
 
-    public override float UpperLimitGapMin(Fonts fonts) =>
+    public override float UpperLimitGapMin(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.UpperLimitGapMin, fonts);
 
-    public override float UnderbarVerticalGap(Fonts fonts) =>
+    public override float UnderbarVerticalGap(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.UnderbarVerticalGap, fonts);
 
-    public override float AccentBaseHeight(Fonts fonts) =>
+    public override float AccentBaseHeight(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.AccentBaseHeight, fonts);
 
-    public override float GetTopAccentAdjustment(Fonts fonts, Glyph glyph)
+    public override float GetTopAccentAdjustment(MathFontSet fonts, Glyph glyph)
     {
         int attachment = glyph.Typeface.GetTopAccentAttachment(glyph.GlyphId);
         if (attachment == 0)
@@ -208,15 +208,15 @@ public sealed class MathTable : FontMathTable<Fonts, Glyph>
         return attachment * fonts.ScaleFor(glyph.Typeface);
     }
 
-    public override float UnderbarRuleThickness(Fonts fonts) =>
+    public override float UnderbarRuleThickness(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.UnderbarRuleThickness, fonts);
 
-    public override float OverbarVerticalGap(Fonts fonts) =>
+    public override float OverbarVerticalGap(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.OverbarVerticalGap, fonts);
 
-    public override float OverbarRuleThickness(Fonts fonts) =>
+    public override float OverbarRuleThickness(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.OverbarRuleThickness, fonts);
 
-    public override float OverbarExtraAscender(Fonts fonts) =>
+    public override float OverbarExtraAscender(MathFontSet fonts) =>
         ReadConstant(OpenTypeMathConstant.OverbarExtraAscender, fonts);
 }

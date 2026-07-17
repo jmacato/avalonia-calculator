@@ -14,14 +14,18 @@ namespace CalculatorApp
         /// Value converter that translates true to false and vice versa.
         /// </summary>
         [Windows.Foundation.Metadata.WebHostHidden]
-        public sealed class RadixToStringConverter : Microsoft.UI.Xaml.Data.IValueConverter
+        internal sealed class RadixToStringConverter : Microsoft.UI.Xaml.Data.IValueConverter
         {
-            public object Convert(object value, Type targetType, object parameter, string language)
+            public object? Convert(object value, Type targetType, object parameter, string language)
             {
-                var boxedInt = (value as int?);
-                string convertedValue = null;
-                var resourceLoader = AppResourceProvider.GetInstance();
-                switch (boxedInt.Value)
+                if (value is not int boxedInt)
+                {
+                    return null;
+                }
+
+                string? convertedValue = null;
+                var resourceLoader = AppResourceProvider.Instance;
+                switch (boxedInt)
                 {
                     case (int)RadixType.Binary:
                         {
@@ -33,7 +37,7 @@ namespace CalculatorApp
                             convertedValue = resourceLoader.GetResourceString("Oct");
                             break;
                         }
-                    case (int)RadixType.Decimal:
+                    case (int)RadixType.Dec:
                         {
                             convertedValue = resourceLoader.GetResourceString("Dec");
                             break;
@@ -57,4 +61,3 @@ namespace CalculatorApp
         }
     }
 }
-

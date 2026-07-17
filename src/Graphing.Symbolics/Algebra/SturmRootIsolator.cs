@@ -1,164 +1,11 @@
 using System.Collections.Immutable;
-using System.Numerics;
 
 namespace Graphing.Symbolics;
-
-internal readonly record struct RationalInterval(BigRational Lower, BigRational Upper)
-{
-    public BigRational Midpoint => (Lower + Upper) / 2;
-
-    public BigRational Width => Upper - Lower;
-}
-
-internal abstract record ExactReal;
-
-internal sealed record RationalReal(BigRational Value) : ExactReal;
-
-internal sealed record AlgebraicReal(
-    UnivariatePolynomial Polynomial,
-    RationalInterval IsolatingInterval,
-    int RootIndex,
-    ImmutableArray<int> ThomEncoding) : ExactReal;
-
-internal sealed record AffinePiReal(
-    BigRational PiCoefficient,
-    BigRational Constant) : ExactReal;
-
-internal sealed record NamedReal(string Name) : ExactReal;
-
-internal sealed record FunctionReal(string Function, ImmutableArray<ExactReal> Arguments) : ExactReal;
-
-internal sealed record AlgebraicImageReal(
-    RationalFunction Function,
-    AlgebraicReal Argument) : ExactReal;
-
-internal sealed class SturmChain
-{
-    private SturmChain(
-        UnivariatePolynomial polynomial,
-        ImmutableArray<UnivariatePolynomial> sequence)
-    {
-        Polynomial = polynomial;
-        Sequence = sequence;
-    }
-
-    public UnivariatePolynomial Polynomial { get; }
-
-    public ImmutableArray<UnivariatePolynomial> Sequence { get; }
-
-    public static SturmChain Create(UnivariatePolynomial polynomial, ResourceBudget budget)
-    {
-        if (polynomial.IsZero)
-        {
-            throw new ArgumentException("The zero polynomial has no Sturm chain.", nameof(polynomial));
-        }
-
-        UnivariatePolynomial squareFree = polynomial.SquareFreePart(budget).PrimitivePositive(budget);
-        var sequence = ImmutableArray.CreateBuilder<UnivariatePolynomial>();
-        sequence.Add(squareFree);
-        UnivariatePolynomial derivative = squareFree.Derivative(budget);
-        if (!derivative.IsZero)
-        {
-            sequence.Add(derivative);
-        }
-
-        while (!derivative.IsZero)
-        {
-            budget.Charge();
-            UnivariatePolynomial previous = sequence[^2];
-            (_, UnivariatePolynomial remainder) = previous.Divide(derivative, budget);
-            if (remainder.IsZero)
-            {
-                break;
-            }
-
-            derivative = remainder.Negate(budget);
-            sequence.Add(derivative);
-        }
-
-        return new SturmChain(squareFree, sequence.ToImmutable());
-    }
-
-    public int Variations(BigRational point, ResourceBudget budget)
-    {
-        int variations = 0;
-        int previousSign = 0;
-        foreach (UnivariatePolynomial polynomial in Sequence)
-        {
-            int sign = polynomial.Evaluate(point, budget).Sign;
-            if (sign == 0)
-            {
-                continue;
-            }
-
-            if (previousSign != 0 && sign != previousSign)
-            {
-                variations++;
-            }
-
-            previousSign = sign;
-        }
-
-        return variations;
-    }
-
-    public int CountRoots(BigRational lower, BigRational upper, ResourceBudget budget)
-    {
-        if (lower >= upper)
-        {
-            return 0;
-        }
-
-        if (Polynomial.Evaluate(lower, budget).IsZero || Polynomial.Evaluate(upper, budget).IsZero)
-        {
-            throw new ArgumentException("Sturm interval endpoints must not be roots.");
-        }
-
-        return Variations(lower, budget) - Variations(upper, budget);
-    }
-
-    public bool IsValid(ResourceBudget budget)
-    {
-        if (Sequence.IsEmpty || !Sequence[0].Equals(Polynomial))
-        {
-            return false;
-        }
-
-        if (Sequence.Length == 1)
-        {
-            return Polynomial.Degree == 0;
-        }
-
-        if (!Sequence[1].Equals(Polynomial.Derivative(budget)))
-        {
-            return false;
-        }
-
-        for (int index = 2; index < Sequence.Length; index++)
-        {
-            (_, UnivariatePolynomial remainder) = Sequence[index - 2].Divide(Sequence[index - 1], budget);
-            if (!Sequence[index].Equals(remainder.Negate(budget)))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-}
-
-internal sealed record RootIsolationCertificate(
-    UnivariatePolynomial Polynomial,
-    ImmutableArray<ExactReal> Roots,
-    ImmutableArray<UnivariatePolynomial> SturmSequence);
 
 internal static class SturmRootIsolator
 {
     private const int SmallRationalSearchBound = 64;
-
-    public static RootIsolationCertificate Isolate(
-        UnivariatePolynomial source,
-        ResourceBudget budget)
+    public static RootIsolationCertificate Isolate(UnivariatePolynomial source, ResourceBudget budget)
     {
         if (source.IsZero)
         {
@@ -168,22 +15,12 @@ internal static class SturmRootIsolator
         UnivariatePolynomial polynomial = source.SquareFreePart(budget).PrimitivePositive(budget);
         var rationalRoots = ImmutableArray.CreateBuilder<RationalReal>();
         polynomial = ExtractSmallRationalRoots(polynomial, rationalRoots, budget);
-
-        ImmutableArray<AlgebraicReal> algebraicRoots = polynomial.Degree <= 0
-            ? []
-            : IsolateRemaining(
-                polynomial,
-                rationalRoots.Select(static root => root.Value).ToImmutableArray(),
-                budget);
-
+        ImmutableArray<AlgebraicReal> algebraicRoots = polynomial.Degree <= 0 ? [] : IsolateRemaining(polynomial, rationalRoots.Select(static root => root.Value).ToImmutableArray(), budget);
         var roots = rationalRoots.Cast<ExactReal>().Concat(algebraicRoots).ToList();
         roots.Sort((left, right) => CompareByRationalBounds(left, right));
         SeparateAdjacentRoots(roots, budget);
         SturmChain certificateChain = SturmChain.Create(source, budget);
-        return new RootIsolationCertificate(
-            source.SquareFreePart(budget).PrimitivePositive(budget),
-            roots.ToImmutableArray(),
-            certificateChain.Sequence);
+        return new RootIsolationCertificate(source.SquareFreePart(budget).PrimitivePositive(budget), roots.ToImmutableArray(), certificateChain.Sequence);
     }
 
     public static bool Verify(RootIsolationCertificate certificate, ResourceBudget budget)
@@ -223,17 +60,13 @@ internal static class SturmRootIsolator
                     accounted++;
                     break;
                 case AlgebraicReal algebraic:
-                    if (!algebraic.Polynomial.Equals(certificate.Polynomial) &&
-                        !Divides(certificate.Polynomial, algebraic.Polynomial, budget))
+                    if (!algebraic.Polynomial.Equals(certificate.Polynomial) && !Divides(certificate.Polynomial, algebraic.Polynomial, budget))
                     {
                         return false;
                     }
 
                     SturmChain chain = SturmChain.Create(algebraic.Polynomial, budget);
-                    if (chain.CountRoots(
-                            algebraic.IsolatingInterval.Lower,
-                            algebraic.IsolatingInterval.Upper,
-                            budget) != 1)
+                    if (chain.CountRoots(algebraic.IsolatingInterval.Lower, algebraic.IsolatingInterval.Upper, budget) != 1)
                     {
                         return false;
                     }
@@ -261,10 +94,7 @@ internal static class SturmRootIsolator
         return total.CountRoots(lower, upper, budget) == accounted;
     }
 
-    private static UnivariatePolynomial ExtractSmallRationalRoots(
-        UnivariatePolynomial polynomial,
-        ImmutableArray<RationalReal>.Builder roots,
-        ResourceBudget budget)
+    private static UnivariatePolynomial ExtractSmallRationalRoots(UnivariatePolynomial polynomial, ImmutableArray<RationalReal>.Builder roots, ResourceBudget budget)
     {
         if (polynomial.Degree <= 0)
         {
@@ -277,7 +107,7 @@ internal static class SturmRootIsolator
             for (int numerator = -SmallRationalSearchBound; numerator <= SmallRationalSearchBound; numerator++)
             {
                 budget.Charge();
-                if (BigInteger.GreatestCommonDivisor(BigInteger.Abs(numerator), denominator).IsOne)
+                if (ExactInteger.GreatestCommonDivisor(ExactInteger.Abs(numerator), denominator).IsOne)
                 {
                     candidates.Add(new BigRational(numerator, denominator));
                 }
@@ -311,10 +141,7 @@ internal static class SturmRootIsolator
         return current;
     }
 
-    private static ImmutableArray<AlgebraicReal> IsolateRemaining(
-        UnivariatePolynomial polynomial,
-        ImmutableArray<BigRational> excludedRationalRoots,
-        ResourceBudget budget)
+    private static ImmutableArray<AlgebraicReal> IsolateRemaining(UnivariatePolynomial polynomial, ImmutableArray<BigRational> excludedRationalRoots, ResourceBudget budget)
     {
         SturmChain chain = SturmChain.Create(polynomial, budget);
         (BigRational lower, BigRational upper) = RootBounds(polynomial, budget);
@@ -343,12 +170,7 @@ internal static class SturmRootIsolator
         return result.MoveToImmutable();
     }
 
-    private static void IsolateInterval(
-        SturmChain chain,
-        BigRational lower,
-        BigRational upper,
-        List<RationalInterval> result,
-        ResourceBudget budget)
+    private static void IsolateInterval(SturmChain chain, BigRational lower, BigRational upper, List<RationalInterval> result, ResourceBudget budget)
     {
         int count = chain.CountRoots(lower, upper, budget);
         if (count == 0)
@@ -382,9 +204,7 @@ internal static class SturmRootIsolator
         IsolateInterval(chain, midpoint, upper, result, budget);
     }
 
-    private static (BigRational Lower, BigRational Upper) RootBounds(
-        UnivariatePolynomial polynomial,
-        ResourceBudget budget)
+    private static (BigRational Lower, BigRational Upper) RootBounds(UnivariatePolynomial polynomial, ResourceBudget budget)
     {
         BigRational maximum = BigRational.Zero;
         BigRational leading = polynomial.LeadingCoefficient.Abs();
@@ -397,7 +217,7 @@ internal static class SturmRootIsolator
             }
         }
 
-        BigInteger integerBound = maximum.Ceiling() + BigInteger.One;
+        ExactInteger integerBound = maximum.Ceiling() + ExactInteger.One;
         BigRational upper = new(integerBound);
         while (polynomial.Evaluate(upper, budget).IsZero)
         {
@@ -413,10 +233,7 @@ internal static class SturmRootIsolator
         return (lower, upper);
     }
 
-    private static ImmutableArray<int> ThomEncoding(
-        UnivariatePolynomial polynomial,
-        RationalInterval interval,
-        ResourceBudget budget)
+    private static ImmutableArray<int> ThomEncoding(UnivariatePolynomial polynomial, RationalInterval interval, ResourceBudget budget)
     {
         var signs = ImmutableArray.CreateBuilder<int>();
         UnivariatePolynomial derivative = polynomial;
@@ -429,16 +246,9 @@ internal static class SturmRootIsolator
         return signs.ToImmutable();
     }
 
-    internal static int SignAtIsolatedRoot(
-        UnivariatePolynomial rootPolynomial,
-        UnivariatePolynomial valuePolynomial,
-        RationalInterval interval,
-        ResourceBudget budget)
+    internal static int SignAtIsolatedRoot(UnivariatePolynomial rootPolynomial, UnivariatePolynomial valuePolynomial, RationalInterval interval, ResourceBudget budget)
     {
-        UnivariatePolynomial gcd = UnivariatePolynomial.GreatestCommonDivisor(
-            rootPolynomial,
-            valuePolynomial,
-            budget);
+        UnivariatePolynomial gcd = UnivariatePolynomial.GreatestCommonDivisor(rootPolynomial, valuePolynomial, budget);
         if (gcd.Degree > 0)
         {
             SturmChain gcdChain = SturmChain.Create(gcd, budget);
@@ -460,9 +270,7 @@ internal static class SturmRootIsolator
         {
             BigRational lowerValue = valuePolynomial.Evaluate(current.Lower, budget);
             BigRational upperValue = valuePolynomial.Evaluate(current.Upper, budget);
-            if (lowerValue.Sign != 0 &&
-                upperValue.Sign != 0 &&
-                valueChain.CountRoots(current.Lower, current.Upper, budget) == 0)
+            if (lowerValue.Sign != 0 && upperValue.Sign != 0 && valueChain.CountRoots(current.Lower, current.Upper, budget) == 0)
             {
                 return lowerValue.Sign;
             }
@@ -474,9 +282,7 @@ internal static class SturmRootIsolator
             }
 
             int leftCount = rootChain.CountRoots(current.Lower, midpoint, budget);
-            current = leftCount == 1
-                ? new RationalInterval(current.Lower, midpoint)
-                : new RationalInterval(midpoint, current.Upper);
+            current = leftCount == 1 ? new RationalInterval(current.Lower, midpoint) : new RationalInterval(midpoint, current.Upper);
         }
     }
 
@@ -539,10 +345,7 @@ internal static class SturmRootIsolator
         }
     }
 
-    internal static RationalInterval Refine(
-        UnivariatePolynomial polynomial,
-        RationalInterval interval,
-        ResourceBudget budget)
+    internal static RationalInterval Refine(UnivariatePolynomial polynomial, RationalInterval interval, ResourceBudget budget)
     {
         SturmChain chain = SturmChain.Create(polynomial, budget);
         BigRational midpoint = interval.Midpoint;
@@ -552,9 +355,7 @@ internal static class SturmRootIsolator
             return new RationalInterval(midpoint - quarterWidth, midpoint + quarterWidth);
         }
 
-        return chain.CountRoots(interval.Lower, midpoint, budget) == 1
-            ? new RationalInterval(interval.Lower, midpoint)
-            : new RationalInterval(midpoint, interval.Upper);
+        return chain.CountRoots(interval.Lower, midpoint, budget) == 1 ? new RationalInterval(interval.Lower, midpoint) : new RationalInterval(midpoint, interval.Upper);
     }
 
     private static BigRational LowerBound(ExactReal value) => value switch
@@ -563,18 +364,13 @@ internal static class SturmRootIsolator
         AlgebraicReal algebraic => algebraic.IsolatingInterval.Lower,
         _ => throw new ArgumentOutOfRangeException(nameof(value))
     };
-
     private static BigRational UpperBound(ExactReal value) => value switch
     {
         RationalReal rational => rational.Value,
         AlgebraicReal algebraic => algebraic.IsolatingInterval.Upper,
         _ => throw new ArgumentOutOfRangeException(nameof(value))
     };
-
-    private static bool Divides(
-        UnivariatePolynomial source,
-        UnivariatePolynomial divisor,
-        ResourceBudget budget)
+    private static bool Divides(UnivariatePolynomial source, UnivariatePolynomial divisor, ResourceBudget budget)
     {
         if (divisor.IsZero)
         {

@@ -13,14 +13,15 @@ namespace CalculatorUITestFramework
 {
     public class HistoryPanel
     {
-        public WindowsElement HistoryButton => this.session.TryFindElementByAccessibilityId("HistoryButton");
-        public WindowsElement ListViewItem => this.session.FindElementByClassName("ListViewItem");
-        public WindowsElement ClearHistoryButton => this.session.TryFindElementByAccessibilityId("ClearHistory");
+        public WindowsElement HistoryButton => Session.TryFindElementByAccessibilityId("HistoryButton");
+        public WindowsElement ListViewItem => Session.FindElementByClassName("ListViewItem");
+        public WindowsElement ClearHistoryButton => Session.TryFindElementByAccessibilityId("ClearHistory");
 
-        private WindowsDriver<WindowsElement> session => CalculatorDriver.Instance.CalculatorSession;
-        private WindowsElement HistoryLabel => this.session.TryFindElementByAccessibilityId("HistoryLabel");
-        private WindowsElement HistoryListView => this.session.TryFindElementByAccessibilityId("HistoryListView");
-        private WindowsElement HistoryFlyout => this.session.TryFindElementByAccessibilityId("HistoryFlyout");
+        private readonly CalculatorDriver driver = CalculatorDriver.Instance;
+        private WindowsDriver<WindowsElement> Session => driver.CalculatorSession;
+        private WindowsElement HistoryLabel => Session.TryFindElementByAccessibilityId("HistoryLabel");
+        private WindowsElement HistoryListView => Session.TryFindElementByAccessibilityId("HistoryListView");
+        private WindowsElement HistoryFlyout => Session.TryFindElementByAccessibilityId("HistoryFlyout");
 
         /// <summary>
         /// Opens the History Pane by clicking the History pivot label.
@@ -35,7 +36,7 @@ namespace CalculatorUITestFramework
         /// Gets all of the history items listed in the History Pane.
         /// </summary>
         /// <returns>A readonly collection of history items.</returns>
-        public List<HistoryItem> GetAllHistoryListViewItems()
+        public IReadOnlyList<HistoryItem> GetAllHistoryListViewItems()
         {
             OpenHistoryPanel();
             return (from item in this.HistoryListView.FindElementsByClassName("ListViewItem") select new HistoryItem(item)).ToList();
@@ -48,8 +49,8 @@ namespace CalculatorUITestFramework
         {
 
             this.HistoryLabel.Click();
-            string source = this.session.PageSource;
-            if (source.Contains("ClearHistory"))
+            string source = Session.PageSource;
+            if (source.Contains("ClearHistory", System.StringComparison.Ordinal))
             {
                 this.ClearHistoryButton.Click();
             }
@@ -93,7 +94,7 @@ namespace CalculatorUITestFramework
         /// Gets all of the History items listed in the History Flyout.
         /// </summary>
         /// <returns> A read only collection of History items.</returns>
-        public List<HistoryItem> GetAllHistoryFlyoutListViewItems()
+        public IReadOnlyList<HistoryItem> GetAllHistoryFlyoutListViewItems()
         {
             OpenHistoryFlyout();
             return (from item in this.HistoryListView.FindElementsByClassName("ListViewItem") select new HistoryItem(item)).ToList();
@@ -109,7 +110,7 @@ namespace CalculatorUITestFramework
                 throw new NotFoundException("Could not the History Label");
             }
 
-            if (!this.session.PageSource.Contains("HistoryLabel"))
+            if (!Session.PageSource.Contains("HistoryLabel", System.StringComparison.Ordinal))
             {
                 var height = CalculatorDriver.Instance.CalculatorSession.Manage().Window.Size.Height;
                 CalculatorDriver.Instance.CalculatorSession.Manage().Window.Size = new Size(width, height);
@@ -129,7 +130,7 @@ namespace CalculatorUITestFramework
                 throw new NotFoundException("Could not find the History Button");
             }
 
-            if (!this.session.PageSource.Contains("HistoryButton"))
+            if (!Session.PageSource.Contains("HistoryButton", System.StringComparison.Ordinal))
             {
                 var height = CalculatorDriver.Instance.CalculatorSession.Manage().Window.Size.Height;
                 CalculatorDriver.Instance.CalculatorSession.Manage().Window.Size = new Size(width, height);

@@ -28,6 +28,7 @@ public sealed partial class MemoryListItem : UserControl
 
     protected override void OnPointerEntered(PointerEventArgs e)
     {
+        System.ArgumentNullException.ThrowIfNull(e);
         base.OnPointerEntered(e);
 
         if (e.Pointer.Type is PointerType.Mouse or PointerType.Pen)
@@ -48,9 +49,9 @@ public sealed partial class MemoryListItem : UserControl
 
     private void OnMemorySubtractButtonClicked(object? sender, RoutedEventArgs e) => Model?.MemorySubtract();
 
-    private void OnClearSwipeInvoked(SwipeItem sender, SwipeItemInvokedEventArgs e) => Model?.Clear();
+    private void OnClearSwipeInvoked(object? sender, SwipeItemInvokedEventArgs e) => Model?.Clear();
 
-    private void OnMemoryAddSwipeInvoked(SwipeItem sender, SwipeItemInvokedEventArgs e) => Model?.MemoryAdd();
+    private void OnMemoryAddSwipeInvoked(object? sender, SwipeItemInvokedEventArgs e) => Model?.MemoryAdd();
 
-    private void OnMemorySubtractSwipeInvoked(SwipeItem sender, SwipeItemInvokedEventArgs e) => Model?.MemorySubtract();
+    private void OnMemorySubtractSwipeInvoked(object? sender, SwipeItemInvokedEventArgs e) => Model?.MemorySubtract();
 }

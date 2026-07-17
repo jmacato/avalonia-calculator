@@ -6,11 +6,12 @@ namespace CalculatorUITestFramework
 {
     public class UnitConverterPage
     {
-        public UnitConverterOperatorsPanel UnitConverterOperators = new UnitConverterOperatorsPanel();
-        public NavigationMenu NavigationMenu = new NavigationMenu();
-        public UnitConverterResults UnitConverterResults = new UnitConverterResults();
+        public UnitConverterOperatorsPanel UnitConverterOperators { get; } = new();
+        public NavigationMenu NavigationMenu { get; } = new();
+        public UnitConverterResults UnitConverterResults { get; } = new();
 
-        private WindowsDriver<WindowsElement> session => CalculatorDriver.Instance.CalculatorSession;
+        private readonly CalculatorDriver driver = CalculatorDriver.Instance;
+        private WindowsDriver<WindowsElement> Session => driver.CalculatorSession;
 
         /// <summary>
         /// Clear the Calculator display
@@ -47,7 +48,7 @@ namespace CalculatorUITestFramework
         public void EnsureCalculatorIsCurrencyMode()
         {
             string source = CalculatorDriver.Instance.CalculatorSession.PageSource;
-            if (source.Contains("Header"))
+            if (source.Contains("Header", System.StringComparison.Ordinal))
             {
                 string header = CalculatorApp.Header.Text;
                 if (header == "Currency")

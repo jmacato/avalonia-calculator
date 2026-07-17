@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation and the Avalonia contributors.
 // Licensed under the MIT License.
-
 using System.Collections;
 using System.Collections.Specialized;
 using System.Diagnostics;
@@ -12,7 +11,6 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 
 namespace CalculatorApp.Controls;
-
 /// <summary>
 /// Avalonia implementation of the vertical WinUI CarouselPanel used by
 /// ComboBox. The same panel provides the ordinary linear layout and the
@@ -20,21 +18,10 @@ namespace CalculatorApp.Controls;
 /// </summary>
 public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollable, IScrollSnapPointsInfo
 {
-    private const int DirectManipulationExtentMultiplier = 401;
+    internal const int DirectManipulationExtentMultiplier = 401;
     private const int CarouselOffsetStart = 200;
-
-    private static readonly AttachedProperty<object?> RecycleKeyProperty =
-        AvaloniaProperty.RegisterAttached<ConverterCarouselPanel, Control, object?>("RecycleKey");
-
+    private static readonly AttachedProperty<object?> RecycleKeyProperty = AvaloniaProperty.RegisterAttached<ConverterCarouselPanel, Control, object?>("RecycleKey");
     private static readonly object s_itemIsItsOwnContainer = new();
-
-    private sealed class RealizedItem(int itemIndex, int logicalIndex, Control control)
-    {
-        public int ItemIndex { get; } = itemIndex;
-        public int LogicalIndex { get; set; } = logicalIndex;
-        public Control Control { get; } = control;
-    }
-
     /// <summary>
     /// Avalonia lacks WinUI's OptionalSingle snap-point mode. MandatorySingle
     /// is the nearest available gesture behavior, but a regular interval would
@@ -42,34 +29,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
     /// item across WinUI's inflated extent as an indexed, allocation-free list
     /// and deliberately omit each separator slot.
     /// </summary>
-    private sealed class CarouselSnapPoints(int itemCount) : IReadOnlyList<double>
-    {
-        public int Count { get; } = checked(itemCount * DirectManipulationExtentMultiplier);
-
-        public double this[int index]
-        {
-            get
-            {
-                ArgumentOutOfRangeException.ThrowIfNegative(index);
-                ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Count);
-                int cycle = index / itemCount;
-                int item = index % itemCount;
-                return cycle * (itemCount + 1) + item;
-            }
-        }
-
-        public IEnumerator<double> GetEnumerator()
-        {
-            for (int index = 0; index < Count; index++)
-            {
-                yield return this[index];
-            }
-        }
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-    }
-
-    private readonly Dictionary<int, RealizedItem> _realized = new();
+    private readonly Dictionary<int, ConverterCarouselPanelRealizedItem> _realized = new();
     private Dictionary<object, Stack<Control>>? _recyclePool;
     private Size _extent;
     private Vector _offset;
@@ -81,38 +41,37 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
     private bool _offsetInitialized;
     private bool _isInLayout;
     private bool _shouldCarousel;
-
     public bool AreHorizontalSnapPointsRegular
     {
         get => false;
-        set { }
+        set
+        {
+        }
     }
 
     public bool AreVerticalSnapPointsRegular
     {
         get => false;
-        set { }
+        set
+        {
+        }
     }
 
     public event EventHandler<RoutedEventArgs>? HorizontalSnapPointsChanged
     {
-        add { }
-        remove { }
+        add
+        {
+        }
+
+        remove
+        {
+        }
     }
 
     public event EventHandler<RoutedEventArgs>? VerticalSnapPointsChanged;
+    bool ILogicalScrollable.CanHorizontallyScroll { get => _canHorizontallyScroll; set => _canHorizontallyScroll = value; }
 
-    bool ILogicalScrollable.CanHorizontallyScroll
-    {
-        get => _canHorizontallyScroll;
-        set => _canHorizontallyScroll = value;
-    }
-
-    bool ILogicalScrollable.CanVerticallyScroll
-    {
-        get => _canVerticallyScroll;
-        set => _canVerticallyScroll = value;
-    }
+    bool ILogicalScrollable.CanVerticallyScroll { get => _canVerticallyScroll; set => _canVerticallyScroll = value; }
 
     bool IScrollable.CanHorizontallyScroll => _canHorizontallyScroll;
 
@@ -122,30 +81,18 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
 
     Size ILogicalScrollable.ScrollSize => new(1, 1);
 
-    Size ILogicalScrollable.PageScrollSize => new(
-        1,
-        Math.Max(1, Math.Floor(_viewport.Height)));
+    Size ILogicalScrollable.PageScrollSize => new(1, Math.Max(1, Math.Floor(_viewport.Height)));
 
     Size IScrollable.Extent => _extent;
 
     Size IScrollable.Viewport => _viewport;
 
-    Vector IScrollable.Offset
-    {
-        get => _offset;
-        set => SetOffset(value);
-    }
+    Vector IScrollable.Offset { get => _offset; set => SetOffset(value); }
 
-    event EventHandler? ILogicalScrollable.ScrollInvalidated
-    {
-        add => ScrollInvalidated += value;
-        remove => ScrollInvalidated -= value;
-    }
+    event EventHandler? ILogicalScrollable.ScrollInvalidated { add => ScrollInvalidated += value; remove => ScrollInvalidated -= value; }
 
     private event EventHandler? ScrollInvalidated;
-
     internal bool ShouldCarousel => _shouldCarousel;
-
     internal double EstimatedItemHeight => _itemHeight;
 
     /// <summary>
@@ -220,42 +167,24 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
             int logicalItemCount = _shouldCarousel ? items.Count + 1 : items.Count;
             int anchorIndex = (ItemsControl as ConverterComboBox)?.SelectedIndex ?? 0;
             anchorIndex = Math.Clamp(anchorIndex, 0, items.Count - 1);
-
             if (!_offsetInitialized)
             {
-                _offset = new Vector(
-                    0,
-                    _shouldCarousel
-                        ? CarouselOffsetStart * logicalItemCount + anchorIndex
-                        : 0);
+                _offset = new Vector(0, _shouldCarousel ? CarouselOffsetStart * logicalItemCount + anchorIndex : 0);
                 _offsetInitialized = true;
             }
 
-            int anchorLogicalIndex = _shouldCarousel
-                ? FindNearestLogicalIndex(anchorIndex, logicalItemCount)
-                : anchorIndex;
+            int anchorLogicalIndex = _shouldCarousel ? FindNearestLogicalIndex(anchorIndex, logicalItemCount) : anchorIndex;
             Control anchor = EnsureRealized(items, anchorIndex, anchorLogicalIndex);
             anchor.Measure(Size.Infinity);
-
             double previousItemHeight = _itemHeight;
             _itemHeight = Math.Max(1, anchor.DesiredSize.Height);
-            double viewportPixels = ResolveViewportHeight(
-                availableSize,
-                logicalItemCount);
+            double viewportPixels = ResolveViewportHeight(availableSize, logicalItemCount);
             var viewport = new Size(1, viewportPixels / _itemHeight);
-            var extent = new Size(
-                1,
-                _shouldCarousel
-                    ? logicalItemCount * DirectManipulationExtentMultiplier
-                    : logicalItemCount);
+            var extent = new Size(1, _shouldCarousel ? logicalItemCount * DirectManipulationExtentMultiplier : logicalItemCount);
             UpdateScrollData(extent, viewport);
             CoerceOffset();
-
-            Dictionary<int, int> required = _shouldCarousel
-                ? GetRequiredCarouselSlots(items.Count, logicalItemCount)
-                : GetRequiredLinearSlots(items.Count);
+            Dictionary<int, int> required = _shouldCarousel ? GetRequiredCarouselSlots(items.Count, logicalItemCount) : GetRequiredLinearSlots(items.Count);
             RealizeRequiredSlots(items, required);
-
             double desiredWidth = 0;
             foreach (var entry in _realized.Values)
             {
@@ -272,9 +201,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
                 VerticalSnapPointsChanged?.Invoke(this, new RoutedEventArgs());
             }
 
-            double width = double.IsFinite(availableSize.Width)
-                ? Math.Min(_minimumDesiredWidth, availableSize.Width)
-                : _minimumDesiredWidth;
+            double width = double.IsFinite(availableSize.Width) ? Math.Min(_minimumDesiredWidth, availableSize.Width) : _minimumDesiredWidth;
             return new Size(width, viewportPixels);
         }
         finally
@@ -303,10 +230,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         }
     }
 
-    protected override IInputElement? GetControl(
-        NavigationDirection direction,
-        IInputElement? from,
-        bool wrap)
+    protected override IInputElement? GetControl(NavigationDirection direction, IInputElement? from, bool wrap)
     {
         if (Items.Count == 0)
         {
@@ -327,10 +251,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
             NavigationDirection.Down or NavigationDirection.Next => index + 1,
             _ => index
         };
-
-        next = wrap
-            ? NormalizeIndex(next, Items.Count)
-            : Math.Clamp(next, 0, Items.Count - 1);
+        next = wrap ? NormalizeIndex(next, Items.Count) : Math.Clamp(next, 0, Items.Count - 1);
         return ScrollIntoView(next);
     }
 
@@ -346,10 +267,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
             return realized.Control;
         }
 
-        return Items[index] is Control control
-               && control.GetValue(RecycleKeyProperty) == s_itemIsItsOwnContainer
-            ? control
-            : null;
+        return Items[index] is Control control && control.GetValue(RecycleKeyProperty) == s_itemIsItsOwnContainer ? control : null;
     }
 
     protected override int IndexFromContainer(Control container)
@@ -365,13 +283,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         return -1;
     }
 
-    protected override IEnumerable<Control>? GetRealizedContainers() =>
-        _realized.Count == 0
-            ? null
-            : _realized.Values
-                .OrderBy(item => item.LogicalIndex)
-                .Select(item => item.Control);
-
+    protected override IEnumerable<Control>? GetRealizedContainers() => _realized.Count == 0 ? null : _realized.Values.OrderBy(item => item.LogicalIndex).Select(item => item.Control);
     protected override Control? ScrollIntoView(int index)
     {
         if (index < 0 || index >= Items.Count)
@@ -380,9 +292,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         }
 
         int cycleLength = GetCycleLength();
-        int logicalIndex = _shouldCarousel
-            ? FindNearestLogicalIndex(index, cycleLength)
-            : index;
+        int logicalIndex = _shouldCarousel ? FindNearestLogicalIndex(index, cycleLength) : index;
         double viewportEnd = _offset.Y + Math.Max(1, _viewport.Height);
         if (logicalIndex < _offset.Y || logicalIndex + 1 > viewportEnd)
         {
@@ -394,9 +304,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         return element;
     }
 
-    protected override void OnItemsChanged(
-        IReadOnlyList<object?> items,
-        NotifyCollectionChangedEventArgs e)
+    protected override void OnItemsChanged(IReadOnlyList<object?> items, NotifyCollectionChangedEventArgs e)
     {
         base.OnItemsChanged(items, e);
         ClearRealized();
@@ -432,32 +340,19 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         return previous != _offset;
     }
 
-    Control? ILogicalScrollable.GetControlInDirection(
-        NavigationDirection direction,
-        Control? from) =>
-        GetControl(direction, from, true) as Control;
-
-    void ILogicalScrollable.RaiseScrollInvalidated(EventArgs e) =>
-        ScrollInvalidated?.Invoke(this, e);
-
-    public IReadOnlyList<double> GetIrregularSnapPoints(
-        Orientation orientation,
-        SnapPointsAlignment snapPointsAlignment)
+    Control? ILogicalScrollable.GetControlInDirection(NavigationDirection direction, Control? from) => GetControl(direction, from, true) as Control;
+    void ILogicalScrollable.RaiseScrollInvalidated(EventArgs e) => ScrollInvalidated?.Invoke(this, e);
+    public IReadOnlyList<double> GetIrregularSnapPoints(Orientation orientation, SnapPointsAlignment snapPointsAlignment)
     {
-        if (orientation != Orientation.Vertical
-            || !_shouldCarousel
-            || Items.Count == 0)
+        if (orientation != Orientation.Vertical || !_shouldCarousel || Items.Count == 0)
         {
             return Array.Empty<double>();
         }
 
-        return new CarouselSnapPoints(Items.Count);
+        return new ConverterCarouselPanelCarouselSnapPoints(Items.Count);
     }
 
-    public double GetRegularSnapPoints(
-        Orientation orientation,
-        SnapPointsAlignment snapPointsAlignment,
-        out double offset)
+    public double GetRegularSnapPoints(Orientation orientation, SnapPointsAlignment snapPointsAlignment, out double offset)
     {
         offset = 0;
         if (orientation == Orientation.Vertical)
@@ -478,9 +373,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         return 0;
     }
 
-    private int GetCycleLength() =>
-        _shouldCarousel && Items.Count > 0 ? Items.Count + 1 : 0;
-
+    private int GetCycleLength() => _shouldCarousel && Items.Count > 0 ? Items.Count + 1 : 0;
     private double ResolveViewportHeight(Size availableSize, int logicalItemCount)
     {
         double contentHeight = logicalItemCount * _itemHeight;
@@ -498,15 +391,12 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         return Math.Min(maximum, contentHeight);
     }
 
-    private Dictionary<int, int> GetRequiredCarouselSlots(
-        int itemCount,
-        int cycleLength)
+    private Dictionary<int, int> GetRequiredCarouselSlots(int itemCount, int cycleLength)
     {
         int first = (int)Math.Floor(_offset.Y) - 1;
         int last = (int)Math.Ceiling(_offset.Y + Math.Max(1, _viewport.Height)) + 1;
         double viewportCenter = _offset.Y + _viewport.Height / 2;
         var result = new Dictionary<int, int>();
-
         for (int logicalIndex = first; logicalIndex <= last; logicalIndex++)
         {
             int itemIndex = NormalizeIndex(logicalIndex, cycleLength);
@@ -515,8 +405,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
                 continue;
             }
 
-            if (!result.TryGetValue(itemIndex, out int existing)
-                || Math.Abs(logicalIndex - viewportCenter) < Math.Abs(existing - viewportCenter))
+            if (!result.TryGetValue(itemIndex, out int existing) || Math.Abs(logicalIndex - viewportCenter) < Math.Abs(existing - viewportCenter))
             {
                 result[itemIndex] = logicalIndex;
             }
@@ -528,11 +417,8 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
     private Dictionary<int, int> GetRequiredLinearSlots(int itemCount)
     {
         int first = Math.Max(0, (int)Math.Floor(_offset.Y) - 1);
-        int last = Math.Min(
-            itemCount - 1,
-            (int)Math.Ceiling(_offset.Y + Math.Max(1, _viewport.Height)) + 1);
+        int last = Math.Min(itemCount - 1, (int)Math.Ceiling(_offset.Y + Math.Max(1, _viewport.Height)) + 1);
         var result = new Dictionary<int, int>();
-
         for (int index = first; index <= last; index++)
         {
             result[index] = index;
@@ -541,9 +427,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         return result;
     }
 
-    private void RealizeRequiredSlots(
-        IReadOnlyList<object?> items,
-        Dictionary<int, int> required)
+    private void RealizeRequiredSlots(IReadOnlyList<object?> items, Dictionary<int, int> required)
     {
         foreach (int index in _realized.Keys.Where(index => !required.ContainsKey(index)).ToArray())
         {
@@ -558,10 +442,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         }
     }
 
-    private Control EnsureRealized(
-        IReadOnlyList<object?> items,
-        int itemIndex,
-        int logicalIndex)
+    private Control EnsureRealized(IReadOnlyList<object?> items, int itemIndex, int logicalIndex)
     {
         if (_realized.TryGetValue(itemIndex, out var existing))
         {
@@ -570,7 +451,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         }
 
         Control control = GetOrCreateElement(items, itemIndex);
-        _realized[itemIndex] = new RealizedItem(itemIndex, logicalIndex, control);
+        _realized[itemIndex] = new ConverterCarouselPanelRealizedItem(itemIndex, logicalIndex, control);
         return control;
     }
 
@@ -579,11 +460,9 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         Debug.Assert(ItemContainerGenerator is not null);
         object? item = items[index];
         var generator = ItemContainerGenerator!;
-
         if (generator.NeedsContainer(item, index, out object? recycleKey))
         {
-            return GetRecycledElement(item, index, recycleKey)
-                   ?? CreateElement(item, index, recycleKey);
+            return GetRecycledElement(item, index, recycleKey) ?? CreateElement(item, index, recycleKey);
         }
 
         return GetItemAsOwnContainer(item, index);
@@ -594,7 +473,6 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         Debug.Assert(ItemContainerGenerator is not null);
         var control = (Control)item!;
         var generator = ItemContainerGenerator!;
-
         if (!control.IsSet(RecycleKeyProperty))
         {
             generator.PrepareItemContainer(control, control, index);
@@ -607,10 +485,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         return control;
     }
 
-    private Control? GetRecycledElement(
-        object? item,
-        int index,
-        object? recycleKey)
+    private Control? GetRecycledElement(object? item, int index, object? recycleKey)
     {
         Debug.Assert(ItemContainerGenerator is not null);
         if (recycleKey is null)
@@ -618,8 +493,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
             return null;
         }
 
-        if (_recyclePool?.TryGetValue(recycleKey, out var pool) == true
-            && pool.Count > 0)
+        if (_recyclePool?.TryGetValue(recycleKey, out var pool) == true && pool.Count > 0)
         {
             Control recycled = pool.Pop();
             recycled.IsVisible = true;
@@ -636,7 +510,6 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         Debug.Assert(ItemContainerGenerator is not null);
         var generator = ItemContainerGenerator!;
         Control container = generator.CreateContainer(item, index, recycleKey);
-
         container.SetValue(RecycleKeyProperty, recycleKey);
         generator.PrepareItemContainer(container, item, index);
         AddInternalChild(container);
@@ -649,7 +522,6 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         Debug.Assert(ItemContainerGenerator is not null);
         object? recycleKey = element.GetValue(RecycleKeyProperty);
         Debug.Assert(recycleKey is not null);
-
         element.IsVisible = false;
         if (recycleKey == s_itemIsItsOwnContainer)
         {
@@ -686,7 +558,6 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         int candidate = cycle * cycleLength + itemIndex;
         int previous = candidate - cycleLength;
         int next = candidate + cycleLength;
-
         if (Math.Abs(previous - _offset.Y) < Math.Abs(candidate - _offset.Y))
         {
             candidate = previous;
@@ -746,6 +617,5 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         }
     }
 
-    private static bool AreClose(double left, double right) =>
-        Math.Abs(left - right) < 0.000001;
+    private static bool AreClose(double left, double right) => Math.Abs(left - right) < 0.000001;
 }

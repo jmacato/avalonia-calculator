@@ -4,7 +4,7 @@ namespace CalcEngine;
 
 
 // This is expected to be in same order as IDM_HEX, IDM_DEC, IDM_OCT, IDM_BIN
-public  enum RadixType
+internal enum RadixType
 {
     Hex,
     Decimal,

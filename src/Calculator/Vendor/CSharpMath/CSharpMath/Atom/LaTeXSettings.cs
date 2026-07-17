@@ -11,29 +11,34 @@ using Atoms;
 using Structures;
 using Space = Atoms.Space;
 //https://mirror.hmc.edu/ctan/macros/latex/contrib/unicode-math/unimath-symbols.pdf
-public static class LaTeXSettings {
+public static class LaTeXSettings
+{
     private static readonly Dictionary<Boundary, string> boundaryDelimitersReverse = new();
     public static IReadOnlyDictionary<Boundary, string> BoundaryDelimitersReverse => boundaryDelimitersReverse;
-    public static LaTeXCommandDictionary<Boundary> BoundaryDelimiters { get; } =
-        new LaTeXCommandDictionary<Boundary>(
-            consume => {
+    public static LaTeXCommandMap<Boundary> BoundaryDelimiters { get; } =
+        new LaTeXCommandMap<Boundary>(
+            consume =>
+            {
                 if (consume.IsEmpty) throw new InvalidCodePathException("Unexpected empty " + nameof(consume));
-                if (char.IsHighSurrogate(consume[0])) {
+                if (char.IsHighSurrogate(consume[0]))
+                {
                     if (consume.Length == 1)
-                        return "Unexpected single high surrogate without its counterpart";
+                        return new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.Boundary Result, int SplitIndex)>(global::CSharpMath.Structures.Result.Err("Unexpected single high surrogate without its counterpart"));
                     if (!char.IsLowSurrogate(consume[1]))
-                        return "Low surrogate not found after high surrogate";
-                    return "Invalid delimiter " + consume.Slice(0, 2).ToString();
-                } else {
+                        return new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.Boundary Result, int SplitIndex)>(global::CSharpMath.Structures.Result.Err("Low surrogate not found after high surrogate"));
+                    return new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.Boundary Result, int SplitIndex)>(global::CSharpMath.Structures.Result.Err("Invalid delimiter " + consume.Slice(0, 2).ToString()));
+                }
+                else
+                {
                     if (char.IsLowSurrogate(consume[0]))
-                        return "Unexpected low surrogate without its counterpart";
-                    return "Invalid delimiter " + consume[0];
+                        return new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.Boundary Result, int SplitIndex)>(global::CSharpMath.Structures.Result.Err("Unexpected low surrogate without its counterpart"));
+                    return new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.Boundary Result, int SplitIndex)>(global::CSharpMath.Structures.Result.Err("Invalid delimiter " + consume[0]));
                 }
             },
-            command => "Invalid delimiter " + command.ToString(),
-            (key, value) => {
-                if (!boundaryDelimitersReverse.ContainsKey(value))
-                    boundaryDelimitersReverse.Add(value, key);
+            command => new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.Boundary Result, int SplitIndex)>(global::CSharpMath.Structures.Result.Err("Invalid delimiter " + command.ToString())),
+            (key, value) =>
+            {
+                boundaryDelimitersReverse.TryAdd(value, key);
             })
         {
             { @".", Boundary.Empty }, // . means no delimiter
@@ -83,22 +88,28 @@ public static class LaTeXSettings {
     public static Result<(MathAtom? Atom, MathList? Return)> OkStyled(MathList styled) => Result.Ok((Dummy, (MathList?)styled));
     public static Result<(MathAtom? Atom, MathList? Return)> OkStop(MathList @return) => Result.Ok(((MathAtom?)null, (MathList?)@return));
     public static ResultImplicitError Err(string error) => Result.Err(error);
-    // Lock this object in tests in case threading exceptions happen between command reading and writing
-    public static LaTeXCommandDictionary<Func<LaTeXParser, MathList, char, Result<(MathAtom? Atom, MathList? Return)>>> Commands { get; } =
-        new LaTeXCommandDictionary<Func<LaTeXParser, MathList, char, Result<(MathAtom? Atom, MathList? Return)>>>(consume => {
+    private static Func<LaTeXParser, MathList, char, Result<(MathAtom? Atom, MathList? Return)>>
+        CreateAtomCommand(MathAtom atom) => (_, _, _) => Ok(atom);
+
+    public static LaTeXCommandMap<Func<LaTeXParser, MathList, char, Result<(MathAtom? Atom, MathList? Return)>>> Commands { get; } =
+        new LaTeXCommandMap<Func<LaTeXParser, MathList, char, Result<(MathAtom? Atom, MathList? Return)>>>(consume =>
+        {
             if (consume.IsEmpty) throw new ArgumentException("Unexpected empty " + nameof(consume));
-            if (char.IsHighSurrogate(consume[0])) {
+            if (char.IsHighSurrogate(consume[0]))
+            {
                 if (consume.Length == 1 || !char.IsLowSurrogate(consume[1]))
-                    return "Low surrogate not found after high surrogate";
+                    return new global::CSharpMath.Structures.Result<(global::System.Func<global::CSharpMath.Atom.LaTeXParser, global::CSharpMath.Atom.MathList, char, global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>> Result, int SplitIndex)>(global::CSharpMath.Structures.Result.Err("Low surrogate not found after high surrogate"));
                 var atom = new Ordinary(consume.Slice(0, 2).ToString());
-                return ((parser, accumulate, stopChar) => Ok(atom), 2);
-            } else {
-                if (char.IsLowSurrogate(consume[0]))
-                    return "High surrogate not found before low surrogate";
-                var atom = new Ordinary(consume[0].ToStringInvariant());
-                return ((parser, accumulate, stopChar) => Ok(atom), 1);
+                return Result.Ok((CreateAtomCommand(atom), 2));
             }
-        }, command => "Invalid command " + command.ToString()) {
+            else
+            {
+                if (char.IsLowSurrogate(consume[0]))
+                    return new global::CSharpMath.Structures.Result<(global::System.Func<global::CSharpMath.Atom.LaTeXParser, global::CSharpMath.Atom.MathList, char, global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>> Result, int SplitIndex)>(global::CSharpMath.Structures.Result.Err("High surrogate not found before low surrogate"));
+                var atom = new Ordinary(consume[0].ToStringInvariant());
+                return Result.Ok((CreateAtomCommand(atom), 1));
+            }
+        }, command => new global::CSharpMath.Structures.Result<(global::System.Func<global::CSharpMath.Atom.LaTeXParser, global::CSharpMath.Atom.MathList, char, global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>> Result, int SplitIndex)>(global::CSharpMath.Structures.Result.Err("Invalid command " + command.ToString()))) {
             #region Atom producers
             { Enumerable.Range(0, 33).Concat(new[] { 127 }).Select(c => ((char)c).ToStringInvariant()),
                 _ => (parser, accumulate, stopChar) => {
@@ -149,11 +160,12 @@ public static class LaTeXSettings {
                         Ok(new Radical(degree ?? new MathList(), radicand)))) },
             { @"\left", (parser, accumulate, stopChar) =>
                 parser.ReadDelimiter("left").Bind(left => {
-                    parser.Environments.Push(new LaTeXParser.InnerEnvironment());
+                    parser.Environments.Push(new LaTeXParserInnerEnvironment());
                     return parser.ReadUntil(stopChar).Bind(innerList => {
                         if (!(parser.Environments.PeekOrDefault() is
-                                LaTeXParser.InnerEnvironment { RightBoundary: { } right })) {
-                            return Err($@"Missing \right for \left with delimiter {left}");
+                                LaTeXParserInnerEnvironment { RightBoundary: { } right })) {
+                            return new Result<(MathAtom? Atom, MathList? Return)>(
+                                Err($@"Missing \right for \left with delimiter {left}"));
                         }
                         parser.Environments.Pop();
                         return Ok(new Inner(left, innerList, right));
@@ -175,28 +187,29 @@ public static class LaTeXSettings {
                     color => parser.ReadArgument().Bind(
                         colored => Ok(new ColorBox(color, colored)))) },
             { @"\prime", (parser, accumulate, stopChar) =>
-                Err(@"\prime won't be supported as Unicode has no matching character. Use ' instead.") },
+                new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(Err(@"\prime won't be supported as Unicode has no matching character. Use ' instead.")) },
             { @"\kern", (parser, accumulate, stopChar) =>
-                parser.TextMode ? parser.ReadSpace().Bind(kern => Ok(new Space(kern))) : @"\kern is not allowed in math mode" },
+                parser.TextMode ? parser.ReadSpace().Bind(kern => Ok(new Space(kern))) : new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(global::CSharpMath.Structures.Result.Err(@"\kern is not allowed in math mode")) },
             { @"\hskip", (parser, accumulate, stopChar) =>
 //TODO \hskip and \mskip: Implement plus and minus for expansion
-                parser.TextMode ? parser.ReadSpace().Bind(skip => Ok(new Space(skip))) : @"\hskip is not allowed in math mode" },
+                parser.TextMode ? parser.ReadSpace().Bind(skip => Ok(new Space(skip))) : new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(global::CSharpMath.Structures.Result.Err(@"\hskip is not allowed in math mode")) },
             { @"\mkern", (parser, accumulate, stopChar) =>
-                !parser.TextMode ? parser.ReadSpace().Bind(kern => Ok(new Space(kern))) : @"\mkern is not allowed in text mode" },
+                !parser.TextMode ? parser.ReadSpace().Bind(kern => Ok(new Space(kern))) : new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(global::CSharpMath.Structures.Result.Err(@"\mkern is not allowed in text mode")) },
             { @"\mskip", (parser, accumulate, stopChar) =>
-                !parser.TextMode ? parser.ReadSpace().Bind(skip => Ok(new Space(skip))) : @"\mskip is not allowed in text mode" },
+                !parser.TextMode ? parser.ReadSpace().Bind(skip => Ok(new Space(skip))) : new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(global::CSharpMath.Structures.Result.Err(@"\mskip is not allowed in text mode")) },
             { @"\raisebox", (parser, accumulate, stopChar) => {
-                if (!parser.ReadCharIfAvailable('{')) return "Expected {";
+                if (!parser.ReadCharIfAvailable('{')) return new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(global::CSharpMath.Structures.Result.Err("Expected {"));
                 return parser.ReadSpace().Bind(raise => {
-                    if (!parser.ReadCharIfAvailable('}')) return "Expected }";
+                    if (!parser.ReadCharIfAvailable('}'))
+                        return new Result<(MathAtom? Atom, MathList? Return)>(Err("Expected }"));
                     return parser.ReadArgument().Bind(innerList =>
                         Ok(new RaiseBox(raise, innerList)));
                 });
             } },
             { @"\operatorname", (parser, accumulate, stopChar) => {
-                if (!parser.ReadCharIfAvailable('{')) return "Expected {";
+                if (!parser.ReadCharIfAvailable('{')) return new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(global::CSharpMath.Structures.Result.Err("Expected {"));
                 var operatorname = parser.ReadString();
-                if (!parser.ReadCharIfAvailable('}')) return "Expected }";
+                if (!parser.ReadCharIfAvailable('}')) return new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(global::CSharpMath.Structures.Result.Err("Expected }"));
                 return Ok(new LargeOperator(operatorname, null));
             } },
             // Bra and Ket implementations are derived from Donald Arseneau's braket LaTeX package.
@@ -230,7 +243,7 @@ public static class LaTeXSettings {
                 return parser.ReadArgument(prevAtom.Subscript).Bind(_ => Ok(null));
             } },
             { @"{", (parser, accumulate, stopChar) => {
-                if (parser.Environments.PeekOrDefault() is LaTeXParser.TableEnvironment { Name: null }) {
+                if (parser.Environments.PeekOrDefault() is LaTeXParserTableEnvironment { Name: null }) {
                     // \\ or \cr which do not have a corresponding \end
                     var oldEnv = parser.Environments.Pop();
                     return parser.ReadUntil('}').Bind(sublist => {
@@ -241,23 +254,23 @@ public static class LaTeXSettings {
                     return parser.ReadUntil('}').Bind(OkStyled);
                 }
             } },
-            { @"}", (parser, accumulate, stopChar) => "Missing opening brace" },
+            { @"}", (parser, accumulate, stopChar) => new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(global::CSharpMath.Structures.Result.Err("Missing opening brace")) },
             { @"\limits", (parser, accumulate, stopChar) => {
                 if (accumulate.Last is LargeOperator largeOp) {
                     largeOp.Limits = true;
                     return Ok(null);
-                } else return @"\limits can only be applied to an operator";
+                } else return new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(global::CSharpMath.Structures.Result.Err(@"\limits can only be applied to an operator"));
             } },
             { @"\nolimits", (parser, accumulate, stopChar) => {
                 if (accumulate.Last is LargeOperator largeOp) {
                     largeOp.Limits = false;
                     return Ok(null);
-                } else return @"\nolimits can only be applied to an operator";
+                } else return new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(global::CSharpMath.Structures.Result.Err(@"\nolimits can only be applied to an operator"));
             } },
             #endregion Atom modifiers
             #region Environment enders
             { @"&", (parser, accumulate, stopChar) => // column separation in tables
-                parser.Environments.PeekOrDefault() is LaTeXParser.TableEnvironment
+                parser.Environments.PeekOrDefault() is LaTeXParserTableEnvironment
                     ? OkStop(accumulate)
                     : parser.ReadTable(null, accumulate, false, stopChar).Bind(table => OkStop(new MathList(table))) },
             { @"\over", (parser, accumulate, stopChar) =>
@@ -281,23 +294,23 @@ public static class LaTeXSettings {
                         parser.ReadUntil(stopChar).Bind(denominator =>
                             OkStop(new MathList(new Fraction(accumulate, denominator, false) { LeftDelimiter = left, RightDelimiter = right }))))) },
             { @"\right", (parser, accumulate, stopChar) => {
-                while (parser.Environments.PeekOrDefault() is LaTeXParser.TableEnvironment table)
+                while (parser.Environments.PeekOrDefault() is LaTeXParserTableEnvironment table)
                     if (table.Name is null) {
                         table.Ended = true;
                         parser.Environments.Pop(); // Get out of \\ or \cr before looking for \right
                     } else {
-                        return $"Missing \\end{{{table.Name}}}";
+                        return new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(global::CSharpMath.Structures.Result.Err($"Missing \\end{{{table.Name}}}"));
                     }
-                if (!(parser.Environments.PeekOrDefault() is LaTeXParser.InnerEnvironment inner)) {
-                    return "Missing \\left";
+                if (!(parser.Environments.PeekOrDefault() is LaTeXParserInnerEnvironment inner)) {
+                    return new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(global::CSharpMath.Structures.Result.Err("Missing \\left"));
                 }
                 var (boundary, error) = parser.ReadDelimiter("right");
-                if (error != null) return error;
+                if (error != null) return new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(global::CSharpMath.Structures.Result.Err(error));
                 inner.RightBoundary = boundary;
                 return OkStop(accumulate);
             } },
             { @"\\", @"\cr", (parser, accumulate, stopChar) => {
-                if (!(parser.Environments.PeekOrDefault() is LaTeXParser.TableEnvironment environment)) {
+                if (!(parser.Environments.PeekOrDefault() is LaTeXParserTableEnvironment environment)) {
                     return parser.ReadTable(null, accumulate, true, stopChar).Bind(table => OkStop(new MathList(table)));
                 } else {
                     // stop the current list and increment the row count
@@ -306,12 +319,13 @@ public static class LaTeXSettings {
                 }
             } },
             { @"\end", (parser, accumulate, stopChar) => {
-                if (!(parser.Environments.PeekOrDefault() is LaTeXParser.TableEnvironment endEnvironment)) {
-                    return @"Missing \begin";
+                if (!(parser.Environments.PeekOrDefault() is LaTeXParserTableEnvironment endEnvironment)) {
+                    return new global::CSharpMath.Structures.Result<(global::CSharpMath.Atom.MathAtom? Atom, global::CSharpMath.Atom.MathList? Return)>(global::CSharpMath.Structures.Result.Err(@"Missing \begin"));
                 }
                 return parser.ReadEnvironment().Bind(env => {
                     if (env != endEnvironment.Name) {
-                        return $"Begin environment name {endEnvironment.Name} does not match end environment name {env}";
+                        return new Result<(MathAtom? Atom, MathList? Return)>(
+                            Err($"Begin environment name {endEnvironment.Name} does not match end environment name {env}"));
                     }
                     endEnvironment.Ended = true;
                     return OkStop(accumulate);
@@ -329,9 +343,11 @@ public static class LaTeXSettings {
     public static Placeholder Placeholder => new Placeholder(PlaceholderRestingNucleus, PlaceholderRestingColor);
     public static MathList PlaceholderList => new MathList { Placeholder };
 
-    public static AliasBiDictionary<string, FontStyle> FontStyles { get; } =
-        new AliasBiDictionary<string, FontStyle>((command, fontStyle) => {
-            Commands.Add(@"\" + command, (parser, accumulate, stopChar) => {
+    public static AliasBiMap<string, FontStyle> FontStyles { get; } =
+        new AliasBiMap<string, FontStyle>((command, fontStyle) =>
+        {
+            Commands.Add(@"\" + command, (parser, accumulate, stopChar) =>
+            {
                 var oldSpacesAllowed = parser.TextMode;
                 var oldFontStyle = parser.CurrentFontStyle;
                 parser.TextMode = command == "text";
@@ -339,7 +355,8 @@ public static class LaTeXSettings {
                 var readsToEnd =
                     !command.AsSpan().StartsWithInvariant("math")
                     && !command.AsSpan().StartsWithInvariant("text");
-                return (readsToEnd ? parser.ReadUntil(stopChar, accumulate) : parser.ReadArgument()).Bind(r => {
+                return (readsToEnd ? parser.ReadUntil(stopChar, accumulate) : parser.ReadArgument()).Bind(r =>
+                {
                     parser.CurrentFontStyle = oldFontStyle;
                     parser.TextMode = oldSpacesAllowed;
                     if (readsToEnd)
@@ -360,9 +377,11 @@ public static class LaTeXSettings {
             { "mathbfit", "bm", FontStyle.BoldItalic },
         };
 
-    public static Color? ParseColor(string? hexOrName) {
+    public static Color? ParseColor(string? hexOrName)
+    {
         if (hexOrName == null) return null;
-        if (hexOrName.StartsWith("#", StringComparison.Ordinal)) {
+        if (hexOrName.StartsWith('#'))
+        {
             var hex = hexOrName.Substring(1);
             return
                 (hex.Length, int.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var i)) switch
@@ -372,16 +391,19 @@ public static class LaTeXSettings {
                     _ => null
                 };
         }
-#pragma warning disable CA1308 // Normalize strings to uppercase
-        if (PredefinedColors.FirstToSecond.TryGetValue(hexOrName.ToLowerInvariant(), out var predefined))
+        if (PredefinedColors.FirstToSecond.TryGetValue(InvariantCaseConverter.ToLower(hexOrName), out var predefined))
             return predefined;
-#pragma warning restore CA1308 // Normalize strings to uppercase
         return null;
     }
-    public static StringBuilder ColorToString(Color color, StringBuilder sb) {
-        if (PredefinedColors.SecondToFirst.TryGetValue(color, out var outString)) {
+    public static StringBuilder ColorToString(Color color, StringBuilder sb)
+    {
+        System.ArgumentNullException.ThrowIfNull(sb);
+        if (PredefinedColors.SecondToFirst.TryGetValue(color, out var outString))
+        {
             return sb.Append(outString);
-        } else {
+        }
+        else
+        {
             sb.Append('#');
             if (color.A != 255)
                 sb.Append(color.A.ToStringInvariant("X2"));
@@ -391,8 +413,8 @@ public static class LaTeXSettings {
         }
     }
     //https://en.wikibooks.org/wiki/LaTeX/Colors#Predefined_colors
-    public static AliasBiDictionary<string, Color> PredefinedColors { get; } =
-        new AliasBiDictionary<string, Color> {
+    public static AliasBiMap<string, Color> PredefinedColors { get; } =
+        new AliasBiMap<string, Color> {
             { "black", Color.FromArgb(0, 0, 0) },
             { "blue", Color.FromArgb(0, 0, 255) },
             { "brown", Color.FromArgb(150, 75, 0) },
@@ -419,7 +441,9 @@ public static class LaTeXSettings {
             symbolName ?? throw new ArgumentNullException(nameof(symbolName)),
             out var symbol) ? symbol.Clone(false) : null;
 
-    public static string? CommandForAtom(MathAtom atom) {
+    public static string? CommandForAtom(MathAtom atom)
+    {
+        System.ArgumentNullException.ThrowIfNull(atom);
         var atomWithoutScripts = atom.Clone(false);
         atomWithoutScripts.Superscript.Clear();
         atomWithoutScripts.Subscript.Clear();
@@ -429,8 +453,8 @@ public static class LaTeXSettings {
         return CommandSymbols.SecondToFirst.TryGetValue(atomWithoutScripts, out var name) ? name : null;
     }
 
-    public static AliasBiDictionary<string, MathAtom> CommandSymbols { get; } =
-        new AliasBiDictionary<string, MathAtom>((command, atom) =>
+    public static AliasBiMap<string, MathAtom> CommandSymbols { get; } =
+        new AliasBiMap<string, MathAtom>((command, atom) =>
             Commands.Add(command, (parser, accumulate, stopChar) =>
                 atom is Accent accent
                     ? parser.ReadArgument().Bind(accentee => Ok(new Accent(accent.Nucleus, accentee)))

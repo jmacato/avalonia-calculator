@@ -6,6 +6,7 @@
 
 using Windows.ApplicationModel.Resources;
 namespace CalculatorApp.ViewModel.Common;
+
 public partial class AppResourceProvider
 {
     public AppResourceProvider()
@@ -14,13 +15,10 @@ public partial class AppResourceProvider
         m_cEngineStringResLoader = ResourceLoader.GetForViewIndependentUse("CEngineStrings");
     }
 
-    static AppResourceProvider s_instance = new AppResourceProvider();
+    static readonly AppResourceProvider s_instance = new AppResourceProvider();
 
 
-    public static AppResourceProvider GetInstance()
-    {
-        return s_instance;
-    }
+    public static AppResourceProvider Instance => s_instance;
 
     public string GetResourceString(string key)
     {

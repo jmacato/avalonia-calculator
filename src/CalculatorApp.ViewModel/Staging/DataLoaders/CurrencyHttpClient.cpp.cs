@@ -46,7 +46,7 @@ namespace CalculatorApp.ViewModel.DataLoaders
             m_responseLanguage = responseLanguage;
         }
 
-        public Task<string> GetCurrencyMetadataAsync()
+        public static Task<string> GetCurrencyMetadataAsync()
         {
 #if VIEWMODEL_FOR_UT
             if (ForceWebFailure)
@@ -57,7 +57,7 @@ namespace CalculatorApp.ViewModel.DataLoaders
             return Task.FromResult(MockCurrencyStaticData);
         }
 
-        public Task<string> GetCurrencyRatiosAsync()
+        public static Task<string> GetCurrencyRatiosAsync()
         {
 #if VIEWMODEL_FOR_UT
             if (ForceWebFailure)

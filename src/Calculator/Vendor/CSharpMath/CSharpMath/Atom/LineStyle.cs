@@ -1,6 +1,7 @@
 namespace CSharpMath.Atom;
 
-public enum LineStyle {
+public enum LineStyle
+{
     /// <summary>Display math</summary>
     Display,
     /// <summary>Plain text</summary>

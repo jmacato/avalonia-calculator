@@ -3,7 +3,8 @@ using System.Collections.Generic;
 
 namespace CSharpMath.Structures;
 
-public readonly struct Space : IEquatable<Space> {
+public readonly struct Space : IEquatable<Space>
+{
     public float Length { get; }
     // If IsMu is true, then the length is in math units (mu), else points (pt)
     public bool IsMu { get; }
@@ -11,28 +12,32 @@ public readonly struct Space : IEquatable<Space> {
     private Space(float length, bool isMu) { Length = length; IsMu = isMu; }
     public float ActualLength<TFont, TGlyph>(
         Display.FrontEnd.FontMathTable<TFont, TGlyph> mathTable, TFont font)
-        where TFont : Display.FrontEnd.IFont<TGlyph> =>
-        IsMu ? Length * mathTable.MuUnit(font) : Length;
+        where TFont : Display.FrontEnd.IFont<TGlyph>
+    {
+        System.ArgumentNullException.ThrowIfNull(mathTable);
+        return IsMu ? Length * mathTable.MuUnit(font) : Length;
+    }
     public static Result<Space> Create(string length, string unit, bool useTextUnits) =>
         string.IsNullOrWhiteSpace(unit)
         || unit.Length != 2
         || unit[0] == 0
         || unit[1] == 0
-            ? "Expected two-character length unit"
+            ? new global::CSharpMath.Structures.Result<global::CSharpMath.Structures.Space>(global::CSharpMath.Structures.Result.Err("Expected two-character length unit"))
             : !float.TryParse(length,
                 System.Globalization.NumberStyles.AllowLeadingSign |
                 System.Globalization.NumberStyles.AllowDecimalPoint,
                 System.Globalization.CultureInfo.InvariantCulture.NumberFormat,
                 out var value)
-                ? "Invalid length value"
+                ? new global::CSharpMath.Structures.Result<global::CSharpMath.Structures.Space>(global::CSharpMath.Structures.Result.Err("Invalid length value"))
                 : useTextUnits
-                    ? unit switch {
-                        "mu" => "The length unit mu is not allowed in text mode",
-                        _ when PredefinedLengthUnits.TryGetValue(unit, out var space) => space * value,
-                        _ => $"Unsupported length unit {unit}",
+                    ? unit switch
+                    {
+                        "mu" => new global::CSharpMath.Structures.Result<global::CSharpMath.Structures.Space>(global::CSharpMath.Structures.Result.Err("The length unit mu is not allowed in text mode")),
+                        _ when PredefinedLengthUnits.TryGetValue(unit, out var space) => new global::CSharpMath.Structures.Result<global::CSharpMath.Structures.Space>(space * value),
+                        _ => new global::CSharpMath.Structures.Result<global::CSharpMath.Structures.Space>(global::CSharpMath.Structures.Result.Err($"Unsupported length unit {unit}")),
                     } : unit != "mu"
-                        ? "Only the length unit mu is allowed in math mode"
-                        : MathUnit * value;
+                        ? new global::CSharpMath.Structures.Result<global::CSharpMath.Structures.Space>(global::CSharpMath.Structures.Result.Err("Only the length unit mu is allowed in math mode"))
+                        : new global::CSharpMath.Structures.Result<global::CSharpMath.Structures.Space>(MathUnit * value);
     private static bool UnifyIsMu(Space left, Space right) =>
         left.IsMu && right.IsMu
         || (left.IsMu || right.IsMu

@@ -1,6 +1,5 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Input;
-using FluentAvalonia.Core;
 using FluentAvalonia.UI.Controls;
 using System.Windows.Input;
 
@@ -15,38 +14,38 @@ public partial class FAXamlUICommand : AvaloniaObject, ICommand
     /// <summary>
     /// Defines the <see cref="Command"/> property
     /// </summary>
-    public static readonly StyledProperty<ICommand> CommandProperty =
-        AvaloniaProperty.Register<FAXamlUICommand, ICommand>(nameof(Command));
+    public static readonly StyledProperty<ICommand?> CommandProperty =
+        AvaloniaProperty.Register<FAXamlUICommand, ICommand?>(nameof(Command));
 
     /// <summary>
     /// Defines the <see cref="Description"/> property
     /// </summary>
-    public static readonly StyledProperty<string> DescriptionProperty =
-        AvaloniaProperty.Register<FAXamlUICommand, string>(nameof(Description));
+    public static readonly StyledProperty<string?> DescriptionProperty =
+        AvaloniaProperty.Register<FAXamlUICommand, string?>(nameof(Description));
 
     /// <summary>
     /// Defines the <see cref="IconSource"/> property
     /// </summary>
-    public static readonly StyledProperty<FAIconSource> IconSourceProperty =
-        AvaloniaProperty.Register<FAXamlUICommand, FAIconSource>(nameof(IconSource));
+    public static readonly StyledProperty<FAIconSource?> IconSourceProperty =
+        AvaloniaProperty.Register<FAXamlUICommand, FAIconSource?>(nameof(IconSource));
 
     /// <summary>
     /// Defines the <see cref="HotKey"/> property
     /// </summary>
-    public static readonly StyledProperty<KeyGesture> HotKeyProperty =
-        AvaloniaProperty.Register<FAXamlUICommand, KeyGesture>(nameof(HotKey));
+    public static readonly StyledProperty<KeyGesture?> HotKeyProperty =
+        AvaloniaProperty.Register<FAXamlUICommand, KeyGesture?>(nameof(HotKey));
 
     /// <summary>
     /// Defines the <see cref="Label"/> property
     /// </summary>
-    public static readonly StyledProperty<string> LabelProperty =
-        AvaloniaProperty.Register<FAXamlUICommand, string>(nameof(Label));
+    public static readonly StyledProperty<string?> LabelProperty =
+        AvaloniaProperty.Register<FAXamlUICommand, string?>(nameof(Label));
 
     /// <summary>
     /// Gets or sets the command behavior of an interactive UI element that performs an action when invoked, 
     /// such as sending an email, deleting an item, or submitting a form.
     /// </summary>
-    public ICommand Command
+    public ICommand? Command
     {
         get => GetValue(CommandProperty);
         set => SetValue(CommandProperty, value);
@@ -55,7 +54,7 @@ public partial class FAXamlUICommand : AvaloniaObject, ICommand
     /// <summary>
     /// Gets or sets a description for this element.
     /// </summary>
-    public string Description
+    public string? Description
     {
         get => GetValue(DescriptionProperty);
         set => SetValue(DescriptionProperty, value);
@@ -64,7 +63,7 @@ public partial class FAXamlUICommand : AvaloniaObject, ICommand
     /// <summary>
     /// Gets or sets an IconSource for this element.
     /// </summary>
-    public FAIconSource IconSource
+    public FAIconSource? IconSource
     {
         get => GetValue(IconSourceProperty);
         set => SetValue(IconSourceProperty, value);
@@ -73,7 +72,7 @@ public partial class FAXamlUICommand : AvaloniaObject, ICommand
     /// <summary>
     /// Gets or sets a KeyGesture used to invoke this XamlUICommand
     /// </summary>
-    public KeyGesture HotKey
+    public KeyGesture? HotKey
     {
         get => GetValue(HotKeyProperty);
         set => SetValue(HotKeyProperty, value);
@@ -82,7 +81,7 @@ public partial class FAXamlUICommand : AvaloniaObject, ICommand
     /// <summary>
     /// Gets or sets the label for this element.
     /// </summary>
-    public string Label
+    public string? Label
     {
         get => GetValue(LabelProperty);
         set => SetValue(LabelProperty, value);
@@ -91,15 +90,15 @@ public partial class FAXamlUICommand : AvaloniaObject, ICommand
     /// <summary>
     /// Occurs whenever something happens that affects whether the command can execute.
     /// </summary>
-    public event EventHandler CanExecuteChanged;
+    public event EventHandler? CanExecuteChanged;
 
     /// <summary>
     /// Occurs when a CanExecute call is made.
     /// </summary>
-    public event TypedEventHandler<FAXamlUICommand, FACanExecuteRequestedEventArgs> CanExecuteRequested;
+    public event EventHandler<FACanExecuteRequestedEventArgs>? CanExecuteRequested;
 
     /// <summary>
     /// Occurs when an Execute call is made.
     /// </summary>
-    public event TypedEventHandler<FAXamlUICommand, FAExecuteRequestedEventArgs> ExecuteRequested;
+    public event EventHandler<FAExecuteRequestedEventArgs>? ExecuteRequested;
 }

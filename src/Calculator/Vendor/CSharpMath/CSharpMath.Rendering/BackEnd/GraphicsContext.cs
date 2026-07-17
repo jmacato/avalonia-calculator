@@ -8,11 +8,11 @@ using CSharpMath.Structures;
 
 namespace CSharpMath.Rendering.BackEnd;
 
-public sealed class GraphicsContext : IGraphicsContext<Fonts, Glyph>
+public sealed class GraphicsContext : IGraphicsContext<MathFontSet, Glyph>
 {
     public GraphicsContext(ICanvas canvas, (Color glyph, Color textRun)? glyphBoxColor)
     {
-        Canvas = canvas;
+        Canvas = canvas ?? throw new ArgumentNullException(nameof(canvas));
         GlyphBoxColor = glyphBoxColor;
     }
 
@@ -20,14 +20,16 @@ public sealed class GraphicsContext : IGraphicsContext<Fonts, Glyph>
 
     public ICanvas Canvas { get; set; }
 
-    void IGraphicsContext<Fonts, Glyph>.SetTextPosition(PointF position) => Translate(position);
+    void IGraphicsContext<MathFontSet, Glyph>.SetTextPosition(PointF position) => Translate(position);
 
     public void DrawGlyphsAtPoints(
         IReadOnlyList<Glyph> glyphs,
-        Fonts font,
+        MathFontSet font,
         IEnumerable<PointF> points,
         Color? color)
     {
+        ArgumentNullException.ThrowIfNull(glyphs);
+        ArgumentNullException.ThrowIfNull(points);
         foreach ((Glyph glyph, PointF point) in glyphs.Zip(points, ValueTuple.Create))
         {
             if (glyph.IsEmpty)
@@ -62,38 +64,39 @@ public sealed class GraphicsContext : IGraphicsContext<Fonts, Glyph>
         float y1,
         float x2,
         float y2,
-        float lineThickness,
+        float strokeWidth,
         Color? color)
     {
         Canvas.CurrentColor = color;
-        Canvas.DrawLine(x1, y1, x2, y2, lineThickness);
+        Canvas.DrawLine(x1, y1, x2, y2, strokeWidth);
     }
 
     public void DrawGlyphRunWithOffset(
-        Display.AttributedGlyphRun<Fonts, Glyph> run,
-        PointF offset,
+        Display.AttributedGlyphRun<MathFontSet, Glyph> text,
+        PointF point,
         Color? color)
     {
+        ArgumentNullException.ThrowIfNull(text);
         if (GlyphBoxColor is { } boxColor)
         {
             float ascent = 0;
             float descent = 0;
-            foreach ((Glyph glyph, _, _) in run.GlyphInfos)
+            foreach ((Glyph glyph, _, _) in text.GlyphInfos)
             {
                 Avalonia.Rect bounds = glyph.Typeface.GetInkBounds(glyph.GlyphId);
-                float scale = run.Font.ScaleFor(glyph.Typeface);
+                float scale = text.Font.ScaleFor(glyph.Typeface);
                 ascent = Math.Max(ascent, (float)-bounds.Top * scale);
                 descent = Math.Min(descent, (float)-bounds.Bottom * scale);
             }
 
-            float width = GlyphBoundsProvider.Instance.GetTypographicWidth(run.Font, run);
+            float width = GlyphBoundsProvider.Instance.GetTypographicWidth(text.Font, text);
             Canvas.CurrentColor = boxColor.textRun;
-            Canvas.StrokeRect(offset.X, offset.Y + descent, width, ascent - descent);
+            Canvas.StrokeRect(point.X, point.Y + descent, width, ascent - descent);
         }
 
         Canvas.Save();
-        Canvas.Translate(offset.X, offset.Y);
-        foreach ((Glyph glyph, float kernAfter, Color? foreground) in run.GlyphInfos)
+        Canvas.Translate(point.X, point.Y);
+        foreach ((Glyph glyph, float kernAfter, Color? foreground) in text.GlyphInfos)
         {
             if (glyph.IsEmpty)
             {
@@ -101,24 +104,24 @@ public sealed class GraphicsContext : IGraphicsContext<Fonts, Glyph>
             }
 
             Canvas.CurrentColor = foreground ?? color;
-            Canvas.DrawGlyph(glyph.Typeface.Typeface, glyph.GlyphId, run.Font.PixelSize);
+            Canvas.DrawGlyph(glyph.Typeface.Typeface, glyph.GlyphId, text.Font.PixelSize);
             Canvas.Translate(
-                glyph.Typeface.GetAdvance(glyph.GlyphId) * run.Font.ScaleFor(glyph.Typeface) + kernAfter,
+                glyph.Typeface.GetAdvance(glyph.GlyphId) * text.Font.ScaleFor(glyph.Typeface) + kernAfter,
                 0);
         }
 
         Canvas.Restore();
     }
 
-    public void FillRect(RectangleF rectangle, Color color)
+    public void FillRect(RectangleF rect, Color color)
     {
         Canvas.CurrentColor = color;
-        Canvas.FillRect(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
+        Canvas.FillRect(rect.X, rect.Y, rect.Width, rect.Height);
     }
 
     public void RestoreState() => Canvas.Restore();
 
     public void SaveState() => Canvas.Save();
 
-    public void Translate(PointF displacement) => Canvas.Translate(displacement.X, displacement.Y);
+    public void Translate(PointF dxy) => Canvas.Translate(dxy.X, dxy.Y);
 }

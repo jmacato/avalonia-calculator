@@ -14,6 +14,6 @@ public sealed class ResourceString : MarkupExtension
     {
         // RESW property paths such as "Control/Content" become dotted RESX
         // keys during the in-place resource conversion.
-        return AppResourceProvider.GetInstance().GetResourceString(Name.Replace('/', '.'));
+        return AppResourceProvider.Instance.GetResourceString(Name.Replace('/', '.'));
     }
 }

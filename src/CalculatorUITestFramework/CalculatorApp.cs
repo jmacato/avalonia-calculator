@@ -3,6 +3,7 @@
 using OpenQA.Selenium;
 using OpenQA.Selenium.Appium.Windows;
 
+using System;
 using System.Drawing;
 
 namespace CalculatorUITestFramework
@@ -12,21 +13,19 @@ namespace CalculatorUITestFramework
     /// </summary>
     public static class CalculatorApp
     {
-        public static WindowsElement Window => session.FindElementByClassName("Windows.UI.Core.CoreWindow");
+        public static WindowsElement Window => Session.FindElementByClassName("Windows.UI.Core.CoreWindow");
 
-        internal static WindowsElement Header => session.TryFindElementByAccessibilityId("Header");
+        internal static WindowsElement Header => Session.TryFindElementByAccessibilityId("Header");
 
-        private static WindowsDriver<WindowsElement> session => CalculatorDriver.Instance.CalculatorSession;
-        private static WindowsElement AppName => session.TryFindElementByAccessibilityId("AppName");
+        private static readonly CalculatorDriver driver = CalculatorDriver.Instance;
+        private static WindowsDriver<WindowsElement> Session => driver.CalculatorSession;
+        private static WindowsElement AppName => Session.TryFindElementByAccessibilityId("AppName");
 
         /// <summary>
         /// Gets the text from the Header
         /// </summary>
         /// <returns>The string shown in the UI.</returns>
-        public static string GetCalculatorHeaderText()
-        {
-            return Header.Text;
-        }
+        public static string CalculatorHeaderText => Header.Text;
 
         ///// <summary>
         ///// Clicks the AppName element on Windows Calculator to ensure that the app has focus
@@ -65,7 +64,7 @@ namespace CalculatorUITestFramework
                 throw new NotFoundException("Could not the Dock Panel for the History and Memory lists");
             }
 
-            if (!session.PageSource.Contains("DockPanel"))
+            if (!Session.PageSource.Contains("DockPanel", StringComparison.Ordinal))
             {
                 var height = CalculatorDriver.Instance.CalculatorSession.Manage().Window.Size.Height;
                 CalculatorDriver.Instance.CalculatorSession.Manage().Window.Size = new Size(width, height);

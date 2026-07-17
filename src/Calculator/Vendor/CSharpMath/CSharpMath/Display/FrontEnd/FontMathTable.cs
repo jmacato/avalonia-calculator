@@ -5,11 +5,13 @@ using System.Collections.Generic;
 namespace CSharpMath.Display.FrontEnd;
 
 /// <summary>Holds lots of constants for spacing between various visible elements.</summary>
-public abstract class FontMathTable<TFont, TGlyph> where TFont : IFont<TGlyph> {
+public abstract class FontMathTable<TFont, TGlyph> where TFont : IFont<TGlyph>
+{
     public float MuUnit(TFont font) => font.PointSize / 18f;
     public abstract float RadicalDisplayStyleVerticalGap(TFont font);
     public abstract float RadicalVerticalGap(TFont font);
-    public float GetStyleSize(LineStyle style, TFont font) => style switch {
+    public float GetStyleSize(LineStyle style, TFont font) => style switch
+    {
         LineStyle.Display => font.PointSize,
         LineStyle.Text => font.PointSize,
         LineStyle.Script => font.PointSize * ScriptScaleDown(font),
@@ -25,7 +27,7 @@ public abstract class FontMathTable<TFont, TGlyph> where TFont : IFont<TGlyph> {
      *     NSDictionary* italics = (NSDictionary*) _mathTable[kItalic];
     NSString* glyphName = [self.font getGlyphName:glyph];
     NSNumber* val = (NSNumber*) italics[glyphName];
-    // if val is nil, this returns 0.
+    // if val is nil, this return s 0.
     return [self fontUnitsToPt:val.intValue];*/
     public abstract float GetItalicCorrection(TFont font, TGlyph glyph);
     public virtual float FractionDelimiterSize(TFont font) => font.PointSize * 1.01f;

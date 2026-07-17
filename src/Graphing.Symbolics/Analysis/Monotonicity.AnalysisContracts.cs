@@ -1,0 +1,10 @@
+using System.Collections.Immutable;
+
+namespace Graphing.Symbolics;
+
+internal enum Monotonicity
+{
+    Increasing,
+    Decreasing,
+    Constant
+}

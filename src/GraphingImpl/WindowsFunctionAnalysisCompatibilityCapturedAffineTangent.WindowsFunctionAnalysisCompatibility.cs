@@ -1,0 +1,7 @@
+using System.Collections.Immutable;
+using Graphing.Analyzer;
+using Graphing.Symbolics;
+
+namespace GraphingImpl;
+
+internal readonly record struct WindowsFunctionAnalysisCompatibilityCapturedAffineTangent(ExactScalar OriginalAmplitude, ExactScalar OriginalFrequency, ExactScalar OriginalPhase, ExactScalar NormalizedFrequency, ExactScalar NormalizedPhase, WindowsFunctionAnalysisCompatibilityCapturedTangentSourceForm SourceForm);

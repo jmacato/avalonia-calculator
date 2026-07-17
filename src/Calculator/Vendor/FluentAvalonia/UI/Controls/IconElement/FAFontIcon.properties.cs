@@ -1,10 +1,10 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls.Documents;
 using Avalonia.Media;
 
 namespace FluentAvalonia.UI.Controls;
 
-public partial class FAFontIcon : FAIconElement
+public sealed partial class FAFontIcon : FAIconElement
 {
     /// <summary>
     /// Defines the <see cref="FontFamily"/> property
@@ -33,8 +33,8 @@ public partial class FAFontIcon : FAIconElement
     /// <summary>
     /// Defines the <see cref="Glyph"/> property
     /// </summary>
-    public static readonly StyledProperty<string> GlyphProperty =
-        AvaloniaProperty.Register<FAFontIcon, string>(nameof(Glyph));
+    public static readonly StyledProperty<string?> GlyphProperty =
+        AvaloniaProperty.Register<FAFontIcon, string?>(nameof(Glyph));
 
     /// <summary>
     /// Gets or sets the <see cref="Avalonia.Media.FontFamily"/> to use when rendering
@@ -78,7 +78,7 @@ public partial class FAFontIcon : FAIconElement
     /// <summary>
     /// Gets or sets the glyph this FontIcon renders
     /// </summary>
-    public string Glyph
+    public string? Glyph
     {
         get => GetValue(GlyphProperty);
         set => SetValue(GlyphProperty, value);

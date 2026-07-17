@@ -10,10 +10,11 @@ namespace CalculatorUITestFramework
 {
     public class UnitConverterResults
     {
-        private WindowsDriver<WindowsElement> session => CalculatorDriver.Instance.CalculatorSession;
-        private WindowsElement CalculationResult1 => this.session.TryFindElementByAccessibilityId("Value1");
+        private readonly CalculatorDriver driver = CalculatorDriver.Instance;
+        private WindowsDriver<WindowsElement> Session => driver.CalculatorSession;
+        private WindowsElement CalculationResult1 => Session.TryFindElementByAccessibilityId("Value1");
 
-        private WindowsElement CalculationResult2 => this.session.TryFindElementByAccessibilityId("Value2");
+        private WindowsElement CalculationResult2 => Session.TryFindElementByAccessibilityId("Value2");
 
         /// <summary>
         /// Gets the text from the Value1 control and removes the narrator text that is not displayed in the UI.

@@ -194,7 +194,7 @@ internal sealed class LinearParser
                     return ParseFunction(identifier);
                 }
 
-                string normalizedName = identifier.Text.ToLowerInvariant();
+                string normalizedName = IdentifierNormalizer.ToCanonicalLowerInvariant(identifier.Text);
                 if (normalizedName is not ("pi" or "e" or "infinity"))
                 {
                     if (normalizedName is "i")
@@ -330,7 +330,7 @@ internal sealed class LinearParser
     private static SourceSpan Cover(SourceSpan left, SourceSpan right) =>
         new(left.Start, Math.Max(left.End, right.End) - left.Start);
 
-    private static string NormalizeFunctionName(string name) => name.ToLowerInvariant() switch
+    private static string NormalizeFunctionName(string name) => IdentifierNormalizer.ToCanonicalLowerInvariant(name) switch
     {
         // Keep aliases out of the syntax tree so evaluation and every
         // symbolic analyzer operate on the same canonical function names.

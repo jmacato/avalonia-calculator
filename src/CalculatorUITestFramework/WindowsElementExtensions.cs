@@ -6,6 +6,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting.Logging;
 
 using OpenQA.Selenium.Appium.Windows;
 
+using System;
 using System.Diagnostics;
 using System.Threading;
 
@@ -20,6 +21,8 @@ namespace CalculatorUITestFramework
         /// <param name="timeout">Timeout in ms.</param>
         public static void WaitForDisplayed(this WindowsElement element, int timeout = 2000)
         {
+            ArgumentNullException.ThrowIfNull(element);
+
             Stopwatch timer = new Stopwatch();
             timer.Reset();
             timer.Start();

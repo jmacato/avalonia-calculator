@@ -2,7 +2,7 @@ using System;
 
 namespace UnitConversionManager;
 
-public static class NumberFormattingUtils
+internal static class NumberFormattingUtils
 {
     /// <summary>
     /// Trims out any trailing zeros or decimals in the given input string
@@ -12,7 +12,7 @@ public static class NumberFormattingUtils
     public static void TrimTrailingZeros(ref string number)
     {
         // If no decimal point exists, return the original string
-        if (!number.Contains('.'))
+        if (!number.Contains('.', StringComparison.Ordinal))
         {
             return;
         }
@@ -21,7 +21,7 @@ public static class NumberFormattingUtils
         string result = number.TrimEnd('0');
 
         // If the result ends with a decimal point, remove it
-        if (result.EndsWith("."))
+        if (result.EndsWith('.'))
         {
             result = result.Substring(0, result.Length - 1);
         }
@@ -36,12 +36,12 @@ public static class NumberFormattingUtils
     {
         TrimTrailingZeros(ref value);
         var numberSignificantDigits = (uint)(value.Length);
-        if (value.Contains('.'))
+        if (value.Contains('.', StringComparison.Ordinal))
         {
             --numberSignificantDigits;
         }
 
-        if (value.Contains('-'))
+        if (value.Contains('-', StringComparison.Ordinal))
         {
             --numberSignificantDigits;
         }
@@ -64,7 +64,7 @@ public static class NumberFormattingUtils
     /// <param name="numSignificant">unsigned int number of significant digits to round to</param>
     public static string RoundSignificantDigits(double num, uint numSignificant)
     {
-        return num.ToString($"F{numSignificant}");
+        return num.ToString($"F{numSignificant}", System.Globalization.CultureInfo.CurrentCulture);
         // stringstream out(stringstream::out);
         // out << fixed;
         // out.precision(numSignificant);
@@ -85,7 +85,7 @@ public static class NumberFormattingUtils
 
         // Remove trailing zeros in the exponent part
         // Find the 'e' character
-        var ePosition = formatted.IndexOf('e');
+        var ePosition = formatted.IndexOf('e', StringComparison.Ordinal);
         if (ePosition < 0) return formatted; // Fallback to original if 'e' not found
 
         // Get the part before 'e'

@@ -11,7 +11,7 @@ namespace CalculatorApp
 {
     namespace ViewModel
     {
- 
+
         /// <summary>
         /// Model representation of a single item in the Memory list
         /// </summary>
@@ -52,7 +52,7 @@ namespace CalculatorApp
                     if (m_Position != value)
                     {
                         m_Position = value;
-                        RaisePropertyChanged("Position");
+                        RaisePropertyChanged(nameof(Position));
                     }
                 }
             }
@@ -69,11 +69,11 @@ namespace CalculatorApp
                     if (m_Value != value)
                     {
                         m_Value = value;
-                        RaisePropertyChanged("Value");
+                        RaisePropertyChanged(nameof(Value));
                     }
                 }
             }
-             
+
         };
     }
 }

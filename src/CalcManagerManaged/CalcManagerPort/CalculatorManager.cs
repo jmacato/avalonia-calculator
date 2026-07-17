@@ -112,8 +112,8 @@ public class CalculatorManager : ICalcDisplay
     /// Used to set the expression display value on ViewModel
     /// </summary>
     /// <param name="expressionString">wstring representing expression to be displayed</param>
-    public void SetExpressionDisplay(IList<(wstring, int)> tokens,
-        IList<IExpressionCommand> commands)
+    public void SetExpressionDisplay(IReadOnlyList<(wstring, int)> tokens,
+        IReadOnlyList<IExpressionCommand> commands)
     {
         if (!m_inHistoryItemLoadMode)
         {
@@ -550,7 +550,7 @@ public class CalculatorManager : ICalcDisplay
         return (mode == CalculatorMode.Standard) ? m_pStdHistory.History : m_pSciHistory.History;
     }
 
-    public void SetHistoryItems(IList<HISTORYITEM> historyItems)
+    public void SetHistoryItems(IEnumerable<HISTORYITEM> historyItems)
     {
         if (historyItems is null)
         {

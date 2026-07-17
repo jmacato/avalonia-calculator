@@ -1,9 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-
 using System;
 using System.Reflection;
-
 using Windows.Storage;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -13,10 +11,9 @@ namespace CalculatorApp.Utils
     /// <summary>
     /// Class providing functionality around switching and restoring theme settings
     /// </summary>
-    public static class ThemeHelper
+    internal static class ThemeHelper
     {
         private const string SelectedAppThemeKey = "SelectedAppTheme";
-
         /// <summary>
         /// Get or set (with LocalSettings persistence) the RequestedTheme of the root element.
         /// </summary>
@@ -31,57 +28,55 @@ namespace CalculatorApp.Utils
 
                 return ElementTheme.Default;
             }
+
             set
             {
                 if (App.Window.Content is FrameworkElement rootElement)
                 {
                     rootElement.RequestedTheme = value;
-
                     ApplicationData.Current.LocalSettings.Values[SelectedAppThemeKey] = rootElement.RequestedTheme.ToString();
                 }
             }
         }
 
-        public static TEnum GetEnum<TEnum>(string text) where TEnum : struct
+        public static TEnum GetEnum<TEnum>(string text)
+            where TEnum : struct
         {
             if (!typeof(TEnum).GetTypeInfo().IsEnum)
             {
                 throw new InvalidOperationException("Generic parameter 'TEnum' must be an enum.");
             }
-            return (TEnum)Enum.Parse(typeof(TEnum), text);
+
+            return Enum.Parse<TEnum>(text);
         }
 
         public static void InitializeAppTheme()
         {
-            string savedTheme = ApplicationData.Current.LocalSettings.Values[SelectedAppThemeKey]?.ToString();
-
+            string? savedTheme = ApplicationData.Current.LocalSettings.Values[SelectedAppThemeKey]?.ToString();
             if (!string.IsNullOrEmpty(savedTheme))
             {
                 RootTheme = GetEnum<ElementTheme>(savedTheme);
             }
         }
 
-        public struct ThemeChangedCallbackToken
+        public static ThemeHelperThemeChangedCallbackToken RegisterAppThemeChangedCallback(DependencyPropertyChangedCallback callback)
         {
-            public WeakReference RootFrame;
-            public long Token;
-        }
-
-        public static ThemeChangedCallbackToken RegisterAppThemeChangedCallback(DependencyPropertyChangedCallback callback)
-        {
-            Frame rootFrame = App.Window.Content as Frame;
+            Frame rootFrame = App.Window.Content as Frame
+                ?? throw new InvalidOperationException("The application window content must be a Frame.");
             long token = rootFrame.RegisterPropertyChangedCallback(FrameworkElement.RequestedThemeProperty, callback);
-            return new ThemeChangedCallbackToken { RootFrame = new WeakReference(rootFrame), Token = token };
+            return new ThemeHelperThemeChangedCallbackToken
+            {
+                RootFrame = new WeakReference(rootFrame),
+                Token = token
+            };
         }
 
-        public static void UnregisterAppThemeChangedCallback(ThemeChangedCallbackToken callbackToken)
+        public static void UnregisterAppThemeChangedCallback(ThemeHelperThemeChangedCallbackToken callbackToken)
         {
-            if (callbackToken.RootFrame.IsAlive)
+            if (callbackToken.RootFrame?.Target is Frame rootFrame)
             {
-                Frame rootFrame = callbackToken.RootFrame.Target as Frame;
                 rootFrame.UnregisterPropertyChangedCallback(Frame.RequestedThemeProperty, callbackToken.Token);
             }
         }
     }
 }
-

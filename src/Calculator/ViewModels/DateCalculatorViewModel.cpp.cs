@@ -11,9 +11,9 @@ public partial class DateCalculatorViewModel
 {
     public DateCalculatorViewModel()
     {
-        LocalizationSettings localization = LocalizationSettings.GetInstance();
-        _dateCalcEngine = new DateCalculationEngine(localization.GetCalendarIdentifier());
-        _listSeparator = localization.GetListSeparatorWinRT() + " ";
+        LocalizationSettings localization = LocalizationSettings.Instance;
+        _dateCalcEngine = new DateCalculationEngine(localization.CalendarIdentifier);
+        _listSeparator = localization.ListSeparator + " ";
         _copyCommand = new DelegateCommand(OnCopyCommand);
 
         DateTime today = DateTime.Today;
@@ -56,9 +56,9 @@ public partial class DateCalculatorViewModel
 
             var duration = new DateDifference
             {
-                year = YearsOffset,
-                month = MonthsOffset,
-                day = DaysOffset
+                Year = YearsOffset,
+                Month = MonthsOffset,
+                Day = DaysOffset
             };
 
             DateTime? result = IsAddMode
@@ -82,16 +82,16 @@ public partial class DateCalculatorViewModel
             {
                 IsDiffInDays = false;
                 StrDateDiffResultInDays = string.Empty;
-                StrDateDiffResult = AppResourceProvider.GetInstance().GetResourceString("CalculationFailed");
+                StrDateDiffResult = AppResourceProvider.Instance.GetResourceString("CalculationFailed");
             }
-            else if (_dateDiffResultInDays.day == 0)
+            else if (_dateDiffResultInDays.Day == 0)
             {
                 IsDiffInDays = true;
                 StrDateDiffResultInDays = string.Empty;
-                StrDateDiffResult = AppResourceProvider.GetInstance().GetResourceString("Date_SameDates");
+                StrDateDiffResult = AppResourceProvider.Instance.GetResourceString("Date_SameDates");
             }
             else if (_dateDiffResult == DateDifference.Unknown
-                     || (_dateDiffResult.year == 0 && _dateDiffResult.month == 0 && _dateDiffResult.week == 0))
+                     || (_dateDiffResult.Year == 0 && _dateDiffResult.Month == 0 && _dateDiffResult.Week == 0))
             {
                 IsDiffInDays = true;
                 StrDateDiffResultInDays = string.Empty;
@@ -109,13 +109,13 @@ public partial class DateCalculatorViewModel
         }
 
         StrDateResult = _isOutOfBound
-            ? AppResourceProvider.GetInstance().GetResourceString("Date_OutOfBoundMessage")
+            ? AppResourceProvider.Instance.GetResourceString("Date_OutOfBoundMessage")
             : _dateResult.ToString("D", CultureInfo.CurrentCulture);
     }
 
     private void UpdateStrDateDiffResultAutomationName()
     {
-        string format = AppResourceProvider.GetInstance().GetResourceString("Date_DifferenceResultAutomationName");
+        string format = AppResourceProvider.Instance.GetResourceString("Date_DifferenceResultAutomationName");
         StrDateDiffResultAutomationName = string.IsNullOrEmpty(format)
             ? StrDateDiffResult
             : LocalizationStringUtil.GetLocalizedString(format, StrDateDiffResult);
@@ -123,7 +123,7 @@ public partial class DateCalculatorViewModel
 
     private void UpdateStrDateResultAutomationName()
     {
-        string format = AppResourceProvider.GetInstance().GetResourceString("Date_ResultingDateAutomationName");
+        string format = AppResourceProvider.Instance.GetResourceString("Date_ResultingDateAutomationName");
         StrDateResultAutomationName = string.IsNullOrEmpty(format)
             ? StrDateResult
             : LocalizationStringUtil.GetLocalizedString(format, StrDateResult);
@@ -132,17 +132,17 @@ public partial class DateCalculatorViewModel
     private string GetDateDiffString()
     {
         var parts = new List<string>(4);
-        AddPart(parts, _dateDiffResult.year, "Date_Year", "Date_Years");
-        AddPart(parts, _dateDiffResult.month, "Date_Month", "Date_Months");
-        AddPart(parts, _dateDiffResult.week, "Date_Week", "Date_Weeks");
-        AddPart(parts, _dateDiffResult.day, "Date_Day", "Date_Days");
+        AddPart(parts, _dateDiffResult.Year, "Date_Year", "Date_Years");
+        AddPart(parts, _dateDiffResult.Month, "Date_Month", "Date_Months");
+        AddPart(parts, _dateDiffResult.Week, "Date_Week", "Date_Weeks");
+        AddPart(parts, _dateDiffResult.Day, "Date_Day", "Date_Days");
         return string.Join(_listSeparator, parts);
     }
 
     private string GetDateDiffStringInDays()
     {
-        int days = _dateDiffResultInDays.day;
-        string unit = AppResourceProvider.GetInstance()
+        int days = _dateDiffResultInDays.Day;
+        string unit = AppResourceProvider.Instance
             .GetResourceString(days == 1 ? "Date_Day" : "Date_Days");
         return $"{GetLocalizedNumberString(days)} {unit}";
     }
@@ -154,7 +154,7 @@ public partial class DateCalculatorViewModel
             return;
         }
 
-        string unit = AppResourceProvider.GetInstance().GetResourceString(value == 1 ? singularKey : pluralKey);
+        string unit = AppResourceProvider.Instance.GetResourceString(value == 1 ? singularKey : pluralKey);
         parts.Add($"{GetLocalizedNumberString(value)} {unit}");
     }
 
@@ -167,7 +167,7 @@ public partial class DateCalculatorViewModel
     private static string GetLocalizedNumberString(int value)
     {
         string result = value.ToString(CultureInfo.InvariantCulture);
-        LocalizationSettings.GetInstance().LocalizeDisplayValue(ref result);
+        LocalizationSettings.LocalizeDisplayValue(ref result);
         return result;
     }
 }

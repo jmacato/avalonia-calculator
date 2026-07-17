@@ -1,6 +1,7 @@
 namespace CSharpMath.Atom;
 
-public enum FontStyle {
+public enum FontStyle
+{
     ///<summary>\mathnormal</summary>
     Default,
     ///<summary>\mathrm</summary>

@@ -3,7 +3,8 @@ using System.Text;
 namespace CSharpMath.Atom.Atoms;
 
 /// <summary>An inner atom, i.e. embedded math list</summary>
-public sealed class Inner(Boundary left, MathList innerList, Boundary right) : MathAtom, IMathListContainer {
+public sealed class Inner(Boundary left, MathList innerList, Boundary right) : MathAtom, IMathListContainer
+{
     public MathList InnerList { get; } = innerList;
     public Boundary LeftBoundary { get; } = left;
     public Boundary RightBoundary { get; } = right;

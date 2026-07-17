@@ -7,9 +7,9 @@ using Microsoft.UI.Xaml;
 
 namespace CalculatorApp
 {
-    public sealed class DispatcherTimerDelayer
+    internal sealed class DispatcherTimerDelayer
     {
-        public event EventHandler<object> Action;
+        public event EventHandler<object>? Action;
 
         public DispatcherTimerDelayer(TimeSpan timeSpan)
         {
@@ -37,10 +37,10 @@ namespace CalculatorApp
             m_timer.Stop();
         }
 
-        private void Timer_Tick(object sender, object e)
+        private void Timer_Tick(object? sender, object e)
         {
             m_timer.Stop();
-            Action?.Invoke(this, null);
+            Action?.Invoke(this, EventArgs.Empty);
         }
 
         private readonly DispatcherTimer m_timer;

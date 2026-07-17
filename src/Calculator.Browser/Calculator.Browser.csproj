@@ -2,15 +2,16 @@
   <PropertyGroup>
     <TargetFramework>net10.0-browser</TargetFramework>
     <OutputType>Exe</OutputType>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WasmEnableThreads>true</WasmEnableThreads>
     <EmccStackSize>1MB</EmccStackSize>
+    <WasmInitialHeapSize>33554432</WasmInitialHeapSize>
     <EmccMaximumHeapSize>209715200</EmccMaximumHeapSize>
     <InvariantTimezone>true</InvariantTimezone>
+    <EventSourceSupport>true</EventSourceSupport>
     <RunAOTCompilation Condition="'$(Configuration)' == 'Release'">true</RunAOTCompilation>
   </PropertyGroup>
 
@@ -23,7 +24,6 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'">
-    <WasmAotProfilePath>$(MSBuildThisFileDirectory)Profiles/Calculator.aotprofile</WasmAotProfilePath>
     <WasmDedup>true</WasmDedup>
     <WasmRunWasmOpt>true</WasmRunWasmOpt>
   </PropertyGroup>

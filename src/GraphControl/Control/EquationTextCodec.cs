@@ -9,7 +9,7 @@ namespace GraphControl;
 /// </summary>
 public sealed class EquationTextCodec
 {
-    private readonly Lock _lock = new();
+    private readonly int _ownerThreadId = Environment.CurrentManagedThreadId;
     private readonly IMathSolver _solver;
 
     public EquationTextCodec(IMathSolverFactory? factory = null)
@@ -67,20 +67,22 @@ public sealed class EquationTextCodec
         out int errorType)
     {
         ArgumentNullException.ThrowIfNull(input);
-        lock (_lock)
+        if (Environment.CurrentManagedThreadId != _ownerThreadId)
         {
-            _solver.ParsingOptions().SetFormatType(inputFormat);
-            IExpression? expression = _solver.ParseInput(input, out errorCode, out errorType);
-            if (expression is null)
-            {
-                output = string.Empty;
-                return false;
-            }
-
-            _solver.FormatOptions().SetFormatType(outputFormat);
-            _solver.FormatOptions().SetMathMLPrefix(string.Empty);
-            output = _solver.Serialize(expression);
-            return true;
+            throw new InvalidOperationException("Equation conversion must remain on its owning UI thread.");
         }
+
+        _solver.ParsingOptions().SetFormatType(inputFormat);
+        IExpression? expression = _solver.ParseInput(input, out errorCode, out errorType);
+        if (expression is null)
+        {
+            output = string.Empty;
+            return false;
+        }
+
+        _solver.FormatOptions().SetFormatType(outputFormat);
+        _solver.FormatOptions().SetMathMLPrefix(string.Empty);
+        output = _solver.Serialize(expression);
+        return true;
     }
 }
