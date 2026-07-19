@@ -1,5 +1,6 @@
 using System.Reflection;
-using System.Runtime.CompilerServices;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 using CalcEngine;
 using UnitConversionManager;
 
@@ -10,25 +11,46 @@ public class CoreStaticStateTests
     [Fact]
     public void CoreAssemblyContainsNoUserDeclaredNonConstantStaticFields()
     {
-        Assembly coreAssembly = typeof(RatPak).Assembly;
-        string[] mutableStaticFields = coreAssembly
-            .GetTypes()
-            .Where(type => !type.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false))
-            .SelectMany(type => type.GetFields(
-                BindingFlags.Static |
-                BindingFlags.Public |
-                BindingFlags.NonPublic |
-                BindingFlags.DeclaredOnly))
-            .Where(field => !field.IsLiteral)
-            .Select(field =>
-                $"{field.DeclaringType!.FullName}.{field.Name} ({field.FieldType.FullName})")
-            .OrderBy(name => name, StringComparer.Ordinal)
-            .ToArray();
+        string[] mutableStaticFields = ReadMutableStaticFields();
 
         Assert.True(
             mutableStaticFields.Length == 0,
             "Core process-wide state must be constant or compiler-generated only:\n" +
             string.Join("\n", mutableStaticFields));
+    }
+
+    private static string[] ReadMutableStaticFields()
+    {
+        using FileStream stream = File.OpenRead(typeof(RatPak).Assembly.Location);
+        using var portableExecutable = new PEReader(stream);
+        MetadataReader metadata = portableExecutable.GetMetadataReader();
+        var mutableFields = new List<string>();
+        foreach (TypeDefinitionHandle typeHandle in metadata.TypeDefinitions)
+        {
+            TypeDefinition type = metadata.GetTypeDefinition(typeHandle);
+            string typeName = metadata.GetString(type.Name);
+            if (typeName.StartsWith('<'))
+            {
+                continue;
+            }
+
+            string typeNamespace = metadata.GetString(type.Namespace);
+            foreach (FieldDefinitionHandle fieldHandle in type.GetFields())
+            {
+                FieldDefinition field = metadata.GetFieldDefinition(fieldHandle);
+                FieldAttributes attributes = field.Attributes;
+                if ((attributes & FieldAttributes.Static) == 0 ||
+                    (attributes & FieldAttributes.Literal) != 0)
+                {
+                    continue;
+                }
+
+                mutableFields.Add($"{typeNamespace}.{typeName}.{metadata.GetString(field.Name)}");
+            }
+        }
+
+        mutableFields.Sort(StringComparer.Ordinal);
+        return mutableFields.ToArray();
     }
 
     [Fact]

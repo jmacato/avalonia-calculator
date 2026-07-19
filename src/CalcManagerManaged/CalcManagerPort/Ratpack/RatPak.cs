@@ -1471,7 +1471,7 @@ public class RatPak
 
     // INC(a) is the rational equivalent of a++
     // Check to see if we can avoid doing this the hard way.
-    private void INC(ref NUMBER a)
+    internal void INC(ref NUMBER a)
     {
         if (a._mant[0] < BASEX - 1)
         {

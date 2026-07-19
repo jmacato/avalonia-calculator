@@ -1,5 +1,4 @@
 using CalcEngine;
-using System.Reflection;
 
 namespace CalcManagerPortTests.RatPakTests;
 
@@ -113,16 +112,11 @@ public class RationalWrapperTests
         };
         uint[] storage = Assert.IsType<uint[]>(number.Mant);
         storage[0] = 0x7fffffff;
-        MethodInfo? increment = typeof(RatPak).GetMethod(
-            "INC",
-            BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.NotNull(increment);
-        object?[] arguments = [number];
+        NUMBER original = number;
+        _ratPak.INC(ref number);
 
-        increment.Invoke(_ratPak, arguments);
-
-        NUMBER result = Assert.IsType<NUMBER>(arguments[0]);
-        Assert.NotSame(number, result);
+        NUMBER result = number;
+        Assert.NotSame(original, result);
         Assert.Equal(2, result.Cdigit);
         Assert.Equal(0u, result.Mant[0]);
         Assert.Equal(1u, result.Mant[1]);

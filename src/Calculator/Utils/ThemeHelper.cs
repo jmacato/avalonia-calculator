@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 using System;
-using System.Reflection;
 using Windows.Storage;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -40,13 +39,8 @@ namespace CalculatorApp.Utils
         }
 
         public static TEnum GetEnum<TEnum>(string text)
-            where TEnum : struct
+            where TEnum : struct, Enum
         {
-            if (!typeof(TEnum).GetTypeInfo().IsEnum)
-            {
-                throw new InvalidOperationException("Generic parameter 'TEnum' must be an enum.");
-            }
-
             return Enum.Parse<TEnum>(text);
         }
 

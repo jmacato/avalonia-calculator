@@ -6,9 +6,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <IsAotCompatible>true</IsAotCompatible>
     <WasmEnableThreads>true</WasmEnableThreads>
     <EmccStackSize>1MB</EmccStackSize>
-    <WasmInitialHeapSize>33554432</WasmInitialHeapSize>
+    <!-- Keep threaded runtime registration inside the initial allocation. The LLVM AOT
+         payload crosses 84 MiB during startup; growing shared memory while worker
+         instances are registering leaves those instances with stale bounds on WebKit. -->
+    <WasmInitialHeapSize>100663296</WasmInitialHeapSize>
     <EmccMaximumHeapSize>209715200</EmccMaximumHeapSize>
     <InvariantTimezone>true</InvariantTimezone>
     <EventSourceSupport>true</EventSourceSupport>
@@ -24,12 +28,35 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'">
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <AOTMode>LLVMOnly</AOTMode>
     <WasmDedup>true</WasmDedup>
+    <WasmStripILAfterAOT>true</WasmStripILAfterAOT>
+    <WasmNativeDebugSymbols>false</WasmNativeDebugSymbols>
+    <WasmNativeStrip>true</WasmNativeStrip>
+    <WasmEmitSymbolMap>false</WasmEmitSymbolMap>
+    <WasmEmitSourceMap>false</WasmEmitSourceMap>
     <WasmRunWasmOpt>true</WasmRunWasmOpt>
+    <EmccCompileOptimizationFlag>-O3</EmccCompileOptimizationFlag>
+    <WasmBitcodeCompileOptimizationFlag>-O3</WasmBitcodeCompileOptimizationFlag>
+    <EmccLinkOptimizationFlag>-O3</EmccLinkOptimizationFlag>
+    <EnableDiagnostics>false</EnableDiagnostics>
+    <DebugSymbols>false</DebugSymbols>
+    <DebugType>none</DebugType>
+    <!-- Preserve the native exception type, message, and WebAssembly stack when a
+         pthread fails. Without this Emscripten surfaces only an opaque
+         WebAssembly.Exception and the browser cannot report the failing runtime
+         path to telemetry. This does not enable managed debugging. -->
+    <EmccFlags>$(EmccFlags) -sEXCEPTION_STACK_TRACES=1</EmccFlags>
+    <EnableDefaultCompressionFormats>false</EnableDefaultCompressionFormats>
+    <BuildCompressionFormats>brotli</BuildCompressionFormats>
+    <PublishCompressionFormats>brotli</PublishCompressionFormats>
+    <CompressionIncludePatterns>$(CompressionIncludePatterns);**/*.ttf</CompressionIncludePatterns>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'">
-    <WasmOptConfigurationFlags Include="-O2" />
+    <WasmOptConfigurationFlags Include="-O3" />
     <WasmOptConfigurationFlags Include="--merge-similar-functions" />
     <WasmOptConfigurationFlags Include="--duplicate-function-elimination" />
   </ItemGroup>
@@ -37,10 +64,117 @@
   <ItemGroup>
     <PackageReference Include="Avalonia.Browser" Version="9999.0.0-localbuild" />
     <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" Condition="'$(WasmEnableThreads)' == 'true'" />
+    <NativeFileReference Include="Native/mono-aot-exception-diagnostics.c"
+                         Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'" />
+    <EmccExportedFunction Include="_calc_browser_take_current_managed_exception"
+                          Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'" />
+    <EmccExportedFunction Include="_calc_browser_load_configured_satellite"
+                          Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'" />
+    <EmccExportedFunction Include="_calc_browser_get_satellite_load_status"
+                          Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'" />
+    <NativeFileReference Include="Native/mono-aot-debugger-bootstrap.c"
+                         Condition="'$(CalcEnableThreadedManagedDebugging)' == 'true'" />
+    <_AOT_InternalForceInterpretAssemblies Include="Calculator"
+                                           Condition="'$(CalcInterpretManagedDebugAssemblies)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Calculator\Calculator.csproj"
-                      AdditionalProperties="CalculatorBrowserBuild=true" />
+                      AdditionalProperties="CalculatorBrowserBuild=true;CalcEnableThreadedManagedDebugging=$(CalcEnableThreadedManagedDebugging)" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\Calculator\Assets\Fonts\Hind2\Hind2-Regular.ttf"
+             Link="wwwroot\fonts\Hind2-Regular.ttf"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\Calculator\Assets\Fonts\Hind2\Hind2-SemiBold.ttf"
+             Link="wwwroot\fonts\Hind2-SemiBold.ttf"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\Calculator\Assets\Fonts\Hind2\LICENSE.txt"
+             Link="wwwroot\fonts\Hind2-LICENSE.txt"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="GenerateCalculatorBrowserDownloadManifest"
+          AfterTargets="GeneratePublishWasmBootJson"
+          Condition="'@(_WasmPublishAsset)' != ''">
+    <PropertyGroup>
+      <_CalculatorBrowserDownloadManifestPath>$(IntermediateOutputPath)browser-asset-sizes.js</_CalculatorBrowserDownloadManifestPath>
+    </PropertyGroup>
+    <ItemGroup>
+      <_CalculatorBrowserDownloadManifestCandidate Include="$(_CalculatorBrowserDownloadManifestPath)"
+                                                   RelativePath="browser-asset-sizes.js" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(_CalculatorBrowserDownloadManifestPath)"
+                      Lines="export const assetSizes = new Map(["
+                      Overwrite="true"
+                      Encoding="UTF-8" />
+    <WriteLinesToFile File="$(_CalculatorBrowserDownloadManifestPath)"
+                      Lines="@(_WasmPublishAsset->'  [&quot;%(Filename)%(Extension)&quot;, %(FileLength)],')"
+                      Overwrite="false"
+                      Encoding="UTF-8" />
+    <WriteLinesToFile File="$(_CalculatorBrowserDownloadManifestPath)"
+                      Lines="@(_WasmPublishAsset->'  [&quot;%(Filename).%(Fingerprint)%(Extension)&quot;, %(FileLength)],')"
+                      Overwrite="false"
+                      Encoding="UTF-8" />
+    <WriteLinesToFile File="$(_CalculatorBrowserDownloadManifestPath)"
+                      Lines="]);"
+                      Overwrite="false"
+                      Encoding="UTF-8" />
+    <DefineStaticWebAssets CandidateAssets="@(_CalculatorBrowserDownloadManifestCandidate)"
+                           SourceId="$(PackageId)"
+                           SourceType="Computed"
+                           AssetKind="Publish"
+                           AssetRole="Primary"
+                           CopyToOutputDirectory="Never"
+                           CopyToPublishDirectory="PreserveNewest"
+                           ContentRoot="$(PublishDir)wwwroot"
+                           BasePath="$(StaticWebAssetBasePath)">
+      <Output TaskParameter="Assets" ItemName="_CalculatorBrowserDownloadManifestAsset" />
+    </DefineStaticWebAssets>
+    <DefineStaticWebAssetEndpoints CandidateAssets="@(_CalculatorBrowserDownloadManifestAsset)"
+                                   ExistingEndpoints="@(StaticWebAssetEndpoint)"
+                                   ContentTypeMappings="@(StaticWebAssetContentTypeMapping)">
+      <Output TaskParameter="Endpoints" ItemName="_CalculatorBrowserDownloadManifestEndpoint" />
+    </DefineStaticWebAssetEndpoints>
+    <ItemGroup>
+      <StaticWebAsset Include="@(_CalculatorBrowserDownloadManifestAsset)" />
+      <StaticWebAssetEndpoint Include="@(_CalculatorBrowserDownloadManifestEndpoint)" />
+      <FileWrites Include="$(_CalculatorBrowserDownloadManifestPath)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="PatchCalculatorNativeBrowserRuntime"
+          AfterTargets="WasmLinkDotNet"
+          BeforeTargets="_CompleteWasmBuildNative"
+          Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'">
+    <PropertyGroup>
+      <_CalculatorNativeWorkerPath>$(_WasmIntermediateOutputPath)dotnet.native.worker.mjs</_CalculatorNativeWorkerPath>
+      <_CalculatorEmscriptenNode>$([MSBuild]::NormalizePath($(EmscriptenNodeToolsPath), 'bin', 'node$(_ExeExt)'))</_CalculatorEmscriptenNode>
+      <_CalculatorNativeWorkerPatch>$([MSBuild]::NormalizePath($(MSBuildProjectDirectory), '..', '..', 'eng', 'browser', 'patch-dotnet-native-worker.mjs'))</_CalculatorNativeWorkerPatch>
+    </PropertyGroup>
+    <Exec Command="&quot;$(_CalculatorEmscriptenNode)&quot; &quot;$(_CalculatorNativeWorkerPatch)&quot; &quot;$(_CalculatorNativeWorkerPath)&quot;"
+          Condition="Exists('$(_CalculatorNativeWorkerPath)')" />
+  </Target>
+
+  <Target Name="ProjectCalculatorBrotliOnlyPublish"
+          AfterTargets="Publish"
+          Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'">
+    <PropertyGroup>
+      <_CalculatorEmscriptenNode>$([MSBuild]::NormalizePath($(EmscriptenNodeToolsPath), 'bin', 'node$(_ExeExt)'))</_CalculatorEmscriptenNode>
+      <_CalculatorRuntimePatch>$([MSBuild]::NormalizePath($(MSBuildProjectDirectory), '..', '..', 'eng', 'browser', 'patch-dotnet-runtime-worker-preload.mjs'))</_CalculatorRuntimePatch>
+    </PropertyGroup>
+    <ItemGroup>
+      <_CalculatorBrotliSidecar Include="$(PublishDir)wwwroot/**/*.br" />
+      <_CalculatorBrotliRuntimeSidecar Include="$(PublishDir)wwwroot/_framework/dotnet.runtime*.js.br" />
+      <_CalculatorRawAssetWithBrotli Include="@(_CalculatorBrotliSidecar->'%(RootDir)%(Directory)%(Filename)')" />
+      <_CalculatorObsoleteGzipSidecar Include="$(PublishDir)wwwroot/**/*.gz" />
+    </ItemGroup>
+    <Exec Command="&quot;$(_CalculatorEmscriptenNode)&quot; &quot;$(_CalculatorRuntimePatch)&quot; &quot;%(_CalculatorBrotliRuntimeSidecar.FullPath)&quot;"
+          Condition="'@(_CalculatorBrotliRuntimeSidecar)' != ''" />
+    <Delete Files="@(_CalculatorRawAssetWithBrotli);@(_CalculatorObsoleteGzipSidecar)" />
+  </Target>
 </Project>

@@ -80,6 +80,23 @@ internal sealed class TelemetryUiSnapshot
     public double ManagedSampleAgeMs { get; set; }
     public double ManagedDispatcherPulse { get; set; }
     public double ManagedDispatcherAgeMs { get; set; }
+    public long NativeDispatcherThreadId { get; set; }
+    public int NativeDispatcherStage { get; set; }
+    public long NativeDispatcherStageSequence { get; set; }
+    public long NativeDispatcherStageTick { get; set; }
+    public long NativeDispatcherWakeSequence { get; set; }
+    public int NativeDispatcherInputDepth { get; set; }
+    public int NativeDispatcherUiCommandDepth { get; set; }
+    public long NativeDispatcherDumpRequested { get; set; }
+    public long NativeDispatcherDumpCompleted { get; set; }
+    public long NativeDispatcherEventRead { get; set; }
+    public long NativeDispatcherEventWrite { get; set; }
+    public long NativeDispatcherUiCommandRead { get; set; }
+    public long NativeDispatcherUiCommandWrite { get; set; }
+    public int NativeDispatcherUiCommandDrainScheduled { get; set; }
+    public long NativeDispatcherFaultHResult { get; set; }
+    public int NativeDispatcherFaultType { get; set; }
+    public long NativeDispatcherLoopExitCount { get; set; }
     public bool GraphPipelineProbeStarted { get; set; }
     public bool GraphPipelineProbeInFlight { get; set; }
     public long GraphRequestedGeneration { get; set; }
@@ -101,4 +118,18 @@ internal sealed class TelemetryUiSnapshot
     public int GraphRendererActiveCount { get; set; }
     public long GraphRendererCreatedCount { get; set; }
     public long GraphRendererDisposedCount { get; set; }
+    public int ConverterStage { get; set; }
+    public int ConverterStageTick { get; set; }
+    public int ConverterStageThreadId { get; set; }
+    public int ConverterUiThreadId { get; set; }
+    public long ConverterRequestCount { get; set; }
+    public long ConverterCompletionCount { get; set; }
+    public long ConverterFailureCount { get; set; }
+    public int ConverterFailureKind { get; set; }
+    public long GraphPublishSequence { get; set; }
+    public int ApplicationRootMode { get; set; }
+    public int MainPageCount { get; set; }
+    public int RootMainPageId { get; set; }
+    public int LastNavigatedMainPageId { get; set; }
+    public int LastNavigatedMode { get; set; }
 }

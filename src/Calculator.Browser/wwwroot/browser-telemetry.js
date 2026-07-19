@@ -82,7 +82,7 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
     let managedDispatcherPulse = 0;
     let lastManagedDispatcherMonoMs = 0;
     let graphPipelineProbeStarted = false;
-    let graphPipelineState = new Int32Array(19);
+    let graphPipelineState = new Int32Array(33);
     const inputTrace = createInputTrace();
 
     const client = {
@@ -153,14 +153,31 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
         });
     }
 
+    function queueLongEvent(kind, detail) {
+        const text = cleanText(detail, 32 * 1024);
+        const chunkLength = 700;
+        const chunkCount = Math.max(1, Math.ceil(text.length / chunkLength));
+        for (let index = 0; index < chunkCount; index++) {
+            queueEvent(
+                kind,
+                `[${index + 1}/${chunkCount}] ${text.slice(index * chunkLength, (index + 1) * chunkLength)}`);
+        }
+    }
+
     function mark(stage, detail = '') {
         const milestone = cleanText(stage, 80);
         queueEvent('milestone', detail ? `${milestone}: ${detail}` : milestone);
     }
 
     function recordError(kind, error) {
-        queueEvent(kind, describeError(error));
+        queueLongEvent(kind, describeError(error, 32 * 1024));
     }
+
+    const originalConsoleError = console.error;
+    console.error = (...values) => {
+        queueLongEvent('console-error', values.map(value => describeError(value, 32 * 1024)).join(' '));
+        Reflect.apply(originalConsoleError, console, values);
+    };
 
     function recordInput(kind, event, detail1 = 0, detail2 = 0) {
         if (!inputTrace) {
@@ -298,6 +315,25 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
         }
     }
 
+    function readNativeDispatcher() {
+        try {
+            const module = runtimeApi?.Module ?? globalThis.getDotnetRuntime?.(0)?.Module;
+            const getField = module?._avalonia_browser_dispatcher_debug_get;
+            if (typeof getField !== 'function') {
+                return null;
+            }
+
+            const fields = new Uint32Array(17);
+            for (let index = 0; index < fields.length; index++) {
+                fields[index] = getField(index) >>> 0;
+            }
+
+            return fields;
+        } catch {
+            return null;
+        }
+    }
+
     function refreshGraphPipeline() {
         const state = globalThis.calculatorGraphPipeline;
         if (typeof state !== 'string') {
@@ -327,6 +363,7 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
         const rect = canvas?.getBoundingClientRect();
         const inputHost = canvas?.parentElement;
         const wasm = readWasmMemory();
+        const nativeDispatcher = readNativeDispatcher();
         const jsHeapBytes = finiteNumber(performance.memory?.usedJSHeapSize);
         const managedDispatcherAgeMs = lastManagedDispatcherMonoMs > 0
             ? now - lastManagedDispatcherMonoMs
@@ -410,6 +447,23 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
             managedSampleAgeMs: managedDispatcherAgeMs,
             managedDispatcherPulse,
             managedDispatcherAgeMs,
+            nativeDispatcherThreadId: finiteNumber(nativeDispatcher?.[0]),
+            nativeDispatcherStage: finiteNumber(nativeDispatcher?.[1]),
+            nativeDispatcherStageSequence: finiteNumber(nativeDispatcher?.[2]),
+            nativeDispatcherStageTick: finiteNumber(nativeDispatcher?.[3]),
+            nativeDispatcherWakeSequence: finiteNumber(nativeDispatcher?.[4]),
+            nativeDispatcherInputDepth: finiteNumber(nativeDispatcher?.[5]),
+            nativeDispatcherUiCommandDepth: finiteNumber(nativeDispatcher?.[6]),
+            nativeDispatcherDumpRequested: finiteNumber(nativeDispatcher?.[7]),
+            nativeDispatcherDumpCompleted: finiteNumber(nativeDispatcher?.[8]),
+            nativeDispatcherEventRead: finiteNumber(nativeDispatcher?.[9]),
+            nativeDispatcherEventWrite: finiteNumber(nativeDispatcher?.[10]),
+            nativeDispatcherUiCommandRead: finiteNumber(nativeDispatcher?.[11]),
+            nativeDispatcherUiCommandWrite: finiteNumber(nativeDispatcher?.[12]),
+            nativeDispatcherUiCommandDrainScheduled: finiteNumber(nativeDispatcher?.[13]),
+            nativeDispatcherFaultHResult: finiteNumber(nativeDispatcher?.[14]),
+            nativeDispatcherFaultType: finiteNumber(nativeDispatcher?.[15]),
+            nativeDispatcherLoopExitCount: finiteNumber(nativeDispatcher?.[16]),
             graphPipelineProbeStarted,
             graphPipelineProbeInFlight: false,
             graphRequestedGeneration: finiteNumber(graphPipelineState[0]),
@@ -431,6 +485,20 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
             graphRendererActiveCount: finiteNumber(graphPipelineState[16]),
             graphRendererCreatedCount: finiteNumber(graphPipelineState[17]),
             graphRendererDisposedCount: finiteNumber(graphPipelineState[18]),
+            converterStage: finiteNumber(graphPipelineState[19]),
+            converterStageTick: finiteNumber(graphPipelineState[20]),
+            converterStageThreadId: finiteNumber(graphPipelineState[21]),
+            converterUiThreadId: finiteNumber(graphPipelineState[22]),
+            converterRequestCount: finiteNumber(graphPipelineState[23]),
+            converterCompletionCount: finiteNumber(graphPipelineState[24]),
+            converterFailureCount: finiteNumber(graphPipelineState[25]),
+            converterFailureKind: finiteNumber(graphPipelineState[26]),
+            graphPublishSequence: finiteNumber(graphPipelineState[27]),
+            applicationRootMode: finiteNumber(graphPipelineState[28]),
+            mainPageCount: finiteNumber(graphPipelineState[29]),
+            rootMainPageId: finiteNumber(graphPipelineState[30]),
+            lastNavigatedMainPageId: finiteNumber(graphPipelineState[31]),
+            lastNavigatedMode: finiteNumber(graphPipelineState[32]),
         };
 
         worker.postMessage({ type: 'snapshot', snapshot, events });
@@ -560,14 +628,14 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
     });
     document.addEventListener('resume', () => queueEvent('resume'));
     window.addEventListener('error', event => {
-        if (event.error) {
-            recordError('error', event.error);
+        if (event.error || typeof event.message === 'string') {
+            recordError('error', event);
         } else {
             queueEvent('resource-error', cleanText(event.target?.src || event.target?.href || event.message, 768));
         }
     }, true);
     window.addEventListener('unhandledrejection', event => recordError('unhandled-rejection', event.reason));
-    worker.addEventListener('error', event => queueEvent('worker-error', `${event.message} @ ${event.filename}:${event.lineno}:${event.colno}`));
+    worker.addEventListener('error', event => queueLongEvent('worker-error', `${event.message} @ ${event.filename}:${event.lineno}:${event.colno}`));
     worker.addEventListener('messageerror', () => queueEvent('worker-message-error'));
 
     try {
@@ -709,12 +777,30 @@ function cleanText(value, maximumLength) {
     return text.length <= maximumLength ? text : text.slice(0, maximumLength);
 }
 
-function describeError(error) {
+function describeError(error, maximumLength = 768) {
     if (error instanceof Error) {
-        return cleanText(`${error.name}: ${error.message}${error.stack ? `\n${error.stack}` : ''}`, 768);
+        return cleanText(`${error.name}: ${error.message}${error.stack ? `\n${error.stack}` : ''}`, maximumLength);
     }
 
-    return cleanText(error, 768);
+    if (error && (typeof error === 'object' || typeof error === 'function')) {
+        const name = typeof error.name === 'string' && error.name
+            ? error.name
+            : typeof error.constructor?.name === 'string' && error.constructor.name
+                ? error.constructor.name
+                : 'Error';
+        const message = typeof error.message === 'string' ? error.message : '';
+        const location = typeof error.filename === 'string' && error.filename
+            ? `${error.filename}${Number.isFinite(error.lineno) ? `:${error.lineno}` : ''}`
+            : '';
+        const stack = typeof error.stack === 'string' ? error.stack : '';
+        const nested = error.error && error.error !== error
+            ? describeError(error.error, maximumLength)
+            : '';
+        const details = [message, location, stack, nested].filter(Boolean).join('\n');
+        return cleanText(details ? `${name}: ${details}` : name, maximumLength);
+    }
+
+    return cleanText(error, maximumLength);
 }
 
 function describeElement(value) {

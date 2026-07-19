@@ -139,13 +139,13 @@ public sealed partial class Memory : UserControl
         return container?.DataContext;
     }
 
-    private static void OnClearMenuItemClicked(object? sender, RoutedEventArgs e) =>
+    private void OnClearMenuItemClicked(object? sender, RoutedEventArgs e) =>
         GetMemoryItem(sender)?.Clear();
 
-    private static void OnMemoryAddMenuItemClicked(object? sender, RoutedEventArgs e) =>
+    private void OnMemoryAddMenuItemClicked(object? sender, RoutedEventArgs e) =>
         GetMemoryItem(sender)?.MemoryAdd();
 
-    private static void OnMemorySubtractMenuItemClicked(object? sender, RoutedEventArgs e) =>
+    private void OnMemorySubtractMenuItemClicked(object? sender, RoutedEventArgs e) =>
         GetMemoryItem(sender)?.MemorySubtract();
 
     private static MemoryItemViewModel? GetMemoryItem(object? sender) =>

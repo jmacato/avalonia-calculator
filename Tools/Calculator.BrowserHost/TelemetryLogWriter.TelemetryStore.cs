@@ -19,7 +19,9 @@ internal sealed partial class TelemetryLogWriter(TelemetryStore store, BrowserHo
         {
             await foreach (var entry in store.LogEntries.ReadAllAsync(stoppingToken).ConfigureAwait(false))
             {
-                await writer.WriteLineAsync(JsonSerializer.Serialize(entry, TelemetryJson.Options)).ConfigureAwait(false);
+                await writer.WriteLineAsync(JsonSerializer.Serialize(
+                    entry,
+                    TelemetryJsonContext.Default.TelemetryLogEnvelope)).ConfigureAwait(false);
                 await writer.FlushAsync(stoppingToken).ConfigureAwait(false);
             }
         }

@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices.JavaScript;
 using Avalonia.Threading;
+using CalculatorApp.ViewModel;
 using Graphing;
 
 namespace CalculatorApp.Browser;
@@ -8,6 +9,7 @@ internal static class BrowserGraphPipelineTelemetry
 {
     private const string GlobalPropertyName = "calculatorGraphPipeline";
     private static DispatcherTimer? s_timer;
+    private static int s_publishSequence;
 
     public static void Start()
     {
@@ -39,7 +41,13 @@ internal static class BrowserGraphPipelineTelemetry
     {
         try
         {
-            JSHost.GlobalThis.SetProperty(GlobalPropertyName, string.Join(',', GraphPipelineDiagnostics.Capture()));
+            JSHost.GlobalThis.SetProperty(
+                GlobalPropertyName,
+                string.Join(',', GraphPipelineDiagnostics.Capture()) + ',' +
+                string.Join(',', ConverterPipelineDiagnostics.Capture()) + ',' +
+                Interlocked.Increment(ref s_publishSequence) + ',' +
+                (App.RootView is MainPage mainPage ? (int)mainPage.Model.Mode : -1) + ',' +
+                string.Join(',', ConverterPipelineDiagnostics.CapturePageState()));
         }
         catch (JSException)
         {

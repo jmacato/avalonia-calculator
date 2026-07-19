@@ -31,7 +31,9 @@ namespace CalculatorApp
                 var rawbase64 = args.Uri.Segments.Skip(1).Aggregate((folded, x) => folded += x);
                 var compressed = Convert.FromBase64String(rawbase64);
                 var jsonStr = DeflateUtils.Decompress(compressed);
-                var snapshot = JsonSerializer.Deserialize<ApplicationSnapshotAlias>(jsonStr)
+                var snapshot = JsonSerializer.Deserialize(
+                    jsonStr,
+                    SnapshotJsonContext.Default.ApplicationSnapshotAlias)
                     ?? throw new JsonException("The snapshot payload was empty.");
                 return new SnapshotLaunchArguments
                 {

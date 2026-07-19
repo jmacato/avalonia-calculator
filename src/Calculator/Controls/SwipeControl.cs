@@ -24,6 +24,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using FluentAvalonia.Core;
 using FluentAvalonia.UI.Controls;
+using GraphControl;
 
 namespace CalculatorApp.Controls;
 
@@ -42,8 +43,7 @@ public sealed class SwipeControl : ContentControl
     private const double ThresholdValue = 100.0;
     private const double MinimumCloseVelocity = 31.0;
     private const double DragThreshold = 4.0;
-    private const double PositionInertiaDecayRate = 0.95;
-    private const double InertiaFramesPerSecond = 60.0;
+    private const double InertiaProjectionSeconds = 1.0 / 3.0;
     private static readonly TimeSpan RestingAnimationDuration = TimeSpan.FromMilliseconds(167);
     private static readonly SplineEasing RestingAnimationEasing = new(0.1, 0.9, 0.2, 1.0);
     private static WeakReference<SwipeControl>? s_lastInteractedWithSwipeControl;
@@ -70,7 +70,7 @@ public sealed class SwipeControl : ContentControl
     private StackPanel? _swipeContentStackPanel;
     private ControlTheme? _swipeItemStyle;
     private TopLevel? _dismissalRoot;
-    private DispatcherTimer? _restingAnimationTimer;
+    private readonly AnimationFrameTimer _restingAnimationTimer;
     private SwipeItems? _currentItems;
     private SwipeControlCreatedContent _createdContent;
     private bool _isHorizontal = true;
@@ -89,10 +89,15 @@ public sealed class SwipeControl : ContentControl
     private double _previousSamplePosition;
     private long _previousSampleTimestamp;
     private double _trackerVelocity;
+    private TimeSpan _restingAnimationStartedAt;
+    private double _restingAnimationStart;
+    private double _restingAnimationTarget;
+    private bool _hasRestingAnimationStartTimestamp;
     private bool _isPointerCandidate;
     private bool _isDragging;
     public SwipeControl()
     {
+        _restingAnimationTimer = new AnimationFrameTimer(OnRestingAnimationFrame);
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         SizeChanged += OnSizeChanged;
@@ -110,10 +115,29 @@ public sealed class SwipeControl : ContentControl
     }
 
     protected override Type StyleKeyOverride => typeof(SwipeControl);
-    public SwipeItems? LeftItems => GetValue(LeftItemsProperty);
-    public SwipeItems? RightItems => GetValue(RightItemsProperty);
-    public SwipeItems? TopItems => GetValue(TopItemsProperty);
-    public SwipeItems? BottomItems => GetValue(BottomItemsProperty);
+    public SwipeItems? LeftItems
+    {
+        get => GetValue(LeftItemsProperty);
+        internal set => SetValue(LeftItemsProperty, value);
+    }
+
+    public SwipeItems? RightItems
+    {
+        get => GetValue(RightItemsProperty);
+        internal set => SetValue(RightItemsProperty, value);
+    }
+
+    public SwipeItems? TopItems
+    {
+        get => GetValue(TopItemsProperty);
+        internal set => SetValue(TopItemsProperty, value);
+    }
+
+    public SwipeItems? BottomItems
+    {
+        get => GetValue(BottomItemsProperty);
+        internal set => SetValue(BottomItemsProperty, value);
+    }
 
     public void Close()
     {
@@ -221,7 +245,7 @@ public sealed class SwipeControl : ContentControl
 
     private void OnUnloaded(object? sender, RoutedEventArgs e)
     {
-        StopRestingAnimation();
+        _restingAnimationTimer.Detach();
         DetachDismissingHandlers();
         if (s_lastInteractedWithSwipeControl is not null && s_lastInteractedWithSwipeControl.TryGetTarget(out SwipeControl? last) && ReferenceEquals(last, this))
         {
@@ -396,7 +420,7 @@ public sealed class SwipeControl : ContentControl
             _trackerVelocity = 0;
         }
 
-        double naturalRestingPosition = _trackerPosition + (_trackerVelocity / (InertiaFramesPerSecond * (1.0 - PositionInertiaDecayRate)));
+        double naturalRestingPosition = _trackerPosition + (_trackerVelocity * InertiaProjectionSeconds);
         double modifiedRestingPosition = GetModifiedRestingPosition(naturalRestingPosition);
         if (_trackerPosition * modifiedRestingPosition < 0)
         {
@@ -898,31 +922,41 @@ public sealed class SwipeControl : ContentControl
             return;
         }
 
-        double start = _trackerPosition;
-        long animationStart = Stopwatch.GetTimestamp();
-        _restingAnimationTimer = new DispatcherTimer(DispatcherPriority.Render)
+        _restingAnimationStart = _trackerPosition;
+        _restingAnimationTarget = target;
+        _hasRestingAnimationStartTimestamp = false;
+        if (!_restingAnimationTimer.Start(this))
         {
-            Interval = TimeSpan.FromMilliseconds(1000.0 / InertiaFramesPerSecond),
-        };
-        _restingAnimationTimer.Tick += (_, _) =>
-        {
-            double progress = Math.Clamp(Stopwatch.GetElapsedTime(animationStart).TotalMilliseconds / RestingAnimationDuration.TotalMilliseconds, 0, 1);
-            double eased = RestingAnimationEasing.Ease(progress);
-            ApplyTrackerPosition(start + ((target - start) * eased), createContent: false);
-            if (progress >= 1)
-            {
-                StopRestingAnimation();
-                ApplyTrackerPosition(target, createContent: false);
-                EnterIdleState();
-            }
-        };
-        _restingAnimationTimer.Start();
+            ApplyTrackerPosition(target, createContent: false);
+            EnterIdleState();
+            return;
+        }
     }
 
     private void StopRestingAnimation()
     {
-        _restingAnimationTimer?.Stop();
-        _restingAnimationTimer = null;
+        _restingAnimationTimer.Stop();
+    }
+
+    private void OnRestingAnimationFrame(TimeSpan timestamp)
+    {
+        if (!_hasRestingAnimationStartTimestamp)
+        {
+            _restingAnimationStartedAt = timestamp;
+            _hasRestingAnimationStartTimestamp = true;
+        }
+
+        double progress = Math.Clamp((timestamp - _restingAnimationStartedAt).TotalMilliseconds / RestingAnimationDuration.TotalMilliseconds, 0, 1);
+        double eased = RestingAnimationEasing.Ease(progress);
+        ApplyTrackerPosition(_restingAnimationStart + ((_restingAnimationTarget - _restingAnimationStart) * eased), createContent: false);
+        if (progress < 1)
+        {
+            return;
+        }
+
+        StopRestingAnimation();
+        ApplyTrackerPosition(_restingAnimationTarget, createContent: false);
+        EnterIdleState();
     }
 
     private void EnterIdleState()

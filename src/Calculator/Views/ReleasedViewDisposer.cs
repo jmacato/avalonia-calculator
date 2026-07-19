@@ -6,23 +6,31 @@ namespace CalculatorApp;
 
 internal static class ReleasedViewDisposer
 {
-    public static void Dispose(Control view)
+    public static IDisposable[] CaptureDescendants(Control view)
     {
         ArgumentNullException.ThrowIfNull(view);
         Dispatcher.UIThread.VerifyAccess();
 
-        IDisposable[] descendants = view.GetVisualDescendants()
+        return view.GetVisualDescendants()
             .OfType<IDisposable>()
             .Reverse()
             .ToArray();
-        if (view is IDisposable disposableView)
-        {
-            disposableView.Dispose();
-        }
+    }
+
+    public static void DisposeDetached(Control view, IDisposable[] descendants)
+    {
+        ArgumentNullException.ThrowIfNull(view);
+        ArgumentNullException.ThrowIfNull(descendants);
+        Dispatcher.UIThread.VerifyAccess();
 
         foreach (IDisposable descendant in descendants)
         {
             descendant.Dispose();
+        }
+
+        if (view is IDisposable disposableView)
+        {
+            disposableView.Dispose();
         }
     }
 }

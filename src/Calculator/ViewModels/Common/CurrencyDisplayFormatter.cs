@@ -14,7 +14,9 @@ namespace CalculatorApp.ViewModel.Common;
 /// </summary>
 internal sealed class CurrencyDisplayFormatter
 {
-    private readonly RatPak _ratPak = new(RatPakDecimal.Precision);
+    // Formatting uses rational arithmetic only, so avoid regenerating RatPak's
+    // unused transcendental constants at the converter arithmetic precision.
+    private readonly RatPak _ratPak = new();
 
     internal string Format(
         string invariantValue,

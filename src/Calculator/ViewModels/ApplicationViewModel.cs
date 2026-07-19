@@ -59,6 +59,7 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
     public ApplicationViewModel(ISettingsStore settingsStore)
     {
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
+        ConverterPipelineDiagnostics.RecordUiThread(Environment.CurrentManagedThreadId);
         _converterPreparationWorker = new UnitConverterPreparationWorker(
             settingsStore,
             Environment.CurrentManagedThreadId);
@@ -82,29 +83,41 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
 
             PreviousMode = m_mode;
             m_mode = value;
+            ConverterPipelineDiagnostics.Record(50 + (int)m_mode);
             if (NavCategory.IsCalculatorViewMode(m_mode))
             {
+                ConverterPipelineDiagnostics.Record(70);
                 CalculatorViewModel ??= new StandardCalculatorViewModel();
                 CalculatorViewModel.SetCalculatorType(m_mode);
             }
             else if (NavCategory.IsDateCalculatorViewMode(m_mode))
             {
+                ConverterPipelineDiagnostics.Record(71);
                 DateCalcViewModel ??= new DateCalculatorViewModel();
             }
             else if (NavCategory.IsConverterViewMode(m_mode))
             {
+                ThreadedManagedDebugging.Checkpoint(102);
+                ConverterPipelineDiagnostics.Record(72);
                 if (ConverterViewModel is { } converter)
                 {
+                    ConverterPipelineDiagnostics.Record(73);
                     converter.Mode = m_mode;
                 }
                 else
                 {
+                    ThreadedManagedDebugging.Checkpoint(103);
                     StartConverterPreparation();
                 }
             }
             else if (NavCategory.IsGraphingCalculatorViewMode(m_mode))
             {
+                ConverterPipelineDiagnostics.Record(74);
                 GraphingViewModel ??= new GraphingCalculatorViewModel();
+            }
+            else
+            {
+                ConverterPipelineDiagnostics.Record(75);
             }
 
             CategoryName = AppResourceProvider.Instance
@@ -142,35 +155,43 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
 
     private void StartConverterPreparation()
     {
-        if (Volatile.Read(ref _disposed) != 0 ||
-            Interlocked.CompareExchange(ref _converterPreparationStarted, 1, 0) != 0)
+        ThreadedManagedDebugging.Checkpoint(110);
+        ConverterPipelineDiagnostics.Record(40);
+        if (Volatile.Read(ref _disposed) != 0)
         {
+            ConverterPipelineDiagnostics.Record(-20);
             return;
         }
 
+        if (Interlocked.CompareExchange(ref _converterPreparationStarted, 1, 0) != 0)
+        {
+            ConverterPipelineDiagnostics.Record(-21);
+            return;
+        }
+
+        ConverterPipelineDiagnostics.RecordRequest();
+        ThreadedManagedDebugging.Checkpoint(111);
         _ = PrepareConverterAsync();
     }
 
     private async Task PrepareConverterAsync()
     {
+        ThreadedManagedDebugging.Checkpoint(120);
         try
         {
             UnitConversionManager.IUnitConverter model = await _converterPreparationWorker
                 .PrepareAsync()
                 .ConfigureAwait(false);
+            ThreadedManagedDebugging.Checkpoint(121);
+            ConverterPipelineDiagnostics.Record(11);
             Dispatcher.UIThread.Post(
                 () => CompleteConverterPreparation(model),
                 DispatcherPriority.Background);
+            ConverterPipelineDiagnostics.Record(12);
         }
-        catch (Exception exception) when (
-            exception is ArgumentException or
-            FormatException or
-            InvalidOperationException or
-            KeyNotFoundException or
-            ObjectDisposedException or
-            OverflowException or
-            System.Resources.MissingManifestResourceException)
+        catch (Exception exception) when (ConverterPipelineDiagnostics.CanReport(exception))
         {
+            ConverterPipelineDiagnostics.RecordFailure(exception);
             Interlocked.Exchange(ref _converterPreparationStarted, 0);
             Trace.TraceError(
                 "Unable to prepare the unit converter away from the UI thread: {0}",
@@ -181,7 +202,9 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
     private void CompleteConverterPreparation(
         UnitConversionManager.IUnitConverter model)
     {
+        ThreadedManagedDebugging.Checkpoint(130);
         Dispatcher.UIThread.VerifyAccess();
+        ConverterPipelineDiagnostics.Record(13);
         if (Volatile.Read(ref _disposed) != 0 || ConverterViewModel is not null)
         {
             return;
@@ -189,12 +212,16 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
 
         UnitConverterViewModel converter =
             UnitConverterViewModel.FromPreparedModel(model, _settingsStore);
+        ThreadedManagedDebugging.Checkpoint(131);
+        ConverterPipelineDiagnostics.Record(14);
         if (NavCategory.IsConverterViewMode(m_mode))
         {
             converter.Mode = m_mode;
         }
 
+        ConverterPipelineDiagnostics.Record(15);
         ConverterViewModel = converter;
+        ConverterPipelineDiagnostics.RecordCompletion();
     }
 
     public void Dispose()

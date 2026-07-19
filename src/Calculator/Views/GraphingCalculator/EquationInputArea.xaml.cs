@@ -184,7 +184,7 @@ public sealed partial class EquationInputArea : UserControl, IDisposable
         }
     }
 
-    private static void OnVariableAreaButtonTapped(object? sender, TappedEventArgs e) =>
+    private void OnVariableAreaButtonTapped(object? sender, TappedEventArgs e) =>
         e.Handled = true;
 
     private void OnVariableAreaTapped(object? sender, TappedEventArgs e)

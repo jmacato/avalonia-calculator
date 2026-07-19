@@ -1,6 +1,6 @@
 #if COLLECT_AOT_PROFILE
 using System.Globalization;
-using System.Reflection;
+using System.Runtime.CompilerServices;
 using Avalonia.Threading;
 
 namespace CalculatorApp.Browser;
@@ -39,14 +39,13 @@ internal static class AotProfileCapture
             timer.Tick -= Stop;
         }
 
-        Type exportsType = Type.GetType(
-            "System.Runtime.InteropServices.JavaScript.JavaScriptExports, System.Runtime.InteropServices.JavaScript",
-            throwOnError: true)!;
-        MethodInfo stopProfile = exportsType.GetMethod(
-            "StopProfile",
-            BindingFlags.Public | BindingFlags.Static)
-            ?? throw new MissingMethodException(exportsType.FullName, "StopProfile");
-        stopProfile.Invoke(null, null);
+        WriteProfile();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void WriteProfile()
+    {
+        // The Mono AOT profiler writes immediately before entering this marker.
     }
 }
 #endif

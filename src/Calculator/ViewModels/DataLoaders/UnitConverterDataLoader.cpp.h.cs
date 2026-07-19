@@ -6,8 +6,6 @@ using System.Collections.Generic;
 using CalcManager = UnitConversionManager; // Alias for clarity if needed, or use full name
 using CalculatorApp.ViewModel.Common; // For ViewMode, NavCategory etc.
 using System.Globalization;
-using System.Linq; // For LINQ methods like Any()
-using System.Diagnostics; // For Debug.Assert
 
 namespace CalculatorApp.ViewModel.Common // Adjusted namespace slightly for C# convention
 {
@@ -19,7 +17,12 @@ namespace CalculatorApp.ViewModel.Common // Adjusted namespace slightly for C# c
         private readonly Dictionary<int, List<CalcManager.Unit>> m_categoryIDToUnitsMap;
         // Assuming CalcManager.Unit correctly implements Equals and GetHashCode for Dictionary key usage
         private readonly Dictionary<CalcManager.Unit, Dictionary<CalcManager.Unit, CalcManager.ConversionData>> m_ratioMap;
+        private readonly Dictionary<int, OrderedUnit> m_idToUnit;
+        private readonly Dictionary<int, ViewMode> m_unitIDToCategoryMap;
         private readonly string m_currentRegionCode;
+        private Dictionary<ViewMode, Dictionary<int, string>> m_categoryToUnitConversionDataMap;
+        private Dictionary<int, Dictionary<int, CalcManager.ConversionData>> m_explicitConversionData;
+        private UnitConverterLocalizedData? m_localizedData;
         // Constructor
         public UnitConverterDataLoader(string? regionCode = null)
         {
@@ -27,6 +30,28 @@ namespace CalculatorApp.ViewModel.Common // Adjusted namespace slightly for C# c
             m_categoryList = new List<CalcManager.Category>();
             m_categoryIDToUnitsMap = new Dictionary<int, List<CalcManager.Unit>>();
             m_ratioMap = new Dictionary<CalcManager.Unit, Dictionary<CalcManager.Unit, CalcManager.ConversionData>>();
+            m_idToUnit = new Dictionary<int, OrderedUnit>();
+            m_unitIDToCategoryMap = new Dictionary<int, ViewMode>();
+            m_categoryToUnitConversionDataMap = new Dictionary<ViewMode, Dictionary<int, string>>();
+            m_explicitConversionData = new Dictionary<int, Dictionary<int, CalcManager.ConversionData>>();
+        }
+
+        /// <summary>
+        /// Resolves localized category and unit names on the owning UI thread.
+        /// The resulting object graph is then transferred to the converter worker
+        /// through its bounded request channel.
+        /// </summary>
+        internal void PrepareLocalizedData()
+        {
+            if (Volatile.Read(ref m_localizedData) is not null)
+            {
+                return;
+            }
+
+            var localizedData = new UnitConverterLocalizedData(
+                CreateCategories(),
+                GetUnits());
+            Volatile.Write(ref m_localizedData, localizedData);
         }
 
         private static string GetCurrentRegionCode()

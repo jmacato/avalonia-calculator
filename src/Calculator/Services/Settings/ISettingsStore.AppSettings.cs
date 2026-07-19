@@ -10,5 +10,8 @@ public interface ISettingsStore
     AppSettings Current { get; }
 
     event EventHandler? Changed;
+
+    void BindToCurrentThread();
+
     void Update(Func<AppSettings, AppSettings> update);
 }

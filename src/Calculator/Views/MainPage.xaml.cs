@@ -10,7 +10,6 @@ using Avalonia.Controls;
 using Avalonia.Controls.Selection;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using CalculatorApp.ViewModel;
 using CalculatorApp.ViewModel.Common;
 
@@ -18,8 +17,12 @@ namespace CalculatorApp;
 
 public sealed partial class MainPage : UserControl, IDisposable
 {
+    private readonly int _diagnosticPageId = ConverterPipelineDiagnostics.RecordPageCreated();
     private bool _isSettingsVisible;
     private bool _updatingNavigationSelection;
+#if CALCULATOR_BROWSER
+    private int _browserViewReleaseScheduled;
+#endif
     private int _disposed;
 
     public MainPage()
@@ -39,6 +42,8 @@ public sealed partial class MainPage : UserControl, IDisposable
     }
 
     public ApplicationViewModel Model { get; }
+
+    internal int DiagnosticPageId => _diagnosticPageId;
 
     public IReadOnlyList<object> NavViewCategoriesSource { get; private set; }
 
@@ -86,10 +91,16 @@ public sealed partial class MainPage : UserControl, IDisposable
             return;
         }
 
+        ThreadedManagedDebugging.Checkpoint(300);
         if (NavList.SelectedItem is NavCategory { IsEnabled: true } category)
         {
+            ThreadedManagedDebugging.Checkpoint(301);
+            ConverterPipelineDiagnostics.RecordNavigation(
+                _diagnosticPageId,
+                (int)category.ViewMode);
             _isSettingsVisible = false;
             Model.Mode = category.ViewMode;
+            ThreadedManagedDebugging.Checkpoint(302);
             NavSplitView.IsPaneOpen = false;
         }
     }
@@ -114,8 +125,17 @@ public sealed partial class MainPage : UserControl, IDisposable
 
         if (e.PropertyName == nameof(ApplicationViewModel.Mode))
         {
+            if (NavCategory.IsConverterViewMode(Model.Mode))
+            {
+                ThreadedManagedDebugging.Checkpoint(311);
+            }
+
             SelectNavigationItemByModel();
             UpdateModeHolders();
+            if (NavCategory.IsConverterViewMode(Model.Mode))
+            {
+                ThreadedManagedDebugging.Checkpoint(312);
+            }
             if (NavCategory.IsConverterViewMode(Model.Mode)
                 && !NavCategory.IsConverterViewMode(Model.PreviousMode)
                 && ConverterHolder.Child is UnitConverter converter)
@@ -241,11 +261,29 @@ public sealed partial class MainPage : UserControl, IDisposable
         PaneToggleButton.IsVisible = !_isSettingsVisible;
 
 #if CALCULATOR_BROWSER
-        ReleaseInactiveBrowserViews();
+        ScheduleInactiveBrowserViewRelease();
 #endif
     }
 
 #if CALCULATOR_BROWSER
+    private void ScheduleInactiveBrowserViewRelease()
+    {
+        if (Volatile.Read(ref _disposed) != 0 ||
+            Interlocked.CompareExchange(ref _browserViewReleaseScheduled, 1, 0) != 0)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            Interlocked.Exchange(ref _browserViewReleaseScheduled, 0);
+            if (Volatile.Read(ref _disposed) == 0)
+            {
+                ReleaseInactiveBrowserViews();
+            }
+        }, DispatcherPriority.Background);
+    }
+
     private void ReleaseInactiveBrowserViews()
     {
         // A hidden Avalonia control remains attached and retains its complete
@@ -281,9 +319,14 @@ public sealed partial class MainPage : UserControl, IDisposable
             return;
         }
 
-        child.DataContext = null;
+        // Snapshot owned disposable descendants while the visual tree is still
+        // intact, then detach before running user disposal code. Disposing an
+        // attached root mutates bindings and render state while Avalonia is in
+        // the middle of the navigation event, which can strand that UI turn.
+        IDisposable[] descendants = ReleasedViewDisposer.CaptureDescendants(child);
         holder.Child = null;
-        ReleasedViewDisposer.Dispose(child);
+        child.DataContext = null;
+        ReleasedViewDisposer.DisposeDetached(child, descendants);
     }
 
     private void EnsureSettingsView()
@@ -350,13 +393,6 @@ public sealed partial class MainPage : UserControl, IDisposable
         {
             holder.IsVisible = isVisible;
         }
-    }
-
-    protected override void OnDetachedFromVisualTree(
-        VisualTreeAttachmentEventArgs e)
-    {
-        Dispose();
-        base.OnDetachedFromVisualTree(e);
     }
 
     public void Dispose()

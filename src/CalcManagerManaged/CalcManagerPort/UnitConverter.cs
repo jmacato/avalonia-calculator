@@ -30,7 +30,9 @@ public class UnitConverter : IUnitConverter
 
     readonly Dictionary<ConversionData, RationalConversionData> m_rationalConversions = new();
 
-    readonly RatPak m_ratPak = new(RatPakDecimal.Precision);
+    readonly RatPak m_ratPak;
+
+    readonly Action<int>? m_diagnosticStage;
 
     readonly Rational m_zero;
 
@@ -87,14 +89,34 @@ public class UnitConverter : IUnitConverter
     /// <param name="dataLoader">An instance of the IConverterDataLoader interface which we use to read in category/unit names and conversion data</param>
     /// <param name="currencyDataLoader">An instance of the IConverterDataLoader interface, specialized for loading currency data from an internet service</param>
     public UnitConverter(IConverterDataLoader dataLoader, IConverterDataLoader? currencyDataLoader)
+        : this(dataLoader, currencyDataLoader, null)
     {
+    }
+
+    public UnitConverter(
+        IConverterDataLoader dataLoader,
+        IConverterDataLoader? currencyDataLoader,
+        Action<int>? diagnosticStage)
+    {
+        m_diagnosticStage = diagnosticStage;
+        diagnosticStage?.Invoke(501);
+        // Unit conversion only needs RatPak's rational arithmetic. Initializing
+        // at RatPakDecimal.Precision would synchronously regenerate pi, e, and
+        // log constants that this type never uses; arithmetic methods still
+        // retain the exact precision requested by RatPakDecimal and Rational.
+        m_ratPak = new RatPak();
+        diagnosticStage?.Invoke(502);
         m_dataLoader = dataLoader;
         m_currencyDataLoader = currencyDataLoader;
         m_currencyDataLoaderCallback = new CurrencyDataLoaderCallback(this);
+        diagnosticStage?.Invoke(503);
         m_zero = new Rational(m_ratPak, 0);
         m_one = new Rational(m_ratPak, 1);
+        diagnosticStage?.Invoke(504);
         m_optimalDecimalAllowed = RatPakDecimal.Parse(m_ratPak, "1e-6");
+        diagnosticStage?.Invoke(505);
         m_minimumDecimalAllowed = RatPakDecimal.Parse(m_ratPak, "1e-14");
+        diagnosticStage?.Invoke(506);
         // declaring the delimiter character conversion map
         quoteConversions['|'] = "{p}";
         quoteConversions['['] = "{lc}";
@@ -112,8 +134,11 @@ public class UnitConverter : IUnitConverter
         unquoteConversions["{sc}"] = ';';
         unquoteConversions["{lb}"] = LEFTESCAPECHAR;
         unquoteConversions["{rb}"] = RIGHTESCAPECHAR;
+        diagnosticStage?.Invoke(507);
         ClearValues();
+        diagnosticStage?.Invoke(508);
         ResetCategoriesAndRatios();
+        diagnosticStage?.Invoke(509);
     }
 
     public void Initialize()
@@ -742,10 +767,6 @@ public class UnitConverter : IUnitConverter
 
         IList<Unit> refreshedUnits = m_currencyDataLoader.GetOrderedUnits(currencyCategory);
         m_categoryToUnits[currencyCategory.Id] = refreshedUnits;
-        foreach (Unit unit in refreshedUnits)
-        {
-            m_ratioMap.Set(unit, m_currencyDataLoader.LoadOrderedRatios(unit));
-        }
 
         // ConversionData instances are replaced with every currency snapshot.
         // Clear the exact Rational cache so no stale ratio can survive a refresh.
@@ -827,7 +848,7 @@ public class UnitConverter : IUnitConverter
         List<(wstring, Unit)> returnVector = [];
         List<SuggestedValueIntermediate> intermediateVector = [];
         List<SuggestedValueIntermediate> intermediateWhimsicalVector = [];
-        var ratios = m_ratioMap.GetOrAdd(m_fromType);
+        Dictionary<Unit, ConversionData> ratios = GetConversionTable(m_fromType);
         Rational currentValue = RatPakDecimal.Parse(m_ratPak, m_currentDisplay);
         // Calculate converted values for every other unit type in this category, along with their magnitude
         foreach (var cur in ratios)
@@ -927,10 +948,13 @@ public class UnitConverter : IUnitConverter
     /// </summary>
     public void ResetCategoriesAndRatios()
     {
+        m_diagnosticStage?.Invoke(600);
         m_switchedActive = false;
         m_categories = m_dataLoader.GetOrderedCategories();
+        m_diagnosticStage?.Invoke(601);
         if (m_categories.Count == 0)
         {
+            m_diagnosticStage?.Invoke(602);
             return;
         }
 
@@ -939,10 +963,13 @@ public class UnitConverter : IUnitConverter
         m_categoryToUnits.Clear();
         m_ratioMap.Clear();
         m_rationalConversions.Clear();
+        m_diagnosticStage?.Invoke(603);
         bool readyCategoryFound = false;
         foreach (Category category in m_categories)
         {
+            m_diagnosticStage?.Invoke(620 + category.Id);
             IConverterDataLoader activeDataLoader = GetDataLoaderForCategory(category);
+            m_diagnosticStage?.Invoke(650 + category.Id);
             if (activeDataLoader == null)
             {
                 // The data loader is different depending on the category, e.g. currency data loader
@@ -952,17 +979,14 @@ public class UnitConverter : IUnitConverter
             }
 
             IList<Unit> units = activeDataLoader.GetOrderedUnits(category);
+            m_diagnosticStage?.Invoke(680 + category.Id);
             m_categoryToUnits.Add(category.Id, units);
+            m_diagnosticStage?.Invoke(710 + category.Id);
 
             // Just because the units are empty, doesn't mean the user can't select this category,
             // we just want to make sure we don't let an unready category be the default.
             if (units.Count != 0)
             {
-                foreach (Unit u in units)
-                {
-                    m_ratioMap.Set(u, activeDataLoader.LoadOrderedRatios(u));
-                }
-
                 if (!readyCategoryFound)
                 {
                     m_currentCategory = category;
@@ -971,7 +995,9 @@ public class UnitConverter : IUnitConverter
             }
         }
 
+        m_diagnosticStage?.Invoke(750);
         InitializeSelectedUnits();
+        m_diagnosticStage?.Invoke(751);
     }
 
     /// <summary>
@@ -983,10 +1009,23 @@ public class UnitConverter : IUnitConverter
         {
             return m_currencyDataLoader;
         }
-        else
+
+        return m_dataLoader;
+    }
+
+    private Dictionary<Unit, ConversionData> GetConversionTable(Unit sourceUnit)
+    {
+        if (m_ratioMap.TryGetValue(
+                sourceUnit,
+                out Dictionary<Unit, ConversionData>? conversions))
         {
-            return m_dataLoader;
+            return conversions;
         }
+
+        IConverterDataLoader activeDataLoader = GetDataLoaderForCategory(m_currentCategory);
+        conversions = activeDataLoader.LoadOrderedRatios(sourceUnit);
+        m_ratioMap.Set(sourceUnit, conversions);
+        return conversions;
     }
 
     /// <summary>
@@ -1079,7 +1118,7 @@ public class UnitConverter : IUnitConverter
             return;
         }
 
-        var conversionTable = m_ratioMap.GetOrAdd(m_fromType);
+        Dictionary<Unit, ConversionData> conversionTable = GetConversionTable(m_fromType);
         ConversionData targetConversion = conversionTable[m_toType];
         RationalConversionData rationalConversion = GetRationalConversion(targetConversion);
         if (rationalConversion.Ratio == m_one && rationalConversion.Offset == m_zero)

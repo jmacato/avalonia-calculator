@@ -34,11 +34,16 @@
     <OutputPath>bin/browser/$(Configuration)/</OutputPath>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(CalculatorBrowserBuild)' == 'true' and '$(CalcEnableThreadedManagedDebugging)' == 'true'">
+    <DefineConstants>$(DefineConstants);CALCULATOR_THREADED_MANAGED_DEBUG</DefineConstants>
+  </PropertyGroup>
+
   <!-- These globs make every translated Calculator source part of compilation.
        Legacy CalcManager sources and vendored libraries are owned by their own
        managed projects and are gated there. -->
   <ItemGroup>
     <Compile Include="App.xaml.cs" />
+    <Compile Include="Common\DispatcherExceptionRecoveryGate.cs" />
     <Compile Include="Controls\*.cs" />
     <Compile Include="MainWindow.xaml.cs"
              Condition="'$(CalculatorBrowserBuild)' != 'true'" />
@@ -73,6 +78,7 @@
     <Compile Include="ViewModels\Common\Automation\*.cs" />
     <Compile Include="ViewModels\DataLoaders\*.cs" />
     <Compile Include="ViewModels\GraphingCalculator\*.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
     <AvaloniaXaml Remove="**\*.axaml" />
     <AvaloniaXaml Remove="**\*.xaml" />
     <AvaloniaXaml Include="App.xaml" />

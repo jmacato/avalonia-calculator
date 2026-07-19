@@ -22,3 +22,22 @@ Build without starting the host with:
 ```sh
 dotnet build src/Calculator.Browser/Calculator.Browser.csproj -c Debug
 ```
+
+## XAML event handlers under full AOT
+
+Code-behind methods referenced by an Avalonia XAML event attribute must be
+instance methods, even when the handler does not otherwise use instance state.
+Do not declare these handlers `static`.
+
+With the .NET 10 browser full-AOT toolchain, Avalonia's compiled XAML can bind a
+static code-behind handler through an instance-shaped delegate. Mono then selects
+the four-slot instance `EventHandler` call path while the static method has a
+three-slot Wasm function signature. Invoking the event traps with `function
+signature mismatch` instead of producing a managed exception.
+
+This was reproduced by opening the currency converter and selecting its source
+unit. `UnitConverter.OnValueSelected(object, EventArgs)` occupied a three-slot
+function-table entry while Mono invoked it through a four-slot call site. Making
+the handler an instance method produced the matching four-slot ABI and allowed
+the recorded interaction to complete on the stock .NET 10.0.8 runtime. The same
+change was applied to every other static XAML event handler found in Calculator.

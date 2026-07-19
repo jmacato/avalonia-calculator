@@ -21,7 +21,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
 {
     private static readonly TimeSpan EquationPlotDelay = TimeSpan.FromMilliseconds(350);
     private static readonly TimeSpan InteractionPlotDelay = TimeSpan.FromMilliseconds(120);
-    private static readonly TimeSpan InteractionGeometryRefreshInterval = TimeSpan.FromMilliseconds(250);
     private const double MaximumWheelDeltaPerFrame = 2;
     private const double InteractionCoverageMarginRatio = 0.42;
     private const double MinimumRangeLength = 1e-12;
@@ -41,7 +40,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     private readonly FunctionAnalysisWorker _analysisWorker = new();
     private readonly AvaloniaGraphRenderCache _renderCache = new();
     private readonly DispatcherTimer _equationPlotTimer;
-    private readonly DispatcherTimer _graphPreparationTimer;
+    private readonly AnimationFrameTimer _graphPreparationTimer;
     private readonly DispatcherTimer _interactionSettleTimer;
     private readonly Action<TimeSpan> _interactionFrameCallback;
     private readonly Dictionary<int, GrapherPointerState> _activePointers = [];
@@ -52,7 +51,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     private bool _isAttached;
     private bool _interactionFrameRequested;
     private long _lastInteractionTimestamp;
-    private long _lastInteractionGeometryRefreshTimestamp;
     private bool _resizePreparePending;
     private bool _hasSettledViewport;
     private double _settledXMinimum;
@@ -101,11 +99,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
             Interval = EquationPlotDelay
         };
         _equationPlotTimer.Tick += OnEquationPlotTimerTick;
-        _graphPreparationTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(16)
-        };
-        _graphPreparationTimer.Tick += OnGraphPreparationTimerTick;
+        _graphPreparationTimer = new AnimationFrameTimer(OnGraphPreparationFrame);
         _interactionSettleTimer = new DispatcherTimer
         {
             Interval = InteractionPlotDelay
@@ -144,7 +138,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         }
 
         _equationPlotTimer.Stop();
-        _graphPreparationTimer.Stop();
+        _graphPreparationTimer.Detach();
         _interactionSettleTimer.Stop();
         _interactionFrameRequested = false;
         _pendingWheelDelta = 0;
@@ -154,7 +148,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         _resetCompositionAfterRender = false;
         _interactionRenderPending = false;
         _settlePreparationPending = false;
-        _lastInteractionGeometryRefreshTimestamp = 0;
         _resizePreparePending = false;
         _activePointers.Clear();
         ResetCompositionPreview();
@@ -556,11 +549,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         }
 
         _interactionSettleTimer.Stop();
-        if (_activePointers.Count == 0)
-        {
-            _lastInteractionGeometryRefreshTimestamp = 0;
-        }
-
         Point point = e.GetPosition(this);
         _activePointers[e.Pointer.Id] = new GrapherPointerState(point, point);
         ResetPointerBaselines();
@@ -885,11 +873,11 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     {
         if (_isAttached && Volatile.Read(ref _disposed) == 0)
         {
-            _graphPreparationTimer.Start();
+            _ = _graphPreparationTimer.Start(this);
         }
     }
 
-    private void OnGraphPreparationTimerTick(object? sender, EventArgs e)
+    private void OnGraphPreparationFrame(TimeSpan _)
     {
         if (!_isAttached || Volatile.Read(ref _disposed) != 0)
         {
@@ -1329,7 +1317,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         _rendererMatchesInteractionViewport = false;
         _resizePreparePending = false;
         _settlePreparationPending = false;
-        _lastInteractionGeometryRefreshTimestamp = 0;
         if (_compositionVisual is null)
         {
             ResetCompositionPreview();
@@ -1443,7 +1430,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
             return false;
         }
 
-        return _lastInteractionGeometryRefreshTimestamp == 0 || Stopwatch.GetElapsedTime(_lastInteractionGeometryRefreshTimestamp) >= InteractionGeometryRefreshInterval;
+        return true;
     }
 
     private bool RefreshInteractionGeometry()
@@ -1465,7 +1452,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         {
             if (concurrentRenderer.RequestPrepareGraph().Succeeded && concurrentRenderer.IsPrepareGraphPending)
             {
-                _lastInteractionGeometryRefreshTimestamp = Stopwatch.GetTimestamp();
                 StartGraphPreparationPolling();
                 RequestInteractionFrame();
                 return true;
@@ -1479,7 +1465,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
             return false;
         }
 
-        _lastInteractionGeometryRefreshTimestamp = Stopwatch.GetTimestamp();
         _rendererMatchesInteractionViewport = true;
         CaptureSettledViewport(renderer);
         _resetCompositionAfterRender = _compositionVisual is not null;
@@ -1564,7 +1549,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         _interactionYMaximum = _settledYMaximum;
         _hasInteractionViewport = true;
         _rendererMatchesInteractionViewport = false;
-        _lastInteractionGeometryRefreshTimestamp = 0;
         return true;
     }
 
@@ -1631,7 +1615,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         _pendingWheelDelta = 0;
         _hasInteractionViewport = false;
         _rendererMatchesInteractionViewport = false;
-        _lastInteractionGeometryRefreshTimestamp = 0;
         ResetPointerBaselines();
     }
 
@@ -1728,8 +1711,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         _isAttached = false;
         _equationPlotTimer.Stop();
         _equationPlotTimer.Tick -= OnEquationPlotTimerTick;
-        _graphPreparationTimer.Stop();
-        _graphPreparationTimer.Tick -= OnGraphPreparationTimerTick;
+        _graphPreparationTimer.Detach();
         _interactionSettleTimer.Stop();
         _interactionSettleTimer.Tick -= OnInteractionSettleTimerTick;
         Equations.CollectionChanged -= OnEquationsChanged;

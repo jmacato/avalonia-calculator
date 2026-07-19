@@ -5,13 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Calculator</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./app.css?v=20260718-0104">
+  <link rel="preload" data-cache-href="./fonts/Hind2-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" data-cache-href="./fonts/Hind2-SemiBold.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" data-cache-href="./app.css">
+  <script>
+    (() => {
+      const pageUrl = new URL(globalThis.location.href);
+      const requestedVersion = pageUrl.searchParams.get('cache-bust');
+      const navigationVersion = `${requestedVersion ? `${requestedVersion}-` : ''}${Date.now()}`;
+      globalThis.calculatorCacheBustVersion = navigationVersion;
+
+      for (const link of document.querySelectorAll('link[data-cache-href]')) {
+        const assetUrl = new URL(link.dataset.cacheHref, pageUrl);
+        assetUrl.searchParams.set('v', navigationVersion);
+        link.href = assetUrl.href;
+      }
+    })();
+  </script>
 </head>
 <body>
   <div id="out">
     <div class="avalonia-splash splash" id="splash">
       <div class="splash-content">
         <div class="splash-title">Calculator</div>
+        <div class="splash-status" role="status" aria-live="polite">Preparing Calculator</div>
         <div class="splash-progress"
              role="progressbar"
              aria-label="Loading Calculator"
@@ -19,11 +36,38 @@
              aria-valuemax="100"
              aria-valuenow="0">
           <div class="splash-progress-fill"></div>
+          <div class="splash-progress-indeterminate" aria-hidden="true">
+            <span class="splash-progress-indicator splash-progress-indicator-primary"></span>
+            <span class="splash-progress-indicator splash-progress-indicator-secondary"></span>
+          </div>
         </div>
-        <div class="splash-status" role="status" aria-live="polite">Starting</div>
+        <div class="splash-progress-detail" aria-hidden="true"></div>
       </div>
     </div>
   </div>
-  <script type="module" src="./main.js?v=20260718-0104"></script>
+  <section class="fatal-error"
+           id="fatal-error"
+           role="alertdialog"
+           aria-modal="true"
+           aria-labelledby="fatal-error-title"
+           hidden>
+    <div class="fatal-error-card">
+      <div class="fatal-error-content">
+        <h1 class="fatal-error-title" id="fatal-error-title">Calculator stopped</h1>
+        <p class="fatal-error-message">A fatal runtime error stopped the application. Reload it to continue.</p>
+        <div class="fatal-error-diagnostic">
+          <span>Diagnostic ID</span>
+          <code class="fatal-error-diagnostic-id">CALC-UNKNOWN</code>
+        </div>
+      </div>
+      <div class="fatal-error-actions">
+        <button class="fatal-error-reload" type="button">Reload Calculator</button>
+      </div>
+    </div>
+  </section>
+  <script type="module">
+    const cacheBustVersion = globalThis.calculatorCacheBustVersion ?? `${Date.now()}`;
+    await import(`./main.js?v=${encodeURIComponent(cacheBustVersion)}`);
+  </script>
 </body>
 </html>

@@ -14,7 +14,8 @@ internal sealed record BrowserHostSettings(string WebRoot, string TelemetryDirec
         }
 
         var webRoot = Path.GetFullPath(arguments[0]);
-        if (!File.Exists(Path.Combine(webRoot, "index.html")))
+        if (!File.Exists(Path.Combine(webRoot, "index.html"))
+            && !File.Exists(Path.Combine(webRoot, "index.html.br")))
         {
             throw new DirectoryNotFoundException($"Published browser web root not found: {webRoot}");
         }

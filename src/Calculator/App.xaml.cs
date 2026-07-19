@@ -2,7 +2,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using CalculatorApp.Services.Settings;
+using CalculatorApp.ViewModel;
 
 namespace CalculatorApp;
 
@@ -11,6 +13,8 @@ namespace CalculatorApp;
 /// </summary>
 public sealed partial class App : Application
 {
+    private static int s_dispatcherExceptionHandlerInstalled;
+
     public static ISettingsStore SettingsStore { get; set; } = new InMemorySettingsStore();
 
     public static Control? RootView { get; private set; }
@@ -26,6 +30,9 @@ public sealed partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        InstallDispatcherExceptionHandler();
+        SettingsStore.BindToCurrentThread();
+
 #if !CALCULATOR_BROWSER
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -37,10 +44,51 @@ public sealed partial class App : Application
 #endif
         if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
-            RootView = new MainPage();
+            var mainPage = new MainPage();
+            ConverterPipelineDiagnostics.RecordRootPage(
+                mainPage.DiagnosticPageId);
+            RootView = mainPage;
             singleViewPlatform.MainView = RootView;
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static void InstallDispatcherExceptionHandler()
+    {
+        if (Interlocked.CompareExchange(
+                ref s_dispatcherExceptionHandlerInstalled,
+                1,
+                0) == 0)
+        {
+            Dispatcher.UIThread.UnhandledException += OnDispatcherUnhandledException;
+        }
+    }
+
+    private static void OnDispatcherUnhandledException(
+        object sender,
+        DispatcherUnhandledExceptionEventArgs eventArgs)
+    {
+        _ = sender;
+
+        if (!DispatcherExceptionRecoveryGate.TryRecover(
+                eventArgs.Exception,
+                out int occurrence))
+        {
+            if (occurrence != 0)
+            {
+                Console.Error.WriteLine(
+                    $"Calculator dispatcher exception circuit opened after {occurrence} failures: {eventArgs.Exception}");
+            }
+
+            return;
+        }
+
+        // Mark the fault handled before performing diagnostics. The failed
+        // dispatcher operation is already completed with its exception; this
+        // only keeps an isolated UI fault from terminating the browser loop.
+        eventArgs.Handled = true;
+        Console.Error.WriteLine(
+            $"Calculator recovered dispatcher exception {occurrence}: {eventArgs.Exception}");
     }
 }

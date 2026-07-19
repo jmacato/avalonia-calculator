@@ -13,15 +13,17 @@ internal sealed partial class Program
 #endif
         try
         {
+            string? satelliteCulture = Environment.GetEnvironmentVariable("CALCULATOR_SATELLITE_CULTURE");
             App.SettingsStore = BrowserSettingsStore.Create();
             await BuildAvaloniaApp().StartBrowserAppAsync(
                 "out",
                 new BrowserPlatformOptions
                 {
-                    // Browser input is handed to the UI worker through Avalonia's
-                    // native atomic event ring and futex wakeup. Keep the managed
-                    // dispatcher enabled so hot input never uses per-event Promises.
+                    // Hand browser input to the UI worker through Avalonia's
+                    // native atomic event ring. This keeps the hot input path
+                    // synchronous and avoids per-event JS-to-managed promises.
                     PreferManagedThreadDispatcher = true,
+                    SatelliteAssemblyCulture = satelliteCulture,
                 }).ConfigureAwait(false);
         }
         catch (Exception exception)

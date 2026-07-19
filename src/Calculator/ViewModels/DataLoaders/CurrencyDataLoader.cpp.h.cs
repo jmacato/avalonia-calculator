@@ -18,7 +18,10 @@ public sealed partial class CurrencyDataLoader : UCM.IConverterDataLoader, UCM.I
     private readonly ICurrencyNameProvider _nameProvider;
     private readonly ISettingsStore _settingsStore;
     private readonly NetworkManager _networkManager = new();
-    private readonly RatPak _ratPak = new(RatPakDecimal.Precision);
+    // Currency ratios use rational arithmetic only. The default constructor
+    // loads RatPak's precomputed constants instead of regenerating unused
+    // transcendental constants at RatPakDecimal's arithmetic precision.
+    private readonly RatPak _ratPak = new();
     private readonly int _ownerThreadId;
     private readonly NumberFormatInfo _numberFormat;
     private readonly string _cachePath;
@@ -33,6 +36,23 @@ public sealed partial class CurrencyDataLoader : UCM.IConverterDataLoader, UCM.I
     private Task<bool>? _initialLoadTask;
     private Task? _automaticRefreshTask;
     public CurrencyDataLoader(ICurrencyRateProvider? rateProvider = null, ICurrencyNameProvider? nameProvider = null, string? cachePath = null, ISettingsStore? settingsStore = null, int? ownerThreadId = null)
+        : this(
+            rateProvider,
+            nameProvider,
+            cachePath,
+            settingsStore,
+            ownerThreadId,
+            CaptureLocalizedResources())
+    {
+    }
+
+    internal CurrencyDataLoader(
+        ICurrencyRateProvider? rateProvider,
+        ICurrencyNameProvider? nameProvider,
+        string? cachePath,
+        ISettingsStore? settingsStore,
+        int? ownerThreadId,
+        CurrencyDataLoaderLocalizedResources localizedResources)
     {
         _rateProvider = rateProvider ?? new CurrencyHttpClient();
         _nameProvider = nameProvider ?? new CldrCurrencyNameProvider();
@@ -41,13 +61,20 @@ public sealed partial class CurrencyDataLoader : UCM.IConverterDataLoader, UCM.I
         _cachePath = cachePath ?? GetDefaultCachePath();
         _isRtlLanguage = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
         _numberFormat = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
-        AppResourceProvider resources = AppResourceProvider.Instance;
-        _ratioFormat = resources.GetResourceString("CurrencyFromToRatioFormat");
-        _timestampFormat = resources.GetResourceString("CurrencyTimestampFormat");
+        _ratioFormat = localizedResources.RatioFormat;
+        _timestampFormat = localizedResources.TimestampFormat;
         if (_rateProvider is CurrencyHttpClient client)
         {
             client.Initialize("USD", CultureInfo.CurrentUICulture.Name);
         }
+    }
+
+    internal static CurrencyDataLoaderLocalizedResources CaptureLocalizedResources()
+    {
+        AppResourceProvider resources = AppResourceProvider.Instance;
+        return new CurrencyDataLoaderLocalizedResources(
+            resources.GetResourceString("CurrencyFromToRatioFormat"),
+            resources.GetResourceString("CurrencyTimestampFormat"));
     }
 
     public CurrencyLoadStatus LoadStatus => _loadStatus;

@@ -4,7 +4,7 @@ namespace CalcManagerPortTests.RatPakTests;
 
 public class RatPakDecimalTests
 {
-    private readonly RatPak _ratPak = new(RatPakDecimal.Precision);
+    private readonly RatPak _ratPak = new();
 
     [Theory]
     [InlineData("0.1", "0.2", "0.3")]

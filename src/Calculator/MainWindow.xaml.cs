@@ -28,10 +28,22 @@ public sealed partial class MainWindow : Window
         pageFrame.Content = new MainPage();
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+        if (this.FindControl<ContentControl>("PageFrame") is { } pageFrame &&
+            pageFrame.Content is MainPage mainPage)
+        {
+            pageFrame.Content = null;
+            mainPage.Dispose();
+        }
+
+        base.OnClosed(e);
+    }
+
     public Button BackButton => this.FindControl<Button>("AppTitleBarBackButton")
                                 ?? throw new InvalidOperationException("Back button was not created.");
 
-    private static void OnBackClicked(object? sender, RoutedEventArgs e)
+    private void OnBackClicked(object? sender, RoutedEventArgs e)
     {
         // The original Frame back stack is replaced by explicit view state while
         // the existing MainPage navigation code is translated.

@@ -2,6 +2,7 @@
 
 - For quick C# probes or throwaway runners, use single-file .NET with `dotnet run file.cs`.
 - For Avalonia implementation details, inspect the sibling source checkout at `~/RiderProjects/Avalonia` before using reflection or external summaries.
+- Changes in the sibling Avalonia checkout are restricted to the browser platform under `src/Browser/Avalonia.Browser`. Do not modify Avalonia core, base, controls, shared infrastructure, or any other platform unless the user gives explicit prior permission.
 - Port the existing WinUI implementation in place. Copy and translate the existing ViewModels, XAML views, controls, styles, and supporting code while preserving their structure and behavior.
 - Do not invent replacement ViewModels, XAML views, controls, or parallel application architecture when a WinUI implementation already exists in this repository.
 - Treat the existing WinUI files as the authoritative implementation and parity reference. Make the minimum framework-specific changes required for Avalonia and cross-platform services.
@@ -11,4 +12,5 @@
 - Do not add phone-, tablet-, mobile-OS-, device-model-, or user-agent-specific behavior branches. Fix performance and correctness in the shared architecture. Any unavoidable platform-specific adaptation requires the user's explicit approval before implementation.
 - For cross-thread coordination, use bounded channels plus volatile/interlocked state publication. Locks, mutexes, and semaphores are strictly forbidden for new fixes; do not introduce them in Calc, the local Avalonia browser backend, or BG/UI/composition/JS interop paths.
 - Diagnostic suppressions and policy downgrades are forbidden repository-wide: no warning pragmas, suppression/bypass attributes, `NoWarn`, warning demotion, nested analyzer-config shields, disabled analyzers, rulesets, or command-line bypasses. Fix the violation instead.
+- Runtime reflection, dynamic activation/invocation, runtime code generation, and reflection-backed serializers are forbidden repository-wide. Use closed generic calls, source-generated metadata, explicit factories, and statically linked dispatch so browser builds remain closed-world and fully trimmable.
 - Commit completed work frequently in small, coherent stages. Verify the staged diff before each commit and do not bundle unrelated changes together.

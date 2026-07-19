@@ -139,7 +139,7 @@ public sealed partial class HistoryList : UserControl
         return container?.DataContext;
     }
 
-    private static void OnCopyMenuItemClicked(object? sender, RoutedEventArgs e)
+    private void OnCopyMenuItemClicked(object? sender, RoutedEventArgs e)
     {
         if (sender is MenuItem { DataContext: HistoryItemViewModel item })
         {

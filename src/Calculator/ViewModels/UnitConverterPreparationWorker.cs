@@ -8,14 +8,14 @@ using UnitConversionManager;
 namespace CalculatorApp.ViewModel;
 
 /// <summary>
-/// Builds the immutable unit tables and mutable converter model on one reusable
+/// Builds the localized unit tables and mutable converter model on one reusable
 /// background consumer, then transfers sole ownership to the UI through a
 /// channel. The model is never used concurrently on both sides of that handoff.
 /// </summary>
 internal sealed class UnitConverterPreparationWorker : IDisposable
 {
-    private readonly Channel<ChannelWriter<UnitConverterPreparationOutcome>> _requests =
-        Channel.CreateBounded<ChannelWriter<UnitConverterPreparationOutcome>>(
+    private readonly Channel<UnitConverterPreparationRequest> _requests =
+        Channel.CreateBounded<UnitConverterPreparationRequest>(
             new BoundedChannelOptions(1)
             {
                 AllowSynchronousContinuations = false,
@@ -39,6 +39,7 @@ internal sealed class UnitConverterPreparationWorker : IDisposable
 
     public async Task<IUnitConverter> PrepareAsync(CancellationToken cancellationToken = default)
     {
+        ThreadedManagedDebugging.Checkpoint(200);
         cancellationToken.ThrowIfCancellationRequested();
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
@@ -51,8 +52,11 @@ internal sealed class UnitConverterPreparationWorker : IDisposable
                     SingleReader = true,
                     SingleWriter = true
                 });
-        await _requests.Writer.WriteAsync(response.Writer, cancellationToken)
+        var request = new UnitConverterPreparationRequest(response.Writer);
+        await _requests.Writer.WriteAsync(request, cancellationToken)
             .ConfigureAwait(false);
+        ThreadedManagedDebugging.Checkpoint(202);
+        ConverterPipelineDiagnostics.Record(2);
         UnitConverterPreparationOutcome outcome = await response.Reader
             .ReadAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -67,34 +71,55 @@ internal sealed class UnitConverterPreparationWorker : IDisposable
 
     private async Task ProcessRequestsAsync()
     {
-        await foreach (ChannelWriter<UnitConverterPreparationOutcome> response in
+        await foreach (UnitConverterPreparationRequest request in
                        _requests.Reader.ReadAllAsync().ConfigureAwait(false))
         {
+            ThreadedManagedDebugging.Checkpoint(210);
+            ConverterPipelineDiagnostics.Record(3);
             UnitConverterPreparationOutcome outcome;
             try
             {
+                ConverterPipelineDiagnostics.Record(4);
+                var unitLoader = new UnitConverterDataLoader();
+                ConverterPipelineDiagnostics.Record(20);
+                unitLoader.PrepareLocalizedData();
+                ThreadedManagedDebugging.Checkpoint(201);
+                ConverterPipelineDiagnostics.Record(21);
+                CurrencyDataLoaderLocalizedResources currencyResources =
+                    CurrencyDataLoader.CaptureLocalizedResources();
+                ConverterPipelineDiagnostics.Record(22);
+                var currencyLoader = new CurrencyDataLoader(
+                    rateProvider: null,
+                    nameProvider: null,
+                    cachePath: null,
+                    settingsStore: _settingsStore,
+                    ownerThreadId: _uiThreadId,
+                    localizedResources: currencyResources);
+                ConverterPipelineDiagnostics.Record(5);
                 var model = new UnitConversionManager.UnitConverter(
-                    new UnitConverterDataLoader(),
-                    new CurrencyDataLoader(
-                        settingsStore: _settingsStore,
-                        ownerThreadId: _uiThreadId));
+                    unitLoader,
+                    currencyLoader,
+                    ConverterPipelineDiagnostics.Record);
+                ThreadedManagedDebugging.Checkpoint(211);
+                ConverterPipelineDiagnostics.Record(6);
+                ConverterPipelineDiagnostics.Record(7);
                 model.Initialize();
+                ThreadedManagedDebugging.Checkpoint(212);
+                ConverterPipelineDiagnostics.Record(8);
                 model.ResetCategoriesAndRatios();
+                ThreadedManagedDebugging.Checkpoint(213);
+                ConverterPipelineDiagnostics.Record(9);
                 outcome = UnitConverterPreparationOutcome.Success(model);
             }
-            catch (Exception exception) when (
-                exception is ArgumentException or
-                FormatException or
-                InvalidOperationException or
-                KeyNotFoundException or
-                OverflowException or
-                System.Resources.MissingManifestResourceException)
+            catch (Exception exception) when (ConverterPipelineDiagnostics.CanReport(exception))
             {
+                ConverterPipelineDiagnostics.RecordFailure(exception);
                 outcome = UnitConverterPreparationOutcome.Failure(exception);
             }
 
-            response.TryWrite(outcome);
-            response.TryComplete();
+            request.Response.TryWrite(outcome);
+            request.Response.TryComplete();
+            ConverterPipelineDiagnostics.Record(10);
         }
     }
 

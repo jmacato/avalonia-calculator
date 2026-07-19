@@ -45,11 +45,13 @@ public sealed partial class UnitConverter : UserControl, IDisposable
 
     public UnitConverter()
     {
+        ConverterPipelineDiagnostics.Record(17);
         _layoutDirection = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
         _flowDirectionHorizontalAlignment = _layoutDirection == FlowDirection.RightToLeft ? HorizontalAlignment.Right : HorizontalAlignment.Left;
         InitializeComponent();
         ApplyFlowDirection();
         InitializeOfflineStatus();
+        ConverterPipelineDiagnostics.Record(18);
     }
 
     public UnitConverterViewModel? Model => DataContext as UnitConverterViewModel;
@@ -124,6 +126,7 @@ public sealed partial class UnitConverter : UserControl, IDisposable
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+        ConverterPipelineDiagnostics.Record(19);
         SubscribeToModel();
         ApplyResponsiveLayout();
     }
@@ -446,7 +449,7 @@ public sealed partial class UnitConverter : UserControl, IDisposable
         UnitConverterRootGrid.RowDefinitions[5].MinHeight = Math.Max(48, e.NewSize.Height + 0.01);
     }
 
-    private static void OnValueSelected(object? sender, EventArgs e)
+    private void OnValueSelected(object? sender, EventArgs e)
     {
         _ = e;
         if (sender is CalculationResult value)

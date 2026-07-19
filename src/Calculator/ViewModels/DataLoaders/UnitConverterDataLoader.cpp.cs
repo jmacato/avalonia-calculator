@@ -3,9 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Diagnostics;
 
+using CalculatorApp.ViewModel;
 using CalcManager = UnitConversionManager;
 
 namespace CalculatorApp.ViewModel.Common
@@ -29,37 +29,99 @@ namespace CalculatorApp.ViewModel.Common
 
         public Dictionary<CalcManager.Unit, CalcManager.ConversionData> LoadOrderedRatios(CalcManager.Unit unit)
         {
-            return m_ratioMap[unit];
+            ArgumentNullException.ThrowIfNull(unit);
+            if (m_ratioMap.TryGetValue(
+                    unit,
+                    out Dictionary<CalcManager.Unit, CalcManager.ConversionData>? cachedConversions))
+            {
+                return cachedConversions;
+            }
+
+            var conversions = new Dictionary<CalcManager.Unit, CalcManager.ConversionData>();
+            if (!m_unitIDToCategoryMap.TryGetValue(unit.Id, out ViewMode categoryViewMode))
+            {
+                return conversions;
+            }
+
+            if (m_explicitConversionData.TryGetValue(
+                    unit.Id,
+                    out Dictionary<int, CalcManager.ConversionData>? explicitConversions))
+            {
+                foreach (KeyValuePair<int, CalcManager.ConversionData> conversion in explicitConversions)
+                {
+                    if (m_idToUnit.TryGetValue(conversion.Key, out OrderedUnit? targetUnit))
+                    {
+                        conversions.Add(targetUnit, conversion.Value);
+                    }
+                }
+            }
+            else if (m_categoryToUnitConversionDataMap.TryGetValue(
+                         categoryViewMode,
+                         out Dictionary<int, string>? unitConversions) &&
+                     unitConversions.TryGetValue(unit.Id, out string? unitFactor))
+            {
+                foreach (KeyValuePair<int, string> conversion in unitConversions)
+                {
+                    if (!m_idToUnit.TryGetValue(conversion.Key, out OrderedUnit? targetUnit))
+                    {
+                        continue;
+                    }
+
+                    conversions.Add(
+                        targetUnit,
+                        new CalcManager.ConversionData(
+                            unitFactor,
+                            conversion.Value,
+                            "0",
+                            false));
+                }
+            }
+
+            m_ratioMap.Add(unit, conversions);
+            return conversions;
         }
 
         public bool SupportsCategory(CalcManager.Category target)
         {
-            if (m_categoryList.Count == 0)
-            {
-                GetCategories();
-            }
-
+            ArgumentNullException.ThrowIfNull(target);
             int currencyId = NavCategoryStates.Serialize(ViewMode.Currency);
-
-            return m_categoryList.Any(category => currencyId != category.Id && target.Id == category.Id);
+            ViewMode mode = NavCategoryStates.Deserialize(target.Id);
+            return target.Id != currencyId && NavCategory.IsConverterViewMode(mode);
         }
 
         public void LoadData()
         {
-            var idToUnit = new Dictionary<int, OrderedUnit>();
-
+            ConverterPipelineDiagnostics.Record(24);
             // Load categories, units and conversion data into data structures.
-            GetCategories();
-            Dictionary<ViewMode, List<OrderedUnit>> orderedUnitMap = GetUnits();
-            Dictionary<ViewMode, Dictionary<int, string>> categoryToUnitConversionDataMap = GetConversionData();
-            Dictionary<int, Dictionary<int, CalcManager.ConversionData>> explicitConversionData = GetExplicitConversionData(); // This is needed for temperature conversions
+            UnitConverterLocalizedData? localizedData = Volatile.Read(ref m_localizedData);
+            ConverterPipelineDiagnostics.Record(25);
+            if (localizedData is null)
+            {
+                PrepareLocalizedData();
+                localizedData = Volatile.Read(ref m_localizedData) ??
+                    throw new InvalidOperationException("Localized converter data was not prepared.");
+            }
+
+            m_categoryList.Clear();
+            m_categoryList.AddRange(localizedData.Categories);
+            Dictionary<ViewMode, List<OrderedUnit>> orderedUnitMap = localizedData.Units;
+            ConverterPipelineDiagnostics.Record(26);
+            ConverterPipelineDiagnostics.Record(27);
+            m_categoryToUnitConversionDataMap = GetConversionData();
+            ConverterPipelineDiagnostics.Record(28);
+            m_explicitConversionData = GetExplicitConversionData();
+            ConverterPipelineDiagnostics.Record(29);
 
             m_categoryIDToUnitsMap.Clear();
             m_ratioMap.Clear();
+            m_idToUnit.Clear();
+            m_unitIDToCategoryMap.Clear();
+            ConverterPipelineDiagnostics.Record(30);
 
             foreach (CalcManager.Category objectCategory in m_categoryList)
             {
                 ViewMode categoryViewMode = NavCategoryStates.Deserialize(objectCategory.Id);
+                ConverterPipelineDiagnostics.Record(100 + (int)categoryViewMode);
 
                 Debug.Assert(NavCategory.IsConverterViewMode(categoryViewMode));
 
@@ -86,88 +148,37 @@ namespace CalculatorApp.ViewModel.Common
                 foreach (OrderedUnit u in orderedUnits)
                 {
                     unitList.Add(u);
-                    idToUnit.Add(u.Id, u);
+                    m_idToUnit.Add(u.Id, u);
+                    m_unitIDToCategoryMap.Add(u.Id, categoryViewMode);
                 }
 
                 // Save units per category
                 m_categoryIDToUnitsMap.Add(objectCategory.Id, unitList);
-
-                // For each unit, populate the conversion data
-                foreach (CalcManager.Unit unit in unitList)
-                {
-                    var conversions = new Dictionary<CalcManager.Unit, CalcManager.ConversionData>();
-
-                    if (!explicitConversionData.TryGetValue(
-                            unit.Id,
-                            out Dictionary<int, CalcManager.ConversionData>? explicitConversions))
-                    {
-                        // Get the associated units for a category id
-                        if (!categoryToUnitConversionDataMap.TryGetValue(categoryViewMode, out Dictionary<int, string>? unitConversions))
-                        {
-                            Debug.WriteLine($"Warning: No conversion data found for category {categoryViewMode}");
-                            unitConversions = new Dictionary<int, string>();
-                        }
-
-                        if (!unitConversions.TryGetValue(unit.Id, out string? unitFactor))
-                        {
-                            Debug.WriteLine($"Warning: Unit factor not found for unit {unit.Id} in category {categoryViewMode}");
-                            continue;
-                        }
-
-                        foreach (var kvp in unitConversions)
-                        {
-                            int id = kvp.Key;
-                            string conversionFactor = kvp.Value;
-
-                            if (!idToUnit.ContainsKey(id))
-                            {
-                                // Optional units will not be in idToUnit but can be in unitConversions.
-                                // For optional units that did not make it to the current set of units, just continue.
-                                continue;
-                            }
-
-                            var parsedData = new CalcManager.ConversionData(
-                                unitFactor,
-                                conversionFactor,
-                                "0",
-                                false);
-                            conversions.Add(idToUnit[id], parsedData);
-                        }
-                    }
-                    else
-                    {
-                        foreach (var kvp in explicitConversions)
-                        {
-                            if (idToUnit.TryGetValue(kvp.Key, out OrderedUnit? targetUnit))
-                            {
-                                conversions.Add(targetUnit, kvp.Value);
-                            }
-                            else
-                            {
-                                Debug.WriteLine($"Warning: Target unit {kvp.Key} not found in idToUnit map for explicit conversion from {unit.Id}");
-                            }
-                        }
-                    }
-
-                    m_ratioMap.Add(unit, conversions);
-                }
             }
+
+            ConverterPipelineDiagnostics.Record(31);
         }
 
         // Helper Method Implementations
 
-        private void GetCategories()
+        private static List<CalcManager.Category> CreateCategories()
         {
-            m_categoryList.Clear();
-            var converterCategoryGroup = NavCategoryStates.CreateConverterCategoryGroup();
-            foreach (var category in converterCategoryGroup.Categories)
+            var categories = new List<CalcManager.Category>();
+            AppResourceProvider resources = AppResourceProvider.Instance;
+            foreach (NavCategoryInitializer initializer in NavCategory.s_categoryManifest)
             {
-                /* Id, CategoryName, SupportsNegative */
-                m_categoryList.Add(new CalcManager.Category(
-                    NavCategoryStates.Serialize(category.ViewMode),
-                    category.Name,
-                    category.SupportsNegative));
+                if (initializer.GroupType != CategoryGroupType.Converter)
+                {
+                    continue;
+                }
+
+                categories.Add(new CalcManager.Category(
+                    initializer.SerializationId,
+                    resources.GetResourceString(initializer.NameResourceKey + "Text"),
+                    initializer.SupportsNegative));
             }
+
+            return categories;
         }
 
         private Dictionary<ViewMode, List<OrderedUnit>> GetUnits()
