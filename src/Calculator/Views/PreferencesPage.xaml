@@ -29,7 +29,8 @@
     <ScrollViewer Grid.Row="1"
                   HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
-      <StackPanel MaxWidth="720"
+      <StackPanel x:Name="SettingsItemsPanel"
+                  MaxWidth="720"
                   Margin="24,8,24,24"
                   HorizontalAlignment="Left"
                   Spacing="6">
@@ -100,9 +101,9 @@
         <fa:FASettingsExpander Header="Currency"
                                Description="Currency rate update behavior">
           <fa:FASettingsExpanderItem>
-            <ToggleSwitch x:Name="AutomaticCurrencyRefreshToggle"
-                          IsCheckedChanged="OnAutomaticCurrencyRefreshChanged"
-                          Content="{utils:ResourceString Name=CurrencyAutomaticRefreshSetting}" />
+            <fa:WinUiToggleSwitch x:Name="AutomaticCurrencyRefreshToggle"
+                                  IsCheckedChanged="OnAutomaticCurrencyRefreshChanged"
+                                  Content="{utils:ResourceString Name=CurrencyAutomaticRefreshSetting}" />
           </fa:FASettingsExpanderItem>
         </fa:FASettingsExpander>
 

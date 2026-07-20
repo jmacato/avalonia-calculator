@@ -124,22 +124,27 @@ internal sealed class AutomationRequestRouter
 
     private async Task RenderSettledFrameAsync(HttpListenerResponse response)
     {
-        await Dispatcher.UIThread.InvokeAsync(_server.PrimeWindowRender);
         await _server.WaitForAnimationFrameAsync().ConfigureAwait(false);
+        await CaptureCurrentFrameAsync().ConfigureAwait(false);
         await Task.Delay(TimeSpan.FromMilliseconds(250)).ConfigureAwait(false);
-        await Dispatcher.UIThread.InvokeAsync(_server.PrimeWindowRender);
         await _server.WaitForAnimationFrameAsync().ConfigureAwait(false);
+        await CaptureCurrentFrameAsync().ConfigureAwait(false);
         await Task.Delay(TimeSpan.FromMilliseconds(250)).ConfigureAwait(false);
         await RenderCurrentFrameAsync(response).ConfigureAwait(false);
     }
 
     private async Task RenderCurrentFrameAsync(HttpListenerResponse response)
     {
-        byte[] png = await Dispatcher.UIThread.InvokeAsync(_server.RenderWindow);
+        byte[] png = await CaptureCurrentFrameAsync().ConfigureAwait(false);
         response.ContentType = "image/png";
         response.ContentLength64 = png.Length;
         await response.OutputStream.WriteAsync(png).ConfigureAwait(false);
         response.Close();
+    }
+
+    private async Task<byte[]> CaptureCurrentFrameAsync()
+    {
+        return await Dispatcher.UIThread.InvokeAsync(_server.RenderWindowAsync).ConfigureAwait(false);
     }
 
     private static Task WriteOkAsync(HttpListenerResponse response) =>

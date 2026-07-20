@@ -237,14 +237,16 @@
         </Grid.ColumnDefinitions>
 
         <controls:CalculatorButton x:Name="ClearMemoryButton"
-                                   Classes="symbol"
+                                   Classes="symbol caption"
+                                   Theme="{StaticResource CaptionButtonStyle}"
                                    AutomationProperties.AutomationId="ClearMemoryButton"
                                    AutomationProperties.Name="{utils:ResourceString Name='ClearMemoryButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
                                    Command="{CompiledBinding ClearMemoryCommand}"
                                    Content="&#xF754;" />
         <controls:CalculatorButton x:Name="MemRecall"
                                    Grid.Column="1"
-                                   Classes="symbol"
+                                   Classes="symbol caption"
+                                   Theme="{StaticResource CaptionButtonStyle}"
                                    AutomationProperties.AutomationId="MemRecall"
                                    AutomationProperties.Name="{utils:ResourceString Name='MemRecall.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
                                    Command="{CompiledBinding MemoryItemPressed}"
@@ -252,7 +254,8 @@
                                    Content="&#xF755;" />
         <controls:CalculatorButton x:Name="MemPlus"
                                    Grid.Column="2"
-                                   Classes="symbol"
+                                   Classes="symbol caption"
+                                   Theme="{StaticResource CaptionButtonStyle}"
                                    AutomationProperties.AutomationId="MemPlus"
                                    AutomationProperties.Name="{utils:ResourceString Name='MemPlus.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
                                    Command="{CompiledBinding MemoryAdd}"
@@ -260,7 +263,8 @@
                                    Content="&#xF757;" />
         <controls:CalculatorButton x:Name="MemMinus"
                                    Grid.Column="3"
-                                   Classes="symbol"
+                                   Classes="symbol caption"
+                                   Theme="{StaticResource CaptionButtonStyle}"
                                    AutomationProperties.AutomationId="MemMinus"
                                    AutomationProperties.Name="{utils:ResourceString Name='MemMinus.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
                                    Command="{CompiledBinding MemorySubtract}"
@@ -268,7 +272,8 @@
                                    Content="&#xF758;" />
         <controls:CalculatorButton x:Name="MemButton"
                                    Grid.Column="4"
-                                   Classes="symbol"
+                                   Classes="symbol caption"
+                                   Theme="{StaticResource CaptionButtonStyle}"
                                    AutomationProperties.AutomationId="memButton"
                                    AutomationProperties.Name="{utils:ResourceString Name='memButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
                                    ButtonId="Memory"
@@ -277,7 +282,7 @@
                 Grid.Column="6"
                 MinWidth="15.5"
                 MinHeight="8.402"
-                FontFamily="{DynamicResource CalculatorFontFamily}"
+                Theme="{StaticResource CaptionButtonStyle}"
                 AutomationProperties.AutomationId="MemoryButton"
                 AutomationProperties.Name="{utils:ResourceString Name='MemoryButton_Open'}"
                 Click="ToggleMemoryFlyout"
@@ -287,18 +292,18 @@
 
       <Grid x:Name="NumpadPanel"
             Grid.Row="5"
-            Margin="3,0,3,3">
+            Margin="3,0,3,3"
+            RenderTransformOrigin="50%,50%">
+        <Grid.RenderTransform>
+          <ScaleTransform />
+        </Grid.RenderTransform>
         <local:OperatorsPanel x:Name="OpsPanel"
                               IsBitFlipChecked="{CompiledBinding IsBitFlipChecked}" />
       </Grid>
 
       <Button x:Name="HistoryButton"
               Grid.Row="0"
-              Margin="0,0,8,0"
-              HorizontalAlignment="Right"
-              VerticalAlignment="Center"
-              FontFamily="{DynamicResource CalculatorFontFamily}"
-              FontSize="18"
+              Theme="{StaticResource HistoryButtonStyle}"
               AutomationProperties.AutomationId="HistoryButton"
               AutomationProperties.Name="{utils:ResourceString Name='HistoryButton_Open'}"
               Click="ToggleHistoryFlyout"

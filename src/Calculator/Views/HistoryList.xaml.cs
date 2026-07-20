@@ -24,6 +24,7 @@ public sealed partial class HistoryList : UserControl
     public HistoryList()
     {
         InitializeComponent();
+        HistoryListView.VisualItemsChanged += OnVisualItemsChanged;
     }
 
     public HistoryViewModel? Model => DataContext as HistoryViewModel;
@@ -102,11 +103,13 @@ public sealed partial class HistoryList : UserControl
 
     private void UpdateState()
     {
-        bool hasItems = Model?.Items.Count > 0;
+        bool hasItems = HistoryListView.ItemCount > 0;
         HistoryEmpty.IsVisible = !hasItems;
         HistoryListView.IsVisible = hasItems;
         ClearHistory.IsVisible = hasItems;
     }
+
+    private void OnVisualItemsChanged(object? sender, EventArgs e) => UpdateState();
 
     private void OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {

@@ -1,0 +1,307 @@
+<!--
+  Copyright (c) Microsoft Corporation. All rights reserved.
+  Licensed under the MIT License.
+
+  Direct Avalonia translations of Calculator's
+  CaptionToggleEmphasizedButtonStyle and CaptionToggleButtonWithIndicatorStyle.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:fac="using:FluentAvalonia.UI.Controls"
+                    x:CompileBindings="True">
+  <ControlTheme x:Key="SubtleButtonStyle"
+                TargetType="Button"
+                BasedOn="{StaticResource {x:Type Button}}">
+    <Setter Property="Background" Value="{DynamicResource SubtleFillColorTransparentBrush}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource ControlBorderThemeThickness}" />
+    <Setter Property="Margin" Value="1" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="FontFamily" Value="{DynamicResource CalculatorFontFamily}" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <fac:WinUiBrushBorder TargetBackground="{TemplateBinding Background}"
+                                   BorderBrush="{TemplateBinding BorderBrush}"
+                                   BorderThickness="{TemplateBinding BorderThickness}"
+                                   BackgroundSizing="{TemplateBinding BackgroundSizing}"
+                                   CornerRadius="{TemplateBinding CornerRadius}"
+                                   TransitionDuration="0:0:0.083">
+          <ContentPresenter Padding="{TemplateBinding Padding}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                            AutomationProperties.AccessibilityView="Raw"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}" />
+        </fac:WinUiBrushBorder>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrushPointerOver}" />
+      <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundPointerOver}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrushPressed}" />
+      <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundPressed}" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorDisabledBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrushDisabled}" />
+      <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundDisabled}" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="CaptionButtonStyle"
+                TargetType="Button"
+                BasedOn="{StaticResource SubtleButtonStyle}">
+    <Setter Property="MinWidth" Value="32" />
+  </ControlTheme>
+
+  <!-- Calculator App.xaml: SquareIconButtonStyle and HistoryButtonStyle. -->
+  <ControlTheme x:Key="SquareIconButtonStyle"
+                TargetType="Button"
+                BasedOn="{StaticResource SubtleButtonStyle}">
+    <Setter Property="Width" Value="32" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Margin" Value="10,0,0,0" />
+    <Setter Property="MinWidth" Value="16" />
+    <Setter Property="MinHeight" Value="16" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="HistoryButtonStyle"
+                TargetType="Button"
+                BasedOn="{StaticResource SquareIconButtonStyle}">
+    <Setter Property="Margin" Value="0,0,8,0" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="ScrollButtonStyle"
+                TargetType="Button"
+                BasedOn="{StaticResource SubtleButtonStyle}">
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="MinWidth" Value="20" />
+    <Setter Property="MinHeight" Value="20" />
+    <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+    <Setter Property="FontSize" Value="12" />
+  </ControlTheme>
+
+  <ControlTheme x:Key="CaptionToggleEmphasizedButtonStyle"
+                TargetType="ToggleButton"
+                BasedOn="{StaticResource {x:Type ToggleButton}}">
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="1" />
+    <Setter Property="MinWidth" Value="32" />
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Background" Value="{DynamicResource CalcButtonAltFillColorDefaultBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <fac:WinUiBrushBorder TargetBackground="{TemplateBinding Background}"
+                                   BorderBrush="{TemplateBinding BorderBrush}"
+                                   BorderThickness="{TemplateBinding BorderThickness}"
+                                   BackgroundSizing="{TemplateBinding BackgroundSizing}"
+                                   CornerRadius="{TemplateBinding CornerRadius}"
+                                   TransitionDuration="0:0:0.083">
+          <ContentPresenter Padding="{TemplateBinding Padding}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                            AutomationProperties.AccessibilityView="Raw"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}" />
+        </fac:WinUiBrushBorder>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{DynamicResource CalcButtonAltFillColorHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushPointerOver}" />
+      <Setter Property="Foreground" Value="{DynamicResource ToggleButtonForegroundPointerOver}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{DynamicResource CalcButtonAltFillColorPressedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushPressed}" />
+      <Setter Property="Foreground" Value="{DynamicResource ToggleButtonForegroundPressed}" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Background" Value="{DynamicResource CalcButtonAltFillColorDisabledBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushDisabled}" />
+      <Setter Property="Foreground" Value="{DynamicResource ToggleButtonForegroundDisabled}" />
+    </Style>
+    <Style Selector="^:checked">
+      <Setter Property="Background" Value="{DynamicResource ToggleButtonBackgroundChecked}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushChecked}" />
+      <Setter Property="Foreground" Value="{DynamicResource ToggleButtonForegroundChecked}" />
+    </Style>
+    <Style Selector="^:checked:pointerover">
+      <Setter Property="Background" Value="{DynamicResource ToggleButtonBackgroundCheckedPointerOver}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushCheckedPointerOver}" />
+      <Setter Property="Foreground" Value="{DynamicResource ToggleButtonForegroundCheckedPointerOver}" />
+    </Style>
+    <Style Selector="^:checked:pressed">
+      <Setter Property="Background" Value="{DynamicResource ToggleButtonBackgroundCheckedPressed}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushCheckedPressed}" />
+      <Setter Property="Foreground" Value="{DynamicResource ToggleButtonForegroundCheckedPressed}" />
+    </Style>
+    <Style Selector="^:checked:disabled">
+      <Setter Property="Background" Value="{DynamicResource ToggleButtonBackgroundCheckedDisabled}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushCheckedDisabled}" />
+      <Setter Property="Foreground" Value="{DynamicResource ToggleButtonForegroundCheckedDisabled}" />
+    </Style>
+    <Style Selector="^:indeterminate">
+      <Setter Property="Background" Value="{DynamicResource ToggleButtonBackgroundIndeterminate}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushIndeterminate}" />
+      <Setter Property="Foreground" Value="{DynamicResource ToggleButtonForegroundIndeterminate}" />
+    </Style>
+    <Style Selector="^:indeterminate:pointerover">
+      <Setter Property="Background" Value="{DynamicResource ToggleButtonBackgroundIndeterminatePointerOver}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushIndeterminatePointerOver}" />
+      <Setter Property="Foreground" Value="{DynamicResource ToggleButtonForegroundIndeterminatePointerOver}" />
+    </Style>
+    <Style Selector="^:indeterminate:pressed">
+      <Setter Property="Background" Value="{DynamicResource ToggleButtonBackgroundIndeterminatePressed}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushIndeterminatePressed}" />
+      <Setter Property="Foreground" Value="{DynamicResource ToggleButtonForegroundIndeterminatePressed}" />
+    </Style>
+    <Style Selector="^:indeterminate:disabled">
+      <Setter Property="Background" Value="{DynamicResource ToggleButtonBackgroundIndeterminateDisabled}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushIndeterminateDisabled}" />
+      <Setter Property="Foreground" Value="{DynamicResource ToggleButtonForegroundIndeterminateDisabled}" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="CaptionToggleButtonWithIndicatorStyle"
+                TargetType="ToggleButton"
+                BasedOn="{StaticResource {x:Type ToggleButton}}">
+    <Setter Property="BorderThickness" Value="{DynamicResource ControlBorderThemeThickness}" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="1" />
+    <Setter Property="MinWidth" Value="32" />
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Background" Value="{DynamicResource SubtleFillColorTransparentBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid>
+          <fac:WinUiBrushBorder x:Name="ContentPresenter"
+                                     TargetBackground="{TemplateBinding Background}"
+                                     BorderBrush="{TemplateBinding BorderBrush}"
+                                     BorderThickness="{TemplateBinding BorderThickness}"
+                                     BackgroundSizing="{TemplateBinding BackgroundSizing}"
+                                     CornerRadius="{TemplateBinding CornerRadius}"
+                                     TransitionDuration="0:0:0.083">
+            <ContentPresenter Padding="{TemplateBinding Padding}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                              AutomationProperties.AccessibilityView="Raw"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}" />
+          </fac:WinUiBrushBorder>
+          <fac:WinUiBrushBorder x:Name="SelectedPipe"
+                                     Width="16"
+                                     Height="3"
+                                     Margin="0,0,0,1"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Bottom"
+                                     TargetBackground="{TemplateBinding Background}"
+                                     BorderThickness="0"
+                                     CornerRadius="1.5"
+                                     TransitionDuration="0:0:0.150" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushPointerOver}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushPressed}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorDisabledBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushDisabled}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+    </Style>
+    <Style Selector="^:checked">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorTransparentBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushChecked}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+      <Setter Property="BackgroundSizing" Value="{DynamicResource ToggleButtonCheckedStateBackgroundSizing}" />
+    </Style>
+    <Style Selector="^:checked /template/ fac|WinUiBrushBorder#SelectedPipe">
+      <Setter Property="TargetBackground" Value="{DynamicResource ToggleButtonBackgroundChecked}" />
+    </Style>
+    <Style Selector="^:checked:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushCheckedPointerOver}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+    <Style Selector="^:checked:pointerover /template/ fac|WinUiBrushBorder#SelectedPipe">
+      <Setter Property="TargetBackground" Value="{DynamicResource ToggleButtonBackgroundCheckedPointerOver}" />
+    </Style>
+    <Style Selector="^:checked:pressed">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushCheckedPressed}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="^:checked:pressed /template/ fac|WinUiBrushBorder#SelectedPipe">
+      <Setter Property="TargetBackground" Value="{DynamicResource ToggleButtonBackgroundCheckedPressed}" />
+    </Style>
+    <Style Selector="^:checked:disabled">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorDisabledBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushCheckedDisabled}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+    </Style>
+    <Style Selector="^:checked:disabled /template/ fac|WinUiBrushBorder#SelectedPipe">
+      <Setter Property="TargetBackground" Value="{DynamicResource ToggleButtonBackgroundCheckedDisabled}" />
+    </Style>
+    <Style Selector="^:indeterminate">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorTransparentBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushIndeterminate}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+    <Style Selector="^:indeterminate:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushIndeterminatePointerOver}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    </Style>
+    <Style Selector="^:indeterminate:pressed">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushIndeterminatePressed}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="^:indeterminate:disabled">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorDisabledBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushIndeterminateDisabled}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+    </Style>
+  </ControlTheme>
+</ResourceDictionary>

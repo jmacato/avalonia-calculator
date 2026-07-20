@@ -112,6 +112,7 @@
     <AvaloniaXaml Include="Views\DelighterUnitStyles.xaml" />
     <AvaloniaXaml Include="Controls\SwipeControlStyles.xaml" />
     <AvaloniaXaml Include="Controls\HistoryMemoryStyles.xaml" />
+    <AvaloniaXaml Include="Controls\CalculatorToggleButtonThemes.xaml" />
     <AvaloniaXaml Include="Views\MainPage.xaml" />
     <AvaloniaResource Include="Assets\Fonts\Hind2\**\*.ttf" />
     <AvaloniaResource Include="Assets\Fonts\XCharterMath\**\*.otf" />

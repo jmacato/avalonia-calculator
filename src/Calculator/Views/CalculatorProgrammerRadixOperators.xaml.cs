@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using CalculatorApp.Controls;
 using CalculatorApp.ViewModel;
 
 namespace CalculatorApp;
@@ -13,9 +14,37 @@ public sealed partial class CalculatorProgrammerRadixOperators : UserControl
     {
         InitializeComponent();
         SetBitShiftMode(CalculatorProgrammerRadixOperatorsBitShiftMode.Arithmetic);
+        SizeChanged += OnProgrammerOperatorsSizeChanged;
     }
 
     public StandardCalculatorViewModel? Model => DataContext as StandardCalculatorViewModel;
+
+    private void OnProgrammerOperatorsSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        bool large = e.NewSize.Width >= 1053 && e.NewSize.Height >= 729;
+        bool medium = !large && e.NewSize.Width >= 630 && e.NewSize.Height >= 437;
+        ProgRadixOps.RowDefinitions[0].MinHeight = large || medium ? 70 : 44;
+
+        double headerFontSize = large ? 24 : medium ? 16 : 12;
+        double headerGlyphFontSize = large ? 24 : medium ? 20 : 16;
+        double headerChevronFontSize = large ? 16 : medium ? 10 : 12;
+        ApplyOperatorPanelHeaderSize(BitwiseButton, headerFontSize, headerGlyphFontSize, headerChevronFontSize);
+        ApplyOperatorPanelHeaderSize(BitShiftButton, headerFontSize, headerGlyphFontSize, headerChevronFontSize);
+
+        BitwiseGrid.Width = large ? 387 : medium ? 416 : 194;
+        BitwiseGrid.Height = large ? 192 : medium ? 144 : 96;
+    }
+
+    private static void ApplyOperatorPanelHeaderSize(
+        OperatorPanelButton button,
+        double fontSize,
+        double glyphFontSize,
+        double chevronFontSize)
+    {
+        button.FontSize = fontSize;
+        button.GlyphFontSize = glyphFontSize;
+        button.ChevronFontSize = chevronFontSize;
+    }
 
     public bool IsErrorVisualState
     {

@@ -1,17 +1,15 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
-using Avalonia.Controls.Selection;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using CalculatorApp.ViewModel;
 using CalculatorApp.ViewModel.Common;
+using GraphControl;
 
 namespace CalculatorApp;
 
@@ -19,7 +17,6 @@ public sealed partial class MainPage : UserControl, IDisposable
 {
     private readonly int _diagnosticPageId = ConverterPipelineDiagnostics.RecordPageCreated();
     private bool _isSettingsVisible;
-    private bool _updatingNavigationSelection;
 #if CALCULATOR_BROWSER
     private int _browserViewReleaseScheduled;
 #endif
@@ -27,96 +24,38 @@ public sealed partial class MainPage : UserControl, IDisposable
 
     public MainPage()
     {
-        Model = new ApplicationViewModel(App.SettingsStore);
-        NavViewCategoriesSource = ExpandNavViewCategoryGroups(Model.Categories);
+        _navigationSelectionAnimationTimer = new AnimationFrameTimer(OnNavigationSelectionAnimationFrame);
+        Model = new ApplicationViewModel(App.SettingsStore, _diagnosticPageId);
 
         InitializeComponent();
         DataContext = this;
 
         Model.PropertyChanged += OnAppPropertyChanged;
-        Model.Categories.CollectionChanged += OnCategoriesChanged;
         Model.Initialize(ViewMode.Standard);
         CalcHolder.Child = new Calculator { DataContext = Model.CalculatorViewModel };
         UpdateModeHolders();
         UpdatePaneToggleAutomation();
+        Dispatcher.UIThread.Post(CaptureInitialNavigationSelection, DispatcherPriority.Render);
     }
 
     public ApplicationViewModel Model { get; }
 
     internal int DiagnosticPageId => _diagnosticPageId;
 
-    public IReadOnlyList<object> NavViewCategoriesSource { get; private set; }
-
-    private void OnCategoriesChanged(
-        object? sender,
-        System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
-    {
-        _ = sender;
-        _ = e;
-        NavViewCategoriesSource = ExpandNavViewCategoryGroups(Model.Categories);
-    }
-
-    private static List<object> ExpandNavViewCategoryGroups(
-        ObservableCollection<NavCategoryGroup> groups)
-    {
-        var result = new List<object>();
-        foreach (var group in groups)
-        {
-            result.Add(group);
-            foreach (var category in group.Categories)
-            {
-                result.Add(category);
-            }
-        }
-
-        return result;
-    }
-
-    private void OnNavLoaded(object? sender, RoutedEventArgs e)
-    {
-        if (NavList.SelectedItem is null)
-        {
-            SelectNavigationItemByModel();
-        }
-    }
-
-    private void OnNavSelectionChanged(
-        object? sender,
-        SelectionChangedEventArgs e)
-    {
-        Dispatcher.UIThread.VerifyAccess();
-
-        if (_updatingNavigationSelection)
-        {
-            return;
-        }
-
-        ThreadedManagedDebugging.Checkpoint(300);
-        if (NavList.SelectedItem is NavCategory { IsEnabled: true } category)
-        {
-            ThreadedManagedDebugging.Checkpoint(301);
-            ConverterPipelineDiagnostics.RecordNavigation(
-                _diagnosticPageId,
-                (int)category.ViewMode);
-            _isSettingsVisible = false;
-            Model.Mode = category.ViewMode;
-            ThreadedManagedDebugging.Checkpoint(302);
-            NavSplitView.IsPaneOpen = false;
-        }
-    }
-
     private void OnSettingsClick(object? sender, RoutedEventArgs e)
     {
         _isSettingsVisible = true;
-        EnsureSettingsView();
+        PreferencesPage settings = EnsureSettingsView();
         UpdateModeHolders();
-        NavSplitView.IsPaneOpen = false;
+        settings.BeginOpenAnimation();
+        Model.IsNavigationPaneOpen = false;
     }
 
-    private void OnPaneToggleClick(object? sender, RoutedEventArgs e)
+    private void AlwaysOnTopButtonClick(object? sender, RoutedEventArgs e)
     {
-        NavSplitView.IsPaneOpen = !NavSplitView.IsPaneOpen;
-        UpdatePaneToggleAutomation();
+        _ = sender;
+        _ = e;
+        Model.ToggleAlwaysOnTop(0, 0);
     }
 
     private void OnAppPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -130,8 +69,13 @@ public sealed partial class MainPage : UserControl, IDisposable
                 ThreadedManagedDebugging.Checkpoint(311);
             }
 
-            SelectNavigationItemByModel();
             UpdateModeHolders();
+            Dispatcher.UIThread.Post(AnimateNavigationSelectionChange, DispatcherPriority.Render);
+            if (NavCategory.IsCalculatorViewMode(Model.Mode)
+                && CalcHolder.Child is Calculator calculator)
+            {
+                calculator.AnimateCalculator(NavCategory.IsConverterViewMode(Model.PreviousMode));
+            }
             if (NavCategory.IsConverterViewMode(Model.Mode))
             {
                 ThreadedManagedDebugging.Checkpoint(312);
@@ -145,6 +89,10 @@ public sealed partial class MainPage : UserControl, IDisposable
 
             SetDefaultFocus();
         }
+        else if (e.PropertyName == nameof(ApplicationViewModel.IsNavigationPaneOpen))
+        {
+            UpdatePaneToggleAutomation();
+        }
         else if (e.PropertyName == nameof(ApplicationViewModel.CategoryName))
         {
             AutomationProperties.SetName(Header, Model.CategoryName);
@@ -157,23 +105,6 @@ public sealed partial class MainPage : UserControl, IDisposable
             {
                 converter.AnimateConverter();
                 converter.SetDefaultFocus();
-            }
-        }
-    }
-
-    private void SelectNavigationItemByModel()
-    {
-        var flatIndex = NavCategoryStates.GetFlatIndex(Model.Mode);
-        if (flatIndex >= 0 && flatIndex < NavViewCategoriesSource.Count)
-        {
-            _updatingNavigationSelection = true;
-            try
-            {
-                NavList.SelectedItem = NavViewCategoriesSource[flatIndex];
-            }
-            finally
-            {
-                _updatingNavigationSelection = false;
             }
         }
     }
@@ -329,22 +260,22 @@ public sealed partial class MainPage : UserControl, IDisposable
         ReleasedViewDisposer.DisposeDetached(child, descendants);
     }
 
-    private void EnsureSettingsView()
+    private PreferencesPage EnsureSettingsView()
     {
-        if (SettingsHolder.Child is PreferencesPage)
+        if (SettingsHolder.Child is PreferencesPage existing)
         {
-            return;
+            return existing;
         }
 
         var settings = new PreferencesPage(App.SettingsStore);
         settings.BackButtonClick += OnSettingsBackButtonClick;
         SettingsHolder.Child = settings;
+        return settings;
     }
 
     private void OnSettingsBackButtonClick(object? sender, RoutedEventArgs e)
     {
         _isSettingsVisible = false;
-        SelectNavigationItemByModel();
         UpdateModeHolders();
         SetDefaultFocus();
     }
@@ -357,7 +288,7 @@ public sealed partial class MainPage : UserControl, IDisposable
 
     private void UpdatePaneToggleAutomation()
     {
-        string name = NavSplitView.IsPaneOpen ? "Close Navigation" : "Open Navigation";
+        string name = Model.IsNavigationPaneOpen ? "Close Navigation" : "Open Navigation";
         AutomationProperties.SetName(PaneToggleButton, name);
         ToolTip.SetTip(PaneToggleButton, name);
     }
@@ -403,7 +334,7 @@ public sealed partial class MainPage : UserControl, IDisposable
         }
 
         Model.PropertyChanged -= OnAppPropertyChanged;
-        Model.Categories.CollectionChanged -= OnCategoriesChanged;
+        DisposeNavigationSelectionAnimation();
         if (SettingsHolder.Child is PreferencesPage settings)
         {
             settings.BackButtonClick -= OnSettingsBackButtonClick;

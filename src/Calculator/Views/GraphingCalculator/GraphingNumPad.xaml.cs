@@ -3,6 +3,7 @@
 
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using CalculatorApp.Controls;
 
 namespace CalculatorApp;
 
@@ -11,6 +12,39 @@ public sealed partial class GraphingNumPad : UserControl
     public GraphingNumPad()
     {
         InitializeComponent();
+        SizeChanged += OnGraphingOperatorsSizeChanged;
+    }
+
+    private void OnGraphingOperatorsSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        bool large = e.NewSize.Width >= 878 && e.NewSize.Height >= 851;
+        bool medium = !large && e.NewSize.Width >= 527 && e.NewSize.Height >= 523;
+        GraphingOperators.RowDefinitions[0].MinHeight = large || medium ? 70 : 44;
+
+        double headerFontSize = large ? 24 : medium ? 16 : 12;
+        double headerGlyphFontSize = large ? 24 : medium ? 20 : 16;
+        double headerChevronFontSize = large ? 16 : medium ? 10 : 12;
+        ApplyOperatorPanelHeaderSize(TrigButton, headerFontSize, headerGlyphFontSize, headerChevronFontSize);
+        ApplyOperatorPanelHeaderSize(InequalityButton, headerFontSize, headerGlyphFontSize, headerChevronFontSize);
+        ApplyOperatorPanelHeaderSize(FuncButton, headerFontSize, headerGlyphFontSize, headerChevronFontSize);
+
+        TrigGrid.Width = large ? 516 : medium ? 480 : 258;
+        TrigGrid.Height = large ? 192 : medium ? 144 : 96;
+        FuncGrid.Width = large ? 387 : medium ? 360 : 194;
+        FuncGrid.Height = large ? 96 : medium ? 72 : 48;
+        InequalityGrid.Width = large ? 628 : medium ? 585 : 312;
+        InequalityGrid.Height = large ? 96 : medium ? 72 : 48;
+    }
+
+    private static void ApplyOperatorPanelHeaderSize(
+        OperatorPanelButton button,
+        double fontSize,
+        double glyphFontSize,
+        double chevronFontSize)
+    {
+        button.FontSize = fontSize;
+        button.GlyphFontSize = glyphFontSize;
+        button.ChevronFontSize = chevronFontSize;
     }
 
     private void ShiftButton_Check(object? sender, RoutedEventArgs e) =>

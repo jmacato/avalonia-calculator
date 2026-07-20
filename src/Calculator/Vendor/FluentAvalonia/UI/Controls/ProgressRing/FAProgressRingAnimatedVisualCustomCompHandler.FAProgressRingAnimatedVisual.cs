@@ -31,7 +31,6 @@ internal sealed class FAProgressRingAnimatedVisualCustomCompHandler : Compositio
         {
             IsAntialias = true,
             IsStroke = true,
-            StrokeWidth = 4f,
             StrokeCap = SKStrokeCap.Round
         };
         _layerPaint = new SKPaint();
@@ -72,10 +71,12 @@ internal sealed class FAProgressRingAnimatedVisualCustomCompHandler : Compositio
 
         if (_background.HasValue)
         {
+            _paint.StrokeWidth = _indeterminate ? IndeterminateStrokeThickness : DeterminateStrokeThickness;
             _paint.Color = _background.Value;
-            dc.DrawArc(_visualBounds, 0, 360, false, _paint);
+            dc.DrawOval(_indeterminate ? IndeterminateBounds : DeterminateBounds, _paint);
         }
 
+        _paint.StrokeWidth = _indeterminate ? IndeterminateStrokeThickness : DeterminateStrokeThickness;
         _paint.Color = _foreground;
         dc.DrawPath(_path, _paint);
         if (needsOpacityLayer)
@@ -102,57 +103,44 @@ internal sealed class FAProgressRingAnimatedVisualCustomCompHandler : Compositio
     {
         if (_indeterminate)
         {
-            // This timing is determined by platform behavior
             var now = CompositionNow;
             if (!_lastTime.HasValue)
                 _lastTime = now;
-            var elapsed = now - _lastTime.Value;
-            var seconds = elapsed.TotalSeconds;
-            if (seconds > _duration)
-            {
-                while (seconds > _duration)
-                {
-                    seconds -= _duration;
-                }
+            double seconds = (now - _lastTime.Value).TotalSeconds % SourceDurationSeconds;
+            float progress = (float)(seconds / SourceDurationSeconds);
 
-                _lastTime = now - TimeSpan.FromSeconds(seconds);
-            }
-
-            // Size:
-            // 0% - 0
-            // 25% - 180
-            // 75% - 180
-            // 100% - 0
-            var progress = (float)(seconds / _duration);
-            float size = 0, size2 = 0, position = 0;
-            if (progress < 0.25)
+            // Exact ProgressRingIndeterminate generated Composition program:
+            // two half-cycle shapes hand opacity off at 0.5, the leading trim
+            // grows from 0.0001 to 0.5, the trailing trim then catches up to
+            // 0.5, and the container rotates 0 -> 450 -> 900 degrees. Its
+            // cubic control points lie on the diagonal, so the curve is
+            // mathematically linear while retaining the exact endpoints.
+            float trimStart;
+            float trimEnd;
+            if (progress < 0.5f)
             {
-                size = 180 * (progress / 0.25f);
-            }
-            else if (progress >= 0.75)
-            {
-                size = 180 * ((1 - progress) / 0.25f);
+                trimStart = 0;
+                trimEnd = Lerp(0.0000999999975f, 0.5f, progress * 2);
             }
             else
             {
-                size = 180;
+                trimStart = Lerp(0, 0.5f, (progress - 0.5f) * 2);
+                trimEnd = 0.5f;
             }
 
-            size2 = size / 2;
-            // 3 full rotations complete the animation, 360 * 3 = 1080
-            position = 1080 * progress;
-            _path.Reset();
-            _path.MoveTo(40, 10);
-            _path.AddArc(_visualBounds, -90 + (position - size2), size);
+            SetArc(
+                IndeterminateBounds,
+                -90 + (900 * progress) + (360 * trimStart),
+                360 * (trimEnd - trimStart));
         }
         else if (_isAnimatingToValue)
         {
             var now = CompositionNow;
             if (!_lastTime.HasValue)
                 _lastTime = now;
-            var elapsed = now - _lastTime.Value;
-            var seconds = elapsed.TotalSeconds;
-            var progress = (float)(seconds / _duration);
+            double seconds = (now - _lastTime.Value).TotalSeconds;
+            double duration = SourceDurationSeconds * Math.Abs(_animationTo - _animationFrom);
+            float progress = duration <= 0 ? 1 : (float)(seconds / duration);
             if (progress >= 1)
             {
                 _isAnimatingToValue = false;
@@ -160,19 +148,53 @@ internal sealed class FAProgressRingAnimatedVisualCustomCompHandler : Compositio
                 progress = 1;
             }
 
-            var dV = _value - _lastValue;
-            var size = _lastValue + (dV * progress);
-            _path.Reset();
-            _path.MoveTo(40, 10);
-            _path.AddArc(_visualBounds, -90, 360 * (size - _min) / (_max - _min));
+            _displayProgress = Lerp(_animationFrom, _animationTo, progress);
+            SetDeterminateArc(_displayProgress);
         }
         else
         {
-            _path.Reset();
-            _path.MoveTo(40, 10);
-            _path.AddArc(_visualBounds, -90, 360 * (_value - _min) / (_max - _min));
+            _displayProgress = Normalize(_value);
+            SetDeterminateArc(_displayProgress);
         }
     }
+
+    private void SetDeterminateArc(float progress)
+    {
+        _path.Reset();
+        if (progress < 0.00833333377f)
+        {
+            return;
+        }
+
+        float trimEnd = progress switch
+        {
+            <= 0.00833333377f => 0.0000999999975f,
+            <= 0.25f => InterpolateSegment(progress, 0.00833333377f, 0.25f, 0.0000999999975f, 0.25f),
+            <= 0.5f => InterpolateSegment(progress, 0.25f, 0.5f, 0.25f, 0.5f),
+            <= 0.75f => InterpolateSegment(progress, 0.5f, 0.75f, 0.5f, 0.75f),
+            <= 0.983333349f => InterpolateSegment(progress, 0.75f, 0.983333349f, 0.75f, 0.96666666f),
+            <= 0.991666675f => InterpolateSegment(progress, 0.983333349f, 0.991666675f, 0.96666666f, 1),
+            _ => 1
+        };
+        SetArc(DeterminateBounds, -90, 360 * trimEnd);
+    }
+
+    private void SetArc(SKRect bounds, float startAngle, float sweepAngle)
+    {
+        _path.Reset();
+        _path.AddArc(bounds, startAngle, sweepAngle);
+    }
+
+    private float Normalize(float value)
+    {
+        float range = _max - _min;
+        return range <= 0 ? 0 : Math.Clamp((value - _min) / range, 0, 1);
+    }
+
+    private static float InterpolateSegment(float value, float start, float end, float from, float to) =>
+        Lerp(from, to, (value - start) / (end - start));
+
+    private static float Lerp(float from, float to, float progress) => from + ((to - from) * progress);
 
     public override void OnMessage(object message)
     {
@@ -199,18 +221,20 @@ internal sealed class FAProgressRingAnimatedVisualCustomCompHandler : Compositio
                     break;
                 case FAProgressRingAnimatedVisualHandlerMessageType.Value when hm.Data is float next:
                     {
-                        _lastValue = _value;
-                        // No animation if we drop the value
+                        float previous = _value;
                         if (next <= _value)
                         {
                             _value = next;
                             _isAnimatingToValue = false;
+                            _lastTime = null;
                         }
                         else
                         {
-                            // Increasing, animate to new value
+                            _animationFrom = Normalize(previous);
                             _value = next;
+                            _animationTo = Normalize(next);
                             _isAnimatingToValue = true;
+                            _lastTime = null;
                             RegisterForNextAnimationFrameUpdate();
                             return;
                         }
@@ -292,17 +316,25 @@ internal sealed class FAProgressRingAnimatedVisualCustomCompHandler : Compositio
     }
 
     private TimeSpan? _lastTime;
-    private float _duration = 2;
     private readonly SKPaint _paint;
     private readonly SKPath _path;
     private readonly SKPaint _layerPaint;
-    private readonly SKRect _visualBounds = new SKRect(10, 10, 70, 70);
     private SKColor? _background;
     private SKColor _foreground;
     private float _min, _max, _value;
+    private float _animationFrom, _animationTo, _displayProgress;
     private bool _indeterminate;
     private bool _active;
     private bool _isAnimatingToValue;
-    private float _lastValue;
     private int _disposeState;
+
+    private const double SourceDurationSeconds = 2;
+    private const float IndeterminateSourceScale = 5;
+    private const float DeterminateSourceScale = 1.76999998f * 2.5f;
+    private const float IndeterminateStrokeThickness = 1.5f * IndeterminateSourceScale;
+    private const float DeterminateStrokeThickness = 1.5f * DeterminateSourceScale;
+    private static readonly SKRect IndeterminateBounds = CreateCenteredBounds(7 * IndeterminateSourceScale);
+    private static readonly SKRect DeterminateBounds = CreateCenteredBounds(8 * DeterminateSourceScale);
+
+    private static SKRect CreateCenteredBounds(float radius) => new(40 - radius, 40 - radius, 40 + radius, 40 + radius);
 }

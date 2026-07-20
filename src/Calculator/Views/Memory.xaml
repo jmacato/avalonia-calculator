@@ -2,6 +2,7 @@
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:fa="using:FluentAvalonia.UI.Controls"
+             xmlns:controls="using:CalculatorApp.Controls"
              xmlns:local="using:CalculatorApp"
              xmlns:model="using:CalculatorApp.ViewModel"
              xmlns:utils="using:CalculatorApp.Utils"
@@ -35,13 +36,13 @@
                  Text="{utils:ResourceString Name='MemoryPaneEmpty.Text'}"
                  TextWrapping="Wrap" />
 
-      <ListBox x:Name="MemoryListView"
+      <controls:WinUiTransitioningListBox x:Name="MemoryListView"
                Margin="4,0"
                Padding="0,24,0,0"
                HorizontalAlignment="Stretch"
                AutomationProperties.AutomationId="MemoryListView"
                ItemContainerTheme="{StaticResource MemoryItemContainerStyle}"
-               ItemsSource="{CompiledBinding MemorizedNumbers}"
+               TransitionItemsSource="{CompiledBinding MemorizedNumbers}"
                SelectionChanged="MemoryListSelectionChanged"
                SelectionMode="Single"
                TabIndex="0"
@@ -80,7 +81,7 @@
             </local:MemoryListItem>
           </DataTemplate>
         </ListBox.ItemTemplate>
-      </ListBox>
+      </controls:WinUiTransitioningListBox>
 
       <Button x:Name="ClearMemory"
               Grid.Row="1"

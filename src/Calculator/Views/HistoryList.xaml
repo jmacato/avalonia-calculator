@@ -49,14 +49,14 @@
                  Text="{utils:ResourceString Name='HistoryEmpty.Text'}"
                  TextWrapping="Wrap" />
 
-      <ListBox x:Name="HistoryListView"
+      <controls:WinUiTransitioningListBox x:Name="HistoryListView"
                MinHeight="60"
                Margin="4,0"
                Padding="0,24,0,0"
                HorizontalAlignment="Stretch"
                AutomationProperties.AutomationId="HistoryListView"
                ItemContainerTheme="{StaticResource HistoryItemContainerStyle}"
-               ItemsSource="{CompiledBinding Items}"
+               TransitionItemsSource="{CompiledBinding Items}"
                SelectionChanged="OnSelectionChanged"
                SelectionMode="Single"
                TabIndex="0"
@@ -111,7 +111,7 @@
             </controls:SwipeControl>
           </DataTemplate>
         </ListBox.ItemTemplate>
-      </ListBox>
+      </controls:WinUiTransitioningListBox>
 
       <Button x:Name="ClearHistory"
               Grid.Row="1"

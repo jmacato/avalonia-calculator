@@ -19,8 +19,9 @@
                                     Glyph="&#xF895;"
                                     Text="{utils:ResourceString Name='bitwiseButton.Text'}">
         <controls:OperatorPanelButton.FlyoutMenu>
-          <Flyout Placement="BottomEdgeAlignedLeft">
-            <Grid Width="260" Height="112" RowDefinitions="*,*" ColumnDefinitions="*,*,*">
+          <Flyout Placement="BottomEdgeAlignedLeft"
+                  FlyoutPresenterClasses="operator-panel">
+            <Grid x:Name="BitwiseGrid" Width="194" Height="96" RowDefinitions="*,*" ColumnDefinitions="*,*,*">
               <controls:CalculatorButton x:Name="AndButton" Classes="operator"
                                          AutomationProperties.AutomationId="andButton"
                                          AutomationProperties.Name="{utils:ResourceString Name='andButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
@@ -56,29 +57,32 @@
                                     Glyph="&#xF894;"
                                     Text="{utils:ResourceString Name='bitShiftButton.Text'}">
         <controls:OperatorPanelButton.FlyoutMenu>
-          <Flyout Placement="BottomEdgeAlignedLeft">
-            <StackPanel Width="230" Margin="8">
-              <RadioButton x:Name="ArithmeticShiftButton"
-                           AutomationProperties.AutomationId="arithmeticShiftButton"
-                           Click="BitshiftFlyout_Checked"
-                           Content="{utils:ResourceString Name='arithmeticShiftButton.Content'}"
-                           GroupName="BitShiftMode" IsChecked="True" />
-              <RadioButton x:Name="LogicalShiftButton"
-                           AutomationProperties.AutomationId="logicalShiftButton"
-                           Click="BitshiftFlyout_Checked"
-                           Content="{utils:ResourceString Name='logicalShiftButton.Content'}"
-                           GroupName="BitShiftMode" />
-              <RadioButton x:Name="RotateCircularButton"
-                           AutomationProperties.AutomationId="rotateCircularButton"
-                           Click="BitshiftFlyout_Checked"
-                           Content="{utils:ResourceString Name='rotateCircularButton.Content'}"
-                           GroupName="BitShiftMode" />
-              <RadioButton x:Name="RotateCarryShiftButton"
-                           AutomationProperties.AutomationId="rotateCarryShiftButton"
-                           Click="BitshiftFlyout_Checked"
-                           Content="{utils:ResourceString Name='rotateCarryShiftButton.Content'}"
-                           GroupName="BitShiftMode" />
-            </StackPanel>
+          <Flyout Placement="Bottom"
+                  FlyoutPresenterClasses="operator-panel">
+            <Border MaxWidth="192" Padding="12">
+              <StackPanel>
+                <RadioButton x:Name="ArithmeticShiftButton"
+                             AutomationProperties.AutomationId="arithmeticShiftButton"
+                             Click="BitshiftFlyout_Checked"
+                             Content="{utils:ResourceString Name='arithmeticShiftButton.Content'}"
+                             GroupName="BitShiftMode" IsChecked="True" />
+                <RadioButton x:Name="LogicalShiftButton"
+                             AutomationProperties.AutomationId="logicalShiftButton"
+                             Click="BitshiftFlyout_Checked"
+                             Content="{utils:ResourceString Name='logicalShiftButton.Content'}"
+                             GroupName="BitShiftMode" />
+                <RadioButton x:Name="RotateCircularButton"
+                             AutomationProperties.AutomationId="rotateCircularButton"
+                             Click="BitshiftFlyout_Checked"
+                             Content="{utils:ResourceString Name='rotateCircularButton.Content'}"
+                             GroupName="BitShiftMode" />
+                <RadioButton x:Name="RotateCarryShiftButton"
+                             AutomationProperties.AutomationId="rotateCarryShiftButton"
+                             Click="BitshiftFlyout_Checked"
+                             Content="{utils:ResourceString Name='rotateCarryShiftButton.Content'}"
+                             GroupName="BitShiftMode" />
+              </StackPanel>
+            </Border>
           </Flyout>
         </controls:OperatorPanelButton.FlyoutMenu>
       </controls:OperatorPanelButton>
@@ -132,13 +136,16 @@
                                AutomationProperties.Name="{utils:ResourceString Name='backSpaceButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
                                ButtonId="Backspace" Content="&#xE94F;" />
 
-    <controls:CalculatorButton x:Name="OpenParenthesisButton" Grid.Row="2" Grid.Column="1" Classes="operator"
+    <controls:CalculatorButton x:Name="OpenParenthesisButton" Grid.Row="2" Grid.Column="1" Classes="operator parenthesis"
                                AutomationProperties.AutomationId="openParenthesisButton"
                                AutomationProperties.Name="{utils:ResourceString Name='openParenthesisButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
-                               ButtonId="OpenParenthesis" Content="(" />
+                               FontSize="18"
+                               ButtonId="OpenParenthesis" Content="("
+                               Tag="{CompiledBinding OpenParenthesisCountDisplay}" />
     <controls:CalculatorButton x:Name="CloseParenthesisButton" Grid.Row="2" Grid.Column="2" Classes="operator"
                                AutomationProperties.AutomationId="closeParenthesisButton"
                                AutomationProperties.Name="{utils:ResourceString Name='closeParenthesisButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                               FontSize="18"
                                ButtonId="CloseParenthesis" Content=")" />
     <controls:CalculatorButton x:Name="ModButton" Grid.Row="2" Grid.Column="3" Classes="operator"
                                AutomationProperties.AutomationId="modButton"

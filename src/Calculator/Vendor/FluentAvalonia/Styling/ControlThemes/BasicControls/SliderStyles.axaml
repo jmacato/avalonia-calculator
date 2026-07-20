@@ -63,12 +63,27 @@
         </Setter>
 
         <Style Selector="^:pointerover /template/ Ellipse#SliderInnerThumb">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.250" Easing="0,0 0,1" />
+                </Transitions>
+            </Setter>
             <Setter Property="RenderTransform" Value="scaleX(1.167) scaleY(1.167)" />
         </Style>
         <Style Selector="^:pressed /template/ Ellipse#SliderInnerThumb">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.250" Easing="0,0 0,1" />
+                </Transitions>
+            </Setter>
             <Setter Property="RenderTransform" Value="scaleX(0.71) scaleY(0.71)" />
         </Style>
         <Style Selector="^:disabled /template/ Ellipse#SliderInnerThumb">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.167" Easing="0,0 0,1" />
+                </Transitions>
+            </Setter>
             <Setter Property="RenderTransform" Value="scaleX(1.167) scaleY(1.167)" />
         </Style>
     </ControlTheme>

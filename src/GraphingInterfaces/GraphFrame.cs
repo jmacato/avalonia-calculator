@@ -8,11 +8,11 @@ namespace Graphing;
 /// </summary>
 public sealed class GraphFrame
 {
-    public GraphFrame(uint width, uint height, float dpiX, float dpiY, long revision, Color background, IEnumerable<GraphFrameCommand> commands, bool hasSomeMissingData = false, bool isStale = false) : this(width, height, dpiX, dpiY, revision, background, commands.ToImmutableArray(), hasSomeMissingData, isStale)
+    public GraphFrame(uint width, uint height, float dpiX, float dpiY, long revision, Color background, IEnumerable<GraphFrameCommand> commands, bool hasSomeMissingData = false) : this(width, height, dpiX, dpiY, revision, background, commands.ToImmutableArray(), hasSomeMissingData)
     {
     }
 
-    public GraphFrame(uint width, uint height, float dpiX, float dpiY, long revision, Color background, ImmutableArray<GraphFrameCommand> commands, bool hasSomeMissingData = false, bool isStale = false)
+    public GraphFrame(uint width, uint height, float dpiX, float dpiY, long revision, Color background, ImmutableArray<GraphFrameCommand> commands, bool hasSomeMissingData = false)
     {
         if (!float.IsFinite(dpiX) || dpiX <= 0 || !float.IsFinite(dpiY) || dpiY <= 0)
         {
@@ -27,7 +27,6 @@ public sealed class GraphFrame
         Background = background;
         Commands = commands.IsDefault ? ImmutableArray<GraphFrameCommand>.Empty : commands;
         HasSomeMissingData = hasSomeMissingData;
-        IsStale = isStale;
     }
 
     public uint Width { get; }
@@ -38,5 +37,4 @@ public sealed class GraphFrame
     public Color Background { get; }
     public ImmutableArray<GraphFrameCommand> Commands { get; }
     public bool HasSomeMissingData { get; }
-    public bool IsStale { get; }
 }

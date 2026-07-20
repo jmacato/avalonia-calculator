@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ui="using:FluentAvalonia.UI.Controls"
                     x:CompileBindings="True">
 
     <Design.PreviewWith>
@@ -21,8 +22,8 @@
         <Setter Property="Background" Value="{DynamicResource RadioButtonBackground}" />
         <Setter Property="Foreground" Value="{DynamicResource RadioButtonForeground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource RadioButtonBorderBrush}" />
-        <!-- Amended padding to add 8px right, to account for no forced MinWidth any more -->
-        <Setter Property="Padding" Value="8,6,8,0" />
+        <Setter Property="Padding" Value="8,6,0,0" />
+        <Setter Property="MinWidth" Value="120" />
         <Setter Property="HorizontalAlignment" Value="Left" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
@@ -39,46 +40,32 @@
 
                         <Grid Grid.Column="0" VerticalAlignment="Top" Height="32">
 
-                            <Ellipse Name="OuterEllipse" Width="20"
-                                     Height="20" UseLayoutRounding="False"
-                                     Stroke="{DynamicResource RadioButtonOuterEllipseStroke}"
-                                     Fill="{DynamicResource RadioButtonOuterEllipseFill}"
-                                     StrokeThickness="{DynamicResource RadioButtonBorderThemeThickness}"/>
+                            <ui:WinUiAnimatedEllipse Name="OuterEllipse" Width="20"
+                                                     Height="20" UseLayoutRounding="False"
+                                                     TargetStroke="{DynamicResource RadioButtonOuterEllipseStroke}"
+                                                     TargetFill="{DynamicResource RadioButtonOuterEllipseFill}"
+                                                     StrokeThickness="{DynamicResource RadioButtonBorderThemeThickness}"/>
 
                             <!-- A seperate element is added since the two orthogonal state groups that cannot touch the same property -->
-                            <Ellipse Name="CheckOuterEllipse" Width="20" Height="20"
-                                     UseLayoutRounding="False"
-                                     Stroke="{DynamicResource RadioButtonOuterEllipseCheckedStroke}"
-                                     Fill="{DynamicResource RadioButtonOuterEllipseCheckedFill}"
-                                     StrokeThickness="{DynamicResource RadioButtonBorderThemeThickness}"
-                                     Opacity="0" />
+                            <ui:WinUiAnimatedEllipse Name="CheckOuterEllipse" Width="20" Height="20"
+                                                     UseLayoutRounding="False"
+                                                     TargetStroke="{DynamicResource RadioButtonOuterEllipseCheckedStroke}"
+                                                     TargetFill="{DynamicResource RadioButtonOuterEllipseCheckedFill}"
+                                                     StrokeThickness="{DynamicResource RadioButtonBorderThemeThickness}"
+                                                     Opacity="0" />
 
                             <Ellipse Name="CheckGlyph" Width="12" Height="12"
                                      UseLayoutRounding="False"
                                      Stroke="{DynamicResource RadioButtonCheckGlyphStroke}"
                                      Fill="{DynamicResource RadioButtonCheckGlyphFill}"
-                                     Opacity="0"
-                                     RenderTransform="scaleX(0.86) scaleY(0.86)">
-                                <Ellipse.Transitions>
-                                    <Transitions>
-                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.167" Easing="0.0,0.0 0.0,1.0" />
-                                    </Transitions>
-                                </Ellipse.Transitions>
-                            </Ellipse>
+                                     Opacity="0" />
 
                             <!-- A seperate element is added since the two orthogonal state groups that cannot touch the same property -->
                             <Border Name="PressedCheckGlyph" Width="4" Height="4" CornerRadius="6"
                                     UseLayoutRounding="False"
                                     BorderBrush="{DynamicResource RadioButtonCheckGlyphStroke}"
                                     Background="{DynamicResource RadioButtonCheckGlyphFill}"
-                                    Opacity="0"
-                                    RenderTransform="scaleX(0.86) scaleY(0.86)">
-                                <Border.Transitions>
-                                    <Transitions>
-                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.167" Easing="0,0 0,1" />
-                                    </Transitions>
-                                </Border.Transitions>
-                            </Border>
+                                    Opacity="0" />
                         </Grid>
 
                         <ContentPresenter Name="ContentPresenter"
@@ -104,24 +91,26 @@
                 <Setter Property="Background" Value="{DynamicResource RadioButtonBackgroundPointerOver}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource RadioButtonBorderBrushPointerOver}" />
             </Style>
-            <Style Selector="^ /template/ Ellipse#OuterEllipse">
-                <Setter Property="Stroke" Value="{DynamicResource RadioButtonOuterEllipseStrokePointerOver}" />
-                <Setter Property="Fill" Value="{DynamicResource RadioButtonOuterEllipseFillPointerOver}" />
+            <Style Selector="^ /template/ ui|WinUiAnimatedEllipse#OuterEllipse">
+                <Setter Property="TransitionDuration" Value="0:0:0.083" />
+                <Setter Property="TargetStroke" Value="{DynamicResource RadioButtonOuterEllipseStrokePointerOver}" />
+                <Setter Property="TargetFill" Value="{DynamicResource RadioButtonOuterEllipseFillPointerOver}" />
             </Style>
-            <Style Selector="^ /template/ Ellipse#CheckOuterEllipse">
-                <Setter Property="Stroke" Value="{DynamicResource RadioButtonOuterEllipseCheckedStrokePointerOver}" />
-                <Setter Property="Fill" Value="{DynamicResource RadioButtonOuterEllipseCheckedFillPointerOver}" />
+            <Style Selector="^ /template/ ui|WinUiAnimatedEllipse#CheckOuterEllipse">
+                <Setter Property="TargetStroke" Value="{DynamicResource RadioButtonOuterEllipseCheckedStrokePointerOver}" />
+                <Setter Property="TargetFill" Value="{DynamicResource RadioButtonOuterEllipseCheckedFillPointerOver}" />
             </Style>
             <Style Selector="^ /template/ Ellipse#CheckGlyph">
                 <Setter Property="Stroke" Value="{DynamicResource RadioButtonCheckGlyphStrokePointerOver}" />
                 <Setter Property="Fill" Value="{DynamicResource RadioButtonCheckGlyphFillPointerOver}" />
-                <Setter Property="Opacity" Value="0" />
-                <Setter Property="RenderTransform" Value="scaleX(1.167) scaleY(1.167)" />
                 <Setter Property="Transitions">
                     <Transitions>
-                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="0,0 0,1" />
+                        <DoubleTransition Property="Width" Duration="0:0:0.25" Easing="0,0 0,1" />
+                        <DoubleTransition Property="Height" Duration="0:0:0.25" Easing="0,0 0,1" />
                     </Transitions>
                 </Setter>
+                <Setter Property="Width" Value="14" />
+                <Setter Property="Height" Value="14" />
             </Style>
         </Style>
 
@@ -133,28 +122,37 @@
                 <Setter Property="Background" Value="{DynamicResource RadioButtonBackgroundPressed}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource RadioButtonBorderBrushPressed}" />
             </Style>
-            <Style Selector="^ /template/ Ellipse#OuterEllipse">
-                <Setter Property="Stroke" Value="{DynamicResource RadioButtonOuterEllipseStrokePressed}" />
-                <Setter Property="Fill" Value="{DynamicResource RadioButtonOuterEllipseFillPressed}" />
+            <Style Selector="^ /template/ ui|WinUiAnimatedEllipse#OuterEllipse">
+                <Setter Property="TransitionDuration" Value="0:0:0.083" />
+                <Setter Property="TargetStroke" Value="{DynamicResource RadioButtonOuterEllipseStrokePressed}" />
+                <Setter Property="TargetFill" Value="{DynamicResource RadioButtonOuterEllipseFillPressed}" />
             </Style>
-            <Style Selector="^ /template/ Ellipse#CheckOuterEllipse">
-                <Setter Property="Stroke" Value="{DynamicResource RadioButtonOuterEllipseCheckedStrokePressed}" />
-                <Setter Property="Fill" Value="{DynamicResource RadioButtonOuterEllipseCheckedFillPressed}" />
+            <Style Selector="^ /template/ ui|WinUiAnimatedEllipse#CheckOuterEllipse">
+                <Setter Property="TargetStroke" Value="{DynamicResource RadioButtonOuterEllipseCheckedStrokePressed}" />
+                <Setter Property="TargetFill" Value="{DynamicResource RadioButtonOuterEllipseCheckedFillPressed}" />
             </Style>
             <Style Selector="^ /template/ Ellipse#CheckGlyph">
                 <Setter Property="Stroke" Value="{DynamicResource RadioButtonCheckGlyphStrokePressed}" />
                 <Setter Property="Fill" Value="{DynamicResource RadioButtonCheckGlyphFillPressed}" />
-                <Setter Property="Opacity" Value="0" />
-                <Setter Property="RenderTransform" Value="scaleX(0.71) scaleY(0.71)" />
                 <Setter Property="Transitions">
                     <Transitions>
-                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="0,0 0,1" />
+                        <DoubleTransition Property="Width" Duration="0:0:0.25" Easing="0,0 0,1" />
+                        <DoubleTransition Property="Height" Duration="0:0:0.25" Easing="0,0 0,1" />
                     </Transitions>
                 </Setter>
+                <Setter Property="Width" Value="10" />
+                <Setter Property="Height" Value="10" />
             </Style>
             <Style Selector="^ /template/ Border#PressedCheckGlyph">
                 <Setter Property="Opacity" Value="1" />
-                <Setter Property="RenderTransform" Value="scaleX(2.5) scaleY(2.5)" />
+                <Setter Property="Transitions">
+                    <Transitions>
+                        <DoubleTransition Property="Width" Duration="0:0:0.167" Easing="0,0 0,1" />
+                        <DoubleTransition Property="Height" Duration="0:0:0.167" Easing="0,0 0,1" />
+                    </Transitions>
+                </Setter>
+                <Setter Property="Width" Value="10" />
+                <Setter Property="Height" Value="10" />
             </Style>
         </Style>
 
@@ -166,19 +164,27 @@
                 <Setter Property="Background" Value="{DynamicResource RadioButtonBackgroundDisabled}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource RadioButtonBorderBrushDisabled}" />
             </Style>
-            <Style Selector="^ /template/ Ellipse#OuterEllipse">
-                <Setter Property="Stroke" Value="{DynamicResource RadioButtonOuterEllipseStrokeDisabled}" />
-                <Setter Property="Fill" Value="{DynamicResource RadioButtonOuterEllipseFillDisabled}" />
+            <Style Selector="^ /template/ ui|WinUiAnimatedEllipse#OuterEllipse">
+                <Setter Property="TransitionDuration" Value="0:0:0.083" />
+                <Setter Property="TargetStroke" Value="{DynamicResource RadioButtonOuterEllipseStrokeDisabled}" />
+                <Setter Property="TargetFill" Value="{DynamicResource RadioButtonOuterEllipseFillDisabled}" />
             </Style>
-            <Style Selector="^ /template/ Ellipse#CheckOuterEllipse">
-                <Setter Property="Stroke" Value="{DynamicResource RadioButtonOuterEllipseCheckedStrokeDisabled}" />
-                <Setter Property="Fill" Value="{DynamicResource RadioButtonOuterEllipseCheckedFillDisabled}" />
+            <Style Selector="^ /template/ ui|WinUiAnimatedEllipse#CheckOuterEllipse">
+                <Setter Property="TransitionDuration" Value="0:0:0.083" />
+                <Setter Property="TargetStroke" Value="{DynamicResource RadioButtonOuterEllipseCheckedStrokeDisabled}" />
+                <Setter Property="TargetFill" Value="{DynamicResource RadioButtonOuterEllipseCheckedFillDisabled}" />
             </Style>
             <Style Selector="^ /template/ Ellipse#CheckGlyph">
                 <Setter Property="Stroke" Value="{DynamicResource RadioButtonCheckGlyphStrokeDisabled}" />
                 <Setter Property="Fill" Value="{DynamicResource RadioButtonCheckGlyphFillDisabled}" />
-                <Setter Property="Opacity" Value="0" />
-                <Setter Property="RenderTransform" Value="scaleX(1.167) scaleY(1.167)" />
+                <Setter Property="Transitions">
+                    <Transitions>
+                        <DoubleTransition Property="Width" Duration="0:0:0.167" Easing="0,0 0,1" />
+                        <DoubleTransition Property="Height" Duration="0:0:0.167" Easing="0,0 0,1" />
+                    </Transitions>
+                </Setter>
+                <Setter Property="Width" Value="14" />
+                <Setter Property="Height" Value="14" />
             </Style>
         </Style>
 
@@ -187,15 +193,18 @@
                 <Setter Property="Opacity" Value="1" />
                 <Setter Property="Stroke" Value="{DynamicResource RadioButtonCheckGlyphStrokeChecked}" />
             </Style>
-            <Style Selector="^ /template/ Ellipse#OuterEllipse">
+            <Style Selector="^ /template/ ui|WinUiAnimatedEllipse#OuterEllipse">
                 <Setter Property="Opacity" Value="0" />
             </Style>
-            <Style Selector="^ /template/ Ellipse#CheckOuterEllipse">
+            <Style Selector="^ /template/ ui|WinUiAnimatedEllipse#CheckOuterEllipse">
                 <Setter Property="Opacity" Value="1" />
             </Style>
             <Style Selector="^ /template/ Border#PressedCheckGlyph">
                 <Setter Property="Opacity" Value="0" />
             </Style>
+        </Style>
+        <Style Selector="^:checked:pressed /template/ Border#PressedCheckGlyph">
+            <Setter Property="Opacity" Value="1" />
         </Style>
     </ControlTheme>
 </ResourceDictionary>

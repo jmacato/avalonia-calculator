@@ -7,7 +7,6 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
-using Avalonia.Rendering.Composition;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Graphing;
@@ -21,7 +20,15 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
 {
     private static readonly TimeSpan EquationPlotDelay = TimeSpan.FromMilliseconds(350);
     private static readonly TimeSpan InteractionPlotDelay = TimeSpan.FromMilliseconds(120);
+    private static readonly TimeSpan PanInertiaVelocityLifetime = TimeSpan.FromMilliseconds(100);
     private const double MaximumWheelDeltaPerFrame = 2;
+    // NInput's default translation deceleration is 0.07 HIMETRIC/ms².
+    private const double PanInertiaDeceleration = 0.07 * (96.0 / 2_540.0) * 1_000_000.0;
+    private const double PanInertiaMaximumSpeed = 1_800;
+    private const double PanInertiaMinimumStartSpeed = 80;
+    private const double PanInertiaStopSpeed = 12;
+    private const double PanVelocityBlend = 0.45;
+    private const double MaximumPanInertiaFrameSeconds = 0.05;
     private const double InteractionCoverageMarginRatio = 0.42;
     private const double MinimumRangeLength = 1e-12;
     private const double MaximumRangeLength = 1e12;
@@ -46,30 +53,29 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     private readonly Dictionary<int, GrapherPointerState> _activePointers = [];
     private double _pendingWheelDelta;
     private Point _pendingWheelPosition;
-    private CompositionVisual? _compositionVisual;
     private bool _prepareGraphOnAttach;
     private bool _isAttached;
     private bool _interactionFrameRequested;
+    private bool _viewportRenderPending;
     private long _lastInteractionTimestamp;
+    private Vector _panVelocity;
+    private long _panVelocitySampleTimestamp;
+    private long _panLastMotionTimestamp;
+    private long _panInertiaTimestamp;
+    private bool _panInertiaEligible;
+    private bool _panInertiaActive;
     private bool _resizePreparePending;
     private bool _hasSettledViewport;
     private double _settledXMinimum;
     private double _settledXMaximum;
     private double _settledYMinimum;
     private double _settledYMaximum;
-    private bool _hasPresentedViewport;
-    private double _presentedXMinimum;
-    private double _presentedXMaximum;
-    private double _presentedYMinimum;
-    private double _presentedYMaximum;
     private bool _hasInteractionViewport;
     private bool _rendererMatchesInteractionViewport;
     private double _interactionXMinimum;
     private double _interactionXMaximum;
     private double _interactionYMinimum;
     private double _interactionYMaximum;
-    private bool _resetCompositionAfterRender;
-    private bool _interactionRenderPending;
     private bool _settlePreparationPending;
     private bool _activeTracing;
     private Point _traceLocation = new(double.NaN, double.NaN);
@@ -119,8 +125,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         }
 
         _isAttached = true;
-        _compositionVisual = ElementComposition.GetElementVisual(this);
-        ResetCompositionPreview();
         if (_prepareGraphOnAttach)
         {
             _prepareGraphOnAttach = false;
@@ -141,17 +145,14 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         _graphPreparationTimer.Detach();
         _interactionSettleTimer.Stop();
         _interactionFrameRequested = false;
+        _viewportRenderPending = false;
         _pendingWheelDelta = 0;
+        ResetPanInertia();
         _hasInteractionViewport = false;
-        _hasPresentedViewport = false;
         _rendererMatchesInteractionViewport = false;
-        _resetCompositionAfterRender = false;
-        _interactionRenderPending = false;
         _settlePreparationPending = false;
         _resizePreparePending = false;
         _activePointers.Clear();
-        ResetCompositionPreview();
-        _compositionVisual = null;
         _renderCache.Clear();
         base.OnDetachedFromVisualTree(e);
     }
@@ -165,10 +166,10 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
             return;
         }
 
-        // Paint a transformed retained frame immediately, then rebuild sampled
-        // geometry once the resize settles. Without this invalidation Avalonia
-        // can retain the old-width graph scene and leave the new edge empty.
+        // Record a current-size scene immediately, then rebuild sampled
+        // geometry once the resize settles.
         _resizePreparePending = true;
+        _viewportRenderPending = true;
         _lastInteractionTimestamp = Stopwatch.GetTimestamp();
         InvalidateVisual();
         RequestInteractionFrame();
@@ -465,24 +466,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
             context.DrawEllipse(TraceBrush, TraceOutline, TraceLocation, 4, 4);
         }
 
-        CapturePresentedViewport(renderer);
-        // Keep the compositor preview in place until the replacement graph has
-        // actually been recorded. Resetting before this render briefly exposes
-        // the old frame at identity, which is especially visible on Safari.
-        if (_resetCompositionAfterRender || _interactionRenderPending)
-        {
-            _resetCompositionAfterRender = false;
-            _interactionRenderPending = false;
-            ResetCompositionPreview();
-            // Pointer input can advance the interaction viewport after the
-            // renderer frame was queued but before this render is recorded.
-            // Reapply that newer delta relative to the frame we just captured
-            // instead of briefly snapping the graph back to the older range.
-            if (_hasInteractionViewport && !_rendererMatchesInteractionViewport)
-            {
-                _ = ApplyCompositionPreview();
-            }
-        }
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -527,6 +510,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
             return;
         }
 
+        ResetPanInertia();
         // Browser trackpads can enqueue hundreds of wheel events before Wasm
         // gets another paint. Keep only one bounded display-frame delta. A
         // trailing backlog makes the graph continue moving long after the
@@ -545,13 +529,21 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         base.OnPointerPressed(e);
         if (ApplyPendingPointerManipulation())
         {
-            PresentInteractionPreview();
+            _viewportRenderPending = true;
+            _lastInteractionTimestamp = Stopwatch.GetTimestamp();
+            RequestInteractionFrame();
         }
 
+        ResetPanInertia();
         _interactionSettleTimer.Stop();
         Point point = e.GetPosition(this);
         _activePointers[e.Pointer.Id] = new GrapherPointerState(point, point);
         ResetPointerBaselines();
+        if (_activePointers.Count == 1)
+        {
+            BeginPanVelocityTracking();
+        }
+
         e.Pointer.Capture(this);
         e.PreventGestureRecognition();
         e.Handled = true;
@@ -587,7 +579,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         ArgumentNullException.ThrowIfNull(e);
         Dispatcher.UIThread.VerifyAccess();
         base.OnPointerReleased(e);
-        EndPointer(e.Pointer, e.GetPosition(this));
+        EndPointer(e.Pointer, e.GetPosition(this), allowInertia: true);
         e.PreventGestureRecognition();
         e.Handled = true;
     }
@@ -597,13 +589,14 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         ArgumentNullException.ThrowIfNull(e);
         Dispatcher.UIThread.VerifyAccess();
         base.OnPointerCaptureLost(e);
-        EndPointer(e.Pointer, null);
+        EndPointer(e.Pointer, null, allowInertia: false);
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
         base.OnKeyDown(e);
+        ResetPanInertia();
         double amount = e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? 0.1 : 0.02;
         bool changed = e.Key switch
         {
@@ -637,6 +630,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     {
         if (_activePointers.Count >= 2)
         {
+            CancelPanVelocityTracking();
             if (!TryGetFirstTwoPointers(out int firstId, out GrapherPointerState first, out int secondId, out GrapherPointerState second))
             {
                 return false;
@@ -667,19 +661,34 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
 
         if (_activePointers.Count == 1 && TryGetFirstPointer(out int pointerId, out GrapherPointerState pointer))
         {
+            double deltaX = pointer.Current.X - pointer.Applied.X;
+            double deltaY = pointer.Current.Y - pointer.Applied.Y;
             _activePointers[pointerId] = pointer with
             {
                 Applied = pointer.Current
             };
-            return TryPanInteractionViewport(pointer.Current.X - pointer.Applied.X, pointer.Current.Y - pointer.Applied.Y);
+            bool changed = TryPanInteractionViewport(deltaX, deltaY);
+            if (changed && _panInertiaEligible)
+            {
+                RecordPanVelocity(deltaX, deltaY);
+            }
+
+            return changed;
         }
 
         return false;
     }
 
-    private void EndPointer(IPointer pointer, Point? finalPosition)
+    private void EndPointer(IPointer pointer, Point? finalPosition, bool allowInertia)
     {
-        if (_activePointers.TryGetValue(pointer.Id, out GrapherPointerState state) && finalPosition is { } point)
+        bool wasSinglePointer = _activePointers.Count == 1;
+        bool hadPointer = _activePointers.TryGetValue(pointer.Id, out GrapherPointerState state);
+        if (!hadPointer)
+        {
+            return;
+        }
+
+        if (hadPointer && finalPosition is { } point)
         {
             _activePointers[pointer.Id] = state with
             {
@@ -691,6 +700,19 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         _activePointers.Remove(pointer.Id);
         pointer.Capture(null);
         ResetPointerBaselines();
+        if (allowInertia && hadPointer && wasSinglePointer && _activePointers.Count == 0)
+        {
+            StartPanInertia();
+        }
+        else if (_activePointers.Count == 1)
+        {
+            BeginPanVelocityTracking();
+        }
+        else
+        {
+            CancelPanVelocityTracking();
+        }
+
         if (changed || _hasInteractionViewport)
         {
             MarkInteraction(viewportAlreadyChanged: changed);
@@ -910,12 +932,19 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
             return;
         }
 
-        // This timer is the authoritative trailing-edge handoff from the
-        // compositor preview to freshly sampled graph geometry. Browser RAF
-        // callbacks are allowed to be coalesced, so the final pointer release
-        // must not depend on one particular animation callback being delivered.
+        // This timer authoritatively requests fresh geometry at the trailing
+        // edge of an interaction. Browser RAF callbacks may be coalesced, so
+        // final pointer release must not depend on one particular animation
+        // callback being delivered.
         if (_activePointers.Count != 0)
         {
+            return;
+        }
+
+        if (_panInertiaActive)
+        {
+            RequestInteractionFrame();
+            EnsureInteractionSettlement();
             return;
         }
 
@@ -1080,7 +1109,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         }
 
         IGraphRenderer renderer = _graph.GetRenderer();
-        bool retainPreviewUntilRender = _compositionVisual is not null && _hasInteractionViewport;
         if (_hasInteractionViewport && !_rendererMatchesInteractionViewport)
         {
             _ = renderer.SetDisplayRanges(_interactionXMinimum, _interactionXMaximum, _interactionYMinimum, _interactionYMaximum);
@@ -1091,23 +1119,11 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         EnsureSize(renderer);
         if (renderer is IConcurrentGraphRenderer concurrentRenderer)
         {
-            GraphStatus requestStatus = concurrentRenderer.RequestPrepareGraph();
+            _ = concurrentRenderer.RequestPrepareGraph();
             CaptureSettledViewport(renderer);
             _resizePreparePending = false;
             bool preparationPending = concurrentRenderer.IsPrepareGraphPending;
-            if (retainPreviewUntilRender)
-            {
-                _resetCompositionAfterRender = !preparationPending;
-            }
-            else
-            {
-                ResetCompositionPreview();
-            }
-
-            if (requestStatus.Failed || !retainPreviewUntilRender || !preparationPending)
-            {
-                InvalidateVisual();
-            }
+            InvalidateVisual();
 
             if (preparationPending)
             {
@@ -1121,15 +1137,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         _ = renderer.PrepareGraph();
         CaptureSettledViewport(renderer);
         _resizePreparePending = false;
-        if (retainPreviewUntilRender)
-        {
-            _resetCompositionAfterRender = true;
-        }
-        else
-        {
-            ResetCompositionPreview();
-        }
-
         InvalidateVisual();
     }
 
@@ -1140,7 +1147,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         if (changed)
         {
             _settlePreparationPending = false;
-            PresentInteractionPreview();
+            _viewportRenderPending = true;
         }
 
         RequestInteractionFrame();
@@ -1176,23 +1183,36 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         IGraphRenderer renderer = _graph.GetRenderer();
         CommitConcurrentPreparation(renderer);
 
-        bool changed = ApplyPendingPointerManipulation();
+        bool changed = _viewportRenderPending;
+        _viewportRenderPending = false;
+        changed |= ApplyPendingPointerManipulation();
+        changed |= ApplyPanInertia();
         changed |= ApplyPendingWheelZoom();
         if (changed)
         {
             _lastInteractionTimestamp = Stopwatch.GetTimestamp();
-            PresentInteractionPreview();
         }
 
-        // Resampling is the expensive half of gesture handling. Keep immediate
-        // compositor transforms in the input callback, while admitting only a
-        // bounded number of useful background refreshes during the gesture.
+        // Resampling is the expensive half of gesture handling. The displayed
+        // scene is rebuilt for the current viewport every frame while a single
+        // bounded background request refreshes its user-space geometry.
         if (!ShouldRefreshInteractionGeometry() || !RefreshInteractionGeometry())
         {
             SynchronizeInteractionRendererViewport();
         }
 
+        if (changed)
+        {
+            InvalidateVisual();
+        }
+
         if (_pendingWheelDelta != 0)
+        {
+            RequestInteractionFrame();
+            return;
+        }
+
+        if (_panInertiaActive)
         {
             RequestInteractionFrame();
             return;
@@ -1248,15 +1268,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         return TryScaleInteractionViewport(centerX, centerY, Math.Pow(1.15, -delta));
     }
 
-    private void PresentInteractionPreview()
-    {
-        // Raw input gets immediate retained-compositor motion. The animation
-        // frame callback separately queues a current grid/label scene and
-        // transformed cached equation geometry, so pointer event bursts never
-        // create an unbounded render backlog.
-        _ = ApplyCompositionPreview();
-    }
-
     private void SynchronizeInteractionRendererViewport()
     {
         if (!_hasInteractionViewport || _rendererMatchesInteractionViewport)
@@ -1285,7 +1296,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         if (!_rendererMatchesInteractionViewport && !renderer.SetDisplayRanges(_interactionXMinimum, _interactionXMaximum, _interactionYMinimum, _interactionYMaximum).Succeeded)
         {
             ClearInteractionViewport();
-            ResetCompositionPreview();
             return;
         }
 
@@ -1317,16 +1327,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         _rendererMatchesInteractionViewport = false;
         _resizePreparePending = false;
         _settlePreparationPending = false;
-        if (_compositionVisual is null)
-        {
-            ResetCompositionPreview();
-        }
-        else
-        {
-            _resetCompositionAfterRender = true;
-        }
-
-        _interactionRenderPending = true;
         InvalidateVisual();
         GraphViewChanged?.Invoke(this, new GraphViewChangedEventArgs(GraphViewChangedReason.Manipulation));
     }
@@ -1359,10 +1359,8 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
             }
             else
             {
-                // Keep the already-presented transformed geometry interactive
-                // when a bounded background sample fails. Treating a failed or
-                // cancelled result as a successful replacement clears the
-                // preview even though no current geometry was published.
+                // The current-viewport scene remains valid when a bounded
+                // background refresh fails; only its geometry source is older.
                 _settlePreparationPending = false;
                 _graphPreparationTimer.Stop();
             }
@@ -1373,13 +1371,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         if (status.Succeeded)
         {
             CapturePreparedViewport(concurrentRenderer);
-
-            _resetCompositionAfterRender = _compositionVisual is not null;
-            if (!_interactionRenderPending)
-            {
-                _interactionRenderPending = true;
-                InvalidateVisual();
-            }
+            InvalidateVisual();
         }
     }
 
@@ -1467,62 +1459,8 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
 
         _rendererMatchesInteractionViewport = true;
         CaptureSettledViewport(renderer);
-        _resetCompositionAfterRender = _compositionVisual is not null;
-        if (!_interactionRenderPending)
-        {
-            _interactionRenderPending = true;
-            InvalidateVisual();
-        }
+        InvalidateVisual();
 
-        return true;
-    }
-
-    private void CapturePresentedViewport(IGraphRenderer renderer)
-    {
-        renderer.GetDisplayRanges(out _presentedXMinimum, out _presentedXMaximum, out _presentedYMinimum, out _presentedYMaximum);
-        GetGraphDimensions(out double width, out double height);
-        NormalizeProportionalRanges(ref _presentedXMinimum, ref _presentedXMaximum, ref _presentedYMinimum, ref _presentedYMaximum, width, height);
-        _hasPresentedViewport = true;
-    }
-
-    private bool ApplyCompositionPreview()
-    {
-        if (!_hasPresentedViewport || !_hasInteractionViewport || _compositionVisual is null || Bounds.Width <= 0 || Bounds.Height <= 0)
-        {
-            return false;
-        }
-
-        // Renderer state describes the next scene to be recorded, not the
-        // frame the compositor is currently presenting. Keep transforming the
-        // last presented frame until Render records the replacement; otherwise
-        // the compositor preview stops after the first input delta and rapid
-        // pan/zoom falls back to the slower visual-invalidation path.
-        double xMinimum = _interactionXMinimum;
-        double xMaximum = _interactionXMaximum;
-        double yMinimum = _interactionYMinimum;
-        double yMaximum = _interactionYMaximum;
-        GetGraphDimensions(out double width, out double height);
-        NormalizeProportionalRanges(ref xMinimum, ref xMaximum, ref yMinimum, ref yMaximum, width, height);
-        double xLength = xMaximum - xMinimum;
-        double yLength = yMaximum - yMinimum;
-        double presentedXLength = _presentedXMaximum - _presentedXMinimum;
-        double presentedYLength = _presentedYMaximum - _presentedYMinimum;
-        if (xLength <= 0 || yLength <= 0 || presentedXLength <= 0 || presentedYLength <= 0)
-        {
-            return false;
-        }
-
-        double scaleX = presentedXLength / xLength;
-        double scaleY = presentedYLength / yLength;
-        double translationX = (_presentedXMinimum - xMinimum) * width / xLength;
-        double translationY = (yMaximum - _presentedYMaximum) * height / yLength;
-        if (!double.IsFinite(scaleX) || !double.IsFinite(scaleY) || !double.IsFinite(translationX) || !double.IsFinite(translationY))
-        {
-            return false;
-        }
-
-        _compositionVisual.Scale = new Vector3D(scaleX, scaleY, 1);
-        _compositionVisual.Translation = new Vector3D(translationX, translationY, 0);
         return true;
     }
 
@@ -1582,6 +1520,128 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         return TryMoveInteractionViewport(-2 * deltaX / Bounds.Width, 2 * deltaY / Bounds.Height);
     }
 
+    private void BeginPanVelocityTracking()
+    {
+        _panInertiaActive = false;
+        _panInertiaEligible = true;
+        _panVelocity = default;
+        _panLastMotionTimestamp = 0;
+        _panVelocitySampleTimestamp = Stopwatch.GetTimestamp();
+    }
+
+    private void CancelPanVelocityTracking()
+    {
+        _panInertiaEligible = false;
+        _panVelocity = default;
+        _panLastMotionTimestamp = 0;
+        _panVelocitySampleTimestamp = 0;
+    }
+
+    private void RecordPanVelocity(double deltaX, double deltaY)
+    {
+        long now = Stopwatch.GetTimestamp();
+        if (_panVelocitySampleTimestamp == 0)
+        {
+            _panVelocitySampleTimestamp = now;
+            return;
+        }
+
+        double elapsedSeconds = Stopwatch.GetElapsedTime(_panVelocitySampleTimestamp, now).TotalSeconds;
+        _panVelocitySampleTimestamp = now;
+        if (elapsedSeconds <= 0 || (deltaX == 0 && deltaY == 0))
+        {
+            return;
+        }
+
+        var instantaneousVelocity = new Vector(deltaX / elapsedSeconds, deltaY / elapsedSeconds);
+        double instantaneousSpeed = instantaneousVelocity.Length;
+        if (!double.IsFinite(instantaneousSpeed))
+        {
+            return;
+        }
+
+        if (instantaneousSpeed > PanInertiaMaximumSpeed)
+        {
+            instantaneousVelocity *= PanInertiaMaximumSpeed / instantaneousSpeed;
+        }
+
+        bool previousSampleIsFresh = _panLastMotionTimestamp != 0 && Stopwatch.GetElapsedTime(_panLastMotionTimestamp, now) <= PanInertiaVelocityLifetime;
+        _panVelocity = previousSampleIsFresh
+            ? new Vector(
+                (_panVelocity.X * (1 - PanVelocityBlend)) + (instantaneousVelocity.X * PanVelocityBlend),
+                (_panVelocity.Y * (1 - PanVelocityBlend)) + (instantaneousVelocity.Y * PanVelocityBlend))
+            : instantaneousVelocity;
+        _panLastMotionTimestamp = now;
+    }
+
+    private void StartPanInertia()
+    {
+        _panInertiaEligible = false;
+        long now = Stopwatch.GetTimestamp();
+        if (_panLastMotionTimestamp == 0 || Stopwatch.GetElapsedTime(_panLastMotionTimestamp, now) > PanInertiaVelocityLifetime)
+        {
+            ResetPanInertia();
+            return;
+        }
+
+        double speed = _panVelocity.Length;
+        if (!double.IsFinite(speed) || speed < PanInertiaMinimumStartSpeed)
+        {
+            ResetPanInertia();
+            return;
+        }
+
+        if (speed > PanInertiaMaximumSpeed)
+        {
+            _panVelocity *= PanInertiaMaximumSpeed / speed;
+        }
+
+        _panInertiaTimestamp = now;
+        _panInertiaActive = true;
+    }
+
+    private bool ApplyPanInertia()
+    {
+        if (!_panInertiaActive || _activePointers.Count != 0)
+        {
+            return false;
+        }
+
+        long now = Stopwatch.GetTimestamp();
+        double elapsedSeconds = Stopwatch.GetElapsedTime(_panInertiaTimestamp, now).TotalSeconds;
+        _panInertiaTimestamp = now;
+        double speed = _panVelocity.Length;
+        if (elapsedSeconds <= 0 || !double.IsFinite(speed) || speed <= PanInertiaStopSpeed)
+        {
+            if (speed <= PanInertiaStopSpeed || !double.IsFinite(speed))
+            {
+                ResetPanInertia();
+            }
+
+            return false;
+        }
+
+        double travelSeconds = Math.Min(Math.Min(elapsedSeconds, MaximumPanInertiaFrameSeconds), speed / PanInertiaDeceleration);
+        double distance = (speed * travelSeconds) - (0.5 * PanInertiaDeceleration * travelSeconds * travelSeconds);
+        Vector direction = _panVelocity / speed;
+        bool changed = TryPanInteractionViewport(direction.X * distance, direction.Y * distance);
+        double remainingSpeed = Math.Max(0, speed - (PanInertiaDeceleration * elapsedSeconds));
+        _panVelocity = direction * remainingSpeed;
+        if (!changed || remainingSpeed <= PanInertiaStopSpeed)
+        {
+            ResetPanInertia();
+        }
+
+        return changed;
+    }
+
+    private void ResetPanInertia()
+    {
+        _panInertiaActive = false;
+        CancelPanVelocityTracking();
+        _panInertiaTimestamp = 0;
+    }
+
     private bool TryScaleInteractionViewport(double centerX, double centerY, double scale)
     {
         if (!double.IsFinite(centerX) || !double.IsFinite(centerY) || !double.IsFinite(scale) || scale <= 0 || !EnsureInteractionViewport())
@@ -1613,6 +1673,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     private void ClearInteractionViewport()
     {
         _pendingWheelDelta = 0;
+        ResetPanInertia();
         _hasInteractionViewport = false;
         _rendererMatchesInteractionViewport = false;
         ResetPointerBaselines();
@@ -1621,10 +1682,9 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     private void CancelInteractionViewport()
     {
         ClearInteractionViewport();
+        _viewportRenderPending = false;
         _resizePreparePending = false;
-        _resetCompositionAfterRender = false;
         _settlePreparationPending = false;
-        ResetCompositionPreview();
     }
 
     private void NormalizeProportionalRanges(ref double xMinimum, ref double xMaximum, ref double yMinimum, ref double yMaximum, double width, double height)
@@ -1652,18 +1712,6 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
             xMinimum = center - half;
             xMaximum = center + half;
         }
-    }
-
-    private void ResetCompositionPreview()
-    {
-        if (_compositionVisual is null)
-        {
-            return;
-        }
-
-        _compositionVisual.CenterPoint = default;
-        _compositionVisual.Scale = new Vector3D(1, 1, 1);
-        _compositionVisual.Translation = default;
     }
 
     private void EnsureSize(IGraphRenderer renderer)
@@ -1721,11 +1769,10 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         }
 
         _interactionFrameRequested = false;
+        ResetPanInertia();
         _activePointers.Clear();
         _initializedEquations = Array.Empty<IEquation>();
         _renderCache.Clear();
-        ResetCompositionPreview();
-        _compositionVisual = null;
         _analysisWorker.Dispose();
         if (_graph is IDisposable disposableGraph)
         {

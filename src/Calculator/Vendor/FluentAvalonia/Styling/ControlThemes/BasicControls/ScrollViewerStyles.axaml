@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ui="using:FluentAvalonia.UI.Controls"
                     x:CompileBindings="True">
     <Design.PreviewWith>
         <Border Padding="20">
@@ -48,22 +49,15 @@
                     <ScrollBar Name="PART_VerticalScrollBar"                               
                                Orientation="Vertical"                              
                                Grid.Column="1" />
-                    <Panel Name="PART_ScrollBarsSeparator"
-                           Grid.Row="1" Grid.Column="1"
-                           Background="{DynamicResource ScrollViewerScrollBarsSeparatorBackground}">
-                        <Panel.Transitions>
-                            <Transitions>
-                                <DoubleTransition Property="Opacity" Duration="0:0:0.1" />
-                            </Transitions>
-                        </Panel.Transitions>
-                    </Panel>
+                    <ui:WinUiScrollViewerSeparator Name="PART_ScrollBarsSeparator"
+                                                   Grid.Row="1"
+                                                   Grid.Column="1"
+                                                   IsExpanded="{TemplateBinding IsExpanded}"
+                                                   Background="{DynamicResource ScrollViewerScrollBarsSeparatorBackground}" />
                 </Grid>
             </ControlTemplate>
         </Setter>
 
-        <Style Selector="^[IsExpanded=true] /template/ Panel#PART_ScrollBarsSeparator">
-            <Setter Property="Opacity" Value="1" />
-        </Style>
     </ControlTheme>
 
 </ResourceDictionary>

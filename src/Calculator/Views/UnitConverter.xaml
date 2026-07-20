@@ -37,9 +37,9 @@
                  TextWrapping="NoWrap" />
     </DataTemplate>
 
-    <!-- Direct translation of the original UnitConverter ComboStyle. -->
+    <!-- Unit-converter sizing/colors on the stock Avalonia ComboBox theme. -->
     <ControlTheme x:Key="ConverterComboBoxTheme"
-                  TargetType="controls:ConverterComboBox"
+                  TargetType="ComboBox"
                   BasedOn="{StaticResource {x:Type ComboBox}}">
       <Setter Property="Margin" Value="12,0,0,0" />
       <Setter Property="Padding" Value="4,0,0,0" />
@@ -56,102 +56,6 @@
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="VerticalAlignment" Value="Top" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
-      <Setter Property="ItemsPanel">
-        <ItemsPanelTemplate>
-          <controls:ConverterCarouselPanel />
-        </ItemsPanelTemplate>
-      </Setter>
-      <Setter Property="Template">
-        <ControlTemplate>
-          <Grid ColumnDefinitions="Auto,*">
-            <Border x:Name="BackgroundElement"
-                    Grid.ColumnSpan="2"
-                    Background="{TemplateBinding Background}"
-                    BorderBrush="{TemplateBinding BorderBrush}"
-                    BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="{TemplateBinding CornerRadius}" />
-
-            <!-- WinUI requires this presenter by name even though the
-                 converter uses a separately styled selected presenter. -->
-            <ContentPresenter x:Name="ContentPresenter"
-                              Opacity="0" />
-
-            <ContentPresenter x:Name="SelectedContentPresenter"
-                              Grid.Column="0"
-                              Margin="{TemplateBinding Padding}"
-                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-                              AutomationProperties.AccessibilityView="Raw"
-                              Content="{TemplateBinding SelectedItem}"
-                              ContentTemplate="{StaticResource SelectedUnitTemplate}"
-                              FlowDirection="{TemplateBinding FlowDirection}" />
-
-            <TextBlock x:Name="DropDownGlyph"
-                       Grid.Column="1"
-                       Margin="8,3,12,0"
-                       HorizontalAlignment="Left"
-                       VerticalAlignment="Center"
-                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                       FontFamily="{DynamicResource CalculatorFontFamily}"
-                       FontSize="12"
-                       AutomationProperties.AccessibilityView="Raw"
-                       IsHitTestVisible="False"
-                       Text="&#xE70D;" />
-
-            <Popup x:Name="PART_Popup"
-                   IsOpen="{TemplateBinding IsPopupOpen, Mode=OneWay}"
-                   MinWidth="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}"
-                   MaxHeight="{TemplateBinding MaxDropDownHeight}"
-                   Placement="BottomEdgeAlignedLeft"
-                   PlacementTarget="BackgroundElement"
-                   IsLightDismissEnabled="False"
-                   InheritsTransform="True"
-                   WindowManagerAddShadowHint="False">
-              <Border x:Name="PopupBorder"
-                      Margin="0,-0.5,0,-1"
-                      Padding="{DynamicResource ComboBoxDropdownBorderPadding}"
-                      HorizontalAlignment="Stretch"
-                      Background="{DynamicResource ComboBoxDropDownBackground}"
-                      BorderBrush="{DynamicResource ComboBoxDropDownBorderBrush}"
-                      BorderThickness="{DynamicResource ComboBoxDropdownBorderThickness}"
-                      CornerRadius="{DynamicResource OverlayCornerRadius}"
-                      BackgroundSizing="InnerBorderEdge">
-                <!-- Avalonia has no OptionalSingle value; its one-snap-point
-                     gesture mode is MandatorySingle. -->
-                <ScrollViewer x:Name="ScrollViewer"
-                              HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
-                              VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}"
-                              AutomationProperties.AccessibilityView="Raw"
-                              IsDeferredScrollingEnabled="{TemplateBinding (ScrollViewer.IsDeferredScrollingEnabled)}"
-                              VerticalSnapPointsAlignment="Near"
-                              VerticalSnapPointsType="MandatorySingle">
-                  <ItemsPresenter x:Name="PART_ItemsPresenter"
-                                  ItemsPanel="{TemplateBinding ItemsPanel}" />
-                </ScrollViewer>
-              </Border>
-            </Popup>
-          </Grid>
-        </ControlTemplate>
-      </Setter>
-
-      <Style Selector="^:pointerover /template/ Border#BackgroundElement">
-        <Setter Property="Background" Value="Transparent" />
-      </Style>
-      <Style Selector="^:pointerover /template/ ContentPresenter#SelectedContentPresenter">
-        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
-      </Style>
-      <Style Selector="^:pointerover /template/ TextBlock#DropDownGlyph">
-        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
-      </Style>
-      <Style Selector="^:pressed /template/ Border#BackgroundElement">
-        <Setter Property="Background" Value="Transparent" />
-      </Style>
-      <Style Selector="^:pressed /template/ ContentPresenter#SelectedContentPresenter">
-        <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
-      </Style>
-      <Style Selector="^:pressed /template/ TextBlock#DropDownGlyph">
-        <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
-      </Style>
     </ControlTheme>
   </UserControl.Resources>
   <UserControl.Styles>
@@ -188,7 +92,7 @@
     <Style Selector="TextBlock.currencySecondaryStatus.failed">
       <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
     </Style>
-    <Style Selector="controls|ConverterComboBox.unitPicker">
+    <Style Selector="ComboBox.unitPicker">
       <Setter Property="Theme" Value="{StaticResource ConverterComboBoxTheme}" />
     </Style>
   </UserControl.Styles>
@@ -276,7 +180,7 @@
       </controls:CalculationResult>
     </Grid>
 
-    <controls:ConverterComboBox x:Name="Units1"
+    <ComboBox x:Name="Units1"
                                 Grid.Row="2"
                                 Grid.Column="1"
                                 Classes="unitPicker"
@@ -329,7 +233,7 @@
       </controls:CalculationResult>
     </Grid>
 
-    <controls:ConverterComboBox x:Name="Units2"
+    <ComboBox x:Name="Units2"
                                 Grid.Row="4"
                                 Grid.Column="1"
                                 Classes="unitPicker"

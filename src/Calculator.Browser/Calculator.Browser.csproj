@@ -7,7 +7,12 @@
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <IsAotCompatible>true</IsAotCompatible>
-    <WasmEnableThreads>true</WasmEnableThreads>
+    <!-- .NET 10's interpreted threaded runtime attaches the browser UI thread
+         without a pthread stack base and asserts before managed startup. Keep
+         the managed-debuggable build single-threaded; Release remains AOT and
+         uses the threaded compositor/runtime path. -->
+    <WasmEnableThreads Condition="'$(Configuration)' == 'Release'">true</WasmEnableThreads>
+    <WasmEnableThreads Condition="'$(Configuration)' != 'Release'">false</WasmEnableThreads>
     <EmccStackSize>1MB</EmccStackSize>
     <!-- Keep threaded runtime registration inside the initial allocation. The LLVM AOT
          payload crosses 84 MiB during startup; growing shared memory while worker

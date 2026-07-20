@@ -38,20 +38,13 @@
         <Setter Property="BackgroundSizing" Value="InnerBorderEdge" />
         <Setter Property="Template">
             <ControlTemplate>
-                <Border Background="{TemplateBinding Background}"
-                        BorderBrush="{TemplateBinding BorderBrush}"
-                        BorderThickness="{TemplateBinding BorderThickness}"
-                        Padding="{TemplateBinding Padding}"
-                        BackgroundSizing="{TemplateBinding BackgroundSizing}"
-                        Name="Root">
-                    <Border.Transitions>
-                        <Transitions>
-                            <BrushTransition Duration="00:00:00.083"
-                                             Property="Background" />
-                            <BrushTransition Duration="00:00:00.083"
-                                             Property="BorderBrush" />
-                        </Transitions>
-                    </Border.Transitions>
+                <ui:WinUiBrushBorder TargetBackground="{TemplateBinding Background}"
+                                     BorderBrush="{TemplateBinding BorderBrush}"
+                                     BorderThickness="{TemplateBinding BorderThickness}"
+                                     Padding="{TemplateBinding Padding}"
+                                     BackgroundSizing="{TemplateBinding BackgroundSizing}"
+                                     TransitionDuration="0:0:0.083"
+                                     Name="Root">
 
                     <Grid ColumnDefinitions="*,Auto,Auto"
                           RowDefinitions="*,Auto">
@@ -101,7 +94,7 @@
                                               Content="{Binding TemplateSettings.ActionIcon, RelativeSource={RelativeSource TemplatedParent}}" />
                         </Viewbox>
                     </Grid>
-                </Border>
+                </ui:WinUiBrushBorder>
             </ControlTemplate>
         </Setter>
 
@@ -109,7 +102,7 @@
             <Setter Property="IsVisible" Value="False" />
         </Style>
 
-        <Style Selector="^:nth-last-child(1) /template/ Border#Root">
+        <Style Selector="^:nth-last-child(1) /template/ ui|WinUiBrushBorder#Root">
             <Setter Property="CornerRadius" Value="{Binding Source={StaticResource ControlCornerRadius}, Converter={StaticResource BottomCornerRadiusFilterConverter}}" />
         </Style>
 
@@ -151,20 +144,20 @@
         </Style>
 
         <Style Selector="^:allowClick">
-            <Style Selector="^:pointerover /template/ Border#Root">
-                <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+            <Style Selector="^:pointerover /template/ ui|WinUiBrushBorder#Root">
+                <Setter Property="TargetBackground" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ControlElevationBorderBrush}" />
             </Style>
-            <Style Selector="^:pressed /template/ Border#Root">
-                <Setter Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+            <Style Selector="^:pressed /template/ ui|WinUiBrushBorder#Root">
+                <Setter Property="TargetBackground" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
                 <Setter Property="TextElement.Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
             </Style>
         </Style>
 
         <Style Selector="^:disabled">
-            <Style Selector="^ /template/ Border#Root">
-                <Setter Property="Background" Value="{DynamicResource ControlFillColorDisabledBrush}" />
+            <Style Selector="^ /template/ ui|WinUiBrushBorder#Root">
+                <Setter Property="TargetBackground" Value="{DynamicResource ControlFillColorDisabledBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
                 <Setter Property="TextElement.Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
             </Style>

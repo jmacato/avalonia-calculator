@@ -15,6 +15,7 @@
 // #include  "MyVirtualKey.h"
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows.Input;
 using ViewModeType = CalculatorApp.ViewModel.Common.ViewMode;
 
 namespace CalculatorApp.ViewModel
@@ -126,6 +127,24 @@ namespace CalculatorApp.ViewModel
                     m_IsEnabled = value;
                 }
             }
+
+            private bool m_IsSelected;
+            public bool IsSelected
+            {
+                get => m_IsSelected;
+                set
+                {
+                    if (m_IsSelected == value)
+                    {
+                        return;
+                    }
+
+                    m_IsSelected = value;
+                    RaisePropertyChanged(nameof(IsSelected));
+                }
+            }
+
+            public ICommand? NavigationCommand { get; internal set; }
 
             public string AutomationId
             {

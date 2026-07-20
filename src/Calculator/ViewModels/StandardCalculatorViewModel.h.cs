@@ -802,9 +802,13 @@ public sealed partial class StandardCalculatorViewModel : INotifyPropertyChanged
             {
                 m_OpenParenthesisCount = value;
                 RaisePropertyChanged(nameof(OpenParenthesisCount));
+                RaisePropertyChanged(nameof(OpenParenthesisCountDisplay));
             }
         }
     }
+
+    public string OpenParenthesisCountDisplay =>
+        m_OpenParenthesisCount == 0 ? string.Empty : m_OpenParenthesisCount.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     private uint m_OpenParenthesisCount;
     // COMMAND_FOR_METHOD(CopyCommand, StandardCalculatorViewModel.OnCopyCommand)

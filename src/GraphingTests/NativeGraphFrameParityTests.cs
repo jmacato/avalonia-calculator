@@ -15,7 +15,7 @@ public sealed class NativeGraphFrameParityTests
     private const uint NativeHeight = 848;
     private static readonly Color NativeBlue = new(0, 99, 177);
     private static readonly Color NativeGrid = new(198, 198, 198);
-    private static readonly string[] ExpectedGlyphTexts = ["x", "-6", "-4", "-2", "0", "2", "4", "6", "y", "-10", "-5", "5", "10"];
+    private static readonly string[] ExpectedGlyphTexts = ["-6", "-4", "-2", "0", "2", "4", "6", "-10", "-5", "5", "10", "x", "y"];
     [Fact]
     public void GridUsesFiveMinorIntervalsAndCapturedNativePaints()
     {
@@ -38,7 +38,7 @@ public sealed class NativeGraphFrameParityTests
     }
 
     [Fact]
-    public void AxesLabelsAndClearingRectanglesMatchCapturedDrawOrder()
+    public void AxisAliasesCoverTickLabelsAndEquationGeometryStaysOnTop()
     {
         NativeGraphFrameParityTestsRenderedGraph rendered = Render("x");
         GraphFrameCommand[] commands = rendered.Frame.Commands.ToArray();
@@ -71,11 +71,13 @@ public sealed class NativeGraphFrameParityTests
         Assert.Equal(GraphTextAlignment.Center, xAlias.Alignment);
         Assert.Equal(GraphTextAlignment.End, yAlias.Alignment);
         Assert.Equal(GraphTextAlignment.End, zero.Alignment);
-        int firstEquation = Array.FindIndex(commands, IsBlueStroke);
         int lastEquation = Array.FindLastIndex(commands, IsBlueStroke);
-        Assert.True(firstEquation >= 0);
-        Assert.All(backgrounds, background => Assert.True(Array.IndexOf(commands, background) < firstEquation));
-        Assert.All(glyphs, glyph => Assert.True(Array.IndexOf(commands, glyph) > lastEquation));
+        Assert.True(lastEquation >= 0);
+        Assert.All(backgrounds, background => Assert.Same(background.Glyph, commands[Array.IndexOf(commands, background) + 1]));
+        Assert.All(backgrounds, background => Assert.True(Array.IndexOf(commands, background) < lastEquation));
+        Assert.All(glyphs, glyph => Assert.True(Array.IndexOf(commands, glyph) < lastEquation));
+        Assert.True(Array.IndexOf(commands, xAlias) > Array.IndexOf(commands, zero));
+        Assert.True(Array.IndexOf(commands, yAlias) > Array.IndexOf(commands, zero));
         Assert.Empty(commands.OfType<MarkerCommand>());
     }
 

@@ -8,6 +8,8 @@ const pageUrl = new URL(globalThis.location.href);
 const pthreadPoolInitialSize = 6;
 const pthreadPoolUnusedSize = 2;
 const initialWasmMemoryBytes = 96 * 1024 * 1024;
+const usesThreadedRuntime = globalThis.crossOriginIsolated &&
+    typeof globalThis.SharedArrayBuffer === 'function';
 const aotProfileDelaySeconds = Number(pageUrl.searchParams.get('collect-aot-profile'));
 const collectAotProfile = Number.isFinite(aotProfileDelaySeconds) && aotProfileDelaySeconds > 0;
 const inputReplaySessionId = pageUrl.searchParams.get('replay-input');
@@ -517,30 +519,34 @@ async function boot() {
                 formatDownloadDetail(snapshot));
         },
     });
+    const moduleConfig = {
+        onConfigLoaded(config) {
+            configureApplicationCulture(config);
+            const snapshot = downloadTracker.registerConfiguration(config);
+            browserTelemetry?.mark(
+                'download-plan-ready',
+                `assets=${snapshot.totalAssets}; bytes=${snapshot.totalBytes}`);
+        },
+        onAbort(reason) {
+            const error = reason instanceof Error
+                ? reason
+                : new Error(`WebAssembly runtime aborted: ${String(reason)}`);
+            showFatalError(error, 'wasm-abort');
+        },
+    };
+    const runtimeConfig = {};
+    if (usesThreadedRuntime) {
+        // Match WasmInitialHeapSize explicitly so every threaded runtime entry
+        // path allocates shared memory before any pthread instance is created.
+        moduleConfig.INITIAL_MEMORY = initialWasmMemoryBytes;
+        runtimeConfig.pthreadPoolInitialSize = pthreadPoolInitialSize;
+        runtimeConfig.pthreadPoolUnusedSize = pthreadPoolUnusedSize;
+    }
+
     let dotnetBuilder = dotnet
-        .withModuleConfig({
-            // Match WasmInitialHeapSize explicitly so every runtime entry path
-            // allocates shared memory before any pthread instance is created.
-            INITIAL_MEMORY: initialWasmMemoryBytes,
-            onConfigLoaded(config) {
-                configureApplicationCulture(config);
-                const snapshot = downloadTracker.registerConfiguration(config);
-                browserTelemetry?.mark(
-                    'download-plan-ready',
-                    `assets=${snapshot.totalAssets}; bytes=${snapshot.totalBytes}`);
-            },
-            onAbort(reason) {
-                const error = reason instanceof Error
-                    ? reason
-                    : new Error(`WebAssembly runtime aborted: ${String(reason)}`);
-                showFatalError(error, 'wasm-abort');
-            },
-        })
+        .withModuleConfig(moduleConfig)
         .withResourceLoader(downloadTracker.loadBootResource)
-        .withConfig({
-            pthreadPoolInitialSize,
-            pthreadPoolUnusedSize,
-        })
+        .withConfig(runtimeConfig)
         .withDiagnosticTracing(pageUrl.searchParams.get('runtime-diagnostics') === '1')
         .withApplicationArgumentsFromQuery();
 

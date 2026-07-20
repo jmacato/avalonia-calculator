@@ -25,6 +25,7 @@ public sealed partial class Memory : UserControl
     public Memory()
     {
         InitializeComponent();
+        MemoryListView.VisualItemsChanged += OnVisualItemsChanged;
     }
 
     public StandardCalculatorViewModel? Model => DataContext as StandardCalculatorViewModel;
@@ -105,11 +106,13 @@ public sealed partial class Memory : UserControl
 
     private void UpdateState()
     {
-        bool hasItems = Model is { IsMemoryEmpty: false };
+        bool hasItems = MemoryListView.ItemCount > 0;
         MemoryPaneEmpty.IsVisible = !hasItems;
         MemoryListView.IsVisible = hasItems;
         ClearMemory.IsVisible = hasItems;
     }
+
+    private void OnVisualItemsChanged(object? sender, EventArgs e) => UpdateState();
 
     private void MemoryListSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {

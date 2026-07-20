@@ -9,10 +9,13 @@ using Avalonia.Input.GestureRecognizers;
 using Avalonia.Input.Raw;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Rendering.Composition;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using FluentAvalonia.UI.Controls;
+using SkiaSharp;
 
 namespace CalculatorApp.Automation;
 /// <summary>
@@ -135,40 +138,60 @@ internal sealed class AutomationServer : IAsyncDisposable
         TemplatedControl templatedControl => templatedControl.FontSize,
         _ => null
     };
-    internal byte[] RenderWindow()
+    internal Task<byte[]> RenderWindowAsync()
     {
-        var size = GetRenderSize();
-        using var windowBitmap = new RenderTargetBitmap(size, new Vector(96, 96));
-        windowBitmap.Render(_window);
-        using var bitmap = new RenderTargetBitmap(size, new Vector(96, 96));
-        using (var drawingContext = bitmap.CreateDrawingContext())
+        Dispatcher.UIThread.VerifyAccess();
+        CompositionVisual windowVisual = ElementComposition.GetElementVisual(_window)
+            ?? throw new InvalidOperationException("The application window is not attached to a compositor.");
+        Task<Bitmap> windowSnapshot = windowVisual.Compositor.CreateCompositionVisualSnapshot(windowVisual, 1);
+        var popupSnapshots = new List<AutomationPopupSnapshot>();
+        foreach (Control popupChild in EnumerateOpenPopupChildren())
         {
-            drawingContext.DrawImage(windowBitmap, new Rect(windowBitmap.Size));
-            foreach (var popupChild in EnumerateOpenPopupChildren())
+            if (ElementComposition.GetElementVisual(popupChild) is not { } popupVisual)
             {
-                Rect bounds = GetWindowBounds(popupChild);
-                var popupSize = new PixelSize(Math.Max(1, (int)Math.Ceiling(popupChild.Bounds.Width)), Math.Max(1, (int)Math.Ceiling(popupChild.Bounds.Height)));
-                using var popupBitmap = new RenderTargetBitmap(popupSize, new Vector(96, 96));
-                popupBitmap.Render(popupChild);
-                drawingContext.DrawImage(popupBitmap, new Rect(popupBitmap.Size), new Rect(bounds.Position, popupBitmap.Size));
+                continue;
             }
+
+            popupSnapshots.Add(new AutomationPopupSnapshot(
+                popupVisual.Compositor.CreateCompositionVisualSnapshot(popupVisual, 1),
+                GetWindowBounds(popupChild).Position));
         }
 
-        using var stream = new MemoryStream();
-        bitmap.Save(stream, PngBitmapEncoderOptions.Default);
-        return stream.ToArray();
+        return EncodeSnapshotsAsync(windowSnapshot, popupSnapshots);
     }
 
-    internal void PrimeWindowRender()
+    private static async Task<byte[]> EncodeSnapshotsAsync(
+        Task<Bitmap> windowSnapshot,
+        List<AutomationPopupSnapshot> popupSnapshots)
     {
-        using var warmup = new RenderTargetBitmap(GetRenderSize(), new Vector(96, 96));
-        warmup.Render(_window);
-        foreach (var popupChild in EnumerateOpenPopupChildren())
+        using Bitmap windowBitmap = await windowSnapshot.ConfigureAwait(false);
+        byte[] windowPng = EncodeBitmap(windowBitmap);
+        if (popupSnapshots.Count == 0)
         {
-            var popupSize = new PixelSize(Math.Max(1, (int)Math.Ceiling(popupChild.Bounds.Width)), Math.Max(1, (int)Math.Ceiling(popupChild.Bounds.Height)));
-            using var popupWarmup = new RenderTargetBitmap(popupSize, new Vector(96, 96));
-            popupWarmup.Render(popupChild);
+            return windowPng;
         }
+
+        using SKBitmap windowPixels = SKBitmap.Decode(windowPng)
+            ?? throw new InvalidOperationException("Avalonia produced an invalid window snapshot.");
+        var imageInfo = new SKImageInfo(windowPixels.Width, windowPixels.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+        using SKSurface surface = SKSurface.Create(imageInfo);
+        surface.Canvas.Clear(SKColors.Transparent);
+        surface.Canvas.DrawBitmap(windowPixels, 0, 0);
+        foreach (AutomationPopupSnapshot popupSnapshot in popupSnapshots)
+        {
+            using Bitmap popupBitmap = await popupSnapshot.Snapshot.ConfigureAwait(false);
+            byte[] popupPng = EncodeBitmap(popupBitmap);
+            using SKBitmap popupPixels = SKBitmap.Decode(popupPng)
+                ?? throw new InvalidOperationException("Avalonia produced an invalid popup snapshot.");
+            surface.Canvas.DrawBitmap(
+                popupPixels,
+                (float)popupSnapshot.Position.X,
+                (float)popupSnapshot.Position.Y);
+        }
+
+        using SKImage image = surface.Snapshot();
+        using SKData data = image.Encode(SKEncodedImageFormat.Png, 100);
+        return data.ToArray();
     }
 
     internal async Task WaitForAnimationFrameAsync()
@@ -178,7 +201,13 @@ internal sealed class AutomationServer : IAsyncDisposable
         await completion.Task.WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
     }
 
-    private PixelSize GetRenderSize() => new(Math.Max(1, (int)Math.Ceiling(_window.Bounds.Width)), Math.Max(1, (int)Math.Ceiling(_window.Bounds.Height)));
+    private static byte[] EncodeBitmap(Bitmap bitmap)
+    {
+        using var stream = new MemoryStream();
+        bitmap.Save(stream, PngBitmapEncoderOptions.Default);
+        return stream.ToArray();
+    }
+
     internal void ClickTarget(string target)
     {
         var control = EnumerateControls().FirstOrDefault(candidate => string.Equals(candidate.Name, target, StringComparison.Ordinal) || string.Equals(AutomationProperties.GetAutomationId(candidate), target, StringComparison.Ordinal));

@@ -76,7 +76,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
             VerifyAccess();
             if (_frame is null && _prepared is not null)
             {
-                _frame = BuildFrame(_prepared, stale: _prepared.Viewport != EffectiveViewport());
+                _frame = BuildFrame(_prepared);
             }
 
             return _frame;
@@ -119,7 +119,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
 
         _dpiX = dpiX;
         _dpiY = dpiY;
-        RebuildFrameFromPrepared(stale: _prepared?.Viewport != EffectiveViewport());
+        RebuildFrameFromPrepared();
         return GraphStatus.Ok;
     }
 
@@ -336,7 +336,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         SamplingViewport viewport = EffectiveViewport();
         if (_prepared is not null && _prepared.Snapshot.Revision == snapshot.Revision && _prepared.Viewport == viewport)
         {
-            _frame ??= BuildFrame(_prepared, stale: false);
+            _frame ??= BuildFrame(_prepared);
             return GraphStatus.Ok;
         }
 
@@ -371,7 +371,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
 
         _prepared = prepared;
         ClearCommandCache();
-        _frame = BuildFrame(prepared, stale: false);
+        _frame = BuildFrame(prepared);
         return GraphStatus.Ok;
     }
 
@@ -387,7 +387,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         SamplingViewport viewport = EffectiveViewport();
         if (_prepared is not null && _prepared.Snapshot.Revision == snapshot.Revision && _prepared.Viewport == viewport)
         {
-            _frame ??= BuildFrame(_prepared, stale: false);
+            _frame ??= BuildFrame(_prepared);
             return GraphStatus.Ok;
         }
 
@@ -464,7 +464,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
 
         _prepared = prepared;
         ClearCommandCache();
-        _frame = BuildFrame(prepared, stale: prepared.Viewport != EffectiveViewport());
+        _frame = BuildFrame(prepared);
         Volatile.Write(ref _lastCompletedStatus, GraphStatus.Ok.Value);
         GraphPipelineDiagnostics.RecordCommit(newest.Generation, GraphStatus.Ok);
         return GraphStatus.Ok;
@@ -635,7 +635,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         return AdaptiveCurveSampler.Sample(evaluator, parameterRange.Minimum, parameterRange.Maximum, viewport, SamplingOptions.Settled with { MaximumVertices = maximumVertices }, cancellationToken);
     }
 
-    private GraphFrame BuildFrame(PreparedGraph prepared, bool stale)
+    private GraphFrame BuildFrame(PreparedGraph prepared)
     {
         SamplingViewport viewport = EffectiveViewport();
         ImmutableArray<GraphFrameCommand> commands;
@@ -650,24 +650,26 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
             // This avoids blank edges, stretched labels and scaled grid strokes
             // while panning/zooming without evaluating the function again.
             var builder = ImmutableArray.CreateBuilder<GraphFrameCommand>();
-            var labels = ImmutableArray.CreateBuilder<GlyphCommand>();
+            var tickLabels = ImmutableArray.CreateBuilder<GraphFrameCommand>();
+            var axisAliases = ImmutableArray.CreateBuilder<GraphFrameCommand>();
             builder.Add(new PushClipCommand(new GraphRect(0, 0, viewport.Width, viewport.Height)));
-            AppendGridAndAxes(builder, labels, viewport, compactLines: true);
+            AppendGridAndAxes(builder, tickLabels, axisAliases, viewport, compactLines: true);
+            builder.AddRange(tickLabels);
+            builder.AddRange(axisAliases);
             builder.Add(new PushCoordinateTransformCommand(CoordinateTransform(prepared.Viewport, viewport)));
             builder.Add(new CommandGroupCommand(GetEquationCommands(prepared)));
             builder.Add(new PopCoordinateTransformCommand());
-            builder.AddRange(labels);
             builder.Add(new PopClipCommand());
             commands = builder.ToImmutable();
         }
 
-        return new GraphFrame(_width, _height, _dpiX, _dpiY, prepared.Snapshot.Revision, _options.GetBackColor(), commands, prepared.HasMissingData || stale, stale);
+        return new GraphFrame(_width, _height, _dpiX, _dpiY, prepared.Snapshot.Revision, _options.GetBackColor(), commands, prepared.HasMissingData);
     }
 
     private GraphFrame BuildPendingFrame()
     {
         var pending = new PreparedGraph(_snapshot, EffectiveViewport(), ImmutableArray<PreparedEquationGeometry>.Empty, HasMissingData: true);
-        return BuildFrame(pending, stale: true);
+        return BuildFrame(pending);
     }
 
     private ImmutableArray<GraphFrameCommand> GetContentCommands(PreparedGraph prepared)
@@ -678,11 +680,13 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         }
 
         var commands = ImmutableArray.CreateBuilder<GraphFrameCommand>();
-        var labels = ImmutableArray.CreateBuilder<GlyphCommand>();
+        var tickLabels = ImmutableArray.CreateBuilder<GraphFrameCommand>();
+        var axisAliases = ImmutableArray.CreateBuilder<GraphFrameCommand>();
         commands.Add(new PushClipCommand(new GraphRect(0, 0, prepared.Viewport.Width, prepared.Viewport.Height)));
-        AppendGridAndAxes(commands, labels, prepared.Viewport);
+        AppendGridAndAxes(commands, tickLabels, axisAliases, prepared.Viewport);
+        commands.AddRange(tickLabels);
+        commands.AddRange(axisAliases);
         commands.AddRange(GetEquationCommands(prepared));
-        commands.AddRange(labels);
         commands.Add(new PopClipCommand());
         _contentCommands = commands.ToImmutable();
         _contentCommandSource = prepared;
@@ -712,7 +716,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
     }
 
     private static GraphCoordinateTransform CoordinateTransform(SamplingViewport source, SamplingViewport target) => new(target.Width * source.XRange.Length / (source.Width * target.XRange.Length), target.Height * source.YRange.Length / (source.Height * target.YRange.Length), (source.XRange.Minimum - target.XRange.Minimum) * target.Width / target.XRange.Length, (target.YRange.Maximum - source.YRange.Maximum) * target.Height / target.YRange.Length);
-    private void AppendGridAndAxes(ImmutableArray<GraphFrameCommand>.Builder commands, ImmutableArray<GlyphCommand>.Builder labels, SamplingViewport viewport, bool compactLines = false)
+    private void AppendGridAndAxes(ImmutableArray<GraphFrameCommand>.Builder commands, ImmutableArray<GraphFrameCommand>.Builder tickLabels, ImmutableArray<GraphFrameCommand>.Builder axisAliases, SamplingViewport viewport, bool compactLines = false)
     {
         double xStep = NiceStep(viewport.XRange.Length);
         double yStep = NiceStep(viewport.YRange.Length);
@@ -737,13 +741,13 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
             if (hasHorizontalAxis)
             {
                 AppendHorizontalAxis(commands, viewport, horizontalAxisY, axisPaint, compactLines);
-                AppendHorizontalLabels(commands, labels, viewport, xStep, horizontalAxisY, verticalAxisX, hasVerticalAxis, fontPaint, backgroundPaint);
+                AppendHorizontalLabels(tickLabels, axisAliases, viewport, xStep, horizontalAxisY, verticalAxisX, hasVerticalAxis, fontPaint, backgroundPaint);
             }
 
             if (hasVerticalAxis)
             {
                 AppendVerticalAxis(commands, viewport, verticalAxisX, axisPaint, compactLines);
-                AppendVerticalLabels(commands, labels, viewport, yStep, verticalAxisX, fontPaint, backgroundPaint);
+                AppendVerticalLabels(tickLabels, axisAliases, viewport, yStep, verticalAxisX, fontPaint, backgroundPaint);
             }
         }
 
@@ -955,14 +959,14 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         AppendLine(commands, new GraphPoint(x, top), new GraphPoint(x + 6, top + 6), paint, compactLines);
     }
 
-    private void AppendHorizontalLabels(ImmutableArray<GraphFrameCommand>.Builder commands, ImmutableArray<GlyphCommand>.Builder labels, SamplingViewport viewport, double step, double axisY, double verticalAxisX, bool hasVerticalAxis, GraphPaint fontPaint, GraphPaint backgroundPaint)
+    private void AppendHorizontalLabels(ImmutableArray<GraphFrameCommand>.Builder tickLabels, ImmutableArray<GraphFrameCommand>.Builder axisAliases, SamplingViewport viewport, double step, double axisY, double verticalAxisX, bool hasVerticalAxis, GraphPaint fontPaint, GraphPaint backgroundPaint)
     {
         if (viewport.Width < 48 || viewport.Height < 24)
         {
             return;
         }
 
-        AppendLabel(commands, labels, _options.GetAliasX(), new GraphPoint(viewport.Width - 7, axisY + 5), GraphTextAlignment.Center, fontPaint, backgroundPaint);
+        AppendLabel(axisAliases, _options.GetAliasX(), new GraphPoint(viewport.Width - 7, axisY + 5), GraphTextAlignment.Center, fontPaint, backgroundPaint);
         double first = Math.Ceiling(viewport.XRange.Minimum / step) * step;
         for (int count = 0; count < 128; count++)
         {
@@ -974,18 +978,18 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
 
             bool zero = Math.Abs(value) <= step * 1e-10;
             GraphPoint origin = zero && hasVerticalAxis ? new GraphPoint(verticalAxisX - 4, axisY + 2) : new GraphPoint(viewport.ToScreen(value, 0).X, axisY + 2);
-            AppendLabel(commands, labels, FormatTick(zero ? 0 : value, step), origin, zero && hasVerticalAxis ? GraphTextAlignment.End : GraphTextAlignment.Center, fontPaint, backgroundPaint);
+            AppendLabel(tickLabels, FormatTick(zero ? 0 : value, step), origin, zero && hasVerticalAxis ? GraphTextAlignment.End : GraphTextAlignment.Center, fontPaint, backgroundPaint);
         }
     }
 
-    private void AppendVerticalLabels(ImmutableArray<GraphFrameCommand>.Builder commands, ImmutableArray<GlyphCommand>.Builder labels, SamplingViewport viewport, double step, double axisX, GraphPaint fontPaint, GraphPaint backgroundPaint)
+    private void AppendVerticalLabels(ImmutableArray<GraphFrameCommand>.Builder tickLabels, ImmutableArray<GraphFrameCommand>.Builder axisAliases, SamplingViewport viewport, double step, double axisX, GraphPaint fontPaint, GraphPaint backgroundPaint)
     {
         if (viewport.Width < 48 || viewport.Height < 24)
         {
             return;
         }
 
-        AppendLabel(commands, labels, _options.GetAliasY(), new GraphPoint(axisX - 11, -0.98046875), GraphTextAlignment.End, fontPaint, backgroundPaint);
+        AppendLabel(axisAliases, _options.GetAliasY(), new GraphPoint(axisX - 11, -0.98046875), GraphTextAlignment.End, fontPaint, backgroundPaint);
         double first = Math.Ceiling(viewport.YRange.Minimum / step) * step;
         for (int count = 0; count < 128; count++)
         {
@@ -1000,15 +1004,15 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
                 continue;
             }
 
-            AppendLabel(commands, labels, FormatTick(value, step), new GraphPoint(axisX - 4, viewport.ToScreen(0, value).Y - 7.98046875), GraphTextAlignment.End, fontPaint, backgroundPaint);
+            AppendLabel(tickLabels, FormatTick(value, step), new GraphPoint(axisX - 4, viewport.ToScreen(0, value).Y - 7.98046875), GraphTextAlignment.End, fontPaint, backgroundPaint);
         }
     }
 
-    private static void AppendLabel(ImmutableArray<GraphFrameCommand>.Builder commands, ImmutableArray<GlyphCommand>.Builder labels, string text, GraphPoint origin, GraphTextAlignment alignment, GraphPaint fontPaint, GraphPaint backgroundPaint)
+    private static void AppendLabel(ImmutableArray<GraphFrameCommand>.Builder commands, string text, GraphPoint origin, GraphTextAlignment alignment, GraphPaint fontPaint, GraphPaint backgroundPaint)
     {
         var glyph = new GlyphCommand(text, origin, "Segoe UI", 12, fontPaint, alignment, GraphFontStyle.Italic);
         commands.Add(new GlyphBackgroundCommand(glyph, backgroundPaint));
-        labels.Add(glyph);
+        commands.Add(glyph);
     }
 
     private static void AppendLine(ImmutableArray<GraphFrameCommand>.Builder commands, GraphPoint start, GraphPoint end, GraphPaint paint, bool compact = false) => commands.Add(compact ? new StrokeLineCommand(start, end, paint) : new StrokePathCommand(new GraphPath([start, end]), paint));
@@ -1042,15 +1046,14 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         }
 
         // Range changes can arrive much faster than the compositor paints. Keep
-        // the sampled user-space geometry and rebuild its screen-space preview
-        // lazily for the next actual frame instead of allocating one frame for
-        // every queued wheel or pointer event.
+        // the sampled user-space geometry and build the current screen-space
+        // scene lazily instead of allocating for every wheel or pointer event.
         _frame = null;
     }
 
-    private void RebuildFrameFromPrepared(bool stale)
+    private void RebuildFrameFromPrepared()
     {
-        _frame = _prepared is null ? null : BuildFrame(_prepared, stale);
+        _frame = _prepared is null ? null : BuildFrame(_prepared);
     }
 
     private SamplingViewport EffectiveViewport()

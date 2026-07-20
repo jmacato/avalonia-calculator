@@ -1,6 +1,6 @@
 # Avalonia automation server
 
-The Calculator app contains a loopback-only HTTP automation server for local macOS and Windows porting work. It operates on the real application window and native Avalonia popup roots: tree queries walk the live visual trees, pointer/key/text requests raise Avalonia routed events on the UI thread, and screenshots are rendered directly with `RenderTargetBitmap`.
+The Calculator app contains a loopback-only HTTP automation server for local macOS and Windows porting work. It operates on the real application window and native Avalonia popup roots: tree queries walk the live visual trees, pointer/key/text requests raise Avalonia routed events on the UI thread, and screenshots use the live composition visuals.
 
 The server is disabled unless both environment variables below are present:
 
@@ -49,5 +49,5 @@ curl -H "X-Calculator-Automation-Token: $token" \
 ```
 
 Animations are real application animations. A client that needs a settled visual baseline should wait for the relevant transition before requesting `/render`.
-The settled render endpoint performs two discarded off-screen resource-prime passes, separated by real `TopLevel.RequestAnimationFrame` boundaries and bounded settle intervals, before returning its direct Avalonia bitmap. This keeps the first NativeAOT capture deterministic when Fluent materials and large control trees initialize lazily. Use `/render/frame` when those settle intervals would intentionally hide an in-progress animation.
+The settled render endpoint performs two discarded compositor snapshots, separated by real `TopLevel.RequestAnimationFrame` boundaries and bounded settle intervals, before returning the final snapshot. Each snapshot is queued as Avalonia's post-target compositor job and native popup snapshots are composited at their arranged window coordinates. This both preserves composition-driven animation state and prevents an automation capture from racing the platform's native paint callback. Use `/render/frame` when the settle intervals would intentionally hide an in-progress animation.
 On platforms using native window chrome, `/render` contains the application client area only. Keep that native title bar outside perceptual comparisons, and compare the client render with an explicitly measured/cropped Windows application-content region.

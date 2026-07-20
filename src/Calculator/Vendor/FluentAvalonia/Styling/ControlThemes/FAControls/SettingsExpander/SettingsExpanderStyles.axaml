@@ -32,6 +32,7 @@
     <!-- ToggleButton for the Expander -->
     <ControlTheme x:Key="SettingsExpanderToggleButtonStyle" TargetType="ToggleButton">
         <Setter Property="Background" Value="{DynamicResource ExpanderHeaderBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource ExpanderHeaderForeground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ExpanderHeaderBorderBrush}" />
         <Setter Property="BorderThickness" Value="{DynamicResource ExpanderHeaderBorderThickness}" />
         <Setter Property="Padding" Value="0" />
@@ -48,58 +49,88 @@
                         CornerRadius="{TemplateBinding CornerRadius}"
                         Padding="{TemplateBinding Padding}"
                         BackgroundSizing="{TemplateBinding BackgroundSizing}">
-                    <Border.Transitions>
-                        <Transitions>
-                            <BrushTransition Duration="00:00:00.083"
-                                             Property="Background" />
-                            <BrushTransition Duration="00:00:00.083"
-                                             Property="BorderBrush" />
-                        </Transitions>
-                    </Border.Transitions>
                     <Grid ColumnDefinitions="*,Auto">
                         <ContentPresenter Content="{TemplateBinding Content}" />
 
-                        <ui:FASymbolIcon Name="ExpandCollapseChevron"
-                                       Symbol="ChevronDown"
-                                       FontSize="18"
-                                       Foreground="{DynamicResource ExpanderChevronForeground}"
-                                       RenderTransform="none"
-                                       Margin="{DynamicResource SettingsExpanderExpandCollapseChevronMargin}"
-                                       Grid.Column="1"
-                                       IsVisible="False"/>
+                        <Border Name="ExpandCollapseChevronBorder"
+                                Width="32"
+                                Height="32"
+                                Margin="0 0 8 0"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Background="{DynamicResource ExpanderChevronBackground}"
+                                BorderBrush="{DynamicResource ExpanderChevronBorderBrush}"
+                                BorderThickness="{DynamicResource ExpanderChevronBorderThickness}"
+                                CornerRadius="{DynamicResource ControlCornerRadius}"
+                                Grid.Column="1"
+                                IsVisible="False">
+                            <ui:WinUiAnimatedChevron Name="ExpandCollapseChevron"
+                                                     Width="16"
+                                                     Height="16"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"
+                                                     IsHitTestVisible="False" />
+                        </Border>
                     </Grid>
                 </Border>
             </ControlTemplate>
         </Setter>
 
-        <Style Selector="^:allowClick">
-            <Style Selector="^:pointerover /template/ Border#Root">
-                <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
-            </Style>
-            <Style Selector="^:pressed /template/ Border#Root">
-                <Setter Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
-                <Setter Property="TextElement.Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
-            </Style>
+        <Style Selector="^ /template/ ui|WinUiAnimatedChevron#ExpandCollapseChevron">
+            <Setter Property="Foreground" Value="{DynamicResource ExpanderChevronForeground}" />
+            <Setter Property="State" Value="NormalOff" />
+        </Style>
+        <Style Selector="^:allowClick:pointerover">
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlElevationBorderBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ExpanderHeaderForegroundPointerOver}" />
+        </Style>
+        <Style Selector="^:allowClick:pointerover /template/ ui|WinUiAnimatedChevron#ExpandCollapseChevron">
+            <Setter Property="Foreground" Value="{DynamicResource ExpanderChevronPointerOverForeground}" />
+            <Setter Property="State" Value="PointerOverOff" />
+        </Style>
+        <Style Selector="^:allowClick:pressed">
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
+        <Style Selector="^:allowClick:pressed /template/ ui|WinUiAnimatedChevron#ExpandCollapseChevron">
+            <Setter Property="Foreground" Value="{DynamicResource ExpanderChevronPressedForeground}" />
+            <Setter Property="State" Value="PressedOff" />
         </Style>
 
-        <Style Selector="^:disabled /template/ Border#Root">
+        <Style Selector="^:disabled">
             <Setter Property="Background" Value="{DynamicResource ControlFillColorDisabledBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
-            <Setter Property="TextElement.Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+        </Style>
+        <Style Selector="^:disabled /template/ ui|WinUiAnimatedChevron#ExpandCollapseChevron">
+            <Setter Property="Foreground" Value="{DynamicResource ExpanderHeaderDisabledForeground}" />
         </Style>
 
         <Style Selector="^:checked">
-            <Style Selector="^ /template/ ui|FASymbolIcon#ExpandCollapseChevron">
-                <Setter Property="RenderTransform" Value="rotate(180deg)" />
-            </Style>
             <Style Selector="^:not(:empty) /template/ Border#Root">
                 <Setter Property="CornerRadius" Value="{Binding Source={StaticResource ControlCornerRadius}, Converter={StaticResource TopCornerRadiusFilterConverter}}" />
             </Style>
         </Style>
+        <Style Selector="^:checked /template/ ui|WinUiAnimatedChevron#ExpandCollapseChevron">
+            <Setter Property="Foreground" Value="{DynamicResource ExpanderChevronForeground}" />
+            <Setter Property="State" Value="NormalOn" />
+        </Style>
+        <Style Selector="^:checked:pointerover /template/ ui|WinUiAnimatedChevron#ExpandCollapseChevron">
+            <Setter Property="Foreground" Value="{DynamicResource ExpanderChevronPointerOverForeground}" />
+            <Setter Property="State" Value="PointerOverOn" />
+        </Style>
+        <Style Selector="^:checked:pressed /template/ ui|WinUiAnimatedChevron#ExpandCollapseChevron">
+            <Setter Property="Foreground" Value="{DynamicResource ExpanderChevronPressedForeground}" />
+            <Setter Property="State" Value="PressedOn" />
+        </Style>
+        <Style Selector="^:checked:disabled /template/ ui|WinUiAnimatedChevron#ExpandCollapseChevron">
+            <Setter Property="Foreground" Value="{DynamicResource ExpanderHeaderDisabledForeground}" />
+            <Setter Property="State" Value="NormalOn" />
+        </Style>
 
-        <Style Selector="^:not(:empty) /template/ ui|FASymbolIcon#ExpandCollapseChevron">
+        <Style Selector="^:not(:empty) /template/ Border#ExpandCollapseChevronBorder">
             <Setter Property="IsVisible" Value="True" />
         </Style>
     </ControlTheme>

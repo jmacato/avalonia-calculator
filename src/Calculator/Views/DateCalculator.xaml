@@ -2,6 +2,7 @@
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:automation="using:Avalonia.Automation"
+             xmlns:controls="using:CalculatorApp.Controls"
              xmlns:utils="using:CalculatorApp.Utils"
              xmlns:vm="using:CalculatorApp.ViewModel"
              x:DataType="vm:DateCalculatorViewModel"
@@ -64,15 +65,15 @@
       <StackPanel Grid.Row="1" Spacing="6">
         <TextBlock Classes="caption"
                    Text="{utils:ResourceString Name='DateDiff_FromHeader.Header'}" />
-        <CalendarDatePicker x:Name="DateDiff_FromDate"
-                            SelectedDate="{CompiledBinding FromDate, Mode=TwoWay}" />
+        <controls:WinUiCalendarDatePicker x:Name="DateDiff_FromDate"
+                                          SelectedDate="{CompiledBinding FromDate, Mode=TwoWay}" />
       </StackPanel>
 
       <StackPanel Grid.Row="3" Spacing="6">
         <TextBlock Classes="caption"
                    Text="{utils:ResourceString Name='DateDiff_ToHeader.Header'}" />
-        <CalendarDatePicker x:Name="DateDiff_ToDate"
-                            SelectedDate="{CompiledBinding ToDate, Mode=TwoWay}" />
+        <controls:WinUiCalendarDatePicker x:Name="DateDiff_ToDate"
+                                          SelectedDate="{CompiledBinding ToDate, Mode=TwoWay}" />
       </StackPanel>
 
       <TextBlock Grid.Row="5"
@@ -125,8 +126,8 @@
       <StackPanel Grid.Row="1" Spacing="6">
         <TextBlock Classes="caption"
                    Text="{utils:ResourceString Name='AddSubtract_Date_FromHeader.Header'}" />
-        <CalendarDatePicker x:Name="AddSubtract_FromDate"
-                            SelectedDate="{CompiledBinding StartDate, Mode=TwoWay}" />
+        <controls:WinUiCalendarDatePicker x:Name="AddSubtract_FromDate"
+                                          SelectedDate="{CompiledBinding StartDate, Mode=TwoWay}" />
       </StackPanel>
 
       <Grid Grid.Row="3" ColumnDefinitions="Auto,Auto">

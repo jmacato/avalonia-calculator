@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using CalculatorApp.Services.Settings;
 using CalculatorApp.ViewModel.Common;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace CalculatorApp.ViewModel;
 
@@ -19,6 +20,7 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
 {
     private readonly ISettingsStore _settingsStore;
     private readonly UnitConverterPreparationWorker _converterPreparationWorker;
+    private readonly int _diagnosticPageId;
     private int _converterPreparationStarted;
     private int _disposed;
 
@@ -49,22 +51,36 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private ObservableCollection<NavCategoryGroup> _categories = new();
 
+    [ObservableProperty]
+    private bool _isNavigationPaneOpen;
+
     private ViewMode m_mode = ViewMode.None;
 
     public ApplicationViewModel()
-        : this(App.SettingsStore)
+        : this(App.SettingsStore, 0)
     {
     }
 
-    public ApplicationViewModel(ISettingsStore settingsStore)
+    public ApplicationViewModel(ISettingsStore settingsStore, int diagnosticPageId = 0)
     {
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
+        _diagnosticPageId = diagnosticPageId;
         ConverterPipelineDiagnostics.RecordUiThread(Environment.CurrentManagedThreadId);
         _converterPreparationWorker = new UnitConverterPreparationWorker(
             settingsStore,
             Environment.CurrentManagedThreadId);
         Categories = NavCategoryStates.CreateMenuOptions();
+        NavigationItems = ExpandNavigationGroups(Categories);
+        foreach (object item in NavigationItems)
+        {
+            if (item is NavCategory category)
+            {
+                category.NavigationCommand = NavigateCommand;
+            }
+        }
     }
+
+    public IReadOnlyList<object> NavigationItems { get; }
 
     public ViewMode Mode
     {
@@ -83,6 +99,7 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
 
             PreviousMode = m_mode;
             m_mode = value;
+            UpdateNavigationSelection();
             ConverterPipelineDiagnostics.Record(50 + (int)m_mode);
             if (NavCategory.IsCalculatorViewMode(m_mode))
             {
@@ -130,6 +147,54 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
     public void Initialize(ViewMode mode)
     {
         Mode = mode;
+    }
+
+    [RelayCommand]
+    private void Navigate(NavCategory? category)
+    {
+        if (category is not { IsEnabled: true })
+        {
+            return;
+        }
+
+        ThreadedManagedDebugging.Checkpoint(301);
+        ConverterPipelineDiagnostics.RecordNavigation(
+            _diagnosticPageId,
+            (int)category.ViewMode);
+        Mode = category.ViewMode;
+        IsNavigationPaneOpen = false;
+        ThreadedManagedDebugging.Checkpoint(302);
+    }
+
+    [RelayCommand]
+    private void ToggleNavigationPane() =>
+        IsNavigationPaneOpen = !IsNavigationPaneOpen;
+
+    private static List<object> ExpandNavigationGroups(
+        IEnumerable<NavCategoryGroup> groups)
+    {
+        var result = new List<object>();
+        foreach (NavCategoryGroup group in groups)
+        {
+            result.Add(group);
+            foreach (NavCategory category in group.Categories)
+            {
+                result.Add(category);
+            }
+        }
+
+        return result;
+    }
+
+    private void UpdateNavigationSelection()
+    {
+        foreach (object item in NavigationItems)
+        {
+            if (item is NavCategory category)
+            {
+                category.IsSelected = category.ViewMode == m_mode;
+            }
+        }
     }
 
     public void ToggleAlwaysOnTop(float width, float height)

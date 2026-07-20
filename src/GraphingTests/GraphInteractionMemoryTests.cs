@@ -9,22 +9,22 @@ namespace GraphingTests;
 public sealed class GraphInteractionMemoryTests
 {
     [AvaloniaFact]
-    public void StaleFrameCacheRetainsOnlyTheCurrentEquationGeometry()
+    public void ProjectedFrameCacheRetainsOnlyTheCurrentEquationGeometry()
     {
         var cache = new GraphControl.AvaloniaGraphRenderCache();
         var firstPath = new GraphPath(Enumerable.Range(0, 8).Select(index => new GraphPoint(index, index)));
         ImmutableArray<GraphFrameCommand> firstCommands = [new StrokePathCommand(firstPath, new GraphPaint(new Color(0, 0, 0)))];
-        var firstFrame = new GraphFrame(393, 659, 96, 96, 1, new Color(255, 255, 255), [new CommandGroupCommand(firstCommands)], isStale: true);
+        var firstFrame = new GraphFrame(393, 659, 96, 96, 1, new Color(255, 255, 255), [new CommandGroupCommand(firstCommands)]);
 
         cache.BeginFrame(firstFrame);
         object firstGeometry = cache.Geometry(firstPath);
-        var sameSourceFrame = new GraphFrame(393, 659, 96, 96, 1, new Color(255, 255, 255), [new CommandGroupCommand(firstCommands)], isStale: true);
+        var sameSourceFrame = new GraphFrame(393, 659, 96, 96, 1, new Color(255, 255, 255), [new CommandGroupCommand(firstCommands)]);
         cache.BeginFrame(sameSourceFrame);
         Assert.Same(firstGeometry, cache.Geometry(firstPath));
 
         var replacementPath = new GraphPath(Enumerable.Range(0, 8).Select(index => new GraphPoint(index, 8 - index)));
         ImmutableArray<GraphFrameCommand> replacementCommands = [new StrokePathCommand(replacementPath, new GraphPaint(new Color(0, 0, 0)))];
-        var replacementFrame = new GraphFrame(393, 659, 96, 96, 1, new Color(255, 255, 255), [new CommandGroupCommand(replacementCommands)], isStale: true);
+        var replacementFrame = new GraphFrame(393, 659, 96, 96, 1, new Color(255, 255, 255), [new CommandGroupCommand(replacementCommands)]);
         cache.BeginFrame(replacementFrame);
 
         Assert.NotSame(firstGeometry, cache.Geometry(firstPath));
@@ -66,11 +66,11 @@ public sealed class GraphInteractionMemoryTests
             interactionBytes < 64 * 1_024,
             $"Range changes allocated {interactionBytes:N0} bytes before a frame was requested.");
 
-        GraphFrame preview = Assert.IsType<GraphFrame>(renderer.CurrentFrame);
-        Assert.NotSame(settled, preview);
-        Assert.True(preview.IsStale);
+        GraphFrame current = Assert.IsType<GraphFrame>(renderer.CurrentFrame);
+        Assert.NotSame(settled, current);
+        Assert.Contains(current.Commands, command => command is PushCoordinateTransformCommand);
         Assert.Equal(GraphStatus.Ok, renderer.PrepareGraph());
-        Assert.False(Assert.IsType<GraphFrame>(renderer.CurrentFrame).IsStale);
+        Assert.DoesNotContain(Assert.IsType<GraphFrame>(renderer.CurrentFrame).Commands, command => command is PushCoordinateTransformCommand);
     }
 
     [Fact]
@@ -94,15 +94,15 @@ public sealed class GraphInteractionMemoryTests
         Assert.Contains(sampledPath.Points, point => point.X > settled.Width);
 
         Assert.Equal(GraphStatus.Ok, renderer.MoveRangeByRatio(0.01, -0.01));
-        GraphFrame preview = Assert.IsType<GraphFrame>(renderer.CurrentFrame);
+        GraphFrame current = Assert.IsType<GraphFrame>(renderer.CurrentFrame);
 
-        Assert.True(preview.IsStale);
-        Assert.IsType<PushClipCommand>(preview.Commands[0]);
-        CommandGroupCommand equations = Assert.Single(preview.Commands.OfType<CommandGroupCommand>());
+        Assert.Contains(current.Commands, command => command is PushCoordinateTransformCommand);
+        Assert.IsType<PushClipCommand>(current.Commands[0]);
+        CommandGroupCommand equations = Assert.Single(current.Commands.OfType<CommandGroupCommand>());
         Assert.Contains(
             equations.Commands.OfType<StrokePathCommand>(),
             command => ReferenceEquals(sampledPath, command.Path));
-        Assert.Contains(preview.Commands, command => command is GlyphCommand);
+        Assert.Contains(current.Commands, command => command is GlyphCommand);
         Assert.DoesNotContain(equations.Commands, command => command is GlyphCommand);
     }
 
@@ -216,7 +216,7 @@ public sealed class GraphInteractionMemoryTests
             double xMinimum = -9.8 + (index * 0.2);
             Assert.Equal(GraphStatus.Ok, renderer.SetDisplayRanges(xMinimum, xMinimum + 20, -10, 10));
             Assert.Equal(GraphStatus.Ok, concurrentRenderer.RequestPrepareGraph());
-            Assert.True(Assert.IsType<GraphFrame>(renderer.CurrentFrame).IsStale);
+            Assert.Contains(Assert.IsType<GraphFrame>(renderer.CurrentFrame).Commands, command => command is PushCoordinateTransformCommand);
         }
 
         var timeout = Stopwatch.StartNew();
@@ -231,7 +231,7 @@ public sealed class GraphInteractionMemoryTests
         Assert.True(completed, "The latest bounded-channel graph request did not complete.");
         Assert.Equal(GraphStatus.Ok, completionStatus);
         Assert.False(concurrentRenderer.IsPrepareGraphPending);
-        Assert.False(Assert.IsType<GraphFrame>(renderer.CurrentFrame).IsStale);
+        Assert.DoesNotContain(Assert.IsType<GraphFrame>(renderer.CurrentFrame).Commands, command => command is PushCoordinateTransformCommand);
         Assert.Equal(GraphStatus.Ok, renderer.GetDisplayRanges(out double finalXMinimum, out double finalXMaximum, out _, out _));
         Assert.Equal(-0.4, finalXMinimum, precision: 10);
         Assert.Equal(19.6, finalXMaximum, precision: 10);
@@ -268,7 +268,6 @@ public sealed class GraphInteractionMemoryTests
         Assert.True(completed, "The reusable intermediate graph request did not complete.");
         Assert.Equal(GraphStatus.Ok, completionStatus);
         GraphFrame frame = Assert.IsType<GraphFrame>(renderer.CurrentFrame);
-        Assert.True(frame.IsStale);
         Assert.Contains(frame.Commands, command => command is PushCoordinateTransformCommand);
         Assert.True(concurrentRenderer.TryGetPreparedDisplayRanges(out double preparedXMinimum, out double preparedXMaximum, out double preparedYMinimum, out double preparedYMaximum));
         Assert.Equal(-8, preparedXMinimum, precision: 10);

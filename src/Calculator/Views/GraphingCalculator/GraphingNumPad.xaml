@@ -34,11 +34,12 @@
                                       Glyph="&#xF892;"
                                       Text="{utils:ResourceString Name='trigButton.Text'}">
           <controls:OperatorPanelButton.FlyoutMenu>
-            <Flyout Placement="BottomEdgeAlignedLeft">
-              <Grid x:Name="TrigGrid" Width="300" Height="112"
+            <Flyout Placement="BottomEdgeAlignedLeft"
+                    FlyoutPresenterClasses="operator-panel">
+              <Grid x:Name="TrigGrid" Width="258" Height="96"
                     RowDefinitions="*,*" ColumnDefinitions="*,*,*,*">
                 <ToggleButton x:Name="TrigShiftButton"
-                              Classes="graphOperator"
+                              Theme="{StaticResource CaptionToggleEmphasizedButtonStyle}"
                               FontFamily="{DynamicResource CalculatorFontFamily}"
                               AutomationProperties.AutomationId="trigShiftButton"
                               AutomationProperties.Name="{utils:ResourceString Name='trigShiftButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
@@ -46,7 +47,7 @@
                               Content="&#xF897;" />
                 <ToggleButton x:Name="HypButton"
                               Grid.Row="1"
-                              Classes="graphOperator"
+                              Theme="{StaticResource CaptionToggleEmphasizedButtonStyle}"
                               AutomationProperties.AutomationId="hypShiftButton"
                               AutomationProperties.Name="{utils:ResourceString Name='hypButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
                               Click="TrigFlyoutHyp_Toggle"
@@ -174,8 +175,9 @@
                                       Glyph="&#xF896;"
                                       Text="{utils:ResourceString Name='inequalityButton.Text'}">
           <controls:OperatorPanelButton.FlyoutMenu>
-            <Flyout Placement="BottomEdgeAlignedLeft">
-              <Grid x:Name="InequalityGrid" Width="300" Height="56" ColumnDefinitions="*,*,*,*,*">
+            <Flyout Placement="Bottom"
+                    FlyoutPresenterClasses="operator-panel">
+              <Grid x:Name="InequalityGrid" Width="312" Height="48" ColumnDefinitions="*,*,*,*,*">
                 <controls:CalculatorButton x:Name="LessThanFlyoutButton" Classes="operator symbol"
                                            AutomationProperties.AutomationId="lessThanFlyoutButton"
                                            AutomationProperties.Name="{utils:ResourceString Name='lessThanFlyoutButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
@@ -207,8 +209,9 @@
                                       Glyph="&#xF893;"
                                       Text="{utils:ResourceString Name='funcButton.Text'}">
           <controls:OperatorPanelButton.FlyoutMenu>
-            <Flyout Placement="BottomEdgeAlignedLeft">
-              <Grid x:Name="FuncGrid" Width="225" Height="56" ColumnDefinitions="*,*,*">
+            <Flyout Placement="Bottom"
+                    FlyoutPresenterClasses="operator-panel">
+              <Grid x:Name="FuncGrid" Width="194" Height="48" ColumnDefinitions="*,*,*">
                 <controls:CalculatorButton x:Name="AbsFlyoutButton" Classes="operator symbol"
                                            AutomationProperties.AutomationId="absButton"
                                            AutomationProperties.Name="{utils:ResourceString Name='absButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
@@ -227,7 +230,8 @@
         </controls:OperatorPanelButton>
       </controls:OperatorPanelListView>
 
-      <ToggleButton x:Name="ShiftButton" Grid.Row="1" Classes="graphOperator"
+      <ToggleButton x:Name="ShiftButton" Grid.Row="1"
+                    Theme="{StaticResource CaptionToggleEmphasizedButtonStyle}"
                     FontFamily="{DynamicResource CalculatorFontFamily}" FontSize="20"
                     AutomationProperties.AutomationId="shiftButton"
                     AutomationProperties.Name="{utils:ResourceString Name='shiftButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
@@ -324,13 +328,15 @@
                                  AutomationProperties.Name="{utils:ResourceString Name='yButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
                                  ButtonId="Y" Content="𝑦" />
 
-      <controls:CalculatorButton x:Name="OpenParenthesisButton" Grid.Row="3" Grid.Column="1" Classes="operator"
+      <controls:CalculatorButton x:Name="OpenParenthesisButton" Grid.Row="3" Grid.Column="1" Classes="operator parenthesis"
                                  AutomationProperties.AutomationId="openParenthesisButton"
                                  AutomationProperties.Name="{utils:ResourceString Name='openParenthesisButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 FontSize="19"
                                  ButtonId="OpenParenthesis" Content="(" />
       <controls:CalculatorButton x:Name="CloseParenthesisButton" Grid.Row="3" Grid.Column="2" Classes="operator"
                                  AutomationProperties.AutomationId="closeParenthesisButton"
                                  AutomationProperties.Name="{utils:ResourceString Name='closeParenthesisButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                                 FontSize="19"
                                  ButtonId="CloseParenthesis" Content=")" />
       <controls:CalculatorButton x:Name="EqualButton" Grid.Row="3" Grid.Column="3" Classes="operator symbol"
                                  AutomationProperties.AutomationId="equalButton"

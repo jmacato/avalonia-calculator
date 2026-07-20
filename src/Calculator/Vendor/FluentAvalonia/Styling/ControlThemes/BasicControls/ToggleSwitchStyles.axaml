@@ -1,11 +1,12 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:ui="using:FluentAvalonia.UI.Controls"
                     x:CompileBindings="True">
 
     <Design.PreviewWith>
         <Border Padding="50">
             <StackPanel Spacing="5">
-                <ToggleSwitch Content="Button" />
+                <ui:WinUiToggleSwitch Content="Button" />
             </StackPanel>
         </Border>
     </Design.PreviewWith>
@@ -17,7 +18,7 @@
     <!-- Not forced as of v2, but available if still wanted-->
     <x:Double x:Key="ToggleSwitchThemeMinWidth">154</x:Double>
 
-    <ControlTheme x:Key="{x:Type ToggleSwitch}" TargetType="ToggleSwitch">
+    <ControlTheme x:Key="{x:Type ui:WinUiToggleSwitch}" TargetType="ui:WinUiToggleSwitch">
         <Setter Property="Foreground" Value="{DynamicResource ToggleSwitchContentForeground}" />
         <Setter Property="HorizontalAlignment" Value="Left" />
         <Setter Property="VerticalAlignment" Value="Center" />
@@ -26,9 +27,9 @@
         <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
         <Setter Property="KnobTransitions">
             <Transitions>
-                <DoubleTransition Easing="0,0,0,1"
+                <DoubleTransition Easing="0.1,0.9,0.2,1"
                                   Property="Canvas.Left"
-                                  Duration="0:0:0.2" />
+                                  Duration="0:0:0.367" />
             </Transitions>
         </Setter>
         <Setter Property="Template">
@@ -60,13 +61,14 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <Border x:Name="SwitchAreaGrid"
+                        <ui:WinUiBrushBorder x:Name="SwitchAreaGrid"
                                 Grid.RowSpan="3"
                                 Grid.ColumnSpan="3"
                                 TemplatedControl.IsTemplateFocusTarget="True"
                                 Margin="0,5"
                                 CornerRadius="{TemplateBinding CornerRadius}"
-                                Background="{DynamicResource ToggleSwitchContainerBackground}"/>
+                                TargetBackground="{DynamicResource ToggleSwitchContainerBackground}"
+                                TransitionDuration="0"/>
 
                         <ContentPresenter x:Name="PART_OffContentPresenter"
                                           Grid.RowSpan="3"
@@ -84,21 +86,16 @@
                                           HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
 
-                        <Border x:Name="OuterBorder"
-                                Background="{DynamicResource ToggleSwitchFillOff}"
-                                BorderBrush="{DynamicResource ToggleSwitchStrokeOff}"
+                        <ui:WinUiBrushBorder x:Name="OuterBorder"
+                                TargetBackground="{DynamicResource ToggleSwitchFillOff}"
+                                TargetBorderBrush="{DynamicResource ToggleSwitchStrokeOff}"
+                                TransitionDuration="0"
                                 Grid.Row="1"
                                 Height="20"
                                 Width="40"
                                 CornerRadius="10"
                                 BorderThickness="{DynamicResource ToggleSwitchOuterBorderStrokeThickness}">
-                            <Border.Transitions>
-                                <Transitions>
-                                    <BrushTransition Duration="00:00:00.167" Property="BorderBrush" />
-                                    <BrushTransition Duration="00:00:00.167" Property="Background" />
-                                </Transitions>
-                            </Border.Transitions>
-                        </Border>
+                        </ui:WinUiBrushBorder>
 
                         <Border x:Name="SwitchKnobBounds"
                                 Background="{DynamicResource ToggleSwitchFillOn}"
@@ -108,12 +105,6 @@
                                 Width="40"
                                 CornerRadius="10"
                                 BorderThickness="{DynamicResource ToggleSwitchOnStrokeThickness}">
-                            <Border.Transitions>
-                                <Transitions>
-                                    <BrushTransition Duration="00:00:00.167" Property="BorderBrush" />
-                                    <BrushTransition Duration="00:00:00.167" Property="Background" />
-                                </Transitions>
-                            </Border.Transitions>
                         </Border>
 
                         <Canvas x:Name="PART_SwitchKnob" Grid.Row="1"
@@ -123,26 +114,32 @@
                             <Grid x:Name="PART_MovingKnobs"
                                   Width="20" Height="20">
 
-                                <Ellipse x:Name="SwitchKnobOn"
-                                         Fill="{DynamicResource ToggleSwitchKnobFillOn}"
+                                <Border x:Name="SwitchKnobOn"
+                                         Background="{DynamicResource ToggleSwitchKnobFillOn}"
+                                         BorderBrush="{DynamicResource ToggleSwitchKnobStrokeOn}"
                                          Width="12"
-                                         Height="12">
-                                    <Ellipse.Transitions>
+                                         Height="12"
+                                         CornerRadius="7"
+                                         HorizontalAlignment="Center"
+                                         Margin="0,0,1,0">
+                                    <Border.Transitions>
                                         <Transitions>
-                                            <DoubleTransition Duration="00:00:00.167" Easing="0,0 0,1" Property="Width" />
-                                            <DoubleTransition Duration="00:00:00.167" Easing="0,0 0,1" Property="Height" />
+                                            <DoubleTransition Duration="00:00:00.083" Easing="0,0,0,1" Property="Width" />
+                                            <DoubleTransition Duration="00:00:00.083" Easing="0,0,0,1" Property="Height" />
                                         </Transitions>
-                                    </Ellipse.Transitions>
-                                </Ellipse>
+                                    </Border.Transitions>
+                                </Border>
 
                                 <Ellipse x:Name="SwitchKnobOff"
                                          Fill="{DynamicResource ToggleSwitchKnobFillOff}"
                                          Width="12"
-                                         Height="12">
+                                         Height="12"
+                                         HorizontalAlignment="Center"
+                                         Margin="-1,0,0,0">
                                     <Ellipse.Transitions>
                                         <Transitions>
-                                            <DoubleTransition Duration="00:00:00.167" Easing="0,0 0,1" Property="Width" />
-                                            <DoubleTransition Duration="00:00:00.167" Easing="0,0 0,1" Property="Height" />
+                                            <DoubleTransition Duration="00:00:00.083" Easing="0,0,0,1" Property="Width" />
+                                            <DoubleTransition Duration="00:00:00.083" Easing="0,0,0,1" Property="Height" />
                                         </Transitions>
                                     </Ellipse.Transitions>
                                 </Ellipse>
@@ -155,17 +152,18 @@
 
 
         <Style Selector="^:pointerover">
-            <Style Selector="^ /template/ Border#OuterBorder">
-                <Setter Property="BorderBrush" Value="{DynamicResource ToggleSwitchStrokeOffPointerOver}"/>
-                <Setter Property="Background" Value="{DynamicResource ToggleSwitchFillOffPointerOver}"/>
+            <Style Selector="^ /template/ ui|WinUiBrushBorder#OuterBorder">
+                <Setter Property="TransitionDuration" Value="00:00:00.083"/>
+                <Setter Property="TargetBorderBrush" Value="{DynamicResource ToggleSwitchStrokeOffPointerOver}"/>
+                <Setter Property="TargetBackground" Value="{DynamicResource ToggleSwitchFillOffPointerOver}"/>
             </Style>
             <Style Selector="^ /template/ Ellipse#SwitchKnobOff">
                 <Setter Property="Fill" Value="{DynamicResource ToggleSwitchKnobFillOffPointerOver}"/>
                 <Setter Property="Width" Value="14" />
                 <Setter Property="Height" Value="14" />
             </Style>
-            <Style Selector="^ /template/ Ellipse#SwitchKnobOn">
-                <Setter Property="Fill" Value="{DynamicResource ToggleSwitchKnobFillOnPointerOver}"/>
+            <Style Selector="^ /template/ Border#SwitchKnobOn">
+                <Setter Property="Background" Value="{DynamicResource ToggleSwitchKnobFillOnPointerOver}"/>
                 <Setter Property="Width" Value="14" />
                 <Setter Property="Height" Value="14" />
             </Style>
@@ -173,15 +171,17 @@
                 <Setter Property="Background" Value="{DynamicResource ToggleSwitchFillOnPointerOver}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource ToggleSwitchStrokeOnPointerOver}"/>
             </Style>
-            <Style Selector="^ /template/ Border#SwitchAreaGrid">
-                <Setter Property="Background" Value="{DynamicResource ToggleSwitchContainerBackgroundPointerOver}"/>
+            <Style Selector="^ /template/ ui|WinUiBrushBorder#SwitchAreaGrid">
+                <Setter Property="TransitionDuration" Value="00:00:00.083"/>
+                <Setter Property="TargetBackground" Value="{DynamicResource ToggleSwitchContainerBackgroundPointerOver}"/>
             </Style>
         </Style>
 
         <Style Selector="^:pressed">
-            <Style Selector="^ /template/ Border#OuterBorder">
-                <Setter Property="BorderBrush" Value="{DynamicResource ToggleSwitchStrokeOffPressed}"/>
-                <Setter Property="Background" Value="{DynamicResource ToggleSwitchFillOffPressed}"/>
+            <Style Selector="^ /template/ ui|WinUiBrushBorder#OuterBorder">
+                <Setter Property="TransitionDuration" Value="00:00:00.083"/>
+                <Setter Property="TargetBorderBrush" Value="{DynamicResource ToggleSwitchStrokeOffPressed}"/>
+                <Setter Property="TargetBackground" Value="{DynamicResource ToggleSwitchFillOffPressed}"/>
             </Style>
             <Style Selector="^ /template/ Border#SwitchKnobBounds">
                 <Setter Property="Background" Value="{DynamicResource ToggleSwitchFillOnPressed}"/>
@@ -191,50 +191,64 @@
                 <Setter Property="Fill" Value="{DynamicResource ToggleSwitchKnobFillOffPressed}"/>
                 <Setter Property="Width" Value="17" />
                 <Setter Property="Height" Value="14" />
+                <Setter Property="HorizontalAlignment" Value="Left" />
+                <Setter Property="Margin" Value="3,0,0,0" />
             </Style>
-            <Style Selector="^ /template/ Ellipse#SwitchKnobOn">
-                <Setter Property="Fill" Value="{DynamicResource ToggleSwitchKnobFillOnPressed}"/>
+            <Style Selector="^ /template/ Border#SwitchKnobOn">
+                <Setter Property="Background" Value="{DynamicResource ToggleSwitchKnobFillOnPressed}"/>
                 <Setter Property="Width" Value="17" />
                 <Setter Property="Height" Value="14" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="Margin" Value="0,0,3,0" />
             </Style>
-            <Style Selector="^ /template/ Border#SwitchAreaGrid">
-                <Setter Property="Background" Value="{DynamicResource ToggleSwitchContainerBackgroundPressed}"/>
+            <Style Selector="^ /template/ ui|WinUiBrushBorder#SwitchAreaGrid">
+                <Setter Property="TransitionDuration" Value="00:00:00.083"/>
+                <Setter Property="TargetBackground" Value="{DynamicResource ToggleSwitchContainerBackgroundPressed}"/>
             </Style>
         </Style>
 
         <Style Selector="^:disabled">
             <Setter Property="Foreground" Value="{DynamicResource ToggleSwitchHeaderForegroundDisabled}"/>
             
-            <Style Selector="^ /template/ Border#OuterBorder">
-                <Setter Property="BorderBrush" Value="{DynamicResource ToggleSwitchStrokeOffDisabled}"/>
-                <Setter Property="Background" Value="{DynamicResource ToggleSwitchFillOffPressed}"/>
+            <Style Selector="^ /template/ ui|WinUiBrushBorder#OuterBorder">
+                <Setter Property="TransitionDuration" Value="00:00:00.083"/>
+                <Setter Property="TargetBorderBrush" Value="{DynamicResource ToggleSwitchStrokeOffDisabled}"/>
+                <Setter Property="TargetBackground" Value="{DynamicResource ToggleSwitchFillOffDisabled}"/>
             </Style>
             <Style Selector="^ /template/ Ellipse#SwitchKnobOff">
                 <Setter Property="Fill" Value="{DynamicResource ToggleSwitchKnobFillOffDisabled}"/>
+                <Setter Property="Width" Value="12" />
+                <Setter Property="Height" Value="12" />
+                <Setter Property="Transitions">
+                    <Transitions>
+                        <DoubleTransition Duration="00:00:00.250" Easing="0,0,0,1" Property="Width" />
+                        <DoubleTransition Duration="00:00:00.250" Easing="0,0,0,1" Property="Height" />
+                    </Transitions>
+                </Setter>
             </Style>
-            <Style Selector="^ /template/ Ellipse#SwitchKnobOn">
-                <Setter Property="Fill" Value="{DynamicResource ToggleSwitchKnobFillOnDisabled}"/>
+            <Style Selector="^ /template/ Border#SwitchKnobOn">
+                <Setter Property="Background" Value="{DynamicResource ToggleSwitchKnobFillOnDisabled}"/>
+                <Setter Property="Width" Value="12" />
+                <Setter Property="Height" Value="12" />
+                <Setter Property="Transitions">
+                    <Transitions>
+                        <DoubleTransition Duration="00:00:00.250" Easing="0,0,0,1" Property="Width" />
+                        <DoubleTransition Duration="00:00:00.250" Easing="0,0,0,1" Property="Height" />
+                    </Transitions>
+                </Setter>
             </Style>
             <Style Selector="^ /template/ Border#SwitchKnobBounds">
                 <Setter Property="Background" Value="{DynamicResource ToggleSwitchFillOnDisabled}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource ToggleSwitchStrokeOnDisabled}"/>
             </Style>
+            <Style Selector="^ /template/ ui|WinUiBrushBorder#SwitchAreaGrid">
+                <Setter Property="TransitionDuration" Value="00:00:00.083"/>
+                <Setter Property="TargetBackground" Value="{DynamicResource ToggleSwitchContainerBackgroundDisabled}"/>
+            </Style>
         </Style>
 
 
         <Style Selector="^:checked">
-            <Style Selector="^ /template/ Border#OuterBorder">
-                <Setter Property="Opacity" Value="0"/>
-            </Style>
-            <Style Selector="^ /template/ Ellipse#SwitchKnobOff">
-                <Setter Property="Opacity" Value="0"/>
-            </Style>
-            <Style Selector="^ /template/ Border#SwitchKnobBounds">
-                <Setter Property="Opacity" Value="1"/>
-            </Style>
-            <Style Selector="^ /template/ Ellipse#SwitchKnobOn">
-                <Setter Property="Opacity" Value="1"/>
-            </Style>
             <Style Selector="^ /template/ ContentPresenter#PART_OffContentPresenter">
                 <Setter Property="Opacity" Value="0"/>
             </Style>
@@ -244,22 +258,6 @@
         </Style>
 
         <Style Selector="^:unchecked">
-            <Style Selector="^ /template/ Border#OuterBorder">
-                <Setter Property="Opacity" Value="1"/>
-            </Style>
-
-            <Style Selector="^ /template/ Ellipse#SwitchKnobOff">
-                <Setter Property="Opacity" Value="1"/>
-            </Style>
-
-            <Style Selector="^ /template/ Ellipse#SwitchKnobOn">
-                <Setter Property="Opacity" Value="0"/>
-            </Style>
-
-            <Style Selector="^  /template/ Border#SwitchKnobBounds">
-                <Setter Property="Opacity" Value="0"/>
-            </Style>
-
             <Style Selector="^ /template/ ContentPresenter#PART_OffContentPresenter">
                 <Setter Property="Opacity" Value="1"/>
             </Style>

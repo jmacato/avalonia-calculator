@@ -33,8 +33,11 @@ public sealed class FAProgressRingAnimatedVisual : Control
             parent.Foreground);
         _handler = handler;
         _sfc = visual.Compositor.CreateCustomVisual(handler);
-        // The WinUI Animated Visual is 80x80
+        // Normalize both exact generated sources to the indeterminate source's
+        // 80x80 coordinate space. The determinate renderer applies its source's
+        // exact 32-to-80 conversion internally.
         _sfc.Size = new Vector(80, 80);
+        UpdateScale(Bounds.Size);
         ElementComposition.SetElementChildVisual(this, _sfc);
 
         _sfc.SendHandlerMessage(new FAProgressRingAnimatedVisualHandlerMessage(FAProgressRingAnimatedVisualHandlerMessageType.Indeterminate, indeterminate));
@@ -58,12 +61,16 @@ public sealed class FAProgressRingAnimatedVisual : Control
     {
         ArgumentNullException.ThrowIfNull(e);
         base.OnSizeChanged(e);
-        // The progress ring's aspect ratio is preserved, so we constrain to the smallest dimension we have
-        var minSize = Math.Min(e.NewSize.Width, e.NewSize.Height);
-        // The animated visual is 80x80, we scale the composition visual to scale up or down accordingly
+        // WinUI's template uses AnimatedVisualPlayer Stretch="fill", so each
+        // source axis scales independently to the arranged bounds.
+        UpdateScale(e.NewSize);
+    }
+
+    private void UpdateScale(Size size)
+    {
         if (_sfc is { } customVisual)
         {
-            customVisual.Scale = new Vector3D(minSize / 80, minSize / 80, 1);
+            customVisual.Scale = new Vector3D(size.Width / 80, size.Height / 80, 1);
         }
     }
 

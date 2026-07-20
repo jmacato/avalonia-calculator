@@ -28,7 +28,7 @@ internal sealed class AvaloniaGraphRenderCache
     private readonly Dictionary<GraphPaint, ImmutablePen> _pens = [];
     private readonly Dictionary<AvaloniaGraphRenderCacheTextLayoutKey, TextLayout> _textLayouts = [];
     private GraphFrame? _settledFrame;
-    private ImmutableArray<GraphFrameCommand> _staleEquationCommands;
+    private ImmutableArray<GraphFrameCommand> _projectedEquationCommands;
     private GraphPath? _lastPath;
     private StreamGeometry? _lastGeometry;
     private (GraphPath Path, float Width)? _lastDashedPath;
@@ -42,21 +42,21 @@ internal sealed class AvaloniaGraphRenderCache
             return;
         }
 
-        if (frame.IsStale)
+        ImmutableArray<GraphFrameCommand> projectedEquationCommands = FindEquationCommands(frame);
+        if (!projectedEquationCommands.IsDefault)
         {
-            ImmutableArray<GraphFrameCommand> equationCommands = FindEquationCommands(frame);
-            if (equationCommands == _staleEquationCommands)
+            if (projectedEquationCommands == _projectedEquationCommands)
             {
                 return;
             }
 
-            _staleEquationCommands = equationCommands;
+            _projectedEquationCommands = projectedEquationCommands;
             ClearGeometryCaches();
             return;
         }
 
         _settledFrame = frame;
-        _staleEquationCommands = default;
+        _projectedEquationCommands = default;
         ClearGeometryCaches();
     }
 
@@ -186,7 +186,7 @@ internal sealed class AvaloniaGraphRenderCache
     public void Clear()
     {
         _settledFrame = null;
-        _staleEquationCommands = default;
+        _projectedEquationCommands = default;
         _brushes.Clear();
         _pens.Clear();
         ClearGeometryCaches();

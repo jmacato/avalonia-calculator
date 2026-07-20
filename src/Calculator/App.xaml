@@ -3,12 +3,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:CalculatorApp.Controls"
              xmlns:fa="using:FluentAvalonia.Styling"
+             xmlns:fac="using:FluentAvalonia.UI.Controls"
              xmlns:utils="using:CalculatorApp.Utils"
              RequestedThemeVariant="Default">
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="/Controls/SwipeControlStyles.xaml" />
+        <ResourceInclude Source="/Controls/CalculatorToggleButtonThemes.xaml" />
         <ResourceInclude Source="/Controls/HistoryMemoryStyles.xaml" />
         <ResourceInclude Source="/Views/DelighterUnitStyles.xaml" />
       </ResourceDictionary.MergedDictionaries>
@@ -69,18 +71,20 @@
                           ResourceKey="TextFillColorSecondaryBrush" />
           <StaticResource x:Key="CalcButtonTextFillColorDisabledBrush"
                           ResourceKey="TextFillColorDisabledBrush" />
-          <SolidColorBrush x:Key="CalcButtonFillColorDefaultBrush" Color="#20FFFFFF" />
-          <SolidColorBrush x:Key="CalcButtonFillColorHoverBrush" Color="#16FFFFFF" />
-          <SolidColorBrush x:Key="CalcButtonFillColorPressedBrush" Color="#09FFFFFF" />
-          <SolidColorBrush x:Key="CalcButtonFillColorDisabledBrush" Color="#09FFFFFF" />
-          <SolidColorBrush x:Key="CalcButtonAltFillColorDefaultBrush" Color="#16FFFFFF" />
-          <SolidColorBrush x:Key="CalcButtonAltFillColorHoverBrush" Color="#20FFFFFF" />
-          <SolidColorBrush x:Key="CalcButtonAltFillColorPressedBrush" Color="#16FFFFFF" />
-          <SolidColorBrush x:Key="CalcButtonAltFillColorDisabledBrush" Color="#09FFFFFF" />
+          <SolidColorBrush x:Key="CalcButtonFillColorDefaultBrush" Color="#FFFFFF" Opacity="0.125" />
+          <SolidColorBrush x:Key="CalcButtonFillColorHoverBrush" Color="#FFFFFF" Opacity="0.0852" />
+          <SolidColorBrush x:Key="CalcButtonFillColorPressedBrush" Color="#FFFFFF" Opacity="0.0359" />
+          <SolidColorBrush x:Key="CalcButtonFillColorDisabledBrush" Color="#FFFFFF" Opacity="0.0359" />
+          <SolidColorBrush x:Key="CalcButtonAltFillColorDefaultBrush" Color="#FFFFFF" Opacity="0.0852" />
+          <SolidColorBrush x:Key="CalcButtonAltFillColorHoverBrush" Color="#FFFFFF" Opacity="0.1256" />
+          <SolidColorBrush x:Key="CalcButtonAltFillColorPressedBrush" Color="#FFFFFF" Opacity="0.0852" />
+          <SolidColorBrush x:Key="CalcButtonAltFillColorDisabledBrush" Color="#FFFFFF" Opacity="0.0359" />
           <SolidColorBrush x:Key="AppControlHighlightCalcButtonHoverBrush"
                            Color="{DynamicResource SystemAccentColor}"
                            Opacity="0.9" />
           <SolidColorBrush x:Key="AppControlTransparentButtonBackgroundBrush" Color="Transparent" />
+          <StaticResource x:Key="AppControlBackgroundTertiaryBrush"
+                          ResourceKey="SubtleFillColorTertiaryBrush" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Light">
           <StaticResource x:Key="NavigationViewDefaultPaneBackground"
@@ -94,18 +98,20 @@
                           ResourceKey="TextFillColorSecondaryBrush" />
           <StaticResource x:Key="CalcButtonTextFillColorDisabledBrush"
                           ResourceKey="TextFillColorDisabledBrush" />
-          <SolidColorBrush x:Key="CalcButtonFillColorDefaultBrush" Color="#FFFFFFFF" />
-          <SolidColorBrush x:Key="CalcButtonFillColorHoverBrush" Color="#BFFFFFFF" />
-          <SolidColorBrush x:Key="CalcButtonFillColorPressedBrush" Color="#80FFFFFF" />
-          <SolidColorBrush x:Key="CalcButtonFillColorDisabledBrush" Color="#20FFFFFF" />
-          <SolidColorBrush x:Key="CalcButtonAltFillColorDefaultBrush" Color="#80FFFFFF" />
-          <SolidColorBrush x:Key="CalcButtonAltFillColorHoverBrush" Color="#40FFFFFF" />
-          <SolidColorBrush x:Key="CalcButtonAltFillColorPressedBrush" Color="#20FFFFFF" />
-          <SolidColorBrush x:Key="CalcButtonAltFillColorDisabledBrush" Color="#20FFFFFF" />
+          <SolidColorBrush x:Key="CalcButtonFillColorDefaultBrush" Color="#FFFFFF" Opacity="1" />
+          <SolidColorBrush x:Key="CalcButtonFillColorHoverBrush" Color="#FFFFFF" Opacity="0.75" />
+          <SolidColorBrush x:Key="CalcButtonFillColorPressedBrush" Color="#FFFFFF" Opacity="0.5" />
+          <SolidColorBrush x:Key="CalcButtonFillColorDisabledBrush" Color="#FFFFFF" Opacity="0.125" />
+          <SolidColorBrush x:Key="CalcButtonAltFillColorDefaultBrush" Color="#FFFFFF" Opacity="0.5" />
+          <SolidColorBrush x:Key="CalcButtonAltFillColorHoverBrush" Color="#FFFFFF" Opacity="0.25" />
+          <SolidColorBrush x:Key="CalcButtonAltFillColorPressedBrush" Color="#FFFFFF" Opacity="0.125" />
+          <SolidColorBrush x:Key="CalcButtonAltFillColorDisabledBrush" Color="#FFFFFF" Opacity="0.125" />
           <SolidColorBrush x:Key="AppControlHighlightCalcButtonHoverBrush"
                            Color="{DynamicResource SystemAccentColor}"
                            Opacity="0.7" />
           <SolidColorBrush x:Key="AppControlTransparentButtonBackgroundBrush" Color="Transparent" />
+          <StaticResource x:Key="AppControlBackgroundTertiaryBrush"
+                          ResourceKey="SubtleFillColorTertiaryBrush" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="{x:Static fa:FluentAvaloniaTheme.HighContrastTheme}">
           <StaticResource x:Key="NavigationViewDefaultPaneBackground"
@@ -140,6 +146,8 @@
           <StaticResource x:Key="AppControlHighlightCalcButtonHoverBrush"
                           ResourceKey="SystemColorHighlightColorBrush" />
           <SolidColorBrush x:Key="AppControlTransparentButtonBackgroundBrush" Color="Transparent" />
+          <StaticResource x:Key="AppControlBackgroundTertiaryBrush"
+                          ResourceKey="SystemControlBackgroundTransparentBrush" />
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>
@@ -154,6 +162,15 @@
     </Style>
     <Style Selector="UserControl">
       <Setter Property="FontFamily" Value="{DynamicResource ContentControlThemeFontFamily}" />
+    </Style>
+    <!-- Windows Calculator's OperatorPanelFlyoutStyle is the stock presenter
+         with 2 DIPs of content padding and a -3 DIP top overlap. Avalonia's
+         stock FlyoutPresenter uses much larger padding, which inflated every
+         scientific/programmer popup and shifted its command grid. -->
+    <Style Selector="FlyoutPresenter.operator-panel">
+      <Setter Property="Padding" Value="2" />
+      <Setter Property="Margin" Value="0,-3,0,0" />
+      <Setter Property="MaxWidth" Value="Infinity" />
     </Style>
     <!-- Direct Avalonia translation of CalcButtonStyle and its WinUI visual
          states. Keep CalculatorButton's state brushes wired through the
@@ -183,44 +200,47 @@
       <Setter Property="DisabledForeground" Value="{DynamicResource CalcButtonTextFillColorDisabledBrush}" />
       <Setter Property="Template">
         <ControlTemplate>
-          <ContentPresenter x:Name="ContentPresenter"
-                            Padding="{TemplateBinding Padding}"
-                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            BackgroundSizing="{TemplateBinding BackgroundSizing}"
-                            CornerRadius="{TemplateBinding CornerRadius}"
-                            AutomationProperties.AccessibilityView="Raw"
-                            Content="{TemplateBinding Content}"
-                            ContentTemplate="{TemplateBinding ContentTemplate}">
-            <ContentPresenter.Transitions>
-              <Transitions>
-                <BrushTransition Duration="0:0:0.083" Property="Background" />
-              </Transitions>
-            </ContentPresenter.Transitions>
-          </ContentPresenter>
+          <fac:WinUiBrushBorder x:Name="BackgroundBorder"
+                                     TargetBackground="{TemplateBinding Background}"
+                                     BorderBrush="{TemplateBinding BorderBrush}"
+                                     BorderThickness="{TemplateBinding BorderThickness}"
+                                     BackgroundSizing="{TemplateBinding BackgroundSizing}"
+                                     CornerRadius="{TemplateBinding CornerRadius}"
+                                     TransitionDuration="0:0:0.083">
+            <ContentPresenter x:Name="ContentPresenter"
+                              Padding="{TemplateBinding Padding}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                              AutomationProperties.AccessibilityView="Raw"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}" />
+          </fac:WinUiBrushBorder>
         </ControlTemplate>
       </Setter>
-      <Style Selector="^:pointerover /template/ ContentPresenter#ContentPresenter">
-        <Setter Property="Background"
+      <Style Selector="^:pointerover /template/ fac|WinUiBrushBorder#BackgroundBorder">
+        <Setter Property="TargetBackground"
                 Value="{Binding HoverBackground, RelativeSource={RelativeSource TemplatedParent}}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrushPointerOver}" />
+      </Style>
+      <Style Selector="^:pointerover /template/ ContentPresenter#ContentPresenter">
         <Setter Property="Foreground"
                 Value="{Binding HoverForeground, RelativeSource={RelativeSource TemplatedParent}}" />
       </Style>
-      <Style Selector="^:pressed /template/ ContentPresenter#ContentPresenter">
-        <Setter Property="Background"
+      <Style Selector="^:pressed /template/ fac|WinUiBrushBorder#BackgroundBorder">
+        <Setter Property="TargetBackground"
                 Value="{Binding PressBackground, RelativeSource={RelativeSource TemplatedParent}}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrushPressed}" />
+      </Style>
+      <Style Selector="^:pressed /template/ ContentPresenter#ContentPresenter">
         <Setter Property="Foreground"
                 Value="{Binding PressForeground, RelativeSource={RelativeSource TemplatedParent}}" />
       </Style>
-      <Style Selector="^:disabled /template/ ContentPresenter#ContentPresenter">
-        <Setter Property="Background"
+      <Style Selector="^:disabled /template/ fac|WinUiBrushBorder#BackgroundBorder">
+        <Setter Property="TargetBackground"
                 Value="{Binding DisabledBackground, RelativeSource={RelativeSource TemplatedParent}}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrushDisabled}" />
+      </Style>
+      <Style Selector="^:disabled /template/ ContentPresenter#ContentPresenter">
         <Setter Property="Foreground"
                 Value="{Binding DisabledForeground, RelativeSource={RelativeSource TemplatedParent}}" />
       </Style>
@@ -235,8 +255,96 @@
       <Setter Property="PressBackground" Value="{DynamicResource CalcButtonAltFillColorPressedBrush}" />
       <Setter Property="DisabledBackground" Value="{DynamicResource CalcButtonAltFillColorDisabledBrush}" />
     </Style>
+    <Style Selector="controls|CalculatorButton.parenthesis">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Grid>
+            <fac:WinUiBrushBorder x:Name="ParenthesisBackgroundBorder"
+                                       TargetBackground="{TemplateBinding Background}"
+                                       BorderBrush="{TemplateBinding BorderBrush}"
+                                       BorderThickness="{TemplateBinding BorderThickness}"
+                                       BackgroundSizing="{TemplateBinding BackgroundSizing}"
+                                       CornerRadius="{TemplateBinding CornerRadius}"
+                                       TransitionDuration="0:0:0.083">
+              <ContentPresenter x:Name="ParenthesisContentPresenter"
+                                Padding="{TemplateBinding Padding}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                AutomationProperties.AccessibilityView="Raw"
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}" />
+            </fac:WinUiBrushBorder>
+            <TextBlock x:Name="ParenthesisCount"
+                       Margin="18,8,0,-8"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontSize="{TemplateBinding MinHeight}"
+                       FontWeight="SemiBold"
+                       AutomationProperties.AccessibilityView="Raw"
+                       Text="{TemplateBinding Tag}" />
+          </Grid>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ fac|WinUiBrushBorder#ParenthesisBackgroundBorder">
+        <Setter Property="TargetBackground"
+                Value="{Binding HoverBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrushPointerOver}" />
+      </Style>
+      <Style Selector="^:pointerover /template/ ContentPresenter#ParenthesisContentPresenter">
+        <Setter Property="Foreground"
+                Value="{Binding HoverForeground, RelativeSource={RelativeSource TemplatedParent}}" />
+      </Style>
+      <Style Selector="^:pointerover /template/ TextBlock#ParenthesisCount">
+        <Setter Property="Foreground"
+                Value="{Binding HoverForeground, RelativeSource={RelativeSource TemplatedParent}}" />
+      </Style>
+      <Style Selector="^:pressed /template/ fac|WinUiBrushBorder#ParenthesisBackgroundBorder">
+        <Setter Property="TargetBackground"
+                Value="{Binding PressBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrushPressed}" />
+      </Style>
+      <Style Selector="^:pressed /template/ ContentPresenter#ParenthesisContentPresenter">
+        <Setter Property="Foreground"
+                Value="{Binding PressForeground, RelativeSource={RelativeSource TemplatedParent}}" />
+      </Style>
+      <Style Selector="^:pressed /template/ TextBlock#ParenthesisCount">
+        <Setter Property="Foreground"
+                Value="{Binding PressForeground, RelativeSource={RelativeSource TemplatedParent}}" />
+      </Style>
+      <Style Selector="^:disabled /template/ fac|WinUiBrushBorder#ParenthesisBackgroundBorder">
+        <Setter Property="TargetBackground"
+                Value="{Binding DisabledBackground, RelativeSource={RelativeSource TemplatedParent}}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrushDisabled}" />
+      </Style>
+      <Style Selector="^:disabled /template/ ContentPresenter#ParenthesisContentPresenter">
+        <Setter Property="Foreground"
+                Value="{Binding DisabledForeground, RelativeSource={RelativeSource TemplatedParent}}" />
+      </Style>
+      <Style Selector="^:disabled /template/ TextBlock#ParenthesisCount">
+        <Setter Property="Foreground"
+                Value="{Binding DisabledForeground, RelativeSource={RelativeSource TemplatedParent}}" />
+      </Style>
+    </Style>
     <Style Selector="controls|CalculatorButton.symbol">
       <Setter Property="FontFamily" Value="{DynamicResource CalculatorFontFamily}" />
+    </Style>
+    <!-- CaptionButtonStyle is applied to CalculatorButton instances in the
+         memory row. Avalonia's type selector remains active alongside a
+         ControlTheme, so mirror the inherited SubtleButtonStyle state brushes
+         at the more-specific class selector as well. -->
+    <Style Selector="controls|CalculatorButton.caption">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorTransparentBrush}" />
+      <!-- CaptionButtonStyle inherits Calculator's SubtleButtonStyle: normal is
+           transparent, then hover/press/disabled use the exact WinUI subtle
+           secondary/tertiary/disabled fills. -->
+      <Setter Property="HoverBackground" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+      <Setter Property="PressBackground" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+      <Setter Property="DisabledBackground" Value="{DynamicResource SubtleFillColorDisabledBrush}" />
+      <Setter Property="HoverForeground" Value="{DynamicResource ButtonForegroundPointerOver}" />
+      <Setter Property="PressForeground" Value="{DynamicResource ButtonForegroundPressed}" />
+      <Setter Property="DisabledForeground" Value="{DynamicResource ButtonForegroundDisabled}" />
+      <Setter Property="BorderThickness" Value="{DynamicResource ControlBorderThemeThickness}" />
+      <Setter Property="FontSize" Value="16" />
     </Style>
     <Style Selector="controls|CalculatorButton.equals">
       <Setter Property="Background" Value="{DynamicResource AccentButtonBackground}" />
@@ -250,13 +358,13 @@
       <Setter Property="DisabledForeground" Value="{DynamicResource AccentButtonForegroundDisabled}" />
       <Setter Property="FontFamily" Value="{DynamicResource CalculatorFontFamily}" />
     </Style>
-    <Style Selector="controls|CalculatorButton.equals:pointerover /template/ ContentPresenter#ContentPresenter">
+    <Style Selector="controls|CalculatorButton.equals:pointerover /template/ fac|WinUiBrushBorder#BackgroundBorder">
       <Setter Property="BorderBrush" Value="{DynamicResource AccentButtonBorderBrushPointerOver}" />
     </Style>
-    <Style Selector="controls|CalculatorButton.equals:pressed /template/ ContentPresenter#ContentPresenter">
+    <Style Selector="controls|CalculatorButton.equals:pressed /template/ fac|WinUiBrushBorder#BackgroundBorder">
       <Setter Property="BorderBrush" Value="{DynamicResource AccentButtonBorderBrushPressed}" />
     </Style>
-    <Style Selector="controls|CalculatorButton.equals:disabled /template/ ContentPresenter#ContentPresenter">
+    <Style Selector="controls|CalculatorButton.equals:disabled /template/ fac|WinUiBrushBorder#BackgroundBorder">
       <Setter Property="BorderBrush" Value="{DynamicResource AccentButtonBorderBrushDisabled}" />
     </Style>
     <Style Selector="controls|CalculatorButton.emphasized">
@@ -267,32 +375,101 @@
     </Style>
     <!-- Direct Avalonia translation of the original horizontal operator panel controls. -->
     <Style Selector="controls|OperatorPanelButton">
-      <Setter Property="MinHeight" Value="36" />
-      <Setter Property="Margin" Value="1,0" />
-      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="GlyphFontSize" Value="12" />
+      <Setter Property="ChevronFontSize" Value="12" />
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="MinWidth" Value="32" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource ToggleButtonForeground}" />
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorTransparentBrush}" />
+      <Setter Property="BorderThickness" Value="{DynamicResource ControlBorderThemeThickness}" />
+      <Setter Property="Margin" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
       <Setter Property="Template">
         <ControlTemplate>
-          <Border Background="{TemplateBinding Background}"
-                  BorderBrush="{TemplateBinding BorderBrush}"
-                  BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="4">
-            <StackPanel Orientation="Horizontal"
+          <fac:WinUiBrushBorder x:Name="BackgroundBorder"
+                                     TargetBackground="{TemplateBinding Background}"
+                                     BorderBrush="{TemplateBinding BorderBrush}"
+                                     BorderThickness="{TemplateBinding BorderThickness}"
+                                     BackgroundSizing="{TemplateBinding BackgroundSizing}"
+                                     CornerRadius="{TemplateBinding CornerRadius}"
+                                     TransitionDuration="0:0:0.083">
+            <StackPanel Margin="{TemplateBinding Padding}"
+                        Orientation="Horizontal"
                         HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Spacing="6">
-              <TextBlock FontFamily="{DynamicResource CalculatorFontFamily}"
+                        VerticalAlignment="Center">
+              <TextBlock Margin="0,2,8,0"
+                         VerticalAlignment="Center"
+                         FontFamily="{DynamicResource CalculatorFontFamily}"
                          FontSize="{TemplateBinding GlyphFontSize}"
                          Text="{TemplateBinding Glyph}" />
               <TextBlock VerticalAlignment="Center"
+                         FontSize="{TemplateBinding FontSize}"
                          Text="{TemplateBinding Text}" />
-              <TextBlock FontFamily="{DynamicResource CalculatorFontFamily}"
-                         FontSize="{TemplateBinding ChevronFontSize}"
+              <TextBlock Margin="8,4,0,0"
                          VerticalAlignment="Center"
+                         FontFamily="{DynamicResource CalculatorFontFamily}"
+                         FontSize="{TemplateBinding ChevronFontSize}"
                          Text="&#xE70D;" />
             </StackPanel>
-          </Border>
+          </fac:WinUiBrushBorder>
         </ControlTemplate>
       </Setter>
+      <Style Selector="^:pointerover">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushPointerOver}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+      </Style>
+      <Style Selector="^:pressed">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushPressed}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+      </Style>
+      <Style Selector="^:disabled">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillColorDisabledBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushDisabled}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+      </Style>
+      <Style Selector="^:checked">
+        <Setter Property="Background" Value="{DynamicResource AppControlBackgroundTertiaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+      </Style>
+      <Style Selector="^:checked:pointerover">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushCheckedPointerOver}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+      </Style>
+      <Style Selector="^:checked:pressed">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushCheckedPressed}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+      </Style>
+      <Style Selector="^:checked:disabled">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillColorDisabledBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushCheckedDisabled}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+      </Style>
+      <Style Selector="^:indeterminate">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushIndeterminate}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+      </Style>
+      <Style Selector="^:indeterminate:pointerover">
+        <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushIndeterminatePointerOver}" />
+      </Style>
+      <Style Selector="^:indeterminate:pressed">
+        <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushIndeterminatePressed}" />
+      </Style>
+      <Style Selector="^:indeterminate:disabled">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillColorDisabledBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushIndeterminateDisabled}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+      </Style>
     </Style>
     <Style Selector="controls|OperatorPanelListView">
       <Setter Property="HorizontalAlignment" Value="Stretch" />
@@ -495,6 +672,7 @@
             </ScrollViewer>
             <Button x:Name="ScrollLeft"
                     Grid.Column="0"
+                    Theme="{StaticResource ScrollButtonStyle}"
                     Width="20"
                     Height="20"
                     Margin="-4,3,-4,0"
@@ -502,7 +680,6 @@
                     VerticalAlignment="Center"
                     HorizontalContentAlignment="Center"
                     VerticalContentAlignment="Center"
-                    Background="Transparent"
                     BorderThickness="0"
                     AutomationProperties.Name="{utils:ResourceString Name='scrollLeft.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name'}"
                     IsVisible="False">
@@ -512,6 +689,7 @@
             </Button>
             <Button x:Name="ScrollRight"
                     Grid.Column="2"
+                    Theme="{StaticResource ScrollButtonStyle}"
                     Width="20"
                     Height="20"
                     Margin="-4,3,-4,0"
@@ -519,7 +697,6 @@
                     VerticalAlignment="Center"
                     HorizontalContentAlignment="Center"
                     VerticalContentAlignment="Center"
-                    Background="Transparent"
                     BorderThickness="0"
                     AutomationProperties.Name="{utils:ResourceString Name='scrollRight.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name'}"
                     IsVisible="False">
