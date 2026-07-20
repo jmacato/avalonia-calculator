@@ -38,6 +38,39 @@ internal sealed class ManagedMathSolver : IMathSolver
         }
     }
 
+    public IExpression CombineExpressions(IReadOnlyList<IExpression> expressions)
+    {
+        ArgumentNullException.ThrowIfNull(expressions);
+        var equations = System.Collections.Immutable.ImmutableArray.CreateBuilder<EquationAst>();
+        var symbols = System.Collections.Immutable.ImmutableArray.CreateBuilder<string>();
+        foreach (IExpression expression in expressions)
+        {
+            if (expression is not ManagedExpression managed)
+            {
+                throw new ArgumentException(
+                    "Every expression must be created by this solver implementation.",
+                    nameof(expressions));
+            }
+
+            equations.AddRange(managed.Equations);
+            foreach (string symbol in managed.Symbols)
+            {
+                if (!symbols.Contains(symbol, StringComparer.OrdinalIgnoreCase))
+                {
+                    symbols.Add(symbol);
+                }
+            }
+        }
+
+        uint expressionId = unchecked((uint)Interlocked.Increment(ref s_nextExpressionId));
+        return new ManagedExpression(
+            expressionId,
+            string.Empty,
+            FormatType.MathML,
+            equations.ToImmutable(),
+            symbols.ToImmutable());
+    }
+
     public void HRErrorToErrorInfo(GraphStatus status, out int errorCode, out int errorType)
     {
         if (status.Succeeded)

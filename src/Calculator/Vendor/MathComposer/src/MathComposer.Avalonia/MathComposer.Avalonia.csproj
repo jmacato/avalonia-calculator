@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Reusable Avalonia equation editor, OpenType MATH layout engine, and renderer.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../MathComposer.Core/MathComposer.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="../../assets/fonts/XCharter-Math.otf" Link="Assets/Fonts/XCharter-Math.otf" />
+  </ItemGroup>
+</Project>

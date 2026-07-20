@@ -38,6 +38,9 @@ namespace Graphing
             return new MathSolverImplementationExpressionImpl();
         }
 
+        public IExpression CombineExpressions(IReadOnlyList<IExpression> expressions) =>
+            new MathSolverImplementationExpressionImpl();
+
         public void HRErrorToErrorInfo(int hr, out int errorCode, out int errorType)
         {
             errorCode = 0;

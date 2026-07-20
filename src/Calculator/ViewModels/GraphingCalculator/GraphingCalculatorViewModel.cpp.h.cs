@@ -135,7 +135,10 @@ public sealed partial class GraphingCalculatorViewModel : ViewModelBase
             equation.IsLineEnabled = true;
         }
 
-        bool shouldAdvance = source == EquationSubmissionSource.EnterKey || (source == EquationSubmissionSource.FocusLost && hasTextChanged && !string.IsNullOrWhiteSpace(equation.Expression));
+        bool shouldAdvance = source == EquationSubmissionSource.EnterKey ||
+            (source == EquationSubmissionSource.FocusLost &&
+             hasTextChanged &&
+             !string.IsNullOrWhiteSpace(equation.MathExpression));
         if (!shouldAdvance)
         {
             return null;

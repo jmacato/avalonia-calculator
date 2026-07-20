@@ -25,8 +25,6 @@ public sealed partial class EquationInputArea : UserControl, IDisposable
 
     public event EventHandler<KeyGraphFeaturesRequestedEventArgs>? KeyGraphFeaturesRequested;
 
-    public event EventHandler<MathRichEditBoxFormatRequestEventArgs>? EquationFormatRequested;
-
     public void SetDefaultFocus()
     {
         if (Volatile.Read(ref _disposed) != 0)
@@ -102,7 +100,7 @@ public sealed partial class EquationInputArea : UserControl, IDisposable
                 editor.BackSpace();
                 break;
             case GraphingInputAction.Clear:
-                editor.LinearText = string.Empty;
+                editor.Clear();
                 editor.SubmitEquation(EquationSubmissionSource.Programmatic);
                 break;
             case GraphingInputAction.Submit:
@@ -126,9 +124,6 @@ public sealed partial class EquationInputArea : UserControl, IDisposable
             FocusEquationTextBox(next);
         }
     }
-
-    private void OnEquationFormatRequested(object? sender, MathRichEditBoxFormatRequestEventArgs e) =>
-        EquationFormatRequested?.Invoke(sender, e);
 
     private void OnRemoveButtonClicked(object? sender, RoutedEventArgs e)
     {
@@ -240,7 +235,6 @@ public sealed partial class EquationInputArea : UserControl, IDisposable
 
         _lastFocusedEditor = null;
         KeyGraphFeaturesRequested = null;
-        EquationFormatRequested = null;
         DataContext = null;
         GC.SuppressFinalize(this);
     }

@@ -11,6 +11,7 @@ namespace GraphControl;
 public sealed class Equation : INotifyPropertyChanged
 {
     private string _expression = string.Empty;
+    private string _mathMl = string.Empty;
     private bool _isLineEnabled = true;
     private bool _isSelected;
     private bool _hasGraphError;
@@ -19,6 +20,7 @@ public sealed class Equation : INotifyPropertyChanged
     private AvaloniaColor _lineColor = AvaloniaColor.FromRgb(0x00, 0x63, 0xB1);
     private EquationLineStyle _equationStyle;
     public string Expression { get => _expression; set => Set(ref _expression, value ?? string.Empty); }
+    public string MathMl { get => _mathMl; set => Set(ref _mathMl, value ?? string.Empty); }
     public bool IsLineEnabled { get => _isLineEnabled; set => Set(ref _isLineEnabled, value); }
     public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
     public bool HasGraphError { get => _hasGraphError; internal set => Set(ref _hasGraphError, value); }

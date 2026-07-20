@@ -43,7 +43,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     public static readonly StyledProperty<double> LineWidthProperty = AvaloniaProperty.Register<Grapher, double>(nameof(LineWidth), 2);
     private readonly IMathSolver _solver;
     private readonly IGraph _graph;
-    private readonly EquationTextCodec _textCodec;
+    private readonly LegacyEquationImporter _legacyEquationImporter;
     private readonly FunctionAnalysisWorker _analysisWorker = new();
     private readonly AvaloniaGraphRenderCache _renderCache = new();
     private readonly DispatcherTimer _equationPlotTimer;
@@ -84,6 +84,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     private bool _updatingFormulaFromCollection;
     private bool _replacingEquations;
     private IReadOnlyList<IEquation> _initializedEquations = Array.Empty<IEquation>();
+    private IReadOnlyList<Equation> _parsedEquations = Array.Empty<Equation>();
     private int _disposed;
     static Grapher()
     {
@@ -95,11 +96,11 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         Focusable = true;
         ClipToBounds = true;
         _solver = MathSolver.CreateMathSolver();
-        _solver.ParsingOptions().SetFormatType(FormatType.Linear);
+        _solver.ParsingOptions().SetFormatType(FormatType.MathML);
         _solver.FormatOptions().SetFormatType(FormatType.MathML);
         _solver.FormatOptions().SetMathMLPrefix("mml");
         _graph = _solver.CreateGrapher();
-        _textCodec = new EquationTextCodec();
+        _legacyEquationImporter = new LegacyEquationImporter();
         _equationPlotTimer = new DispatcherTimer
         {
             Interval = EquationPlotDelay
@@ -335,22 +336,11 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         SyncFormulaFromEquations();
     }
 
-    public string ConvertToLinear(string mathMl)
-    {
-        return _textCodec.TryMathMlToLinear(mathMl, out string linear, out _, out _) ? linear : string.Empty;
-    }
-
-    public string FormatMathML(string input)
-    {
-        return _textCodec.TryLinearToMathMl(input, out string mathMl, out _, out _) ? mathMl : string.Empty;
-    }
-
     public void PlotGraph(bool keepCurrentView)
     {
         CancelInteractionViewport();
         ApplyOptions();
-        string formula = BuildFormula();
-        IExpression? expression = _solver.ParseInput(formula, out int errorCode, out int errorType);
+        IExpression? expression = ParseEnabledEquations(out int errorCode, out int errorType);
         if (expression is null)
         {
             SetErrors(errorCode, errorType);
@@ -402,8 +392,9 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         LocalizationType localization = UseCommaDecimalSeparator
             ? LocalizationType.DecimalCommaAndListSemicolon
             : LocalizationType.DecimalPointAndListComma;
+        string mathMl = EquationMathMl(equation);
         return new FunctionAnalysisRequest(
-            equation.Expression,
+            mathMl,
             _solver.EvalOptions().GetTrigUnitMode(),
             localization,
             variables);
@@ -411,7 +402,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
 
     public KeyGraphFeaturesInfo? AnalyzeFirstEquation()
     {
-        if (Equations.FirstOrDefault(equation => !string.IsNullOrWhiteSpace(equation.Expression)) is { } equation)
+        if (Equations.FirstOrDefault(equation => !string.IsNullOrWhiteSpace(EquationMathMl(equation))) is { } equation)
         {
             return AnalyzeEquation(equation);
         }
@@ -481,6 +472,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
             LocalizationType localization = UseCommaDecimalSeparator ? LocalizationType.DecimalCommaAndListSemicolon : LocalizationType.DecimalPointAndListComma;
             _solver.ParsingOptions().SetLocalizationType(localization);
             _solver.FormatOptions().SetLocalizationType(localization);
+            _legacyEquationImporter.SetLocalizationType(localization);
             PlotGraph(keepCurrentView: true);
         }
         else if (change.Property == ForceProportionalAxesProperty || change.Property == AxesColorProperty || change.Property == GraphBackgroundProperty || change.Property == GridLinesColorProperty || change.Property == LineWidthProperty)
@@ -813,6 +805,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
             foreach (Equation equation in e.NewItems)
             {
                 equation.PropertyChanged += OnEquationPropertyChanged;
+                EnsureMathMl(equation);
             }
         }
 
@@ -830,6 +823,12 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         }
 
         if (e.PropertyName == nameof(Equation.Expression))
+        {
+            ImportLegacyEquation(equation);
+            return;
+        }
+
+        if (e.PropertyName == nameof(Equation.MathMl))
         {
             ScheduleFormulaSynchronization();
             return;
@@ -869,7 +868,10 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         _updatingFormulaFromCollection = true;
         try
         {
-            Formula = BuildFormula();
+            Formula = Equations
+                .Where(static equation => equation.IsLineEnabled)
+                .Select(EquationMathMl)
+                .FirstOrDefault(static mathMl => !string.IsNullOrWhiteSpace(mathMl)) ?? string.Empty;
         }
         finally
         {
@@ -988,15 +990,36 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         }
     }
 
-    private string BuildFormula()
+    private IExpression? ParseEnabledEquations(out int errorCode, out int errorType)
     {
-        if (Equations.Count == 0)
+        var expressions = new List<IExpression>();
+        var equations = new List<Equation>();
+        errorCode = 0;
+        errorType = 0;
+        foreach (Equation equation in Equations)
         {
-            return Formula;
+            string mathMl = EquationMathMl(equation);
+            if (!equation.IsLineEnabled || string.IsNullOrWhiteSpace(mathMl))
+            {
+                continue;
+            }
+
+            IExpression? expression = _solver.ParseInput(mathMl, out errorCode, out errorType);
+            if (expression is null)
+            {
+                _parsedEquations = Array.Empty<Equation>();
+                return null;
+            }
+
+            if (!expression.IsEmptySet())
+            {
+                expressions.Add(expression);
+                equations.Add(equation);
+            }
         }
 
-        string separator = UseCommaDecimalSeparator ? ";" : ",";
-        return string.Join(separator, Equations.Where(equation => equation.IsLineEnabled).Select(equation => equation.Expression).Where(expression => !string.IsNullOrWhiteSpace(expression)));
+        _parsedEquations = equations;
+        return _solver.CombineExpressions(expressions);
     }
 
     private void BindEquations(IReadOnlyList<IEquation> initialized)
@@ -1006,24 +1029,22 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
             return;
         }
 
-        int graphIndex = 0;
         foreach (Equation equation in Equations)
         {
             equation.HasGraphError = false;
-            if (!equation.IsLineEnabled || string.IsNullOrWhiteSpace(equation.Expression))
-            {
-                equation.GraphedEquation = null;
-                continue;
-            }
+            equation.GraphedEquation = null;
+        }
 
+        for (int graphIndex = 0; graphIndex < _parsedEquations.Count; graphIndex++)
+        {
+            Equation equation = _parsedEquations[graphIndex];
             if (graphIndex >= initialized.Count)
             {
-                equation.GraphedEquation = null;
                 equation.HasGraphError = true;
                 continue;
             }
 
-            IEquation graphEquation = initialized[graphIndex++];
+            IEquation graphEquation = initialized[graphIndex];
             equation.GraphedEquation = graphEquation;
             ApplyEquationAppearance(equation);
             if (equation.IsSelected)
@@ -1045,6 +1066,48 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         options.SetLineStyle(equation.EquationStyle.ToGraphLineStyle());
         options.SetLineWidth((float)LineWidth);
         options.SetSelectedEquationLineWidth((float)(LineWidth + (LineWidth <= 2 ? 1 : 2)));
+    }
+
+    private void EnsureMathMl(Equation equation)
+    {
+        if (string.IsNullOrWhiteSpace(equation.MathMl) &&
+            !string.IsNullOrWhiteSpace(equation.Expression))
+        {
+            ImportLegacyEquation(equation);
+        }
+    }
+
+    private void ImportLegacyEquation(Equation equation)
+    {
+        if (string.IsNullOrWhiteSpace(equation.Expression))
+        {
+            equation.MathMl = string.Empty;
+            return;
+        }
+
+        equation.MathMl = _legacyEquationImporter.TryImport(
+            equation.Expression,
+            out string mathMl,
+            out _,
+            out _)
+            ? mathMl
+            : string.Empty;
+    }
+
+    private string EquationMathMl(Equation equation)
+    {
+        if (!string.IsNullOrWhiteSpace(equation.MathMl))
+        {
+            return equation.MathMl;
+        }
+
+        return _legacyEquationImporter.TryImport(
+            equation.Expression,
+            out string mathMl,
+            out _,
+            out _)
+            ? mathMl
+            : string.Empty;
     }
 
     private void SetErrors(int errorCode, int errorType)

@@ -200,7 +200,38 @@ internal sealed class ManagedGraphAnalyzer : ICancellableGraphAnalyzer
         }
 
         int tooComplex = TooComplex(report, requested, compatibility);
-        return new GraphFunctionAnalysisData(domain, range, parity, periodicityDirection, period, zeros, yIntercept, minima, maxima, inflections, vertical, horizontal, oblique, new ReadOnlyDictionary<string, int>(monotone), tooComplex);
+        var readOnlyMonotone = new ReadOnlyDictionary<string, int>(monotone);
+        return new GraphFunctionAnalysisData(
+            domain,
+            range,
+            parity,
+            periodicityDirection,
+            period,
+            zeros,
+            yIntercept,
+            minima,
+            maxima,
+            inflections,
+            vertical,
+            horizontal,
+            oblique,
+            readOnlyMonotone,
+            tooComplex)
+        {
+            Documents = FunctionAnalysisMathDocumentFactory.Create(
+                domain,
+                range,
+                period,
+                zeros,
+                yIntercept,
+                minima,
+                maxima,
+                inflections,
+                vertical,
+                horizontal,
+                oblique,
+                readOnlyMonotone)
+        };
     }
 
     private static string FormatDomain(AnalysisReport report, WindowsFunctionAnalysisOverrides compatibility)

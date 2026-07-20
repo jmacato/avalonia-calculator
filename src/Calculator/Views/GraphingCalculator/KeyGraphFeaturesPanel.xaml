@@ -2,6 +2,8 @@
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:CalculatorApp.Controls"
+             xmlns:math="using:MathComposer.Avalonia.Controls"
+             xmlns:mathCore="using:MathComposer.Core"
              xmlns:ts="using:CalculatorApp.TemplateSelectors"
              xmlns:utils="using:CalculatorApp.Utils"
              xmlns:vm="using:CalculatorApp.ViewModel"
@@ -48,17 +50,14 @@
       <Setter Property="FontSize" Value="14" />
       <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
-    <Style Selector="controls|MathExpressionView.kgfMath">
+    <Style Selector="math|MathDisplay.kgfMath">
       <Setter Property="MinWidth" Value="0" />
       <Setter Property="MinHeight" Value="22" />
       <Setter Property="HorizontalAlignment" Value="Left" />
       <Setter Property="VerticalAlignment" Value="Center" />
-      <!-- CSharpMath measures this property in typographic points. 11pt
-           reproduces the 14-DIP OfficeMath ink bounds with XCharter. -->
-      <Setter Property="FontSize" Value="11" />
+      <Setter Property="MathFontSize" Value="14" />
       <Setter Property="IsTabStop" Value="False" />
-      <Setter Property="TextColor" Value="{DynamicResource TextFillColorPrimary}" />
-      <Setter Property="TextAlignment" Value="TopLeft" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
     </Style>
     <!-- WinUI fully hides an auto-hidden scrollbar. Avalonia's Fluent theme
          leaves its narrow panning thumb visible until the bar expands. -->
@@ -74,12 +73,12 @@
     <DataTemplate x:Key="KGFRichEditDataTemplate" x:DataType="vm:KeyGraphFeaturesItem">
       <StackPanel Margin="0,10">
         <TextBlock Classes="kgfTitle" Text="{CompiledBinding Title}" />
-        <ItemsControl ItemsSource="{CompiledBinding DisplayItems}">
+        <ItemsControl ItemsSource="{CompiledBinding DisplayMathDocuments}">
           <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="x:String">
-              <controls:MathExpressionView Margin="1,2,0,0"
-                                           Classes="kgfMath"
-                                           Expression="{Binding}" />
+            <DataTemplate x:DataType="mathCore:MathDocument">
+              <math:MathDisplay Margin="1,2,0,0"
+                                Classes="kgfMath"
+                                Document="{Binding}" />
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
@@ -93,10 +92,10 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:GridDisplayItems">
               <Grid ColumnDefinitions="Auto,Auto" VerticalAlignment="Center">
-                <controls:MathExpressionView MinWidth="64"
-                                             Margin="1,2,0,0"
-                                             Classes="kgfMath"
-                                             Expression="{CompiledBinding Expression}" />
+                <math:MathDisplay MinWidth="64"
+                                  Margin="1,2,0,0"
+                                  Classes="kgfMath"
+                                  Document="{CompiledBinding Document}" />
                 <TextBlock Grid.Column="1"
                            Margin="0,-2,0,0"
                            HorizontalAlignment="Left"
@@ -163,14 +162,13 @@
             </StackPanel>
           </StackPanel>
         </Button>
-        <controls:MathExpressionView Grid.Column="1"
-                                     Margin="10,0,6,0"
-                                     HorizontalAlignment="Stretch"
-                                     VerticalAlignment="Stretch"
-                                     Classes="kgfMath"
-                                     FontSize="10"
-                                     TextAlignment="Left"
-                                     Expression="{CompiledBinding Expression}" />
+        <math:MathDisplay Grid.Column="1"
+                          Margin="10,0,6,0"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Classes="kgfMath"
+                          MathFontSize="18"
+                          Document="{CompiledBinding ExpressionDocument}" />
       </Grid>
     </Border>
 

@@ -1,50 +1,102 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
+
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Data;
-using Avalonia.Input;
 using Avalonia.Interactivity;
-using GraphControl;
+using Avalonia.Layout;
+using Avalonia.Media;
+using MathComposer.Avalonia.Controls;
+using MathComposer.Core;
 
 namespace CalculatorApp.Controls;
+
 /// <summary>
-/// Cross-platform port of Calculator's math-only RichEdit control. Avalonia's
-/// text services provide caret, selection, IME, clipboard, and undo/redo; this
-/// class owns equation insertion semantics and the MathML conversion boundary.
+/// Hosts Math Composer's structural editor at the graph engine's MathML boundary.
+/// No plain-text editor participates in rendering or editing.
 /// </summary>
-public sealed class MathRichEditBox : TextBox
+public sealed class MathRichEditBox : ContentControl
 {
-    public static readonly StyledProperty<string> MathTextProperty = AvaloniaProperty.Register<MathRichEditBox, string>(nameof(MathText), string.Empty, defaultBindingMode: BindingMode.TwoWay);
-    public static readonly StyledProperty<string> LinearTextProperty = AvaloniaProperty.Register<MathRichEditBox, string>(nameof(LinearText), string.Empty, defaultBindingMode: BindingMode.TwoWay);
-    public static readonly StyledProperty<bool> HasEquationErrorProperty = AvaloniaProperty.Register<MathRichEditBox, bool>(nameof(HasEquationError));
-    public static readonly StyledProperty<int> ErrorCodeProperty = AvaloniaProperty.Register<MathRichEditBox, int>(nameof(ErrorCode));
-    public static readonly StyledProperty<int> ErrorTypeProperty = AvaloniaProperty.Register<MathRichEditBox, int>(nameof(ErrorType));
-    private readonly EquationTextCodec _codec = new();
+    public static readonly StyledProperty<string> MathTextProperty =
+        AvaloniaProperty.Register<MathRichEditBox, string>(
+            nameof(MathText),
+            string.Empty,
+            defaultBindingMode: BindingMode.TwoWay);
+
+    public static readonly StyledProperty<bool> HasEquationErrorProperty =
+        AvaloniaProperty.Register<MathRichEditBox, bool>(nameof(HasEquationError));
+
+    public static readonly StyledProperty<int> ErrorCodeProperty =
+        AvaloniaProperty.Register<MathRichEditBox, int>(nameof(ErrorCode));
+
+    public static readonly StyledProperty<int> ErrorTypeProperty =
+        AvaloniaProperty.Register<MathRichEditBox, int>(nameof(ErrorType));
+
+    public static readonly StyledProperty<bool> IsReadOnlyProperty =
+        AvaloniaProperty.Register<MathRichEditBox, bool>(nameof(IsReadOnly));
+
+    public static readonly StyledProperty<string> PlaceholderTextProperty =
+        AvaloniaProperty.Register<MathRichEditBox, string>(nameof(PlaceholderText), string.Empty);
+
+    private readonly MathEditor _editor;
+    private readonly MathDisplay _placeholder;
     private readonly MenuItem _cutMenuItem;
     private readonly MenuItem _copyMenuItem;
     private readonly MenuItem _pasteMenuItem;
     private readonly MenuItem _undoMenuItem;
     private readonly MenuItem _redoMenuItem;
     private bool _updatingProperties;
-    private string _lastSubmittedLinear = string.Empty;
+    private string _lastSubmittedMathMl = string.Empty;
+
     static MathRichEditBox()
     {
-        MathTextProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, args) => editor.OnMathTextChanged(args.NewValue as string ?? string.Empty));
-        LinearTextProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, args) => editor.OnLinearTextChanged(args.NewValue as string ?? string.Empty));
+        MathTextProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, args) =>
+            editor.OnMathTextChanged(args.NewValue as string ?? string.Empty));
+        IsReadOnlyProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, args) =>
+            editor._editor.IsReadOnly = args.NewValue is true);
+        PlaceholderTextProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, args) =>
+            editor.UpdatePlaceholderText(args.NewValue as string ?? string.Empty));
     }
 
     public MathRichEditBox()
     {
-        AcceptsReturn = false;
-        TextWrapping = Avalonia.Media.TextWrapping.NoWrap;
-        TextChanged += OnEditorTextChanged;
-        _cutMenuItem = MenuItem("Cut", (_, _) => Cut());
-        _copyMenuItem = MenuItem("Copy", (_, _) => Copy());
-        _pasteMenuItem = MenuItem("Paste", (_, _) => Paste());
-        _undoMenuItem = MenuItem("Undo", (_, _) => Undo());
-        _redoMenuItem = MenuItem("Redo", (_, _) => Redo());
+        Focusable = false;
+        HorizontalContentAlignment = HorizontalAlignment.Stretch;
+        VerticalContentAlignment = VerticalAlignment.Stretch;
+
+        _editor = new MathEditor
+        {
+            Background = Brushes.Transparent,
+            MinWidth = 0,
+            Padding = default
+        };
+        AutomationProperties.SetAutomationId(_editor, "GraphingExpressionEditor");
+        _editor.DocumentChanged += OnEditorDocumentChanged;
+        _editor.Submitted += OnEditorSubmitted;
+        _editor.GotFocus += (_, _) => UpdatePlaceholder();
+        _editor.LostFocus += (_, _) => UpdatePlaceholder();
+
+        _placeholder = new MathDisplay
+        {
+            IsHitTestVisible = false,
+            Opacity = 0.6,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var content = new Grid();
+        content.Children.Add(_editor);
+        content.Children.Add(_placeholder);
+        Content = content;
+
+        _cutMenuItem = MenuItem("Cut", (_, _) => _editor.CutCommand.Execute(null));
+        _copyMenuItem = MenuItem("Copy", (_, _) => _editor.CopyCommand.Execute(null));
+        _pasteMenuItem = MenuItem("Paste", (_, _) => _editor.PasteCommand.Execute(null));
+        _undoMenuItem = MenuItem("Undo", (_, _) => _editor.UndoCommand.Execute(null));
+        _redoMenuItem = MenuItem("Redo", (_, _) => _editor.RedoCommand.Execute(null));
         var contextMenu = new ContextMenu
         {
             ItemsSource = new object[]
@@ -59,173 +111,234 @@ public sealed class MathRichEditBox : TextBox
                 MenuItem("Fraction", (_, _) => InsertFraction()),
                 MenuItem("Exponent", (_, _) => InsertPower()),
                 MenuItem("Square root", (_, _) => InsertSquareRoot()),
+                MenuItem("Indexed root", (_, _) => InsertRoot()),
                 new Separator(),
-                MenuItem("Select all", (_, _) => SelectAll())
+                MenuItem("Select all", (_, _) => _editor.SelectAllCommand.Execute(null))
             }
         };
         contextMenu.Opened += (_, _) => UpdateContextMenuState();
-        ContextMenu = contextMenu;
+        _editor.ContextMenu = contextMenu;
+        UpdatePlaceholder();
     }
 
-    protected override Type StyleKeyOverride => typeof(TextBox);
-    public string MathText { get => GetValue(MathTextProperty); set => SetValue(MathTextProperty, value ?? string.Empty); }
-    public string LinearText { get => GetValue(LinearTextProperty); set => SetValue(LinearTextProperty, value ?? string.Empty); }
-    public bool HasEquationError { get => GetValue(HasEquationErrorProperty); private set => SetCurrentValue(HasEquationErrorProperty, value); }
-    public int ErrorCode { get => GetValue(ErrorCodeProperty); private set => SetCurrentValue(ErrorCodeProperty, value); }
-    public int ErrorType { get => GetValue(ErrorTypeProperty); private set => SetCurrentValue(ErrorTypeProperty, value); }
+    protected override Type StyleKeyOverride => typeof(ContentControl);
 
-    public event EventHandler<MathRichEditBoxFormatRequestEventArgs>? FormatRequest;
+    public string MathText
+    {
+        get => GetValue(MathTextProperty);
+        set => SetValue(MathTextProperty, value ?? string.Empty);
+    }
+
+    public bool HasEquationError
+    {
+        get => GetValue(HasEquationErrorProperty);
+        private set => SetCurrentValue(HasEquationErrorProperty, value);
+    }
+
+    public int ErrorCode
+    {
+        get => GetValue(ErrorCodeProperty);
+        private set => SetCurrentValue(ErrorCodeProperty, value);
+    }
+
+    public int ErrorType
+    {
+        get => GetValue(ErrorTypeProperty);
+        private set => SetCurrentValue(ErrorTypeProperty, value);
+    }
+
+    public bool IsReadOnly
+    {
+        get => GetValue(IsReadOnlyProperty);
+        set => SetValue(IsReadOnlyProperty, value);
+    }
+
+    public string PlaceholderText
+    {
+        get => GetValue(PlaceholderTextProperty);
+        set => SetValue(PlaceholderTextProperty, value ?? string.Empty);
+    }
+
+    internal MathEditor Editor => _editor;
+
+    internal MathDisplay Watermark => _placeholder;
+
+    public bool HasContent => !_editor.Document.Root.Children.IsEmpty;
+
+    public event EventHandler? MathTextChanged;
+
     public event EventHandler<MathRichEditBoxSubmissionEventArgs>? EquationSubmitted;
+
     public event EventHandler? ErrorStateChanged;
+
+    public void FocusEditor() => _editor.Focus();
+
+    public void SetAutomationName(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        AutomationProperties.SetName(this, name);
+        AutomationProperties.SetName(_editor, name);
+    }
+
     public void InsertText(string text, int cursorOffset, int selectionLength)
     {
         ArgumentNullException.ThrowIfNull(text);
-        ReplaceSelection(text, cursorOffset, selectionLength);
+        if (!TryInsertTemplate(text, cursorOffset, selectionLength))
+        {
+            _editor.InsertText(text);
+        }
+
+        _editor.Focus();
     }
 
-    public void InsertFraction()
-    {
-        string selected = GetSelectedText();
-        if (selected.Length == 0)
-        {
-            ReplaceSelection("()/()", 1, 0);
-        }
-        else
-        {
-            ReplaceSelection($"({selected})/()", selected.Length + 4, 0);
-        }
-    }
+    public void InsertFraction() =>
+        _editor.InsertStructureCommand.Execute(MathStructuralTemplate.Fraction);
 
-    public void InsertPower()
-    {
-        string selected = GetSelectedText();
-        if (selected.Length == 0)
-        {
-            ReplaceSelection("^()", 2, 0);
-        }
-        else
-        {
-            ReplaceSelection($"({selected})^()", selected.Length + 4, 0);
-        }
-    }
+    public void InsertPower() =>
+        _editor.InsertStructureCommand.Execute(MathStructuralTemplate.Superscript);
 
-    public void InsertSquareRoot()
-    {
-        string selected = GetSelectedText();
-        string replacement = $"sqrt({selected})";
-        ReplaceSelection(replacement, selected.Length == 0 ? 5 : replacement.Length, 0);
-    }
+    public void InsertSquareRoot() =>
+        _editor.InsertStructureCommand.Execute(MathStructuralTemplate.Radical);
 
-    public void InsertRoot()
-    {
-        string selected = GetSelectedText();
-        string replacement = $"root({selected},2)";
-        int selectionStart = selected.Length == 0 ? 5 : replacement.Length - 2;
-        ReplaceSelection(replacement, selectionStart, selected.Length == 0 ? 0 : 1);
-    }
+    public void InsertRoot() =>
+        _editor.InsertStructureCommand.Execute(MathStructuralTemplate.IndexedRadical);
 
     public void BackSpace()
     {
-        int start = Math.Min(SelectionStart, SelectionEnd);
-        int end = Math.Max(SelectionStart, SelectionEnd);
-        string value = Text ?? string.Empty;
-        if (start != end)
-        {
-            ReplaceRange(value, start, end, string.Empty, start, start);
-            return;
-        }
+        _editor.DeleteBackward();
+        _editor.Focus();
+    }
 
-        if (start == 0)
-        {
-            return;
-        }
-
-        // Empty structured groups are deleted as a unit on the second
-        // backspace, matching RichEdit's grouped math-zone behavior.
-        if (start < value.Length && value[start - 1] == '(' && value[start] == ')')
-        {
-            int functionStart = start - 2;
-            while (functionStart >= 0 && char.IsLetter(value[functionStart]))
-            {
-                functionStart--;
-            }
-
-            functionStart++;
-            ReplaceRange(value, functionStart, start + 1, string.Empty, functionStart, functionStart);
-            return;
-        }
-
-        ReplaceRange(value, start - 1, start, string.Empty, start - 1, start - 1);
+    public void Clear()
+    {
+        _editor.Clear();
+        _editor.Focus();
     }
 
     public void SubmitEquation(EquationSubmissionSource source)
     {
-        string original = Text ?? string.Empty;
-        bool valid = _codec.TryNormalizeLinear(original, out string normalized, out int errorCode, out int errorType);
-        if (!valid)
-        {
-            SetError(errorCode, errorType);
-            EquationSubmitted?.Invoke(this, new MathRichEditBoxSubmissionEventArgs(!string.Equals(_lastSubmittedLinear, original, StringComparison.Ordinal), source));
-            _lastSubmittedLinear = original;
-            return;
-        }
-
-        _ = _codec.TryLinearToMathMl(normalized, out string mathMl, out _, out _);
-        var formatRequest = new MathRichEditBoxFormatRequestEventArgs(mathMl);
-        FormatRequest?.Invoke(this, formatRequest);
-        if (!string.IsNullOrWhiteSpace(formatRequest.FormattedText))
-        {
-            mathMl = formatRequest.FormattedText;
-            if (_codec.TryMathMlToLinear(mathMl, out string formattedLinear, out _, out _))
-            {
-                normalized = formattedLinear;
-            }
-        }
-
-        bool changed = !string.Equals(_lastSubmittedLinear, normalized, StringComparison.Ordinal);
-        _updatingProperties = true;
-        try
-        {
-            Text = normalized;
-            SetCurrentValue(LinearTextProperty, normalized);
-            SetCurrentValue(MathTextProperty, mathMl);
-        }
-        finally
-        {
-            _updatingProperties = false;
-        }
-
-        _lastSubmittedLinear = normalized;
-        ClearError();
-        EquationSubmitted?.Invoke(this, new MathRichEditBoxSubmissionEventArgs(changed, source));
+        string mathMl = ExportMathMl();
+        bool changed = !string.Equals(_lastSubmittedMathMl, mathMl, StringComparison.Ordinal);
+        _lastSubmittedMathMl = mathMl;
+        SetMathText(mathMl);
+        ValidateEditor();
+        EquationSubmitted?.Invoke(
+            this,
+            new MathRichEditBoxSubmissionEventArgs(changed, source));
     }
 
-    protected override void OnKeyDown(KeyEventArgs e)
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
-        System.ArgumentNullException.ThrowIfNull(e);
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.B)
+        ArgumentNullException.ThrowIfNull(change);
+        base.OnPropertyChanged(change);
+        if (change.Property == FontSizeProperty)
         {
-            e.Handled = true;
-            return;
+            _editor.MathFontSize = FontSize;
+            _placeholder.MathFontSize = FontSize;
         }
-
-        if (e.Key == Key.Enter)
+        else if (change.Property == ForegroundProperty)
         {
-            SubmitEquation(EquationSubmissionSource.EnterKey);
-            e.Handled = true;
-            return;
+            IBrush brush = Foreground ?? Brushes.Black;
+            _placeholder.Foreground = brush;
+            UpdatePlaceholder();
         }
-
-        base.OnKeyDown(e);
     }
 
-    protected override void OnLostFocus(FocusChangedEventArgs e)
+    private bool TryInsertTemplate(string text, int cursorOffset, int selectionLength)
     {
-        base.OnLostFocus(e);
-        if (!IsReadOnly && ContextMenu?.IsOpen != true)
+        if (selectionLength == 0 && cursorOffset == text.Length && text.Length > 1 && text[^1] == '^')
         {
-            SubmitEquation(EquationSubmissionSource.FocusLost);
+            _editor.InsertText(text[..^1]);
+            InsertPower();
+            return true;
         }
+
+        if (selectionLength == 0 && text.Length == 2 && text[0] == '^' && char.IsAsciiDigit(text[1]))
+        {
+            _editor.InsertPower(text[1..]);
+            return true;
+        }
+
+        if (selectionLength == 0 && text == "^")
+        {
+            InsertPower();
+            return true;
+        }
+
+        if (selectionLength == 0 && cursorOffset == text.Length - 1 &&
+            text.EndsWith("()", StringComparison.Ordinal))
+        {
+            InsertFunctionTemplate(text[..^2]);
+            return true;
+        }
+
+        if (text.StartsWith("root(", StringComparison.OrdinalIgnoreCase))
+        {
+            InsertRoot();
+            return true;
+        }
+
+        return false;
+    }
+
+    private void InsertFunctionTemplate(string name)
+    {
+        if (name.Equals("sqrt", StringComparison.OrdinalIgnoreCase))
+        {
+            InsertSquareRoot();
+        }
+        else if (name.Equals("cbrt", StringComparison.OrdinalIgnoreCase))
+        {
+            var degree = new MathRow([new MathText("3", MathAtomClass.Number)]);
+            _editor.InsertNode(new MathRadical(MathRow.Empty, degree));
+            _editor.PreviousPlaceholderCommand.Execute(null);
+        }
+        else if (name.Equals("abs", StringComparison.OrdinalIgnoreCase))
+        {
+            _editor.InsertDelimiter("|", "|");
+        }
+        else if (name.Equals("floor", StringComparison.OrdinalIgnoreCase))
+        {
+            _editor.InsertDelimiter("⌊", "⌋");
+        }
+        else if (name.Equals("ceil", StringComparison.OrdinalIgnoreCase) ||
+                 name.Equals("ceiling", StringComparison.OrdinalIgnoreCase))
+        {
+            _editor.InsertDelimiter("⌈", "⌉");
+        }
+        else
+        {
+            _editor.InsertFunction(name);
+        }
+    }
+
+    private void OnEditorDocumentChanged(object? sender, MathDocumentChangedEventArgs e)
+    {
+        _ = sender;
+        _ = e;
+        if (_updatingProperties)
+        {
+            return;
+        }
+
+        SetMathText(ExportMathMl());
+        ValidateEditor();
+        UpdatePlaceholder();
+        MathTextChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnEditorSubmitted(object? sender, MathSubmittedEventArgs e)
+    {
+        _ = sender;
+        _ = e;
+        if (!_editor.IsFocused && _editor.ContextMenu?.IsOpen == true)
+        {
+            return;
+        }
+
+        SubmitEquation(_editor.IsFocused
+            ? EquationSubmissionSource.EnterKey
+            : EquationSubmissionSource.FocusLost);
     }
 
     private void OnMathTextChanged(string mathMl)
@@ -235,75 +348,19 @@ public sealed class MathRichEditBox : TextBox
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(mathMl))
-        {
-            SetLinearTextFromExternalValue(string.Empty);
-            return;
-        }
-
-        if (_codec.TryMathMlToLinear(mathMl, out string linear, out int errorCode, out int errorType))
-        {
-            SetLinearTextFromExternalValue(linear);
-            ClearError();
-        }
-        else
-        {
-            SetError(errorCode, errorType);
-        }
-    }
-
-    private void OnLinearTextChanged(string linear)
-    {
-        if (_updatingProperties || string.Equals(Text, linear, StringComparison.Ordinal))
-        {
-            return;
-        }
-
         _updatingProperties = true;
         try
         {
-            Text = linear;
-        }
-        finally
-        {
-            _updatingProperties = false;
-        }
-
-        Validate(linear);
-    }
-
-    private void OnEditorTextChanged(object? sender, TextChangedEventArgs e)
-    {
-        if (_updatingProperties)
-        {
-            return;
-        }
-
-        string linear = Text ?? string.Empty;
-        SetCurrentValue(LinearTextProperty, linear);
-        Validate(linear);
-    }
-
-    private void Validate(string linear)
-    {
-        if (_codec.TryNormalizeLinear(linear, out _, out int errorCode, out int errorType))
-        {
-            ClearError();
-        }
-        else
-        {
-            SetError(errorCode, errorType);
-        }
-    }
-
-    private void SetLinearTextFromExternalValue(string linear)
-    {
-        _updatingProperties = true;
-        try
-        {
-            Text = linear;
-            SetCurrentValue(LinearTextProperty, linear);
-            _lastSubmittedLinear = linear;
+            _editor.Load(
+                mathMl,
+                string.IsNullOrWhiteSpace(mathMl)
+                    ? MathTextFormat.UnicodeMath
+                    : MathTextFormat.MathMl);
+            string canonical = ExportMathMl();
+            SetCurrentValue(MathTextProperty, canonical);
+            _lastSubmittedMathMl = canonical;
+            ValidateEditor();
+            UpdatePlaceholder();
         }
         finally
         {
@@ -311,30 +368,42 @@ public sealed class MathRichEditBox : TextBox
         }
     }
 
-    private void ReplaceSelection(string replacement, int cursorOffset, int selectionLength)
+    private string ExportMathMl() =>
+        HasContent ? _editor.Export(MathTextFormat.MathMl) : string.Empty;
+
+    private void SetMathText(string mathMl)
     {
-        string value = Text ?? string.Empty;
-        int start = Math.Min(SelectionStart, SelectionEnd);
-        int end = Math.Max(SelectionStart, SelectionEnd);
-        int requestedStart = Math.Clamp(start + cursorOffset, start, start + replacement.Length);
-        int requestedEnd = Math.Clamp(requestedStart + selectionLength, requestedStart, start + replacement.Length);
-        ReplaceRange(value, start, end, replacement, requestedStart, requestedEnd);
+        _updatingProperties = true;
+        try
+        {
+            SetCurrentValue(MathTextProperty, mathMl);
+        }
+        finally
+        {
+            _updatingProperties = false;
+        }
     }
 
-    private void ReplaceRange(string value, int start, int end, string replacement, int newSelectionStart, int newSelectionEnd)
+    private void ValidateEditor()
     {
-        Text = string.Concat(value.AsSpan(0, start), replacement, value.AsSpan(end));
-        SelectionStart = newSelectionStart;
-        SelectionEnd = newSelectionEnd;
-        Focus();
+        MathDiagnostic? diagnostic = _editor.Diagnostics.FirstOrDefault(static candidate =>
+            candidate.Severity is MathDiagnosticSeverity.Error or MathDiagnosticSeverity.Fatal);
+        if (diagnostic is null)
+        {
+            ClearError();
+        }
+        else
+        {
+            SetError(-1, 1);
+        }
     }
 
-    private string GetSelectedText()
+    private void UpdatePlaceholderText(string text)
     {
-        string value = Text ?? string.Empty;
-        int start = Math.Min(SelectionStart, SelectionEnd);
-        int end = Math.Max(SelectionStart, SelectionEnd);
-        return value[start..end];
+        MathDocument document = string.IsNullOrWhiteSpace(text)
+            ? MathDocument.Empty
+            : MathInterchange.Parse(text, MathTextFormat.UnicodeMath).Document;
+        _placeholder.Document = document;
     }
 
     private void SetError(int errorCode, int errorType)
@@ -345,6 +414,7 @@ public sealed class MathRichEditBox : TextBox
         ErrorType = errorType;
         PseudoClasses.Set(":error", true);
         AutomationProperties.SetHelpText(this, $"Equation error {errorType}:{errorCode}");
+        AutomationProperties.SetHelpText(_editor, $"Equation error {errorType}:{errorCode}");
         if (changed)
         {
             ErrorStateChanged?.Invoke(this, EventArgs.Empty);
@@ -359,20 +429,29 @@ public sealed class MathRichEditBox : TextBox
         ErrorType = 0;
         PseudoClasses.Set(":error", false);
         AutomationProperties.SetHelpText(this, string.Empty);
+        AutomationProperties.SetHelpText(_editor, string.Empty);
         if (changed)
         {
             ErrorStateChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
+    private void UpdatePlaceholder()
+    {
+        bool visible = _editor.Document.Root.Children.IsEmpty && !_editor.IsFocused;
+        _placeholder.IsVisible = visible;
+        _editor.Foreground = visible
+            ? Brushes.Transparent
+            : Foreground ?? Brushes.Black;
+    }
+
     private void UpdateContextMenuState()
     {
-        bool hasSelection = SelectionStart != SelectionEnd;
-        _cutMenuItem.IsEnabled = !IsReadOnly && hasSelection;
-        _copyMenuItem.IsEnabled = hasSelection;
-        _pasteMenuItem.IsEnabled = !IsReadOnly;
-        _undoMenuItem.IsEnabled = !IsReadOnly && CanUndo;
-        _redoMenuItem.IsEnabled = !IsReadOnly && CanRedo;
+        _cutMenuItem.IsEnabled = _editor.CutCommand.CanExecute(null);
+        _copyMenuItem.IsEnabled = _editor.CopyCommand.CanExecute(null);
+        _pasteMenuItem.IsEnabled = _editor.PasteCommand.CanExecute(null);
+        _undoMenuItem.IsEnabled = _editor.UndoCommand.CanExecute(null);
+        _redoMenuItem.IsEnabled = _editor.RedoCommand.CanExecute(null);
     }
 
     private static MenuItem MenuItem(string header, EventHandler<RoutedEventArgs> handler)

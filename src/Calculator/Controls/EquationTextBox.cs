@@ -38,12 +38,6 @@ public sealed class EquationTextBox : TemplatedControl
             string.Empty,
             defaultBindingMode: BindingMode.TwoWay);
 
-    public static readonly StyledProperty<string> LinearEquationProperty =
-        AvaloniaProperty.Register<EquationTextBox, string>(
-            nameof(LinearEquation),
-            string.Empty,
-            defaultBindingMode: BindingMode.TwoWay);
-
     public static readonly StyledProperty<bool> HasErrorProperty =
         AvaloniaProperty.Register<EquationTextBox, bool>(nameof(HasError));
 
@@ -69,8 +63,6 @@ public sealed class EquationTextBox : TemplatedControl
             control.UpdateAccessibility());
         MathEquationProperty.Changed.AddClassHandler<EquationTextBox>(static (control, args) =>
             control.UpdateMathEquation(args.NewValue as string ?? string.Empty));
-        LinearEquationProperty.Changed.AddClassHandler<EquationTextBox>(static (control, args) =>
-            control.UpdateLinearEquation(args.NewValue as string ?? string.Empty));
         HasErrorProperty.Changed.AddClassHandler<EquationTextBox>(static (control, _) => control.UpdateVisualState());
         IsAddEquationModeProperty.Changed.AddClassHandler<EquationTextBox>(static (control, _) => control.UpdateVisualState());
         ErrorTextProperty.Changed.AddClassHandler<EquationTextBox>(static (control, _) => control.UpdateVisualState());
@@ -108,12 +100,6 @@ public sealed class EquationTextBox : TemplatedControl
         set => SetValue(MathEquationProperty, value ?? string.Empty);
     }
 
-    public string LinearEquation
-    {
-        get => GetValue(LinearEquationProperty);
-        set => SetValue(LinearEquationProperty, value ?? string.Empty);
-    }
-
     public bool HasError
     {
         get => GetValue(HasErrorProperty);
@@ -146,15 +132,13 @@ public sealed class EquationTextBox : TemplatedControl
 
     public event EventHandler<MathRichEditBoxSubmissionEventArgs>? EquationSubmitted;
 
-    public event EventHandler<MathRichEditBoxFormatRequestEventArgs>? EquationFormatRequested;
-
     public event EventHandler<RoutedEventArgs>? EquationButtonClicked;
 
     public event EventHandler? EditorFocused;
 
     public void SetEquationText(string equationText) => MathEquation = equationText;
 
-    public void FocusTextBox() => _richEditBox?.Focus();
+    public void FocusTextBox() => _richEditBox?.FocusEditor();
 
     public void InsertText(string text, int cursorOffset, int selectionLength) =>
         _richEditBox?.InsertText(text, cursorOffset, selectionLength);
@@ -199,15 +183,13 @@ public sealed class EquationTextBox : TemplatedControl
 
         if (_richEditBox is not null)
         {
-            _richEditBox.LinearText = LinearEquation;
             if (!string.IsNullOrEmpty(MathEquation))
             {
                 _richEditBox.MathText = MathEquation;
             }
 
-            _richEditBox.TextChanged += OnEditorTextChanged;
+            _richEditBox.MathTextChanged += OnEditorTextChanged;
             _richEditBox.EquationSubmitted += OnEquationSubmitted;
-            _richEditBox.FormatRequest += OnEquationFormatRequested;
             _richEditBox.ErrorStateChanged += OnEditorErrorStateChanged;
         }
 
@@ -239,9 +221,8 @@ public sealed class EquationTextBox : TemplatedControl
     {
         if (_richEditBox is not null)
         {
-            _richEditBox.TextChanged -= OnEditorTextChanged;
+            _richEditBox.MathTextChanged -= OnEditorTextChanged;
             _richEditBox.EquationSubmitted -= OnEquationSubmitted;
-            _richEditBox.FormatRequest -= OnEquationFormatRequested;
             _richEditBox.ErrorStateChanged -= OnEditorErrorStateChanged;
         }
 
@@ -274,19 +255,11 @@ public sealed class EquationTextBox : TemplatedControl
         }
     }
 
-    private void UpdateLinearEquation(string value)
-    {
-        if (_richEditBox is not null && !string.Equals(_richEditBox.LinearText, value, StringComparison.Ordinal))
-        {
-            _richEditBox.LinearText = value;
-        }
-    }
-
-    private void OnEditorTextChanged(object? sender, TextChangedEventArgs e)
+    private void OnEditorTextChanged(object? sender, EventArgs e)
     {
         if (_richEditBox is not null)
         {
-            SetCurrentValue(LinearEquationProperty, _richEditBox.LinearText);
+            SetCurrentValue(MathEquationProperty, _richEditBox.MathText);
         }
 
         UpdateVisualState();
@@ -298,16 +271,12 @@ public sealed class EquationTextBox : TemplatedControl
     {
         if (_richEditBox is not null)
         {
-            SetCurrentValue(LinearEquationProperty, _richEditBox.LinearText);
             SetCurrentValue(MathEquationProperty, _richEditBox.MathText);
         }
 
         EquationSubmitted?.Invoke(this, e);
         UpdateVisualState();
     }
-
-    private void OnEquationFormatRequested(object? sender, MathRichEditBoxFormatRequestEventArgs e) =>
-        EquationFormatRequested?.Invoke(this, e);
 
     private void OnEquationButtonClicked(object? sender, RoutedEventArgs e)
     {
@@ -336,7 +305,7 @@ public sealed class EquationTextBox : TemplatedControl
 
     private void UpdateVisualState()
     {
-        bool hasContent = !string.IsNullOrWhiteSpace(_richEditBox?.Text ?? LinearEquation);
+        bool hasContent = _richEditBox?.HasContent == true;
         bool hasError = HasError || _richEditBox?.HasEquationError == true;
         PseudoClasses.Set(":error", hasError);
         PseudoClasses.Set(":add-equation", IsAddEquationMode);
@@ -373,7 +342,7 @@ public sealed class EquationTextBox : TemplatedControl
 
         if (_richEditBox is not null)
         {
-            AutomationProperties.SetName(_richEditBox, $"Function{index} equation");
+            _richEditBox.SetAutomationName($"Function{index} equation");
         }
     }
 }

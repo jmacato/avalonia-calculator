@@ -22,6 +22,8 @@ public sealed class KeyGraphFeaturesInfo
     }
 
     public GraphFunctionAnalysisData Data { get; }
+    public GraphFunctionAnalysisMathDocuments Documents =>
+        Data.Documents ?? GraphFunctionAnalysisMathDocuments.Empty;
     public AnalysisErrorType AnalysisError { get; }
     public string Domain => Data.Domain;
     public string Range => Data.Range;

@@ -115,7 +115,6 @@
     <AvaloniaXaml Include="Controls\CalculatorToggleButtonThemes.xaml" />
     <AvaloniaXaml Include="Views\MainPage.xaml" />
     <AvaloniaResource Include="Assets\Fonts\Hind2\**\*.ttf" />
-    <AvaloniaResource Include="Assets\Fonts\XCharterMath\**\*.otf" />
     <AvaloniaResource Include="Assets\CalculatorIcons.ttf" />
     <AvaloniaResource Include="Assets\CalculatorAppList.targetsize-20.png" />
     <EmbeddedResource Include="Resources\*.resx" />
@@ -134,7 +133,9 @@
                       GlobalPropertiesToRemove="PublishAot;PublishTrimmed;SelfContained;RuntimeIdentifier;CalculatorBrowserBuild" />
     <ProjectReference Include="Vendor\FluentAvalonia\FluentAvalonia.csproj"
                       GlobalPropertiesToRemove="PublishAot;PublishTrimmed;SelfContained;RuntimeIdentifier;CalculatorBrowserBuild" />
-    <ProjectReference Include="Vendor\CSharpMath\CSharpMath.Avalonia\CSharpMath.Avalonia.csproj"
+    <ProjectReference Include="Vendor\MathComposer\src\MathComposer.Core\MathComposer.Core.csproj"
+                      GlobalPropertiesToRemove="PublishAot;PublishTrimmed;SelfContained;RuntimeIdentifier;CalculatorBrowserBuild" />
+    <ProjectReference Include="Vendor\MathComposer\src\MathComposer.Avalonia\MathComposer.Avalonia.csproj"
                       GlobalPropertiesToRemove="PublishAot;PublishTrimmed;SelfContained;RuntimeIdentifier;CalculatorBrowserBuild" />
   </ItemGroup>
 </Project>

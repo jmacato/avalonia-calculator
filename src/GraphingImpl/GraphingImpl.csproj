@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CalcManagerManaged\CalcManagerPort\CalcManagerPort.csproj" />
+    <ProjectReference Include="..\Calculator\Vendor\MathComposer\src\MathComposer.Core\MathComposer.Core.csproj" />
     <ProjectReference Include="..\Graphing.Symbolics\Graphing.Symbolics.csproj" />
     <ProjectReference Include="..\GraphingInterfaces\GraphingInterfaces.csproj" />
     <ProjectReference Include="..\GraphingRaster.Skia\GraphingRaster.Skia.csproj" />

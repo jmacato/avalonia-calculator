@@ -2,6 +2,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using CalculatorApp.ViewModel;
 using GraphControl;
+using MathComposer.Core;
 
 namespace GraphingTests;
 
@@ -46,6 +47,8 @@ public sealed class KeyGraphFeaturesLoadingStateTests
             viewModel.KeyGraphFeaturesItems,
             item => item.Title == "Domain");
         Assert.Equal("x ∈ ℝ", Assert.Single(domain.DisplayItems));
+        MathDocument domainDocument = Assert.Single(domain.DisplayMathDocuments);
+        Assert.NotEmpty(domainDocument.Root.Children);
     }
 
     [AvaloniaFact(Timeout = 5_000)]
@@ -63,6 +66,7 @@ public sealed class KeyGraphFeaturesLoadingStateTests
         Assert.False(viewModel.IsCalculating);
         Assert.Empty(viewModel.KeyGraphFeaturesItems);
         Assert.Empty(viewModel.Expression);
+        Assert.Equal(MathDocument.Empty, viewModel.ExpressionDocument);
         Assert.Empty(viewModel.FunctionLabelText);
         Assert.Null(viewModel.LineBrush);
     }

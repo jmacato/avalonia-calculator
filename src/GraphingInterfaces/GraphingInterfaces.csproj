@@ -13,5 +13,6 @@
 
   <ItemGroup>
     <None Include="GraphingInterfaces.manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <ProjectReference Include="..\Calculator\Vendor\MathComposer\src\MathComposer.Core\MathComposer.Core.csproj" />
   </ItemGroup>
 </Project>

@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Text;
+using System.Xml;
+using System.Xml.Linq;
 using Graphing;
 
 namespace GraphingImpl;
@@ -122,107 +124,98 @@ internal static class ExpressionSerializer
 
     private static string MathMlDocument(ManagedExpression expression, string prefix, bool includeWrapper)
     {
-        string elementPrefix = prefix.Length == 0 ? string.Empty : prefix + ":";
-        var builder = new StringBuilder();
-        if (includeWrapper)
+        XNamespace mathMl = "http://www.w3.org/1998/Math/MathML";
+        var root = new XElement(mathMl + "math");
+        if (prefix.Length != 0)
         {
-            builder.Append('<').Append(elementPrefix).Append("math");
-            if (prefix.Length == 0)
-            {
-                builder.Append(" xmlns=\"http://www.w3.org/1998/Math/MathML\"");
-            }
-            else
-            {
-                builder.Append(" xmlns:").Append(prefix).Append("=\"http://www.w3.org/1998/Math/MathML\"");
-            }
-
-            builder.Append('>');
+            root.Add(new XAttribute(XNamespace.Xmlns + prefix, mathMl.NamespaceName));
         }
 
         for (int index = 0; index < expression.Equations.Length; index++)
         {
             if (index > 0)
             {
-                Element(builder, elementPrefix, "mo", ",");
+                root.Add(new XElement(mathMl + "mo", ","));
             }
 
             EquationAst equation = expression.Equations[index];
-            AppendMathMl(builder, equation.Left, elementPrefix);
+            root.Add(MathMlElement(equation.Left, mathMl));
             if (equation.Relation != RelationKind.None && equation.Right is not null)
             {
-                Element(builder, elementPrefix, "mo", RelationText(equation.Relation));
-                AppendMathMl(builder, equation.Right, elementPrefix);
+                root.Add(new XElement(mathMl + "mo", RelationText(equation.Relation)));
+                root.Add(MathMlElement(equation.Right, mathMl));
             }
         }
 
-        if (includeWrapper)
+        var settings = new XmlWriterSettings
         {
-            builder.Append("</").Append(elementPrefix).Append("math>");
-        }
-
-        return builder.ToString();
-    }
-
-    private static void AppendMathMl(StringBuilder builder, AstNode node, string prefix)
-    {
-        switch (node.Kind)
+            ConformanceLevel = ConformanceLevel.Fragment,
+            OmitXmlDeclaration = true
+        };
+        var serialized = new StringBuilder();
+        using (XmlWriter writer = XmlWriter.Create(serialized, settings))
         {
-            case AstKind.Number:
-                Element(builder, prefix, "mn", node.Number.ToString());
-                return;
-            case AstKind.Variable:
-                Element(builder, prefix, "mi", node.Name);
-                return;
-            case AstKind.Negate:
-                Element(builder, prefix, "mo", "−");
-                AppendMathMl(builder, node.Children[0], prefix);
-                return;
-            case AstKind.Divide:
-                builder.Append('<').Append(prefix).Append("mfrac>");
-                AppendMathMl(builder, node.Children[0], prefix);
-                AppendMathMl(builder, node.Children[1], prefix);
-                builder.Append("</").Append(prefix).Append("mfrac>");
-                return;
-            case AstKind.Power:
-                builder.Append('<').Append(prefix).Append("msup>");
-                AppendMathMl(builder, node.Children[0], prefix);
-                AppendMathMl(builder, node.Children[1], prefix);
-                builder.Append("</").Append(prefix).Append("msup>");
-                return;
-            case AstKind.Add:
-            case AstKind.Subtract:
-            case AstKind.Multiply:
-                builder.Append('<').Append(prefix).Append("mrow>");
-                AppendMathMl(builder, node.Children[0], prefix);
-                Element(builder, prefix, "mo", node.Kind switch
+            if (includeWrapper)
+            {
+                root.WriteTo(writer);
+            }
+            else
+            {
+                foreach (XNode node in root.Nodes())
                 {
-                    AstKind.Add => "+",
-                    AstKind.Subtract => "−",
-                    _ => "×"
-                });
-                AppendMathMl(builder, node.Children[1], prefix);
-                builder.Append("</").Append(prefix).Append("mrow>");
-                return;
-            case AstKind.Function:
-                Element(builder, prefix, "mi", node.Name);
-                Element(builder, prefix, "mo", "\u2061");
-                builder.Append('<').Append(prefix).Append("mfenced>");
-                foreach (AstNode argument in node.Children)
-                {
-                    AppendMathMl(builder, argument, prefix);
+                    node.WriteTo(writer);
                 }
-
-                builder.Append("</").Append(prefix).Append("mfenced>");
-                return;
-            default:
-                throw new InvalidOperationException();
+            }
         }
+
+        return serialized.ToString();
     }
 
-    private static void Element(StringBuilder builder, string prefix, string name, string value) =>
-        builder.Append('<').Append(prefix).Append(name).Append('>')
-            .Append(EscapeXml(value))
-            .Append("</").Append(prefix).Append(name).Append('>');
+    private static XElement MathMlElement(AstNode node, XNamespace mathMl) => node.Kind switch
+    {
+        AstKind.Number => new XElement(mathMl + "mn", node.Number.ToString()),
+        AstKind.Variable => new XElement(
+            mathMl + "mi",
+            node.Name.Equals("pi", StringComparison.OrdinalIgnoreCase) ? "π" : node.Name),
+        AstKind.Negate => new XElement(
+            mathMl + "mrow",
+            new XElement(mathMl + "mo", "−"),
+            MathMlElement(node.Children[0], mathMl)),
+        AstKind.Divide => new XElement(
+            mathMl + "mfrac",
+            MathMlElement(node.Children[0], mathMl),
+            MathMlElement(node.Children[1], mathMl)),
+        AstKind.Power => new XElement(
+            mathMl + "msup",
+            MathMlElement(node.Children[0], mathMl),
+            MathMlElement(node.Children[1], mathMl)),
+        AstKind.Add or AstKind.Subtract or AstKind.Multiply => new XElement(
+            mathMl + "mrow",
+            MathMlElement(node.Children[0], mathMl),
+            new XElement(mathMl + "mo", node.Kind switch
+            {
+                AstKind.Add => "+",
+                AstKind.Subtract => "−",
+                _ => "×"
+            }),
+            MathMlElement(node.Children[1], mathMl)),
+        AstKind.Function when node is { Name: "sqrt", Children.Length: 1 } =>
+            new XElement(mathMl + "msqrt", MathMlElement(node.Children[0], mathMl)),
+        AstKind.Function when node is { Name: "root", Children.Length: 2 } =>
+            new XElement(
+                mathMl + "mroot",
+                MathMlElement(node.Children[0], mathMl),
+                MathMlElement(node.Children[1], mathMl)),
+        AstKind.Function => new XElement(
+            mathMl + "mrow",
+            new XElement(mathMl + "mi", node.Name),
+            new XElement(mathMl + "mo", "\u2061"),
+            new XElement(
+                mathMl + "mfenced",
+                new XAttribute("separators", ","),
+                node.Children.Select(child => MathMlElement(child, mathMl)))),
+        _ => throw new InvalidOperationException()
+    };
 
     private static string Latex(AstNode node, ManagedExpression expression, int parentPrecedence)
     {
@@ -277,10 +270,4 @@ internal static class ExpressionSerializer
             : result;
     }
 
-    private static string EscapeXml(string value) => value
-        .Replace("&", "&amp;", StringComparison.Ordinal)
-        .Replace("<", "&lt;", StringComparison.Ordinal)
-        .Replace(">", "&gt;", StringComparison.Ordinal)
-        .Replace("\"", "&quot;", StringComparison.Ordinal)
-        .Replace("'", "&apos;", StringComparison.Ordinal);
 }

@@ -5,6 +5,7 @@ using System.Globalization;
 using Avalonia.Media;
 using CalculatorApp.ViewModel.Common;
 using GraphControl;
+using MathComposer.Core;
 
 namespace CalculatorApp.ViewModel;
 /// <summary>
@@ -21,6 +22,7 @@ public sealed class KeyGraphFeaturesViewModel : ViewModelBase, IDisposable
     {
         ArgumentNullException.ThrowIfNull(equation);
         Expression = equation.Expression;
+        ExpressionDocument = ParseEquationDocument(equation);
         FunctionLabelText = equation.FunctionLabelText;
         LineBrush = equation.LineBrush;
         PopulateCalculatingPlaceholders();
@@ -32,6 +34,7 @@ public sealed class KeyGraphFeaturesViewModel : ViewModelBase, IDisposable
     }
 
     public string Expression { get; private set; }
+    public MathDocument ExpressionDocument { get; private set; }
     public string FunctionLabelText { get; private set; }
     public IBrush? LineBrush { get; private set; }
     public ObservableCollection<KeyGraphFeaturesItem> KeyGraphFeaturesItems { get; } = [];
@@ -80,6 +83,7 @@ public sealed class KeyGraphFeaturesViewModel : ViewModelBase, IDisposable
         AnalysisErrorVisible = false;
         IsCalculating = false;
         Expression = string.Empty;
+        ExpressionDocument = MathDocument.Empty;
         FunctionLabelText = string.Empty;
         LineBrush = null;
     }
@@ -121,6 +125,7 @@ public sealed class KeyGraphFeaturesViewModel : ViewModelBase, IDisposable
         foreach (KeyGraphFeaturesItem item in KeyGraphFeaturesItems)
         {
             item.DisplayItems.Clear();
+            item.DisplayMathDocuments.Clear();
             item.GridItems.Clear();
         }
 
@@ -143,16 +148,16 @@ public sealed class KeyGraphFeaturesViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        AddTextFeature(Resource("Domain"), info.Domain, Resource("KGFDomainNone"));
-        AddTextFeature(Resource("Range"), info.Range, Resource("KGFRangeNone"));
-        AddTextFeature(Resource("XIntercept"), info.Data.Zeros, Resource("KGFXInterceptNone"));
-        AddTextFeature(Resource("YIntercept"), info.Data.YIntercept, Resource("KGFYInterceptNone"));
-        AddListFeature(Resource("Minima"), info.Minima, Resource("KGFMinimaNone"));
-        AddListFeature(Resource("Maxima"), info.Maxima, Resource("KGFMaximaNone"));
-        AddListFeature(Resource("InflectionPoints"), info.Data.InflectionPoints, Resource("KGFInflectionPointsNone"));
-        AddListFeature(Resource("VerticalAsymptotes"), info.Data.VerticalAsymptotes, Resource("KGFVerticalAsymptotesNone"));
-        AddListFeature(Resource("HorizontalAsymptotes"), info.Data.HorizontalAsymptotes, Resource("KGFHorizontalAsymptotesNone"));
-        AddListFeature(Resource("ObliqueAsymptotes"), info.Data.ObliqueAsymptotes, Resource("KGFObliqueAsymptotesNone"));
+        AddTextFeature(Resource("Domain"), info.Domain, info.Documents.Domain, Resource("KGFDomainNone"));
+        AddTextFeature(Resource("Range"), info.Range, info.Documents.Range, Resource("KGFRangeNone"));
+        AddTextFeature(Resource("XIntercept"), info.Data.Zeros, info.Documents.Zeros, Resource("KGFXInterceptNone"));
+        AddTextFeature(Resource("YIntercept"), info.Data.YIntercept, info.Documents.YIntercept, Resource("KGFYInterceptNone"));
+        AddListFeature(Resource("Minima"), info.Minima, info.Documents.Minima, Resource("KGFMinimaNone"));
+        AddListFeature(Resource("Maxima"), info.Maxima, info.Documents.Maxima, Resource("KGFMaximaNone"));
+        AddListFeature(Resource("InflectionPoints"), info.Data.InflectionPoints, info.Documents.InflectionPoints, Resource("KGFInflectionPointsNone"));
+        AddListFeature(Resource("VerticalAsymptotes"), info.Data.VerticalAsymptotes, info.Documents.VerticalAsymptotes, Resource("KGFVerticalAsymptotesNone"));
+        AddListFeature(Resource("HorizontalAsymptotes"), info.Data.HorizontalAsymptotes, info.Documents.HorizontalAsymptotes, Resource("KGFHorizontalAsymptotesNone"));
+        AddListFeature(Resource("ObliqueAsymptotes"), info.Data.ObliqueAsymptotes, info.Documents.ObliqueAsymptotes, Resource("KGFObliqueAsymptotesNone"));
         AddParityFeature(info);
         AddPeriodicityFeature(info);
         AddMonotonicityFeature(info);
@@ -194,6 +199,7 @@ public sealed class KeyGraphFeaturesViewModel : ViewModelBase, IDisposable
             IsText = false
         };
         item.DisplayItems.Add(info.Data.PeriodicityExpression);
+        item.DisplayMathDocuments.Add(info.Documents.Periodicity);
         KeyGraphFeaturesItems.Add(item);
     }
 
@@ -203,14 +209,18 @@ public sealed class KeyGraphFeaturesViewModel : ViewModelBase, IDisposable
         {
             Title = Resource("Monotonicity")
         };
-        if (info.Data.MonotoneIntervals.Count != 0)
+        if (info.Documents.MonotoneIntervals.Count != 0)
         {
-            foreach ((string expression, int direction) in info.Data.MonotoneIntervals)
+            string[] expressions = info.Data.MonotoneIntervals.Keys.ToArray();
+            for (int index = 0; index < info.Documents.MonotoneIntervals.Count; index++)
             {
+                Graphing.GraphMonotoneIntervalMathDocument interval =
+                    info.Documents.MonotoneIntervals[index];
                 item.GridItems.Add(new GridDisplayItems
                 {
-                    Expression = expression,
-                    Direction = direction switch
+                    Expression = index < expressions.Length ? expressions[index] : string.Empty,
+                    Document = interval.Expression,
+                    Direction = interval.Direction switch
                     {
                         0 => Resource("KGFMonotonicityUnknown"),
                         1 => Resource("KGFMonotonicityIncreasing"),
@@ -230,7 +240,11 @@ public sealed class KeyGraphFeaturesViewModel : ViewModelBase, IDisposable
         KeyGraphFeaturesItems.Add(item);
     }
 
-    private void AddTextFeature(string title, string value, string emptyValue)
+    private void AddTextFeature(
+        string title,
+        string value,
+        MathDocument document,
+        string emptyValue)
     {
         var item = new KeyGraphFeaturesItem
         {
@@ -238,10 +252,19 @@ public sealed class KeyGraphFeaturesViewModel : ViewModelBase, IDisposable
             IsText = string.IsNullOrWhiteSpace(value)
         };
         item.DisplayItems.Add(string.IsNullOrWhiteSpace(value) ? emptyValue : value);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            item.DisplayMathDocuments.Add(document);
+        }
+
         KeyGraphFeaturesItems.Add(item);
     }
 
-    private void AddListFeature(string title, IReadOnlyList<string> values, string emptyValue)
+    private void AddListFeature(
+        string title,
+        IReadOnlyList<string> values,
+        IReadOnlyList<MathDocument> documents,
+        string emptyValue)
     {
         var item = new KeyGraphFeaturesItem
         {
@@ -254,9 +277,11 @@ public sealed class KeyGraphFeaturesViewModel : ViewModelBase, IDisposable
         }
         else
         {
-            foreach (string value in values)
+            for (int index = 0; index < values.Count; index++)
             {
-                item.DisplayItems.Add(value);
+                item.DisplayItems.Add(values[index]);
+                item.DisplayMathDocuments.Add(
+                    index < documents.Count ? documents[index] : MathDocument.Empty);
             }
         }
 
@@ -301,5 +326,23 @@ public sealed class KeyGraphFeaturesViewModel : ViewModelBase, IDisposable
         item.DisplayItems.Add(Resource("KGFTooComplexFeaturesError"));
         item.DisplayItems.Add(string.Join(separator, featureNames));
         KeyGraphFeaturesItems.Add(item);
+    }
+
+    private static MathDocument ParseEquationDocument(EquationViewModel equation)
+    {
+        if (!string.IsNullOrWhiteSpace(equation.MathExpression))
+        {
+            return MathInterchange.Parse(
+                equation.MathExpression,
+                MathTextFormat.MathMl,
+                CultureInfo.CurrentCulture).Document;
+        }
+
+        return string.IsNullOrWhiteSpace(equation.Expression)
+            ? MathDocument.Empty
+            : MathInterchange.Parse(
+                equation.Expression,
+                MathTextFormat.UnicodeMath,
+                CultureInfo.CurrentCulture).Document;
     }
 }

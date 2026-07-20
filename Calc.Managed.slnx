@@ -30,9 +30,8 @@
   </Folder>
   <Folder Name="/Vendor/">
     <Project Path="src/Calculator/Vendor/Avalonia.Labs.Lottie/Avalonia.Labs.Lottie.csproj" />
-    <Project Path="src/Calculator/Vendor/CSharpMath/CSharpMath.Avalonia/CSharpMath.Avalonia.csproj" />
-    <Project Path="src/Calculator/Vendor/CSharpMath/CSharpMath.Rendering/CSharpMath.Rendering.csproj" />
-    <Project Path="src/Calculator/Vendor/CSharpMath/CSharpMath/CSharpMath.csproj" />
+    <Project Path="src/Calculator/Vendor/MathComposer/src/MathComposer.Avalonia/MathComposer.Avalonia.csproj" />
+    <Project Path="src/Calculator/Vendor/MathComposer/src/MathComposer.Core/MathComposer.Core.csproj" />
     <Project Path="src/Calculator/Vendor/FluentAvalonia/FluentAvalonia.csproj" />
   </Folder>
 </Solution>

@@ -9,6 +9,7 @@ namespace Graphing
         IEvalOptions EvalOptions();
         IFormatOptions FormatOptions();
         IExpression? ParseInput(string input, out int errorCode, out int errorType);
+        IExpression CombineExpressions(IReadOnlyList<IExpression> expressions);
         void HRErrorToErrorInfo(GraphStatus status, out int errorCode, out int errorType);
         IGraph CreateGrapher(IExpression expression);
         IGraph CreateGrapher();

@@ -4,7 +4,7 @@ using Graphing;
 
 namespace GraphingImpl;
 
-internal sealed class LinearLexer
+internal sealed class LinearLexer : ITokenSource
 {
     private readonly string _source;
     private readonly char _decimalSeparator;

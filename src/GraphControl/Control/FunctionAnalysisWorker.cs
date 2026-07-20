@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Threading.Channels;
 using Graphing;
 using Graphing.Analyzer;
@@ -7,9 +6,6 @@ namespace GraphControl;
 
 internal sealed class FunctionAnalysisWorker : IDisposable
 {
-    private static readonly SearchValues<char> UnsupportedRelations =
-        SearchValues.Create("<>≤≥≠");
-
     private readonly Channel<FunctionAnalysisWorkItem> _requests =
         Channel.CreateBounded<FunctionAnalysisWorkItem>(
             new BoundedChannelOptions(1)
@@ -80,19 +76,14 @@ internal sealed class FunctionAnalysisWorker : IDisposable
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (request.Expression.AsSpan().IndexOfAny(UnsupportedRelations) >= 0)
-        {
-            return new KeyGraphFeaturesInfo(AnalysisErrorType.AnalysisNotSupported);
-        }
-
         IMathSolver solver = MathSolver.CreateMathSolver();
-        solver.ParsingOptions().SetFormatType(FormatType.Linear);
+        solver.ParsingOptions().SetFormatType(FormatType.MathML);
         solver.FormatOptions().SetFormatType(FormatType.MathML);
         solver.FormatOptions().SetMathMLPrefix("mml");
         solver.EvalOptions().SetTrigUnitMode(request.TrigUnitMode);
         solver.ParsingOptions().SetLocalizationType(request.Localization);
         solver.FormatOptions().SetLocalizationType(request.Localization);
-        IExpression? expression = solver.ParseInput(request.Expression, out _, out _);
+        IExpression? expression = solver.ParseInput(request.MathMl, out _, out _);
         if (expression is null)
         {
             return new KeyGraphFeaturesInfo(AnalysisErrorType.AnalysisCouldNotBePerformed);

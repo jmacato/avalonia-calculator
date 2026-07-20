@@ -5,7 +5,7 @@ namespace GraphingImpl;
 
 internal sealed class LinearParser
 {
-    private readonly LinearLexer _lexer;
+    private readonly ITokenSource _tokens;
     private readonly AstFactory _factory = new();
     private readonly HashSet<string> _symbols = new(StringComparer.OrdinalIgnoreCase);
     private readonly uint _firstEquationId;
@@ -13,10 +13,15 @@ internal sealed class LinearParser
     private int _depth;
 
     public LinearParser(string source, LocalizationType localization, uint firstEquationId)
+        : this(new LinearLexer(source, localization), firstEquationId)
     {
-        _lexer = new LinearLexer(source, localization);
+    }
+
+    public LinearParser(ITokenSource tokens, uint firstEquationId)
+    {
+        _tokens = tokens ?? throw new ArgumentNullException(nameof(tokens));
         _firstEquationId = firstEquationId;
-        _current = _lexer.Next();
+        _current = _tokens.Next();
     }
 
     public (ImmutableArray<EquationAst> Equations, ImmutableArray<string> Symbols) Parse()
@@ -305,7 +310,7 @@ internal sealed class LinearParser
         }
     }
 
-    private void Advance() => _current = _lexer.Next();
+    private void Advance() => _current = _tokens.Next();
 
     private GraphParseException Error(SyntaxErrorCode code, string message) =>
         new(code, _current.Span, message);

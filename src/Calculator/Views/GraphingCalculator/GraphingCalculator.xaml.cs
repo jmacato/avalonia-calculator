@@ -177,15 +177,6 @@ public sealed partial class GraphingCalculator : UserControl, IDisposable
         flyout.ShowAt(GraphSettingsButton);
     }
 
-    private void OnEquationFormatRequested(object? sender, MathRichEditBoxFormatRequestEventArgs e)
-    {
-        string linear = GraphingControl.ConvertToLinear(e.OriginalText);
-        if (!string.IsNullOrEmpty(linear))
-        {
-            e.FormattedText = GraphingControl.FormatMathML(linear);
-        }
-    }
-
     private async void OnKeyGraphFeaturesRequested(object? sender, KeyGraphFeaturesRequestedEventArgs e)
     {
         _ = sender;
@@ -388,7 +379,6 @@ public sealed partial class GraphingCalculator : UserControl, IDisposable
         // has the entire right pane hidden.
         var inputArea = new EquationInputArea();
         var numPad = new GraphingNumPad();
-        inputArea.EquationFormatRequested += OnEquationFormatRequested;
         inputArea.KeyGraphFeaturesRequested += OnKeyGraphFeaturesRequested;
         _equationInputAreaControl = inputArea;
         EquationInputHost.Child = inputArea;
@@ -398,8 +388,8 @@ public sealed partial class GraphingCalculator : UserControl, IDisposable
 
     private KeyGraphFeaturesPanel CreateKeyGraphFeaturesPanel()
     {
-        // This view owns MathExpressionView instances and the math font. Do not
-        // construct either until analysis has actually been requested.
+        // Defer construction of the math display and its layout resources until
+        // analysis has actually been requested.
         var panel = new KeyGraphFeaturesPanel();
         panel.KeyGraphFeaturesClosed += OnKeyGraphFeaturesClosed;
         _keyGraphFeaturesControl = panel;
@@ -472,7 +462,6 @@ public sealed partial class GraphingCalculator : UserControl, IDisposable
 
         if (_equationInputAreaControl is not null)
         {
-            _equationInputAreaControl.EquationFormatRequested -= OnEquationFormatRequested;
             _equationInputAreaControl.KeyGraphFeaturesRequested -= OnKeyGraphFeaturesRequested;
             _equationInputAreaControl.DataContext = null;
             _equationInputAreaControl.Dispose();

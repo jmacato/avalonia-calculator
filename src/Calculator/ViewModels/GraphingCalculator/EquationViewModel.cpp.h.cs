@@ -13,7 +13,6 @@ public sealed partial class EquationViewModel : ViewModelBase
     private bool _isLastItemInList;
     private int _functionLabelIndex;
     private int _lineColorIndex;
-    private string _mathExpression = string.Empty;
     private ImmutableSolidColorBrush? _lineBrush;
     public EquationViewModel(Equation equation, int functionLabelIndex, Color color, int colorIndex)
     {
@@ -42,7 +41,7 @@ public sealed partial class EquationViewModel : ViewModelBase
     public bool IsLastItemInList { get => _isLastItemInList; set => SetProperty(ref _isLastItemInList, value); }
     public int LineColorIndex { get => _lineColorIndex; set => SetProperty(ref _lineColorIndex, value); }
     public string Expression { get => GraphEquation.Expression; set => GraphEquation.Expression = value ?? string.Empty; }
-    public string MathExpression { get => _mathExpression; set => SetProperty(ref _mathExpression, value ?? string.Empty); }
+    public string MathExpression { get => GraphEquation.MathMl; set => GraphEquation.MathMl = value ?? string.Empty; }
     public Color LineColor { get => GraphEquation.LineColor; set => GraphEquation.LineColor = value; }
     public IBrush LineBrush => _lineBrush ??= new ImmutableSolidColorBrush(LineColor);
     public bool IsLineEnabled { get => GraphEquation.IsLineEnabled; set => GraphEquation.IsLineEnabled = value; }
@@ -71,7 +70,11 @@ public sealed partial class EquationViewModel : ViewModelBase
     private void OnGraphEquationPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         OnPropertyChanged(e.PropertyName);
-        if (e.PropertyName == nameof(Equation.LineColor))
+        if (e.PropertyName == nameof(Equation.MathMl))
+        {
+            OnPropertyChanged(nameof(MathExpression));
+        }
+        else if (e.PropertyName == nameof(Equation.LineColor))
         {
             _lineBrush = null;
             OnPropertyChanged(nameof(LineBrush));

@@ -30,6 +30,7 @@
     <ProjectReference Include="..\GraphingInterfaces\GraphingInterfaces.csproj" />
     <ProjectReference Include="..\GraphingRaster.Skia\GraphingRaster.Skia.csproj" />
     <ProjectReference Include="..\JsMath.Port\JsMath.Port.csproj" />
+    <ProjectReference Include="..\Calculator\Vendor\MathComposer\src\MathComposer.Core\MathComposer.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

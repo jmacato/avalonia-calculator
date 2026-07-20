@@ -31,16 +31,23 @@ internal static class ExpressionParser
                 ImmutableArray<string>.Empty);
         }
 
-        string linear = format switch
+        LinearParser parser = format switch
         {
             FormatType.Formula or
             FormatType.InvariantFormula or
             FormatType.FormulaWithoutAggregate or
             FormatType.Linear or
-            FormatType.LinearInput => input,
-            FormatType.MathML => MathMlConverter.ToLinear(input, hasWrapper: true),
-            FormatType.MathMLNoWrapper => MathMlConverter.ToLinear(input, hasWrapper: false),
-            FormatType.Latex => LatexConverter.ToLinear(input),
+            FormatType.LinearInput => new LinearParser(input, localization, firstEquationId),
+            FormatType.MathML => new LinearParser(
+                new MathMlTokenSource(input, hasWrapper: true),
+                firstEquationId),
+            FormatType.MathMLNoWrapper => new LinearParser(
+                new MathMlTokenSource(input, hasWrapper: false),
+                firstEquationId),
+            FormatType.Latex => new LinearParser(
+                LatexConverter.ToLinear(input),
+                localization,
+                firstEquationId),
             FormatType.MathRichEdit or
             FormatType.InlineMathRichEdit or
             FormatType.Binary or
@@ -50,7 +57,6 @@ internal static class ExpressionParser
             _ => throw new UnsupportedGraphFormatException(format)
         };
 
-        var parser = new LinearParser(linear, localization, firstEquationId);
         (ImmutableArray<EquationAst> equations, ImmutableArray<string> symbols) = parser.Parse();
         equations = NormalizeDocument(equations, firstEquationId);
         if (equations.Length > GraphLimits.MaximumEquations)

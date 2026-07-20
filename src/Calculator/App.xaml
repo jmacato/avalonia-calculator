@@ -16,7 +16,6 @@
       </ResourceDictionary.MergedDictionaries>
 
       <FontFamily x:Key="CalculatorFontFamily">avares://Calculator/Assets/CalculatorIcons.ttf#Calculator Fluent Icons</FontFamily>
-      <FontFamily x:Key="MathFontFamily">avares://Calculator/Assets/Fonts/XCharterMath#XCharter Math</FontFamily>
       <FontFamily x:Key="ContentControlThemeFontFamily">Segoe UI Variable,Segoe UI,avares://Calculator/Assets/Fonts/Hind2#Hind2,sans-serif</FontFamily>
 
       <!-- Original Calculator overrides for WinUI's NavigationView resources.

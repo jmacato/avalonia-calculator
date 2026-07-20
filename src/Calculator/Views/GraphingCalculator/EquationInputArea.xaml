@@ -8,9 +8,8 @@
              x:DataType="vm:GraphingCalculatorViewModel"
              x:CompileBindings="True">
   <UserControl.Styles>
-    <!-- Port of the original EquationTextBox template. The math editor remains
-         a named template part so its focus, context-menu, and submission
-         behavior stays owned by the custom control. -->
+    <!-- The named editor part hosts Math Composer's structural MathML editor.
+         The graph-specific wrapper owns validation and submission. -->
     <Style Selector="controls|EquationTextBox">
       <Setter Property="MinHeight" Value="68" />
       <Setter Property="Margin" Value="4,2" />
@@ -39,8 +38,8 @@
               <controls:MathRichEditBox x:Name="MathRichEditBox"
                                         Grid.Column="1"
                                         MinHeight="54"
-                                        Padding="8,12"
-                                        VerticalContentAlignment="Center"
+                                        Padding="8,0"
+                                        VerticalContentAlignment="Stretch"
                                         Background="Transparent"
                                         BorderThickness="0"
                                         FontSize="20"
@@ -120,7 +119,6 @@
           <DataTemplate x:DataType="vm:EquationViewModel">
             <controls:EquationTextBox EquationButtonContentIndex="{CompiledBinding FunctionLabelText}"
                                       EquationColor="{CompiledBinding LineBrush}"
-                                      LinearEquation="{CompiledBinding Expression, Mode=TwoWay}"
                                       MathEquation="{CompiledBinding MathExpression, Mode=TwoWay}"
                                       HasError="{CompiledBinding HasGraphError}"
                                       ErrorText="{CompiledBinding GraphErrorText}"
@@ -128,7 +126,6 @@
                                       IsEquationLineDisabled="{CompiledBinding IsLineDisabled}"
                                       EquationButtonClicked="OnEquationButtonClicked"
                                       EditorFocused="OnEquationEditorFocused"
-                                      EquationFormatRequested="OnEquationFormatRequested"
                                       EquationSubmitted="OnEquationSubmitted"
                                       KeyGraphFeaturesButtonClicked="OnKeyGraphFeaturesButtonClicked"
                                       Loaded="OnEquationLoaded"
