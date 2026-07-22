@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Diagnostics;
+using System.Numerics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
-using Avalonia.Media;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using FluentAvalonia.Core;
 
@@ -21,8 +21,7 @@ public sealed class WinUiDiscretePressScaleHost : Decorator
         AvaloniaProperty.Register<WinUiDiscretePressScaleHost, bool>(nameof(IsPressed));
 
     private static readonly TimeSpan PressDelay = TimeSpan.FromMilliseconds(16);
-    private long _pressedAt;
-    private bool _frameRequested;
+    private IDisposable? _pressDelay;
 
     public bool IsPressed
     {
@@ -42,59 +41,38 @@ public sealed class WinUiDiscretePressScaleHost : Decorator
         if (!IsPressed || !FAUISettings.AreAnimationsEnabled())
         {
             SetScale(IsPressed ? 0.875 : 1);
-            _frameRequested = false;
             return;
         }
 
         SetScale(1);
-        _pressedAt = Stopwatch.GetTimestamp();
-        RequestFrame();
+        _pressDelay?.Dispose();
+        _pressDelay = DispatcherTimer.RunOnce(
+            () =>
+            {
+                _pressDelay = null;
+                if (IsPressed)
+                {
+                    SetScale(0.875);
+                }
+            },
+            PressDelay,
+            DispatcherPriority.Render);
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        _frameRequested = false;
+        _pressDelay?.Dispose();
+        _pressDelay = null;
         SetScale(1);
         base.OnDetachedFromVisualTree(e);
     }
 
-    private void RequestFrame()
-    {
-        if (_frameRequested || TopLevel.GetTopLevel(this) is not { } topLevel)
-        {
-            return;
-        }
-
-        _frameRequested = true;
-        topLevel.RequestAnimationFrame(OnAnimationFrame);
-    }
-
-    private void OnAnimationFrame(TimeSpan _)
-    {
-        _frameRequested = false;
-        if (!IsPressed)
-        {
-            SetScale(1);
-        }
-        else if (Stopwatch.GetElapsedTime(_pressedAt) >= PressDelay)
-        {
-            SetScale(0.875);
-        }
-        else
-        {
-            RequestFrame();
-        }
-    }
-
     private void SetScale(double scale)
     {
-        if (RenderTransform is not ScaleTransform transform)
-        {
-            transform = new ScaleTransform();
-            RenderTransform = transform;
-        }
-
-        transform.ScaleX = scale;
-        transform.ScaleY = scale;
+        _pressDelay?.Dispose();
+        _pressDelay = null;
+        WinUiCompositorMotion.SetScale(
+            this,
+            new Vector3((float)scale, (float)scale, 1));
     }
 }

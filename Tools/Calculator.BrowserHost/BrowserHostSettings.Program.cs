@@ -4,20 +4,21 @@ using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 
-internal sealed record BrowserHostSettings(string WebRoot, string TelemetryDirectory, int Port)
+internal sealed record BrowserHostSettings(string StaticWebAssetsManifest, string TelemetryDirectory, int Port)
 {
     public static BrowserHostSettings Parse(string[] arguments)
     {
         if (arguments.Length != 1)
         {
-            throw new ArgumentException("Usage: Calculator.BrowserHost <published-wwwroot>");
+            throw new ArgumentException("Usage: Calculator.BrowserHost <static-web-assets-manifest>");
         }
 
-        var webRoot = Path.GetFullPath(arguments[0]);
-        if (!File.Exists(Path.Combine(webRoot, "index.html"))
-            && !File.Exists(Path.Combine(webRoot, "index.html.br")))
+        var staticWebAssetsManifest = Path.GetFullPath(arguments[0]);
+        if (!File.Exists(staticWebAssetsManifest))
         {
-            throw new DirectoryNotFoundException($"Published browser web root not found: {webRoot}");
+            throw new FileNotFoundException(
+                "Browser static web assets manifest not found.",
+                staticWebAssetsManifest);
         }
 
         var telemetryDirectory = Environment.GetEnvironmentVariable("CALCULATOR_TELEMETRY_DIRECTORY");
@@ -33,6 +34,6 @@ internal sealed record BrowserHostSettings(string WebRoot, string TelemetryDirec
             throw new InvalidOperationException("CALCULATOR_BROWSER_PORT must be between 1 and 65535.");
         }
 
-        return new BrowserHostSettings(webRoot, Path.GetFullPath(telemetryDirectory), port);
+        return new BrowserHostSettings(staticWebAssetsManifest, Path.GetFullPath(telemetryDirectory), port);
     }
 }

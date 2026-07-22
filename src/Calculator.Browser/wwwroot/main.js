@@ -1,15 +1,6 @@
 const isBrowser = typeof window !== 'undefined';
 const cacheBustVersion = new URL(import.meta.url).searchParams.get('v') ?? `${Date.now()}`;
 const pageUrl = new URL(globalThis.location.href);
-// .NET's five-worker default leaves too little reserve once its own runtime,
-// Avalonia's UI dispatcher, and the compositor are active. Six keeps three
-// workers preloaded after those startup threads are running without forcing
-// WebKit to instantiate eight copies of the large AOT module at once.
-const pthreadPoolInitialSize = 6;
-const pthreadPoolUnusedSize = 2;
-const initialWasmMemoryBytes = 96 * 1024 * 1024;
-const usesThreadedRuntime = globalThis.crossOriginIsolated &&
-    typeof globalThis.SharedArrayBuffer === 'function';
 const aotProfileDelaySeconds = Number(pageUrl.searchParams.get('collect-aot-profile'));
 const collectAotProfile = Number.isFinite(aotProfileDelaySeconds) && aotProfileDelaySeconds > 0;
 const inputReplaySessionId = pageUrl.searchParams.get('replay-input');
@@ -288,8 +279,8 @@ function formatByteCount(bytes) {
 }
 
 function formatDownloadDetail(snapshot) {
-    if (snapshot.totalBytes <= 0) {
-        return 'Measuring application files';
+    if (!snapshot.usesByteProgress) {
+        return `${snapshot.completedAssets} of ${snapshot.totalAssets} files`;
     }
 
     return `${formatByteCount(snapshot.loadedBytes)} of ${formatByteCount(snapshot.totalBytes)}`;
@@ -534,19 +525,9 @@ async function boot() {
             showFatalError(error, 'wasm-abort');
         },
     };
-    const runtimeConfig = {};
-    if (usesThreadedRuntime) {
-        // Match WasmInitialHeapSize explicitly so every threaded runtime entry
-        // path allocates shared memory before any pthread instance is created.
-        moduleConfig.INITIAL_MEMORY = initialWasmMemoryBytes;
-        runtimeConfig.pthreadPoolInitialSize = pthreadPoolInitialSize;
-        runtimeConfig.pthreadPoolUnusedSize = pthreadPoolUnusedSize;
-    }
-
     let dotnetBuilder = dotnet
         .withModuleConfig(moduleConfig)
         .withResourceLoader(downloadTracker.loadBootResource)
-        .withConfig(runtimeConfig)
         .withDiagnosticTracing(pageUrl.searchParams.get('runtime-diagnostics') === '1')
         .withApplicationArgumentsFromQuery();
 
@@ -602,8 +583,7 @@ async function boot() {
     browserTelemetry?.mark(
         'pthread-pool-ready',
         `running=${pthreads?.runningWorkers?.length ?? -1}; ` +
-        `unused=${pthreads?.unusedWorkers?.length ?? -1}; ` +
-        `initial=${pthreadPoolInitialSize}; reserve=${pthreadPoolUnusedSize}`);
+        `unused=${pthreads?.unusedWorkers?.length ?? -1}`);
 
     startupPhase = true;
     setLoadingIndeterminate('Starting Calculator');

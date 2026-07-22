@@ -299,6 +299,42 @@ public sealed class GraphInteractionMemoryTests
         Assert.False(completed);
     }
 
+    [Fact]
+    public void ReleasingPreparedResourcesKeepsRendererReusable()
+    {
+        IMathSolver solver = MathSolver.CreateMathSolver();
+        solver.ParsingOptions().SetFormatType(FormatType.Linear);
+        IExpression expression = solver.ParseInput("sin(x^3+sqrt(x))", out _, out _)!;
+        IGraph graph = solver.CreateGrapher();
+        Assert.NotNull(graph.TryInitialize(expression));
+
+        IGraphRenderer renderer = graph.GetRenderer();
+        IConcurrentGraphRenderer concurrentRenderer = Assert.IsAssignableFrom<IConcurrentGraphRenderer>(renderer);
+        Assert.Equal(GraphStatus.Ok, renderer.SetGraphSize(1_200, 727));
+        Assert.Equal(GraphStatus.Ok, renderer.PrepareGraph());
+        Assert.True(concurrentRenderer.TryGetPreparedDisplayRanges(out _, out _, out _, out _));
+
+        concurrentRenderer.ReleasePreparedResources();
+
+        Assert.False(concurrentRenderer.IsPrepareGraphPending);
+        Assert.False(concurrentRenderer.TryGetPreparedDisplayRanges(out _, out _, out _, out _));
+        Assert.Equal(GraphStatus.Ok, concurrentRenderer.RequestPrepareGraph());
+
+        var timeout = Stopwatch.StartNew();
+        bool completed = false;
+        while (!completed && timeout.Elapsed < TimeSpan.FromSeconds(5))
+        {
+            Assert.Equal(GraphStatus.Ok, concurrentRenderer.TryCommitPreparedGraph(out completed));
+            Thread.Yield();
+        }
+
+        Assert.True(completed, "The suspended renderer did not prepare after reuse.");
+        Assert.True(concurrentRenderer.TryGetPreparedDisplayRanges(out _, out _, out _, out _));
+        Assert.NotNull(renderer.CurrentFrame);
+        Assert.Same(renderer, graph.GetRenderer());
+        Assert.IsAssignableFrom<IDisposable>(graph).Dispose();
+    }
+
     private static int MaximumStrokePathVertices(IEnumerable<GraphFrameCommand> commands)
     {
         int maximum = 0;

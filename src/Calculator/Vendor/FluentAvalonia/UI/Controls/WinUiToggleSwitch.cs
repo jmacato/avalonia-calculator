@@ -1,11 +1,10 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Diagnostics;
 using Avalonia;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
-using Avalonia.VisualTree;
 using FluentAvalonia.Core;
 
 namespace FluentAvalonia.UI.Controls;
@@ -22,20 +21,10 @@ public sealed class WinUiToggleSwitch : ToggleSwitch
     private Control? _switchKnobBounds;
     private Control? _switchKnobOff;
     private Control? _switchKnobOn;
-    private long _fadeStarted;
-    private double _outerFrom;
-    private double _boundsFrom;
-    private double _offFrom;
-    private double _onFrom;
-    private bool _isFadingIn;
-    private bool _frameRequested;
-
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
         base.OnApplyTemplate(e);
-        _isFadingIn = false;
-        _frameRequested = false;
         _outerBorder = e.NameScope.Find<Control>("OuterBorder");
         _switchKnobBounds = e.NameScope.Find<Control>("SwitchKnobBounds");
         _switchKnobOff = e.NameScope.Find<Control>("SwitchKnobOff");
@@ -53,13 +42,6 @@ public sealed class WinUiToggleSwitch : ToggleSwitch
         }
     }
 
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        _isFadingIn = false;
-        _frameRequested = false;
-        base.OnDetachedFromVisualTree(e);
-    }
-
     private void ApplyToggleState(bool isOn)
     {
         if (!HasVisualParts())
@@ -73,61 +55,15 @@ public sealed class WinUiToggleSwitch : ToggleSwitch
             return;
         }
 
-        _outerFrom = _outerBorder!.Opacity;
-        _boundsFrom = _switchKnobBounds!.Opacity;
-        _offFrom = _switchKnobOff!.Opacity;
-        _onFrom = _switchKnobOn!.Opacity;
-        _fadeStarted = Stopwatch.GetTimestamp();
-        _isFadingIn = true;
-        RequestFrame();
-    }
-
-    private void RequestFrame()
-    {
-        if (_frameRequested)
-        {
-            return;
-        }
-
-        if (TopLevel.GetTopLevel(this) is not { } topLevel)
-        {
-            ApplySteadyState(IsChecked == true);
-            return;
-        }
-
-        _frameRequested = true;
-        topLevel.RequestAnimationFrame(OnAnimationFrame);
-    }
-
-    private void OnAnimationFrame(TimeSpan _)
-    {
-        _frameRequested = false;
-        if (!_isFadingIn || !HasVisualParts())
-        {
-            return;
-        }
-
-        double progress = Math.Clamp(
-            Stopwatch.GetElapsedTime(_fadeStarted).TotalSeconds / FadeInDuration.TotalSeconds,
-            0,
-            1);
-        _outerBorder!.Opacity = Lerp(_outerFrom, 0, progress);
-        _switchKnobBounds!.Opacity = Lerp(_boundsFrom, 1, progress);
-        _switchKnobOff!.Opacity = Lerp(_offFrom, 0, progress);
-        _switchKnobOn!.Opacity = Lerp(_onFrom, 1, progress);
-        if (progress >= 1)
-        {
-            _isFadingIn = false;
-        }
-        else
-        {
-            RequestFrame();
-        }
+        var easing = new LinearEasing();
+        _ = WinUiCompositorMotion.AnimateOpacity(_outerBorder!, (float)_outerBorder!.Opacity, 0, FadeInDuration, easing);
+        _ = WinUiCompositorMotion.AnimateOpacity(_switchKnobBounds!, (float)_switchKnobBounds!.Opacity, 1, FadeInDuration, easing);
+        _ = WinUiCompositorMotion.AnimateOpacity(_switchKnobOff!, (float)_switchKnobOff!.Opacity, 0, FadeInDuration, easing);
+        _ = WinUiCompositorMotion.AnimateOpacity(_switchKnobOn!, (float)_switchKnobOn!.Opacity, 1, FadeInDuration, easing);
     }
 
     private void ApplySteadyState(bool isOn)
     {
-        _isFadingIn = false;
         if (!HasVisualParts())
         {
             return;
@@ -137,6 +73,10 @@ public sealed class WinUiToggleSwitch : ToggleSwitch
         _switchKnobBounds!.Opacity = isOn ? 1 : 0;
         _switchKnobOff!.Opacity = isOn ? 0 : 1;
         _switchKnobOn!.Opacity = isOn ? 1 : 0;
+        WinUiCompositorMotion.SetOpacity(_outerBorder, isOn ? 0 : 1);
+        WinUiCompositorMotion.SetOpacity(_switchKnobBounds, isOn ? 1 : 0);
+        WinUiCompositorMotion.SetOpacity(_switchKnobOff, isOn ? 0 : 1);
+        WinUiCompositorMotion.SetOpacity(_switchKnobOn, isOn ? 1 : 0);
     }
 
     private bool HasVisualParts() =>
@@ -144,7 +84,4 @@ public sealed class WinUiToggleSwitch : ToggleSwitch
         && _switchKnobBounds is not null
         && _switchKnobOff is not null
         && _switchKnobOn is not null;
-
-    private static double Lerp(double from, double to, double progress) =>
-        from + ((to - from) * progress);
 }

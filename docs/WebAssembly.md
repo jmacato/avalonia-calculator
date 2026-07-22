@@ -12,10 +12,12 @@ Run the development host with:
 
 ```sh
 dotnet run --project src/Calculator.Browser/Calculator.Browser.csproj \
-  --launch-profile Calculator.Browser
+  --configuration Debug
 ```
 
-The launch profile listens on `http://0.0.0.0:5221`. Open `http://localhost:5221` from the same machine.
+Use `--configuration Release` for the AOT build. Both configurations launch the
+same telemetry-capable HTTPS host on `https://0.0.0.0:5221`; no separate publish
+or server command is required. Open `https://localhost:5221` from the same machine.
 
 Build without starting the host with:
 

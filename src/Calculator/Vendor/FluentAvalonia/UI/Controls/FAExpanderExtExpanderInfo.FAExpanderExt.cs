@@ -1,16 +1,23 @@
+using System.Numerics;
 using Avalonia;
-using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
-using Avalonia.Media;
 using Avalonia.Rendering.Composition;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using FluentAvalonia.Core;
 
 namespace FluentAvalonia.UI.Controls;
 
 internal sealed class FAExpanderExtExpanderInfo
 {
+    private static readonly TimeSpan ExpandDuration = TimeSpan.FromMilliseconds(333);
+    private static readonly TimeSpan CollapseDuration = TimeSpan.FromMilliseconds(167);
+    private static readonly SplineEasing ExpandEasing = new(0, 0, 0, 1);
+    private static readonly SplineEasing CollapseEasing = new(1, 1, 0, 1);
+    private IDisposable? _collapseCompletion;
+
     public FAExpanderExtExpanderInfo(Expander expander)
     {
         _expander = expander;
@@ -54,6 +61,9 @@ internal sealed class FAExpanderExtExpanderInfo
 
     private void UpdateExpandState(bool useTransitions)
     {
+        _collapseCompletion?.Dispose();
+        _collapseCompletion = null;
+        useTransitions &= FAUISettings.AreAnimationsEnabled();
         var expanded = _expander.IsExpanded;
         if (useTransitions && _expanderContent == null)
             useTransitions = false;
@@ -96,7 +106,7 @@ internal sealed class FAExpanderExtExpanderInfo
         }
     }
 
-    private async void RunExpandDownUpAnimation(Border content, bool down)
+    private void RunExpandDownUpAnimation(Border content, bool down)
     {
         content.SetCurrentValue(Visual.IsVisibleProperty, true);
         if (_expander.Parent is FASettingsExpander se && se.Presenter != null)
@@ -112,139 +122,77 @@ internal sealed class FAExpanderExtExpanderInfo
             _contentSize = content.DesiredSize;
         }
 
-        var startY = down ? -_contentSize.Height : _contentSize.Height;
-        var ani = new Animation
-        {
-            Duration = TimeSpan.FromMilliseconds(333),
-            FillMode = FillMode.Forward,
-            Children =
-            {
-                new KeyFrame
-                {
-                    KeyTime = TimeSpan.Zero,
-                    Setters =
-                    {
-                        new Setter(Visual.IsVisibleProperty, true),
-                        new Setter(TranslateTransform.YProperty, startY)
-                    }
-                },
-                new KeyFrame
-                {
-                    KeyTime = TimeSpan.FromMilliseconds(333),
-                    Setters =
-                    {
-                        new Setter(TranslateTransform.YProperty, 0d)
-                    },
-                    KeySpline = new KeySpline(0, 0, 0, 1)
-                }
-            }
-        };
-        await ani.RunAsync(content).ConfigureAwait(true);
+        float startY = (float)(down ? -_contentSize.Height : _contentSize.Height);
+        _ = WinUiCompositorMotion.AnimateTranslation(
+            content,
+            new Vector3(0, startY, 0),
+            Vector3.Zero,
+            ExpandDuration,
+            ExpandEasing);
     }
 
-    private async void RunCollapseDownUpAnimation(Border content, bool down)
+    private void RunCollapseDownUpAnimation(Border content, bool down)
     {
-        var endY = down ? -_contentSize.Height : _contentSize.Height;
-        var ani = new Animation
-        {
-            Duration = TimeSpan.FromMilliseconds(167),
-            FillMode = FillMode.Forward,
-            Children =
-            {
-                new KeyFrame
-                {
-                    KeyTime = TimeSpan.Zero,
-                    Setters =
-                    {
-                        new Setter(TranslateTransform.YProperty, 0d)
-                    }
-                },
-                new KeyFrame
-                {
-                    KeyTime = TimeSpan.FromMilliseconds(167),
-                    Setters =
-                    {
-                        new Setter(TranslateTransform.YProperty, endY),
-                        new Setter(Visual.IsVisibleProperty, false)
-                    },
-                    KeySpline = new KeySpline(1, 1, 0, 1)
-                }
-            }
-        };
-        await ani.RunAsync(content).ConfigureAwait(true);
-        content.SetValue(Visual.IsVisibleProperty, false);
+        float endY = (float)(down ? -_contentSize.Height : _contentSize.Height);
+        BeginCollapse(content, new Vector3(0, endY, 0));
     }
 
-    private async void RunExpandLeftRightAnimation(Border content, bool right)
+    private void RunExpandLeftRightAnimation(Border content, bool right)
     {
         content.SetCurrentValue(Visual.IsVisibleProperty, true);
         content.Measure(Size.Infinity);
         _contentSize = content.DesiredSize;
-        var startX = right ? -_contentSize.Width : _contentSize.Width;
-        var ani = new Animation
-        {
-            Duration = TimeSpan.FromMilliseconds(333),
-            FillMode = FillMode.Forward,
-            Children =
-            {
-                new KeyFrame
-                {
-                    KeyTime = TimeSpan.Zero,
-                    Setters =
-                    {
-                        new Setter(Visual.IsVisibleProperty, true),
-                        new Setter(TranslateTransform.XProperty, startX)
-                    }
-                },
-                new KeyFrame
-                {
-                    KeyTime = TimeSpan.FromMilliseconds(333),
-                    Setters =
-                    {
-                        new Setter(TranslateTransform.XProperty, 0d)
-                    },
-                    KeySpline = new KeySpline(0, 0, 0, 1)
-                }
-            }
-        };
-        await ani.RunAsync(content).ConfigureAwait(true);
+        float startX = (float)(right ? -_contentSize.Width : _contentSize.Width);
+        _ = WinUiCompositorMotion.AnimateTranslation(
+            content,
+            new Vector3(startX, 0, 0),
+            Vector3.Zero,
+            ExpandDuration,
+            ExpandEasing);
     }
 
-    private async void RunCollapseLeftRightAnimation(Border content, bool right)
+    private void RunCollapseLeftRightAnimation(Border content, bool right)
     {
-        var endX = right ? -_contentSize.Width : _contentSize.Width;
-        var ani = new Animation
+        float endX = (float)(right ? -_contentSize.Width : _contentSize.Width);
+        BeginCollapse(content, new Vector3(endX, 0, 0));
+    }
+
+    private void BeginCollapse(Border content, Vector3 translation)
+    {
+        content.SetCurrentValue(Visual.IsVisibleProperty, true);
+        if (!WinUiCompositorMotion.AnimateTranslation(
+                content,
+                Vector3.Zero,
+                translation,
+                CollapseDuration,
+                CollapseEasing))
         {
-            Duration = TimeSpan.FromMilliseconds(167),
-            FillMode = FillMode.Forward,
-            Children =
-            {
-                new KeyFrame
-                {
-                    KeyTime = TimeSpan.Zero,
-                    Setters =
-                    {
-                        new Setter(TranslateTransform.XProperty, 0d)
-                    }
-                },
-                new KeyFrame
-                {
-                    KeyTime = TimeSpan.FromMilliseconds(167),
-                    Setters =
-                    {
-                        new Setter(TranslateTransform.XProperty, endX),
-                        new Setter(Visual.IsVisibleProperty, false)
-                    },
-                    KeySpline = new KeySpline(1, 1, 0, 1)
-                }
-            }
-        };
-        await ani.RunAsync(content).ConfigureAwait(true);
-        content.SetValue(Visual.IsVisibleProperty, false);
+            CompleteCollapse(content);
+            return;
+        }
+
+        _collapseCompletion = DispatcherTimer.RunOnce(
+            () => CompleteCollapse(content),
+            CollapseDuration,
+            DispatcherPriority.Render);
+    }
+
+    private void CompleteCollapse(Border content)
+    {
+        _collapseCompletion?.Dispose();
+        _collapseCompletion = null;
+        if (!_expander.IsExpanded && ReferenceEquals(content, _expanderContent))
+        {
+            content.SetValue(Visual.IsVisibleProperty, false);
+        }
+
+        WinUiCompositorMotion.SetTranslation(content, Vector3.Zero);
     }
 
     public void Detach()
     {
+        _collapseCompletion?.Dispose();
+        _collapseCompletion = null;
         _expandedChangedNotice?.Dispose();
         _expander.TemplateApplied -= HandleExpanderTemplateApplied;
         if (_expanderContent != null)

@@ -19,12 +19,12 @@ public sealed partial class MainPage : UserControl, IDisposable
     private bool _isSettingsVisible;
 #if CALCULATOR_BROWSER
     private int _browserViewReleaseScheduled;
+    private GraphingCalculator? _suspendedGraphingCalculator;
 #endif
     private int _disposed;
 
     public MainPage()
     {
-        _navigationSelectionAnimationTimer = new AnimationFrameTimer(OnNavigationSelectionAnimationFrame);
         Model = new ApplicationViewModel(App.SettingsStore, _diagnosticPageId);
 
         InitializeComponent();
@@ -173,7 +173,12 @@ public sealed partial class MainPage : UserControl, IDisposable
         {
             if (GraphingCalcHolder.Child is not GraphingCalculator graphingCalculator)
             {
+#if CALCULATOR_BROWSER
+                graphingCalculator = _suspendedGraphingCalculator ?? new GraphingCalculator();
+                _suspendedGraphingCalculator = null;
+#else
                 graphingCalculator = new GraphingCalculator();
+#endif
                 GraphingCalcHolder.Child = graphingCalculator;
             }
 
@@ -219,8 +224,9 @@ public sealed partial class MainPage : UserControl, IDisposable
     {
         // A hidden Avalonia control remains attached and retains its complete
         // scene graph, graph geometry, text layouts, and native render objects.
-        // Browser builds keep the view models but recreate dormant mode views
-        // on demand to bound the live render-tree and native-object footprint.
+        // Browser builds detach dormant mode views to bound the live render
+        // tree and native-object footprint. The graph view is suspended and
+        // reused because its editor/renderer tree is expensive to reconstruct.
         if (_isSettingsVisible || !NavCategory.IsCalculatorViewMode(Model.Mode))
         {
             ReleaseHolderChild(CalcHolder);
@@ -233,13 +239,28 @@ public sealed partial class MainPage : UserControl, IDisposable
 
         if (_isSettingsVisible || !NavCategory.IsGraphingCalculatorViewMode(Model.Mode))
         {
-            ReleaseHolderChild(GraphingCalcHolder);
+            SuspendGraphingView();
         }
 
         if (_isSettingsVisible || !NavCategory.IsConverterViewMode(Model.Mode))
         {
             ReleaseHolderChild(ConverterHolder);
         }
+    }
+
+    private void SuspendGraphingView()
+    {
+        if (GraphingCalcHolder.Child is not GraphingCalculator graphingCalculator)
+        {
+            ReleaseHolderChild(GraphingCalcHolder);
+            return;
+        }
+
+        // Detachment releases Avalonia's scene resources. Grapher also drops
+        // prepared geometry and cancels obsolete sampling, while this managed
+        // control tree stays warm for the next graph visit.
+        GraphingCalcHolder.Child = null;
+        _suspendedGraphingCalculator = graphingCalculator;
     }
 #endif
 
@@ -343,6 +364,15 @@ public sealed partial class MainPage : UserControl, IDisposable
         ReleaseHolderChild(CalcHolder);
         ReleaseHolderChild(DateCalcHolder);
         ReleaseHolderChild(GraphingCalcHolder);
+#if CALCULATOR_BROWSER
+        if (_suspendedGraphingCalculator is { } suspendedGraphingCalculator)
+        {
+            IDisposable[] descendants = ReleasedViewDisposer.CaptureDescendants(suspendedGraphingCalculator);
+            suspendedGraphingCalculator.DataContext = null;
+            ReleasedViewDisposer.DisposeDetached(suspendedGraphingCalculator, descendants);
+            _suspendedGraphingCalculator = null;
+        }
+#endif
         ReleaseHolderChild(ConverterHolder);
         ReleaseHolderChild(SettingsHolder);
         Model.Dispose();

@@ -102,11 +102,17 @@ public static class MathEditorOperations
                     "Text can only be inserted at a row boundary or within a text node.");
             }
 
-            (edited, caret) = RetokenizeTextRun(
+            (edited, caret, MathSelection? inputRegion) = RetokenizeTextRun(
                 edited,
                 caret,
                 completeTrailingWord: text.Length > 1);
-            return ValidateLimits(edited, caret, deletion.Diagnostics, deletion.Document, deletion.Selection);
+            return ValidateLimits(
+                edited,
+                caret,
+                deletion.Diagnostics,
+                deletion.Document,
+                deletion.Selection,
+                inputRegion);
         }
         catch (ArgumentException)
         {
@@ -999,7 +1005,7 @@ public static class MathEditorOperations
         return true;
     }
 
-    private static (MathDocument Document, MathPosition Caret) RetokenizeTextRun(
+    private static (MathDocument Document, MathPosition Caret, MathSelection? InputRegion) RetokenizeTextRun(
         MathDocument document,
         MathPosition caret,
         bool completeTrailingWord)
@@ -1008,7 +1014,7 @@ public static class MathEditorOperations
             !MathTree.TryGetNode(document, rowPath, out MathNode? rowNode) ||
             rowNode is not MathRow row)
         {
-            return (document, caret);
+            return (document, caret, null);
         }
 
         var source = new StringBuilder();
@@ -1030,9 +1036,14 @@ public static class MathEditorOperations
             }
         }
 
+        string pendingSource = source.ToString(0, flatCaret);
         string beforeCaret = MathAutoCorrect.Substitute(
-            source.ToString(0, flatCaret),
+            pendingSource,
             completeTrailingWord);
+        bool completedSubstitution = !string.Equals(
+            beforeCaret,
+            pendingSource,
+            StringComparison.Ordinal);
         string retokenizedSource = string.Concat(beforeCaret, source.ToString(flatCaret, source.Length - flatCaret));
         ImmutableArray<MathNode> replacements = TokenizeInsertedText(retokenizedSource);
         ImmutableArray<MathNode> children = row.Children
@@ -1046,14 +1057,31 @@ public static class MathEditorOperations
             MathText text = (MathText)replacements[index];
             if (remaining <= text.Text.Length)
             {
-                return (edited, new MathPosition(rowPath.Add(left + index), remaining));
+                MathPosition remappedCaret = new(rowPath.Add(left + index), remaining);
+                return (edited, remappedCaret, completedSubstitution
+                    ? null
+                    : TextRunSelection(rowPath, left, replacements));
             }
 
             remaining -= text.Text.Length;
         }
 
         MathText last = (MathText)replacements[^1];
-        return (edited, new MathPosition(rowPath.Add(left + replacements.Length - 1), last.Text.Length));
+        MathPosition finalCaret = new(rowPath.Add(left + replacements.Length - 1), last.Text.Length);
+        return (edited, finalCaret, completedSubstitution
+            ? null
+            : TextRunSelection(rowPath, left, replacements));
+    }
+
+    private static MathSelection TextRunSelection(
+        ImmutableArray<int> rowPath,
+        int firstChild,
+        ImmutableArray<MathNode> replacements)
+    {
+        var last = (MathText)replacements[^1];
+        return new MathSelection(
+            new MathPosition(rowPath.Add(firstChild), 0),
+            new MathPosition(rowPath.Add(firstChild + replacements.Length - 1), last.Text.Length));
     }
 
     private static ImmutableArray<MathNode> TokenizeInsertedText(string text)
@@ -1086,7 +1114,8 @@ public static class MathEditorOperations
         MathPosition caret,
         ImmutableArray<MathDiagnostic> diagnostics,
         MathDocument original,
-        MathSelection originalSelection)
+        MathSelection originalSelection,
+        MathSelection? inputRegion = null)
     {
         if (!MathTree.IsWithinLimits(edited))
         {
@@ -1098,7 +1127,11 @@ public static class MathEditorOperations
                 "The edit would exceed the document node or structural depth limit.");
         }
 
-        return new MathEditResult(edited, new MathSelection(caret, caret), diagnostics);
+        return new MathEditResult(
+            edited,
+            new MathSelection(caret, caret),
+            diagnostics,
+            inputRegion);
     }
 
     private static MathEditResult Failure(

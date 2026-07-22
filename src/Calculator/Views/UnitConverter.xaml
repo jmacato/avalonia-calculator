@@ -73,6 +73,7 @@
       <Setter Property="DisplayMargin" Value="0,0,0,4" />
     </Style>
     <Style Selector="TextBlock.currencySymbol">
+      <Setter Property="FontFamily" Value="{DynamicResource CurrencySymbolFontFamily}" />
       <Setter Property="FontSize" Value="20" />
       <Setter Property="FontWeight" Value="Light" />
       <Setter Property="VerticalAlignment" Value="Bottom" />
@@ -131,15 +132,17 @@
         <RowDefinition Height="7*" />
         <RowDefinition Height="10*" />
       </Grid.RowDefinitions>
-      <fa:FAProgressRing x:Name="CurrencyLoadingProgressRing"
-                         Grid.Row="1"
-                         Width="NaN"
-                         Height="NaN"
-                         MaxWidth="140"
-                         MaxHeight="140"
-                         HorizontalAlignment="Stretch"
-                         VerticalAlignment="Stretch"
-                         IsActive="False" />
+      <Viewbox Grid.Row="1"
+               MaxWidth="140"
+               MaxHeight="140"
+               HorizontalAlignment="Stretch"
+               VerticalAlignment="Stretch"
+               Stretch="Uniform">
+        <fa:FAProgressRing x:Name="CurrencyLoadingProgressRing"
+                           Width="80"
+                           Height="80"
+                           IsActive="False" />
+      </Viewbox>
     </Grid>
 
     <Grid x:Name="Value1Container"

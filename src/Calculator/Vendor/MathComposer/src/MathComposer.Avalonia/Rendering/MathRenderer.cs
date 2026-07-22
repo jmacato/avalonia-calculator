@@ -39,6 +39,8 @@ public sealed class MathRenderer
         Point origin,
         IBrush foreground,
         bool focused,
+        bool caretVisible,
+        MathSelection? inputRegion,
         string preeditText,
         double renderScaling = 1)
     {
@@ -74,18 +76,44 @@ public sealed class MathRenderer
                         Snap(Translate(rule.Bounds, origin), renderScaling));
                     break;
                 case MathPlaceholderDrawCommand placeholder:
-                    DrawPlaceholder(context, placeholder, origin, foreground, renderScaling);
                     break;
             }
         }
 
         MathCaretStop? caret = FindCaret(layout, selection.Active);
+        if (focused && caret is not null)
+        {
+            if (inputRegion is not null)
+            {
+                DrawInputRegion(
+                    context,
+                    layout,
+                    document,
+                    inputRegion.Value,
+                    selection.Active,
+                    caret.Value,
+                    origin,
+                    foreground,
+                    renderScaling);
+            }
+            else
+            {
+                DrawActivePlaceholder(
+                    context,
+                    layout,
+                    selection.Active,
+                    origin,
+                    foreground,
+                    renderScaling);
+            }
+        }
+
         if (caret is not null && preeditText.Length > 0)
         {
             DrawPreedit(context, caret.Value, preeditText, origin, foreground, renderScaling);
         }
 
-        if (focused && selection.IsCollapsed && caret is not null)
+        if (focused && caretVisible && selection.IsCollapsed && caret is not null)
         {
             Rect bounds = Translate(caret.Value.Bounds, origin);
             double x = Snap(bounds.Center.X, renderScaling);
@@ -134,16 +162,75 @@ public sealed class MathRenderer
         context.DrawGlyphRun(foreground, glyphRun);
     }
 
-    private static void DrawPlaceholder(
+    private static void DrawInputRegion(
         DrawingContext context,
-        MathPlaceholderDrawCommand command,
+        MathLayoutResult layout,
+        MathDocument document,
+        MathSelection inputRegion,
+        MathPosition caretPosition,
+        MathCaretStop caret,
         Point origin,
         IBrush foreground,
         double renderScaling)
     {
-        Rect bounds = Snap(Translate(command.Bounds, origin), renderScaling);
         var fill = new SolidColorBrush(Color.FromArgb(28, 43, 124, 224));
-        context.DrawRectangle(fill, new Pen(foreground, 1), bounds);
+        var pen = new Pen(foreground, 1, DashStyle.Dash);
+        if (!inputRegion.IsCollapsed)
+        {
+            foreach (Rect rectangle in layout.GetSelectionRectangles(document, inputRegion))
+            {
+                Rect bounds = Snap(Translate(rectangle, origin), renderScaling);
+                context.DrawRectangle(fill, pen, bounds);
+            }
+
+            return;
+        }
+
+        foreach (MathDrawCommand drawCommand in layout.Commands)
+        {
+            if (drawCommand is MathPlaceholderDrawCommand placeholder &&
+                placeholder.Position == caretPosition)
+            {
+                Rect bounds = Snap(Translate(placeholder.Bounds, origin), renderScaling);
+                context.DrawRectangle(fill, pen, bounds);
+                return;
+            }
+        }
+
+        Rect caretBounds = Translate(caret.Bounds, origin);
+        double width = Math.Max(6, caretBounds.Height * 0.45);
+        var insertionBounds = new Rect(
+            caretBounds.Center.X - width / 2,
+            caretBounds.Top,
+            width,
+            caretBounds.Height);
+        context.DrawRectangle(fill, pen, Snap(insertionBounds, renderScaling));
+    }
+
+    private static void DrawActivePlaceholder(
+        DrawingContext context,
+        MathLayoutResult layout,
+        MathPosition caretPosition,
+        Point origin,
+        IBrush foreground,
+        double renderScaling)
+    {
+        foreach (MathDrawCommand drawCommand in layout.Commands)
+        {
+            if (drawCommand is not MathPlaceholderDrawCommand placeholder ||
+                placeholder.Position != caretPosition)
+            {
+                continue;
+            }
+
+            Rect bounds = Snap(Translate(placeholder.Bounds, origin), renderScaling);
+            var fill = new SolidColorBrush(Color.FromArgb(28, 43, 124, 224));
+            context.DrawRectangle(
+                fill,
+                new Pen(foreground, 1, DashStyle.Dash),
+                bounds);
+            return;
+        }
     }
 
     private void DrawPreedit(

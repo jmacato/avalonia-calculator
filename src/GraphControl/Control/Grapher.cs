@@ -136,9 +136,19 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         _isAttached = false;
-        if (Volatile.Read(ref _disposed) == 0 && _hasInteractionViewport)
+        if (Volatile.Read(ref _disposed) == 0)
         {
-            _ = _graph.GetRenderer().SetDisplayRanges(_interactionXMinimum, _interactionXMaximum, _interactionYMinimum, _interactionYMaximum);
+            IGraphRenderer renderer = _graph.GetRenderer();
+            if (_hasInteractionViewport)
+            {
+                _ = renderer.SetDisplayRanges(_interactionXMinimum, _interactionXMaximum, _interactionYMinimum, _interactionYMaximum);
+            }
+
+            if (renderer is IConcurrentGraphRenderer concurrentRenderer)
+            {
+                concurrentRenderer.ReleasePreparedResources();
+            }
+
             _prepareGraphOnAttach = true;
         }
 

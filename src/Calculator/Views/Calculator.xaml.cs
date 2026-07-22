@@ -1,14 +1,13 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 using System.ComponentModel;
+using System.Numerics;
 using Avalonia;
-using Avalonia.Animation;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
-using Avalonia.Styling;
 using CalculatorApp.Controls;
 using CalculatorApp.ViewModel;
 using CalculatorApp.ViewModel.Common;
@@ -18,9 +17,6 @@ namespace CalculatorApp;
 
 public sealed partial class Calculator : UserControl, IDisposable
 {
-    private static readonly AttachedProperty<double> NumpadScaleProperty =
-        AvaloniaProperty.RegisterAttached<Calculator, Grid, double>("NumpadScale", 1d);
-
     private StandardCalculatorViewModel? _subscribedModel;
     private HistoryViewModel? _subscribedHistoryModel;
     private StandardCalculatorViewModel? _subscribedMemoryModel;
@@ -33,23 +29,10 @@ public sealed partial class Calculator : UserControl, IDisposable
     private bool _isLastFlyoutMemory;
     private bool _isLoaded;
     private CalculatorOpenFlyout _openFlyout;
-    private CancellationTokenSource? _numpadAnimationCancellation;
     private readonly WinUiEdgeUiTransition _flyoutTransition;
     private CalculatorOpenFlyout _closingFlyout;
     private bool _restoreFocusAfterFlyoutClose;
     private int _disposed;
-
-    static Calculator()
-    {
-        NumpadScaleProperty.Changed.AddClassHandler<Grid>(static (grid, args) =>
-        {
-            if (grid.RenderTransform is ScaleTransform transform && args.NewValue is double scale)
-            {
-                transform.ScaleX = scale;
-                transform.ScaleY = scale;
-            }
-        });
-    }
 
     public Calculator()
     {
@@ -80,46 +63,12 @@ public sealed partial class Calculator : UserControl, IDisposable
             return;
         }
 
-        var animation = new Animation
-        {
-            Duration = TimeSpan.FromMilliseconds(367),
-            Easing = new UnitConverterWinUiExponentialEaseOut(5),
-            Children =
-            {
-                new KeyFrame
-                {
-                    Cue = new Cue(0),
-                    Setters =
-                    {
-                        new Setter(NumpadScaleProperty, 0.92)
-                    }
-                },
-                new KeyFrame
-                {
-                    Cue = new Cue(1),
-                    Setters =
-                    {
-                        new Setter(NumpadScaleProperty, 1d)
-                    }
-                }
-            }
-        };
-
-        _numpadAnimationCancellation?.Cancel();
-        _numpadAnimationCancellation?.Dispose();
-        _numpadAnimationCancellation = new CancellationTokenSource();
-        _ = RunNumpadAnimationAsync(animation, _numpadAnimationCancellation.Token);
-    }
-
-    private async Task RunNumpadAnimationAsync(Animation animation, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await animation.RunAsync(NumpadPanel, cancellationToken).ConfigureAwait(true);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-        }
+        _ = WinUiCompositorMotion.AnimateScale(
+            NumpadPanel,
+            new Vector3(0.92f, 0.92f, 1),
+            Vector3.One,
+            TimeSpan.FromMilliseconds(367),
+            new UnitConverterWinUiExponentialEaseOut(5));
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
@@ -134,9 +83,7 @@ public sealed partial class Calculator : UserControl, IDisposable
     private void OnUnloaded(object? sender, RoutedEventArgs e)
     {
         _isLoaded = false;
-        _numpadAnimationCancellation?.Cancel();
-        _numpadAnimationCancellation?.Dispose();
-        _numpadAnimationCancellation = null;
+        WinUiCompositorMotion.SetScale(NumpadPanel, Vector3.One);
         CloseFullScreenFlyout(restoreFocus: false, animate: false);
         _flyoutTransition.Detach();
         DetachHistoryControl();
@@ -152,9 +99,7 @@ public sealed partial class Calculator : UserControl, IDisposable
         }
 
         _isLoaded = false;
-        _numpadAnimationCancellation?.Cancel();
-        _numpadAnimationCancellation?.Dispose();
-        _numpadAnimationCancellation = null;
+        WinUiCompositorMotion.SetScale(NumpadPanel, Vector3.One);
         CloseFullScreenFlyout(restoreFocus: false, animate: false);
         _flyoutTransition.Detach();
         DetachHistoryControl();

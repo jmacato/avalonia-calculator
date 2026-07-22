@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using Avalonia;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
 using FluentAvalonia.Core;
@@ -23,11 +24,10 @@ public sealed class WinUiScrollViewerSeparator : Panel
     private static readonly TimeSpan ExpandDelay = TimeSpan.FromMilliseconds(400);
     private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(100);
     private long _stateChanged;
-    private long _motionStarted;
     private double _fromOpacity;
-    private bool _motionBegun;
+    private double _targetOpacity;
+    private TimeSpan _animationDelay;
     private bool _isAnimating;
-    private bool _frameRequested;
 
     public bool IsExpanded
     {
@@ -49,6 +49,7 @@ public sealed class WinUiScrollViewerSeparator : Panel
     {
         base.OnAttachedToVisualTree(e);
         Opacity = 0;
+        WinUiCompositorMotion.SetOpacity(this, 0);
         if (IsExpanded)
         {
             StartStateChange();
@@ -58,73 +59,54 @@ public sealed class WinUiScrollViewerSeparator : Panel
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         _isAnimating = false;
-        _frameRequested = false;
+        WinUiCompositorMotion.SetOpacity(this, IsExpanded ? 1 : 0);
         base.OnDetachedFromVisualTree(e);
     }
 
     private void StartStateChange()
     {
+        _fromOpacity = CurrentOpacity();
+        _targetOpacity = IsExpanded ? 1 : 0;
+        _animationDelay = IsExpanded ? ExpandDelay : TimeSpan.Zero;
         _stateChanged = Stopwatch.GetTimestamp();
-        _motionBegun = false;
         _isAnimating = true;
-        RequestFrame();
-    }
-
-    private void RequestFrame()
-    {
-        if (_frameRequested || TopLevel.GetTopLevel(this) is not { } topLevel)
-        {
-            return;
-        }
-
-        _frameRequested = true;
-        topLevel.RequestAnimationFrame(OnAnimationFrame);
-    }
-
-    private void OnAnimationFrame(TimeSpan _)
-    {
-        _frameRequested = false;
-        if (!_isAnimating)
-        {
-            return;
-        }
-
-        TimeSpan delay = IsExpanded ? ExpandDelay : TimeSpan.Zero;
-        if (Stopwatch.GetElapsedTime(_stateChanged) < delay)
-        {
-            RequestFrame();
-            return;
-        }
-
-        if (!_motionBegun)
-        {
-            _motionBegun = true;
-            _motionStarted = Stopwatch.GetTimestamp();
-            _fromOpacity = Opacity;
-            if (!FAUISettings.AreAnimationsEnabled())
-            {
-                Complete();
-                return;
-            }
-        }
-
-        double progress = Math.Clamp(Stopwatch.GetElapsedTime(_motionStarted).TotalSeconds / Duration.TotalSeconds, 0, 1);
-        double target = IsExpanded ? 1 : 0;
-        Opacity = _fromOpacity + ((target - _fromOpacity) * progress);
-        if (progress >= 1)
+        if (!FAUISettings.AreAnimationsEnabled() ||
+            !WinUiCompositorMotion.AnimateOpacity(
+                this,
+                (float)_fromOpacity,
+                (float)_targetOpacity,
+                Duration,
+                new LinearEasing(),
+                _animationDelay))
         {
             Complete();
         }
-        else
+    }
+
+    private double CurrentOpacity()
+    {
+        if (!_isAnimating)
         {
-            RequestFrame();
+            return IsExpanded ? 1 : 0;
         }
+
+        double elapsed = Stopwatch.GetElapsedTime(_stateChanged).TotalMilliseconds;
+        if (elapsed <= _animationDelay.TotalMilliseconds)
+        {
+            return _fromOpacity;
+        }
+
+        double progress = Math.Clamp(
+            (elapsed - _animationDelay.TotalMilliseconds) / Duration.TotalMilliseconds,
+            0,
+            1);
+        return _fromOpacity + ((_targetOpacity - _fromOpacity) * progress);
     }
 
     private void Complete()
     {
         _isAnimating = false;
-        _motionBegun = false;
         Opacity = IsExpanded ? 1 : 0;
+        WinUiCompositorMotion.SetOpacity(this, IsExpanded ? 1 : 0);
     }
 }

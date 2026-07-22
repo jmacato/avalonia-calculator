@@ -8,6 +8,9 @@ build/
 # Local platform screenshots, extracted fonts, and responsive-layout probes.
 .visual-tests/
 
+# Local automation captures and test-run output.
+.artifacts/
+
 # Local authoritative upstream source checkouts used while porting. These are
 # intentionally untracked; provenance and pinned revisions belong in docs.
 .reference/

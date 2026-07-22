@@ -105,5 +105,7 @@ internal partial class LocalizationService : DependencyObject
     FontWeight m_fontWeightOverride;
     double m_uiTextFontScaleFactorOverride;
     double m_uiCaptionFontScaleFactorOverride;
+    Microsoft.UI.Xaml.Media.FontFamily m_uiTextFontFamily = null!;
+    Microsoft.UI.Xaml.Media.FontFamily m_uiCaptionFontFamily = null!;
     CultureInfo m_locale;
 };

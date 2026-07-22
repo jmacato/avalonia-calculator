@@ -27,13 +27,18 @@ public sealed class OpenTypeMathFont
     private readonly OpenTypeTableRecord _mathTable;
 
     private OpenTypeMathFont(ReadOnlySpan<byte> source)
+        : this(source.ToArray())
+    {
+    }
+
+    private OpenTypeMathFont(byte[] source)
     {
         if (source.Length < 12)
         {
             throw Invalid("The font is shorter than an OpenType table directory.");
         }
 
-        _data = source.ToArray();
+        _data = source;
         uint signature = ReadUInt32(0);
         if (signature is not TrueTypeSignature and not CffSignature)
         {
@@ -152,7 +157,7 @@ public sealed class OpenTypeMathFont
         ArgumentNullException.ThrowIfNull(stream);
         using var memory = new MemoryStream();
         stream.CopyTo(memory);
-        return Load(memory.ToArray());
+        return new OpenTypeMathFont(memory.ToArray());
     }
 
     /// <summary>Maps one Unicode scalar to a glyph ID, or zero when missing.</summary>

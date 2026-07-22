@@ -8,10 +8,8 @@ using Avalonia.Input;
 using Avalonia.Input.TextInput;
 using Avalonia.Interactivity;
 using Avalonia.Media;
-using Avalonia.Platform;
+using Avalonia.Threading;
 using MathComposer.Avalonia.Layout;
-using MathComposer.Avalonia.OpenType;
-using MathComposer.Avalonia.Rendering;
 using MathComposer.Core;
 
 namespace MathComposer.Avalonia.Controls;
@@ -73,6 +71,10 @@ public sealed class MathEditor : Control
                 double.IsFinite(value.Right) && value.Right >= 0 &&
                 double.IsFinite(value.Bottom) && value.Bottom >= 0);
 
+    /// <summary>Defines the interval at which the insertion caret changes visibility.</summary>
+    public static readonly StyledProperty<TimeSpan> CaretBlinkIntervalProperty =
+        TextBox.CaretBlinkIntervalProperty.AddOwner<MathEditor>();
+
     private readonly MathEditHistory _history = new();
     private readonly MathEditorCommand _undoCommand;
     private readonly MathEditorCommand _redoCommand;
@@ -89,15 +91,16 @@ public sealed class MathEditor : Control
     private ImmutableArray<MathDiagnostic> _fontDiagnostics = [];
     private ImmutableArray<MathDiagnostic> _layoutDiagnostics = [];
     private ImmutableArray<MathDiagnostic> _diagnostics = [];
-    private MathLayoutEngine? _layoutEngine;
-    private MathRenderer? _renderer;
     private MathLayoutResult? _layout;
     private MathPosition? _dragAnchor;
+    private MathSelection? _inputRegion;
     private string _preeditText = string.Empty;
     private double? _preferredVerticalX;
     private MathDocument? _lastSpaceBuildDocument;
+    private DispatcherTimer? _caretTimer;
     private bool _isInternalPropertyUpdate;
     private bool _isActive;
+    private bool _caretVisible;
 
     /// <summary>Initializes an empty, focusable editor.</summary>
     public MathEditor()
@@ -128,21 +131,23 @@ public sealed class MathEditor : Control
         _textInputClient = new MathTextInputClient(this);
 
         TextInputMethodClientRequested += (_, args) => args.Client = _textInputClient;
-        GotFocus += (_, _) => InvalidateVisual();
+        GotFocus += (_, _) => ShowCaret();
         LostFocus += (_, _) =>
         {
+            HideCaret();
             _preeditText = string.Empty;
             Submit();
-            InvalidateVisual();
         };
         AttachedToVisualTree += (_, _) =>
         {
             _isActive = true;
+            ResetCaretTimer();
             RaiseCanExecuteChanged();
         };
         DetachedFromVisualTree += (_, _) =>
         {
             _isActive = false;
+            StopCaretTimer();
             RaiseCanExecuteChanged();
         };
     }
@@ -210,6 +215,13 @@ public sealed class MathEditor : Control
         set => SetValue(PaddingProperty, value);
     }
 
+    /// <summary>Gets or sets the interval at which the insertion caret changes visibility.</summary>
+    public TimeSpan CaretBlinkInterval
+    {
+        get => GetValue(CaretBlinkIntervalProperty);
+        set => SetValue(CaretBlinkIntervalProperty, value);
+    }
+
     /// <summary>Gets the current ordered import, editing, font, and layout diagnostics.</summary>
     public ImmutableArray<MathDiagnostic> Diagnostics => _diagnostics;
 
@@ -269,8 +281,9 @@ public sealed class MathEditor : Control
             result.Document,
             new MathSelection(end, end),
             result.Diagnostics,
+            null,
             recordHistory: false,
-            MathHistoryMergeKind.None);
+            mergeKind: MathHistoryMergeKind.None);
         return result;
     }
 
@@ -382,14 +395,14 @@ public sealed class MathEditor : Control
         base.Render(context);
         context.FillRectangle(Background, Bounds);
         EnsureLayout();
-        if (_renderer is null || _layout is null)
+        if (_layout is null)
         {
             DrawInitializationFailure(context);
             return;
         }
 
         double scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
-        _renderer.Render(
+        MathFontResources.Renderer.Render(
             context,
             _layout,
             Document,
@@ -397,6 +410,8 @@ public sealed class MathEditor : Control
             ContentOrigin(),
             Foreground,
             IsFocused,
+            _caretVisible,
+            _inputRegion,
             _preeditText,
             scaling);
     }
@@ -470,6 +485,10 @@ public sealed class MathEditor : Control
             _history.BreakCoalescing();
             RaiseCanExecuteChanged();
             InvalidateVisual();
+        }
+        else if (change.Property == CaretBlinkIntervalProperty)
+        {
+            ResetCaretTimer();
         }
         else if (change.Property == ForegroundProperty || change.Property == BackgroundProperty)
         {
@@ -690,6 +709,7 @@ public sealed class MathEditor : Control
     {
         MathSelection oldSelection = Selection;
         MathSelection normalized = MathSelectionServices.Normalize(newDocument, oldSelection).Selection;
+        _inputRegion = null;
         if (_isActive && oldDocument != newDocument)
         {
             _history.Record(
@@ -720,6 +740,10 @@ public sealed class MathEditor : Control
         MathSelectionNormalizationResult normalization =
             MathSelectionServices.Normalize(Document, requested);
         MathSelection normalized = normalization.Selection;
+        _inputRegion = normalized.IsCollapsed
+            ? new MathSelection(normalized.Active, normalized.Active)
+            : null;
+        RestartCaretBlink();
         if (requested != normalized)
         {
             SetInternal(SelectionProperty, normalized);
@@ -746,14 +770,9 @@ public sealed class MathEditor : Control
 
         try
         {
-            if (_layoutEngine is null || _renderer is null)
+            if (_fontDiagnostics.IsDefaultOrEmpty)
             {
-                using Stream stream = AssetLoader.Open(
-                    new Uri("avares://MathComposer.Avalonia/Assets/Fonts/XCharter-Math.otf"));
-                OpenTypeMathFont font = OpenTypeMathFont.Load(stream);
-                _layoutEngine = new MathLayoutEngine(font);
-                _renderer = new MathRenderer();
-                _fontDiagnostics = font.Diagnostics.Select(static message => new MathDiagnostic(
+                _fontDiagnostics = MathFontResources.Font.Diagnostics.Select(static message => new MathDiagnostic(
                     message.Split(':', 2)[0],
                     MathDiagnosticSeverity.Warning,
                     message.Contains(':', StringComparison.Ordinal)
@@ -762,14 +781,12 @@ public sealed class MathEditor : Control
                     MathTextFormat.UnicodeMath)).ToImmutableArray();
             }
 
-            _layout = _layoutEngine.Layout(Document, MathFontSize);
+            _layout = MathFontResources.LayoutEngine.Layout(Document, MathFontSize);
             _layoutDiagnostics = _layout.Diagnostics;
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             _layout = null;
-            _layoutEngine = null;
-            _renderer = null;
             _fontDiagnostics = [new MathDiagnostic(
                 FontFailureCode,
                 MathDiagnosticSeverity.Fatal,
@@ -815,6 +832,10 @@ public sealed class MathEditor : Control
     {
         MathSelection normalized = MathSelectionServices.Normalize(Document, selection).Selection;
         MathSelection old = Selection;
+        _inputRegion = normalized.IsCollapsed
+            ? new MathSelection(normalized.Active, normalized.Active)
+            : null;
+        RestartCaretBlink();
         if (old == normalized)
         {
             return;
@@ -839,13 +860,29 @@ public sealed class MathEditor : Control
             return;
         }
 
-        ApplyState(result.Document, result.Selection, result.Diagnostics, recordHistory: true, mergeKind);
+        MathSelection? inputRegion = result.InputRegion;
+        if (inputRegion is not null && _inputRegion is not null && Selection.IsCollapsed)
+        {
+            var extended = new MathSelection(
+                _inputRegion.Value.Anchor,
+                inputRegion.Value.Active);
+            inputRegion = MathSelectionServices.Normalize(result.Document, extended).Selection;
+        }
+
+        ApplyState(
+            result.Document,
+            result.Selection,
+            result.Diagnostics,
+            inputRegion,
+            recordHistory: true,
+            mergeKind: mergeKind);
     }
 
     private void ApplyState(
         MathDocument document,
         MathSelection selection,
         ImmutableArray<MathDiagnostic> diagnostics,
+        MathSelection? inputRegion,
         bool recordHistory,
         MathHistoryMergeKind mergeKind)
     {
@@ -872,6 +909,8 @@ public sealed class MathEditor : Control
         }
 
         _operationDiagnostics = diagnostics.IsDefault ? [] : diagnostics;
+        _inputRegion = inputRegion;
+        RestartCaretBlink();
         if (oldDocument != document)
         {
             _lastSpaceBuildDocument = null;
@@ -909,7 +948,13 @@ public sealed class MathEditor : Control
     {
         if (_history.TryUndo(new MathHistoryState(Document, Selection), out MathHistoryState? state))
         {
-            ApplyState(state.Document, state.Selection, [], recordHistory: false, MathHistoryMergeKind.None);
+            ApplyState(
+                state.Document,
+                state.Selection,
+                [],
+                null,
+                recordHistory: false,
+                MathHistoryMergeKind.None);
         }
     }
 
@@ -917,7 +962,13 @@ public sealed class MathEditor : Control
     {
         if (_history.TryRedo(new MathHistoryState(Document, Selection), out MathHistoryState? state))
         {
-            ApplyState(state.Document, state.Selection, [], recordHistory: false, MathHistoryMergeKind.None);
+            ApplyState(
+                state.Document,
+                state.Selection,
+                [],
+                null,
+                recordHistory: false,
+                MathHistoryMergeKind.None);
         }
     }
 
@@ -1239,6 +1290,67 @@ public sealed class MathEditor : Control
         _nextPlaceholderCommand.RaiseCanExecuteChanged();
         _previousPlaceholderCommand.RaiseCanExecuteChanged();
         _insertStructureCommand.RaiseCanExecuteChanged();
+    }
+
+    private void ShowCaret()
+    {
+        _inputRegion = Selection.IsCollapsed
+            ? new MathSelection(Selection.Active, Selection.Active)
+            : null;
+        _caretVisible = true;
+        ResetCaretTimer();
+        InvalidateVisual();
+    }
+
+    private void HideCaret()
+    {
+        _inputRegion = null;
+        _caretVisible = false;
+        StopCaretTimer();
+        InvalidateVisual();
+    }
+
+    private void RestartCaretBlink()
+    {
+        if (!IsFocused)
+        {
+            return;
+        }
+
+        _caretVisible = true;
+        ResetCaretTimer();
+        InvalidateVisual();
+    }
+
+    private void ResetCaretTimer()
+    {
+        StopCaretTimer();
+        if (!IsFocused || !_isActive || CaretBlinkInterval.TotalMilliseconds <= 0)
+        {
+            return;
+        }
+
+        _caretTimer = new DispatcherTimer { Interval = CaretBlinkInterval };
+        _caretTimer.Tick += OnCaretTimerTick;
+        _caretTimer.Start();
+    }
+
+    private void StopCaretTimer()
+    {
+        if (_caretTimer is null)
+        {
+            return;
+        }
+
+        _caretTimer.Stop();
+        _caretTimer.Tick -= OnCaretTimerTick;
+        _caretTimer = null;
+    }
+
+    private void OnCaretTimerTick(object? sender, EventArgs e)
+    {
+        _caretVisible = !_caretVisible;
+        InvalidateVisual();
     }
 
     private void DrawInitializationFailure(DrawingContext context)

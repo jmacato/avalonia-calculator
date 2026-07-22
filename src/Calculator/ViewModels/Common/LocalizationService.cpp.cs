@@ -158,6 +158,16 @@ internal sealed partial class LocalizationService : DependencyObject
         }
 
         m_fontGroup = new LanguageFontGroup(m_language);
+        if (m_overrideFontApiValues)
+        {
+            m_uiTextFontFamily = new FontFamily(m_fontFamilyOverride);
+            m_uiCaptionFontFamily = m_uiTextFontFamily;
+        }
+        else
+        {
+            m_uiTextFontFamily = new FontFamily(m_fontGroup.UITextFont.FontFamily);
+            m_uiCaptionFontFamily = new FontFamily(m_fontGroup.UICaptionFont.FontFamily);
+        }
     }
 
     static
@@ -239,14 +249,12 @@ internal sealed partial class LocalizationService : DependencyObject
 
     public FontFamily GetLanguageFontFamilyForType(LanguageFontType fontType)
     {
-        if (m_overrideFontApiValues)
+        return fontType switch
         {
-            return new FontFamily(m_fontFamilyOverride);
-        }
-        else
-        {
-            return new FontFamily(GetLanguageFont(fontType).FontFamily);
-        }
+            LanguageFontType.UIText => m_uiTextFontFamily,
+            LanguageFontType.UICaption => m_uiCaptionFontFamily,
+            _ => throw new ArgumentException("The language font type is not recognized.", nameof(fontType))
+        };
     }
 
     LanguageFont GetLanguageFont(LanguageFontType fontType)
@@ -309,7 +317,6 @@ internal sealed partial class LocalizationService : DependencyObject
 
     static void UpdateFontFamilyAndSize(DependencyObject target)
     {
-        FontFamily fontFamily;
         FontWeight fontWeight = FontWeights.Normal;
         bool fOverrideFontWeight = false;
         double scaleFactor;
@@ -319,7 +326,6 @@ internal sealed partial class LocalizationService : DependencyObject
 
         if (service.GetOverrideFontApiValues())
         {
-            fontFamily = new FontFamily(service.GetFontFamilyOverride());
             scaleFactor = service.GetFontScaleFactorOverride(fontType) / 100.0;
             fontWeight = service.GetFontWeightOverride();
             fOverrideFontWeight = true;
@@ -327,7 +333,6 @@ internal sealed partial class LocalizationService : DependencyObject
         else
         {
             var languageFont = service.GetLanguageFont(fontType);
-            fontFamily = new FontFamily(languageFont.FontFamily);
             scaleFactor = languageFont.ScaleFactor / 100.0;
         }
 
@@ -336,7 +341,7 @@ internal sealed partial class LocalizationService : DependencyObject
         var control = (Control)(target);
         if (control != null)
         {
-            control.FontFamily = fontFamily;
+            control.FontFamily = service.GetLanguageFontFamilyForType(fontType);
             if (fOverrideFontWeight)
             {
                 control.FontWeight = fontWeight;

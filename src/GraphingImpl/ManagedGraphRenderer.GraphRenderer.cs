@@ -489,6 +489,36 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         return true;
     }
 
+    public void ReleasePreparedResources()
+    {
+        VerifyAccess();
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
+        // Supersede any in-flight sampling without terminating the reusable
+        // worker. Sampling checks the generation throughout its hot loops and
+        // abandons the old result promptly. A later attachment can request a
+        // fresh generation without allocating a new renderer or worker.
+        long generation = Interlocked.Increment(ref _prepareGeneration);
+        Volatile.Write(ref _latestRequestedGeneration, generation);
+        Volatile.Write(ref _latestCompletedGeneration, generation);
+        Volatile.Write(ref _lastCompletedStatus, GraphStatus.Cancelled.Value);
+        _lastRequestedSnapshotRevision = -1;
+        while (_prepareRequests.Reader.TryRead(out _))
+        {
+        }
+
+        while (_prepareResults.Reader.TryRead(out _))
+        {
+        }
+
+        _prepared = null;
+        _frame = null;
+        ClearCommandCache();
+    }
+
     public GraphStatus GetBitmap(out IBitmap? bitmap, out bool hasSomeMissingData)
     {
         bitmap = null;

@@ -163,6 +163,11 @@ internal sealed class TelemetryStoreSessionState
             return "starting";
         }
 
+        if (state.LatestUi.BootStage is "fatal-error" or "load-failed")
+        {
+            return "boot-failed";
+        }
+
         if (uiAgeMs > UiStaleAfter.TotalMilliseconds)
         {
             return !visible ? "backgrounded" : "ui-thread-stalled";

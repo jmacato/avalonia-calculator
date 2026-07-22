@@ -20,6 +20,18 @@ namespace CalculatorApp.Controls;
 /// </summary>
 public sealed class MathRichEditBox : ContentControl
 {
+    private static readonly MathDocument s_functionEquationPlaceholderDocument = new(
+        new MathRow(
+        [
+            new MathText("f", MathAtomClass.Identifier),
+            new MathDelimiter(
+                new MathRow([new MathText("x", MathAtomClass.Identifier)]),
+                "(",
+                ")",
+                scalable: false),
+            new MathText("=", MathAtomClass.Relation)
+        ]));
+
     public static readonly StyledProperty<string> MathTextProperty =
         AvaloniaProperty.Register<MathRichEditBox, string>(
             nameof(MathText),
@@ -38,11 +50,17 @@ public sealed class MathRichEditBox : ContentControl
     public static readonly StyledProperty<bool> IsReadOnlyProperty =
         AvaloniaProperty.Register<MathRichEditBox, bool>(nameof(IsReadOnly));
 
+    public static readonly StyledProperty<MathDocument> PlaceholderDocumentProperty =
+        AvaloniaProperty.Register<MathRichEditBox, MathDocument>(
+            nameof(PlaceholderDocument),
+            s_functionEquationPlaceholderDocument);
+
     public static readonly StyledProperty<string> PlaceholderTextProperty =
         AvaloniaProperty.Register<MathRichEditBox, string>(nameof(PlaceholderText), string.Empty);
 
     private readonly MathEditor _editor;
     private readonly MathDisplay _placeholder;
+    private readonly TextBlock _textPlaceholder;
     private readonly MenuItem _cutMenuItem;
     private readonly MenuItem _copyMenuItem;
     private readonly MenuItem _pasteMenuItem;
@@ -57,8 +75,10 @@ public sealed class MathRichEditBox : ContentControl
             editor.OnMathTextChanged(args.NewValue as string ?? string.Empty));
         IsReadOnlyProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, args) =>
             editor._editor.IsReadOnly = args.NewValue is true);
-        PlaceholderTextProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, args) =>
-            editor.UpdatePlaceholderText(args.NewValue as string ?? string.Empty));
+        PlaceholderDocumentProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, args) =>
+            editor._placeholder.Document = args.NewValue as MathDocument ?? MathDocument.Empty);
+        PlaceholderTextProperty.Changed.AddClassHandler<MathRichEditBox>(static (editor, _) =>
+            editor.UpdatePlaceholder());
     }
 
     public MathRichEditBox()
@@ -81,6 +101,15 @@ public sealed class MathRichEditBox : ContentControl
 
         _placeholder = new MathDisplay
         {
+            Document = PlaceholderDocument,
+            IsHitTestVisible = false,
+            Opacity = 0.6,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        _textPlaceholder = new TextBlock
+        {
             IsHitTestVisible = false,
             Opacity = 0.6,
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -90,6 +119,7 @@ public sealed class MathRichEditBox : ContentControl
         var content = new Grid();
         content.Children.Add(_editor);
         content.Children.Add(_placeholder);
+        content.Children.Add(_textPlaceholder);
         Content = content;
 
         _cutMenuItem = MenuItem("Cut", (_, _) => _editor.CutCommand.Execute(null));
@@ -153,15 +183,26 @@ public sealed class MathRichEditBox : ContentControl
         set => SetValue(IsReadOnlyProperty, value);
     }
 
+    public MathDocument PlaceholderDocument
+    {
+        get => GetValue(PlaceholderDocumentProperty);
+        set => SetValue(PlaceholderDocumentProperty, value ?? MathDocument.Empty);
+    }
+
     public string PlaceholderText
     {
         get => GetValue(PlaceholderTextProperty);
         set => SetValue(PlaceholderTextProperty, value ?? string.Empty);
     }
 
+    public static MathDocument FunctionEquationPlaceholderDocument =>
+        s_functionEquationPlaceholderDocument;
+
     internal MathEditor Editor => _editor;
 
     internal MathDisplay Watermark => _placeholder;
+
+    internal TextBlock TextWatermark => _textPlaceholder;
 
     public bool HasContent => !_editor.Document.Root.Children.IsEmpty;
 
@@ -235,11 +276,13 @@ public sealed class MathRichEditBox : ContentControl
         {
             _editor.MathFontSize = FontSize;
             _placeholder.MathFontSize = FontSize;
+            _textPlaceholder.FontSize = FontSize;
         }
         else if (change.Property == ForegroundProperty)
         {
             IBrush brush = Foreground ?? Brushes.Black;
             _placeholder.Foreground = brush;
+            _textPlaceholder.Foreground = brush;
             UpdatePlaceholder();
         }
     }
@@ -398,14 +441,6 @@ public sealed class MathRichEditBox : ContentControl
         }
     }
 
-    private void UpdatePlaceholderText(string text)
-    {
-        MathDocument document = string.IsNullOrWhiteSpace(text)
-            ? MathDocument.Empty
-            : MathInterchange.Parse(text, MathTextFormat.UnicodeMath).Document;
-        _placeholder.Document = document;
-    }
-
     private void SetError(int errorCode, int errorType)
     {
         bool changed = !HasEquationError || ErrorCode != errorCode || ErrorType != errorType;
@@ -438,11 +473,12 @@ public sealed class MathRichEditBox : ContentControl
 
     private void UpdatePlaceholder()
     {
-        bool visible = _editor.Document.Root.Children.IsEmpty && !_editor.IsFocused;
-        _placeholder.IsVisible = visible;
-        _editor.Foreground = visible
-            ? Brushes.Transparent
-            : Foreground ?? Brushes.Black;
+        bool empty = _editor.Document.Root.Children.IsEmpty;
+        bool hasTextPlaceholder = !string.IsNullOrWhiteSpace(PlaceholderText);
+        _textPlaceholder.Text = PlaceholderText;
+        _textPlaceholder.IsVisible = empty && hasTextPlaceholder;
+        _placeholder.IsVisible = empty && !hasTextPlaceholder && !_editor.IsFocused;
+        _editor.Foreground = Foreground ?? Brushes.Black;
     }
 
     private void UpdateContextMenuState()

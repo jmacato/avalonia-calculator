@@ -2,10 +2,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Media;
-using Avalonia.Platform;
 using MathComposer.Avalonia.Layout;
-using MathComposer.Avalonia.OpenType;
-using MathComposer.Avalonia.Rendering;
 using MathComposer.Core;
 
 namespace MathComposer.Avalonia.Controls;
@@ -48,8 +45,6 @@ public sealed class MathDisplay : Control
 
     private static readonly MathSelection EmptySelection = CreateEmptySelection();
     private MathDocument _document = MathDocument.Empty;
-    private MathLayoutEngine? _layoutEngine;
-    private MathRenderer? _renderer;
     private MathLayoutResult? _layout;
 
     /// <summary>Initializes a non-interactive mathematical display.</summary>
@@ -106,7 +101,7 @@ public sealed class MathDisplay : Control
         }
 
         double scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
-        _renderer!.Render(
+        MathFontResources.Renderer.Render(
             context,
             _layout,
             _document,
@@ -114,6 +109,8 @@ public sealed class MathDisplay : Control
             ContentOrigin(),
             Foreground,
             focused: false,
+            caretVisible: false,
+            inputRegion: null,
             preeditText: string.Empty,
             renderScaling: scaling);
     }
@@ -157,13 +154,6 @@ public sealed class MathDisplay : Control
         }
     }
 
-    private static OpenTypeMathFont LoadMathFont()
-    {
-        using Stream stream = AssetLoader.Open(
-            new Uri("avares://MathComposer.Avalonia/Assets/Fonts/XCharter-Math.otf"));
-        return OpenTypeMathFont.Load(stream);
-    }
-
     private static MathSelection CreateEmptySelection()
     {
         MathPosition position = new([], 0);
@@ -185,13 +175,7 @@ public sealed class MathDisplay : Control
             return;
         }
 
-        if (_layoutEngine is null || _renderer is null)
-        {
-            _layoutEngine = new MathLayoutEngine(LoadMathFont());
-            _renderer = new MathRenderer();
-        }
-
-        _layout = _layoutEngine.Layout(_document, MathFontSize);
+        _layout = MathFontResources.LayoutEngine.Layout(_document, MathFontSize);
     }
 
     private Point ContentOrigin()

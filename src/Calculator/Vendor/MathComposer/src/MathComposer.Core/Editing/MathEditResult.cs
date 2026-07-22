@@ -9,11 +9,13 @@ public sealed record MathEditResult
     public MathEditResult(
         MathDocument document,
         MathSelection selection,
-        ImmutableArray<MathDiagnostic> diagnostics)
+        ImmutableArray<MathDiagnostic> diagnostics,
+        MathSelection? inputRegion = null)
     {
         Document = document ?? throw new ArgumentNullException(nameof(document));
         Selection = selection;
         Diagnostics = diagnostics.IsDefault ? [] : diagnostics;
+        InputRegion = inputRegion;
     }
 
     /// <summary>Gets the edited document.</summary>
@@ -24,4 +26,10 @@ public sealed record MathEditResult
 
     /// <summary>Gets diagnostics raised by the command.</summary>
     public ImmutableArray<MathDiagnostic> Diagnostics { get; }
+
+    /// <summary>
+    /// Gets the transient linear-input region that remains pending after this edit.
+    /// A null value means that substitution or structural build-up completed it.
+    /// </summary>
+    public MathSelection? InputRegion { get; }
 }

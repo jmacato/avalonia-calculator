@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using CalculatorApp.Controls;
 using Graphing;
 using GraphControl;
+using MathComposer.Avalonia;
 using MathComposer.Avalonia.Controls;
 using MathComposer.Core;
 
@@ -13,6 +14,23 @@ namespace GraphingTests;
 
 public sealed class GraphMathComposerIntegrationTests
 {
+    [AvaloniaFact(Timeout = 5_000)]
+    public void MathControlsReuseTheSingleApplicationFontInitialization()
+    {
+        MathFontResources.Initialize();
+        var firstEditor = new MathEditor();
+        var secondEditor = new MathEditor();
+        var display = new MathDisplay();
+
+        firstEditor.Measure(Size.Infinity);
+        secondEditor.Measure(Size.Infinity);
+        display.Measure(Size.Infinity);
+
+        Assert.Equal(1, MathFontResources.InitializationCount);
+        Assert.Same(MathFontResources.LayoutEngine, MathFontResources.LayoutEngine);
+        Assert.Same(MathFontResources.Renderer, MathFontResources.Renderer);
+    }
+
     [Theory]
     [InlineData("arcsin(x)")]
     [InlineData("n₁ ∈ ℤ")]
@@ -155,15 +173,44 @@ public sealed class GraphMathComposerIntegrationTests
     [AvaloniaFact(Timeout = 5_000)]
     public void EmptyGraphEquationEditorUsesNativeMathWatermark()
     {
-        var editor = new MathRichEditBox
-        {
-            PlaceholderText = "f(x) ="
-        };
+        var editor = new MathRichEditBox();
 
         Assert.IsType<MathDisplay>(editor.Watermark);
-        Assert.NotEmpty(editor.Watermark.Document.Root.Children);
+        Assert.Same(
+            MathRichEditBox.FunctionEquationPlaceholderDocument,
+            editor.Watermark.Document);
+        Assert.Collection(
+            editor.Watermark.Document.Root.Children,
+            node => Assert.Equal(
+                new MathText("f", MathAtomClass.Identifier),
+                Assert.IsType<MathText>(node)),
+            node =>
+            {
+                MathDelimiter delimiter = Assert.IsType<MathDelimiter>(node);
+                Assert.Equal("(", delimiter.Opening);
+                Assert.Equal(")", delimiter.Closing);
+                Assert.Equal(
+                    new MathText("x", MathAtomClass.Identifier),
+                    Assert.IsType<MathText>(Assert.Single(delimiter.Body.Children)));
+            },
+            node => Assert.Equal(
+                new MathText("=", MathAtomClass.Relation),
+                Assert.IsType<MathText>(node)));
         Assert.True(editor.Watermark.IsVisible);
-        Assert.Equal(Brushes.Transparent, editor.Editor.Foreground);
+        Assert.Equal(Brushes.Black, editor.Editor.Foreground);
+    }
+
+    [AvaloniaFact(Timeout = 5_000)]
+    public void GraphEquationTextWatermarkReplacesNativeMathWatermark()
+    {
+        var editor = new MathRichEditBox
+        {
+            PlaceholderText = "Enter an expression"
+        };
+
+        Assert.True(editor.TextWatermark.IsVisible);
+        Assert.Equal("Enter an expression", editor.TextWatermark.Text);
+        Assert.False(editor.Watermark.IsVisible);
     }
 
     [Fact]

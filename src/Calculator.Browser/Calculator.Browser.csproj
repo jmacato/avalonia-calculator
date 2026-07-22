@@ -17,11 +17,26 @@
     <!-- Keep threaded runtime registration inside the initial allocation. The LLVM AOT
          payload crosses 84 MiB during startup; growing shared memory while worker
          instances are registering leaves those instances with stale bounds on WebKit. -->
-    <WasmInitialHeapSize>100663296</WasmInitialHeapSize>
-    <EmccMaximumHeapSize>209715200</EmccMaximumHeapSize>
+    <WasmInitialHeapSize Condition="'$(Configuration)' == 'Release'">100663296</WasmInitialHeapSize>
+    <EmccMaximumHeapSize Condition="'$(Configuration)' == 'Release'">209715200</EmccMaximumHeapSize>
     <InvariantTimezone>true</InvariantTimezone>
     <EventSourceSupport>true</EventSourceSupport>
     <RunAOTCompilation Condition="'$(Configuration)' == 'Release'">true</RunAOTCompilation>
+    <!-- Local runs use identity assets. Compression is a publish concern and
+         must not change how Debug or Release is served by dotnet run. -->
+    <DisableBuildCompression>true</DisableBuildCompression>
+    <EnableDefaultCompressionFormats>false</EnableDefaultCompressionFormats>
+    <_WebAssemblyUserRunParameters>true</_WebAssemblyUserRunParameters>
+    <_CalculatorBrowserHostProject>$([MSBuild]::NormalizePath($(MSBuildProjectDirectory), '..', '..', 'Tools', 'Calculator.BrowserHost', 'Calculator.BrowserHost.csproj'))</_CalculatorBrowserHostProject>
+    <_CalculatorBrowserStaticWebAssetsManifest>$([MSBuild]::NormalizePath($(MSBuildProjectDirectory), 'bin', '$(Configuration)', '$(TargetFramework)', '$(AssemblyName).staticwebassets.runtime.json'))</_CalculatorBrowserStaticWebAssetsManifest>
+    <RunCommand Condition="'$(DOTNET_HOST_PATH)' != '' and Exists('$(DOTNET_HOST_PATH)')">$(DOTNET_HOST_PATH)</RunCommand>
+    <RunCommand Condition="'$(DOTNET_HOST_PATH)' == '' or !Exists('$(DOTNET_HOST_PATH)')">dotnet</RunCommand>
+    <RunArguments>run --project &quot;$(_CalculatorBrowserHostProject)&quot; --configuration &quot;$(Configuration)&quot; --no-launch-profile -- &quot;$(_CalculatorBrowserStaticWebAssetsManifest)&quot;</RunArguments>
+    <RunWorkingDirectory>$(MSBuildProjectDirectory)</RunWorkingDirectory>
+    <!-- Several graph projects converge on the same vendored Avalonia projects.
+         Serial project-reference builds prevent duplicate XAML compilers from
+         rewriting the same output while dotnet run builds this entry point. -->
+    <BuildInParallel>false</BuildInParallel>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(CollectAotProfile)' == 'true'">
@@ -54,8 +69,6 @@
          WebAssembly.Exception and the browser cannot report the failing runtime
          path to telemetry. This does not enable managed debugging. -->
     <EmccFlags>$(EmccFlags) -sEXCEPTION_STACK_TRACES=1</EmccFlags>
-    <EnableDefaultCompressionFormats>false</EnableDefaultCompressionFormats>
-    <BuildCompressionFormats>brotli</BuildCompressionFormats>
     <PublishCompressionFormats>brotli</PublishCompressionFormats>
     <CompressionIncludePatterns>$(CompressionIncludePatterns);**/*.ttf</CompressionIncludePatterns>
   </PropertyGroup>
@@ -103,33 +116,81 @@
              CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <Target Name="GenerateCalculatorBrowserDownloadManifest"
-          AfterTargets="GeneratePublishWasmBootJson"
-          Condition="'@(_WasmPublishAsset)' != ''">
+  <Target Name="GenerateCalculatorBrowserBuildDownloadManifest"
+          BeforeTargets="GenerateStaticWebAssetsManifest"
+          DependsOnTargets="_AddWasmStaticWebAssets"
+          Condition="'@(WasmStaticWebAsset)' != ''">
     <PropertyGroup>
-      <_CalculatorBrowserDownloadManifestPath>$(IntermediateOutputPath)browser-asset-sizes.js</_CalculatorBrowserDownloadManifestPath>
+      <_CalculatorBrowserBuildDownloadManifestPath>$(IntermediateOutputPath)browser-asset-sizes.build.js</_CalculatorBrowserBuildDownloadManifestPath>
     </PropertyGroup>
     <ItemGroup>
-      <_CalculatorBrowserDownloadManifestCandidate Include="$(_CalculatorBrowserDownloadManifestPath)"
-                                                   RelativePath="browser-asset-sizes.js" />
+      <_CalculatorBrowserBuildDownloadAsset Include="@(WasmStaticWebAsset)"
+                                            Condition="'%(AssetTraitName)' == 'WasmResource' or '%(AssetTraitName)' == 'Culture'" />
+      <_CalculatorBrowserBuildDownloadManifestCandidate Include="$(_CalculatorBrowserBuildDownloadManifestPath)"
+                                                        RelativePath="browser-asset-sizes.js" />
     </ItemGroup>
-    <WriteLinesToFile File="$(_CalculatorBrowserDownloadManifestPath)"
+    <WriteLinesToFile File="$(_CalculatorBrowserBuildDownloadManifestPath)"
                       Lines="export const assetSizes = new Map(["
                       Overwrite="true"
                       Encoding="UTF-8" />
-    <WriteLinesToFile File="$(_CalculatorBrowserDownloadManifestPath)"
-                      Lines="@(_WasmPublishAsset->'  [&quot;%(Filename)%(Extension)&quot;, %(FileLength)],')"
+    <WriteLinesToFile File="$(_CalculatorBrowserBuildDownloadManifestPath)"
+                      Lines="@(_CalculatorBrowserBuildDownloadAsset->'  [&quot;%(Filename)%(Extension)&quot;, %(FileLength)],')"
                       Overwrite="false"
                       Encoding="UTF-8" />
-    <WriteLinesToFile File="$(_CalculatorBrowserDownloadManifestPath)"
-                      Lines="@(_WasmPublishAsset->'  [&quot;%(Filename).%(Fingerprint)%(Extension)&quot;, %(FileLength)],')"
-                      Overwrite="false"
-                      Encoding="UTF-8" />
-    <WriteLinesToFile File="$(_CalculatorBrowserDownloadManifestPath)"
+    <WriteLinesToFile File="$(_CalculatorBrowserBuildDownloadManifestPath)"
                       Lines="]);"
                       Overwrite="false"
                       Encoding="UTF-8" />
-    <DefineStaticWebAssets CandidateAssets="@(_CalculatorBrowserDownloadManifestCandidate)"
+    <DefineStaticWebAssets CandidateAssets="@(_CalculatorBrowserBuildDownloadManifestCandidate)"
+                           SourceId="$(PackageId)"
+                           SourceType="Computed"
+                           AssetKind="Build"
+                           AssetRole="Primary"
+                           CopyToOutputDirectory="PreserveNewest"
+                           CopyToPublishDirectory="Never"
+                           ContentRoot="$(OutDir)wwwroot"
+                           BasePath="$(StaticWebAssetBasePath)">
+      <Output TaskParameter="Assets" ItemName="_CalculatorBrowserBuildDownloadManifestAsset" />
+    </DefineStaticWebAssets>
+    <DefineStaticWebAssetEndpoints CandidateAssets="@(_CalculatorBrowserBuildDownloadManifestAsset)"
+                                   ExistingEndpoints="@(StaticWebAssetEndpoint)"
+                                   ContentTypeMappings="@(StaticWebAssetContentTypeMapping)">
+      <Output TaskParameter="Endpoints" ItemName="_CalculatorBrowserBuildDownloadManifestEndpoint" />
+    </DefineStaticWebAssetEndpoints>
+    <ItemGroup>
+      <StaticWebAsset Include="@(_CalculatorBrowserBuildDownloadManifestAsset)" />
+      <StaticWebAssetEndpoint Include="@(_CalculatorBrowserBuildDownloadManifestEndpoint)" />
+      <FileWrites Include="$(_CalculatorBrowserBuildDownloadManifestPath)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="GenerateCalculatorBrowserPublishDownloadManifest"
+          AfterTargets="GeneratePublishWasmBootJson"
+          Condition="'@(_WasmPublishAsset)' != ''">
+    <PropertyGroup>
+      <_CalculatorBrowserPublishDownloadManifestPath>$(IntermediateOutputPath)browser-asset-sizes.publish.js</_CalculatorBrowserPublishDownloadManifestPath>
+    </PropertyGroup>
+    <ItemGroup>
+      <_CalculatorBrowserPublishDownloadManifestCandidate Include="$(_CalculatorBrowserPublishDownloadManifestPath)"
+                                                          RelativePath="browser-asset-sizes.js" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(_CalculatorBrowserPublishDownloadManifestPath)"
+                      Lines="export const assetSizes = new Map(["
+                      Overwrite="true"
+                      Encoding="UTF-8" />
+    <WriteLinesToFile File="$(_CalculatorBrowserPublishDownloadManifestPath)"
+                      Lines="@(_WasmPublishAsset->'  [&quot;%(Filename)%(Extension)&quot;, %(FileLength)],')"
+                      Overwrite="false"
+                      Encoding="UTF-8" />
+    <WriteLinesToFile File="$(_CalculatorBrowserPublishDownloadManifestPath)"
+                      Lines="@(_WasmPublishAsset->'  [&quot;%(Filename).%(Fingerprint)%(Extension)&quot;, %(FileLength)],')"
+                      Overwrite="false"
+                      Encoding="UTF-8" />
+    <WriteLinesToFile File="$(_CalculatorBrowserPublishDownloadManifestPath)"
+                      Lines="]);"
+                      Overwrite="false"
+                      Encoding="UTF-8" />
+    <DefineStaticWebAssets CandidateAssets="@(_CalculatorBrowserPublishDownloadManifestCandidate)"
                            SourceId="$(PackageId)"
                            SourceType="Computed"
                            AssetKind="Publish"
@@ -138,17 +199,17 @@
                            CopyToPublishDirectory="PreserveNewest"
                            ContentRoot="$(PublishDir)wwwroot"
                            BasePath="$(StaticWebAssetBasePath)">
-      <Output TaskParameter="Assets" ItemName="_CalculatorBrowserDownloadManifestAsset" />
+      <Output TaskParameter="Assets" ItemName="_CalculatorBrowserPublishDownloadManifestAsset" />
     </DefineStaticWebAssets>
-    <DefineStaticWebAssetEndpoints CandidateAssets="@(_CalculatorBrowserDownloadManifestAsset)"
+    <DefineStaticWebAssetEndpoints CandidateAssets="@(_CalculatorBrowserPublishDownloadManifestAsset)"
                                    ExistingEndpoints="@(StaticWebAssetEndpoint)"
                                    ContentTypeMappings="@(StaticWebAssetContentTypeMapping)">
-      <Output TaskParameter="Endpoints" ItemName="_CalculatorBrowserDownloadManifestEndpoint" />
+      <Output TaskParameter="Endpoints" ItemName="_CalculatorBrowserPublishDownloadManifestEndpoint" />
     </DefineStaticWebAssetEndpoints>
     <ItemGroup>
-      <StaticWebAsset Include="@(_CalculatorBrowserDownloadManifestAsset)" />
-      <StaticWebAssetEndpoint Include="@(_CalculatorBrowserDownloadManifestEndpoint)" />
-      <FileWrites Include="$(_CalculatorBrowserDownloadManifestPath)" />
+      <StaticWebAsset Include="@(_CalculatorBrowserPublishDownloadManifestAsset)" />
+      <StaticWebAssetEndpoint Include="@(_CalculatorBrowserPublishDownloadManifestEndpoint)" />
+      <FileWrites Include="$(_CalculatorBrowserPublishDownloadManifestPath)" />
     </ItemGroup>
   </Target>
 

@@ -28,12 +28,21 @@ public sealed partial class GraphingNumPad : UserControl
         ApplyOperatorPanelHeaderSize(InequalityButton, headerFontSize, headerGlyphFontSize, headerChevronFontSize);
         ApplyOperatorPanelHeaderSize(FuncButton, headerFontSize, headerGlyphFontSize, headerChevronFontSize);
 
+        SetSubmitIconSize(large, medium);
+
         TrigGrid.Width = large ? 516 : medium ? 480 : 258;
         TrigGrid.Height = large ? 192 : medium ? 144 : 96;
         FuncGrid.Width = large ? 387 : medium ? 360 : 194;
         FuncGrid.Height = large ? 96 : medium ? 72 : 48;
         InequalityGrid.Width = large ? 628 : medium ? 585 : 312;
         InequalityGrid.Height = large ? 96 : medium ? 72 : 48;
+    }
+
+    private void SetSubmitIconSize(bool large, bool medium)
+    {
+        double size = large ? 34 : medium ? 20 : 14;
+        SubmitIcon.Width = size;
+        SubmitIcon.Height = size;
     }
 
     private static void ApplyOperatorPanelHeaderSize(

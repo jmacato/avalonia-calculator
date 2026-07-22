@@ -1,19 +1,19 @@
 # Calculator browser telemetry host
 
-This local HTTPS host serves a published Calculator browser build and records
-bounded lockup diagnostics from telemetry-enabled sessions.
+This local HTTPS host serves Calculator's normal build output through its .NET
+static-web-assets manifest and records bounded lockup diagnostics from
+telemetry-enabled sessions. It is launched automatically by the browser project.
 
-Publish and run it with an HTTPS certificate that the test device trusts:
+Run either configuration with an HTTPS certificate that the test device trusts:
 
 ```sh
-dotnet publish src/Calculator.Browser/Calculator.Browser.csproj \
-  -c Release -o build/browser-release
-
 ASPNETCORE_Kestrel__Certificates__Default__Path=/path/to/lan-certificate.pfx \
 ASPNETCORE_Kestrel__Certificates__Default__Password=certificate-password \
-dotnet run --project Tools/Calculator.BrowserHost -c Release -- \
-  /absolute/path/to/build/browser-release/wwwroot
+dotnet run --project src/Calculator.Browser/Calculator.Browser.csproj -c Release
 ```
+
+Use `-c Debug` for the interpreted development build. No publish directory or
+manual asset copy is required.
 
 Add `telemetry=1` and an optional `run` label to the Calculator URL, for
 example `/?telemetry=1&run=physical-phone`. The live dashboard is available at

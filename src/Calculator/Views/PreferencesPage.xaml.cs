@@ -1,20 +1,21 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Numerics;
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
+using CalculatorApp.Controls;
 using CalculatorApp.Services.Settings;
 using CalculatorApp.ViewModel.Common;
 using CalculatorApp.ViewModel.Common.Automation;
 using FluentAvalonia.Core;
 using FluentAvalonia.Styling;
-using GraphControl;
 
 namespace CalculatorApp;
 
@@ -28,15 +29,10 @@ public sealed partial class PreferencesPage : UserControl
     private static readonly TimeSpan RepositionDuration = TimeSpan.FromMilliseconds(367);
     private static readonly SplineEasing ThemeTransitionEasing = new(0.1, 0.9, 0.2, 1);
     private readonly ISettingsStore _settingsStore;
-    private readonly AnimationFrameTimer _settingsMotionTimer;
-    private readonly Dictionary<Control, (ITransform? Transform, RelativePoint Origin, double Opacity)> _savedChildVisuals = new();
-    private readonly Dictionary<Control, TranslateTransform> _childTranslations = new();
     private readonly Dictionary<Control, double> _lastChildPositions = new();
     private readonly Dictionary<Control, (double Offset, long Started)> _repositionAnimations = new();
-    private long _entranceStarted;
-    private double _savedPageOpacity = 1;
+    private IDisposable? _entranceCompletion;
     private bool _isEntranceActive;
-    private bool _hasSavedPageOpacity;
     private bool _initializingTheme;
     private bool _initializingConverterUnitDisplay;
     private bool _initializingAutomaticCurrencyRefresh;
@@ -49,7 +45,6 @@ public sealed partial class PreferencesPage : UserControl
     internal PreferencesPage(ISettingsStore settingsStore)
     {
         _settingsStore = settingsStore;
-        _settingsMotionTimer = new AnimationFrameTimer(OnSettingsMotionFrame);
         InitializeComponent();
         SettingsItemsPanel.LayoutUpdated += OnSettingsItemsLayoutUpdated;
     }
@@ -60,30 +55,47 @@ public sealed partial class PreferencesPage : UserControl
 
     public void BeginOpenAnimation()
     {
-        RestoreAllMotionVisuals();
+        ResetMotionVisuals();
         CaptureChildPositions();
         if (!FAUISettings.AreAnimationsEnabled())
         {
             return;
         }
 
-        _savedPageOpacity = Opacity;
-        _hasSavedPageOpacity = true;
-        Opacity = 0;
+        _ = WinUiCompositorMotion.AnimateOpacity(
+            this,
+            0,
+            (float)Opacity,
+            EntranceDuration,
+            ThemeTransitionEasing);
+        int index = 0;
         foreach (Control child in SettingsItemsPanel.Children)
         {
-            SaveChildVisual(child);
-            TranslateTransform translation = CreateChildTranslation(child);
-            translation.Y = SettingsEntranceOffset;
-            child.Opacity = 0;
+            TimeSpan delay = TimeSpan.FromMilliseconds(Math.Min(
+                EntranceStaggerDelay.TotalMilliseconds * index,
+                EntranceStaggerCap.TotalMilliseconds));
+            _ = WinUiCompositorMotion.AnimateTranslation(
+                child,
+                new Vector3(0, (float)SettingsEntranceOffset, 0),
+                Vector3.Zero,
+                EntranceDuration,
+                ThemeTransitionEasing,
+                delay);
+            _ = WinUiCompositorMotion.AnimateOpacity(
+                child,
+                0,
+                (float)child.Opacity,
+                EntranceDuration,
+                ThemeTransitionEasing,
+                delay);
+            index++;
         }
 
-        _entranceStarted = Stopwatch.GetTimestamp();
         _isEntranceActive = true;
-        if (!_settingsMotionTimer.Start(this))
-        {
-            RestoreAllMotionVisuals();
-        }
+        _entranceCompletion = DispatcherTimer.RunOnce(
+            CompleteEntranceAnimation,
+            EntranceDuration + EntranceStaggerCap,
+            DispatcherPriority.Render);
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
@@ -132,8 +144,7 @@ public sealed partial class PreferencesPage : UserControl
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        _settingsMotionTimer.Detach();
-        RestoreAllMotionVisuals();
+        ResetMotionVisuals();
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -165,164 +176,56 @@ public sealed partial class PreferencesPage : UserControl
     {
         if (!FAUISettings.AreAnimationsEnabled())
         {
-            RestoreChildVisual(child);
+            _repositionAnimations.Remove(child);
+            WinUiCompositorMotion.SetTranslation(child, Vector3.Zero);
             return;
         }
 
-        SaveChildVisual(child);
-        TranslateTransform translation = _childTranslations.TryGetValue(child, out TranslateTransform? existing)
-            ? existing
-            : CreateChildTranslation(child);
-        double offset = translation.Y + layoutOffset;
-        translation.Y = offset;
+        double offset = CurrentRepositionOffset(child) + layoutOffset;
         _repositionAnimations[child] = (offset, Stopwatch.GetTimestamp());
-        if (!_settingsMotionTimer.Start(this))
-        {
-            RestoreChildVisual(child);
-        }
+        _ = WinUiCompositorMotion.AnimateTranslation(
+            child,
+            new Vector3(0, (float)offset, 0),
+            Vector3.Zero,
+            RepositionDuration,
+            ThemeTransitionEasing);
     }
 
-    private void OnSettingsMotionFrame(TimeSpan timestamp)
+    private double CurrentRepositionOffset(Control child)
     {
-        _ = timestamp;
-        bool hasActiveAnimation = UpdateEntranceAnimation();
-        foreach ((Control child, (double offset, long started)) in _repositionAnimations.ToArray())
+        if (!_repositionAnimations.TryGetValue(child, out var animation))
         {
-            double progress = Math.Clamp(
-                Stopwatch.GetElapsedTime(started).TotalMilliseconds / RepositionDuration.TotalMilliseconds,
-                0,
-                1);
-            if (_childTranslations.TryGetValue(child, out TranslateTransform? translation))
-            {
-                translation.Y = offset * (1 - ThemeTransitionEasing.Ease(progress));
-            }
-
-            if (progress >= 1)
-            {
-                _repositionAnimations.Remove(child);
-                RestoreChildVisual(child);
-            }
-            else
-            {
-                hasActiveAnimation = true;
-            }
+            return 0;
         }
 
-        if (!hasActiveAnimation)
-        {
-            _settingsMotionTimer.Stop();
-        }
+        double progress = Math.Clamp(
+            Stopwatch.GetElapsedTime(animation.Started).TotalMilliseconds / RepositionDuration.TotalMilliseconds,
+            0,
+            1);
+        return animation.Offset * (1 - ThemeTransitionEasing.Ease(progress));
     }
 
-    private bool UpdateEntranceAnimation()
+    private void CompleteEntranceAnimation()
     {
-        if (!_isEntranceActive)
-        {
-            return false;
-        }
+        _entranceCompletion?.Dispose();
+        _entranceCompletion = null;
+        _isEntranceActive = false;
+        CaptureChildPositions();
+    }
 
-        TimeSpan elapsed = Stopwatch.GetElapsedTime(_entranceStarted);
-        double pageProgress = Math.Clamp(elapsed.TotalMilliseconds / EntranceDuration.TotalMilliseconds, 0, 1);
-        Opacity = ThemeTransitionEasing.Ease(pageProgress);
-
-        bool childrenComplete = true;
-        int index = 0;
+    private void ResetMotionVisuals()
+    {
+        _entranceCompletion?.Dispose();
+        _entranceCompletion = null;
+        _isEntranceActive = false;
+        WinUiCompositorMotion.SetOpacity(this, (float)Opacity);
         foreach (Control child in SettingsItemsPanel.Children)
         {
-            double delay = Math.Min(
-                EntranceStaggerDelay.TotalMilliseconds * index,
-                EntranceStaggerCap.TotalMilliseconds);
-            double progress = Math.Clamp(
-                (elapsed.TotalMilliseconds - delay) / EntranceDuration.TotalMilliseconds,
-                0,
-                1);
-            double eased = ThemeTransitionEasing.Ease(progress);
-            if (_childTranslations.TryGetValue(child, out TranslateTransform? translation))
-            {
-                translation.Y = SettingsEntranceOffset * (1 - eased);
-            }
-
-            child.Opacity = eased;
-            childrenComplete &= progress >= 1;
-            index++;
-        }
-
-        if (pageProgress < 1 || !childrenComplete)
-        {
-            return true;
-        }
-
-        _isEntranceActive = false;
-        RestorePageOpacity();
-        foreach (Control child in SettingsItemsPanel.Children.ToArray())
-        {
-            RestoreChildVisual(child);
-        }
-
-        CaptureChildPositions();
-        return _repositionAnimations.Count > 0;
-    }
-
-    private void SaveChildVisual(Control child)
-    {
-        if (!_savedChildVisuals.ContainsKey(child))
-        {
-            _savedChildVisuals[child] = (child.RenderTransform, child.RenderTransformOrigin, child.Opacity);
-        }
-    }
-
-    private TranslateTransform CreateChildTranslation(Control child)
-    {
-        var translation = new TranslateTransform();
-        var transformGroup = new TransformGroup();
-        if (_savedChildVisuals[child].Transform is { } existing)
-        {
-            transformGroup.Children.Add(existing as Transform ?? new MatrixTransform(existing.Value));
-        }
-
-        transformGroup.Children.Add(translation);
-        child.SetCurrentValue(RenderTransformProperty, transformGroup);
-        _childTranslations[child] = translation;
-        return translation;
-    }
-
-    private void RestoreChildVisual(Control child)
-    {
-        _repositionAnimations.Remove(child);
-        _childTranslations.Remove(child);
-        if (!_savedChildVisuals.Remove(child, out var saved))
-        {
-            return;
-        }
-
-        child.SetCurrentValue(RenderTransformProperty, saved.Transform);
-        child.SetCurrentValue(RenderTransformOriginProperty, saved.Origin);
-        child.Opacity = saved.Opacity;
-    }
-
-    private void RestoreAllMotionVisuals()
-    {
-        _settingsMotionTimer.Stop();
-        _isEntranceActive = false;
-        RestorePageOpacity();
-        foreach (Control child in _savedChildVisuals.Keys.ToArray())
-        {
-            RestoreChildVisual(child);
+            WinUiCompositorMotion.SetTranslation(child, Vector3.Zero);
+            WinUiCompositorMotion.SetOpacity(child, (float)child.Opacity);
         }
 
         _repositionAnimations.Clear();
-        _childTranslations.Clear();
-    }
-
-    private void RestorePageOpacity()
-    {
-        if (!_hasSavedPageOpacity)
-        {
-            return;
-        }
-
-        Opacity = _savedPageOpacity;
-        _hasSavedPageOpacity = false;
     }
 
     private void CaptureChildPositions()

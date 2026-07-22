@@ -1,11 +1,13 @@
+using System.Numerics;
 using Avalonia;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
-using Avalonia.Media;
+using Avalonia.Rendering.Composition;
+using Avalonia.Rendering.Composition.Animations;
 using Avalonia.VisualTree;
+using CalculatorApp.Controls;
 using CalculatorApp.ViewModel.Common;
 using FluentAvalonia.Core;
-using GraphControl;
 
 namespace CalculatorApp;
 
@@ -18,15 +20,9 @@ public sealed partial class MainPage
     private static readonly TimeSpan NavigationSelectionDuration = TimeSpan.FromMilliseconds(600);
     private static readonly SplineEasing NavigationSelectionStretchEasing = new(0.9, 0.1, 1.0, 0.2);
     private static readonly SplineEasing NavigationSelectionContractEasing = new(0.1, 0.9, 0.2, 1.0);
-    private readonly AnimationFrameTimer _navigationSelectionAnimationTimer;
     private Border? _activeSelectionIndicator;
     private Border? _outgoingSelectionIndicator;
     private Border? _incomingSelectionIndicator;
-    private TimeSpan _navigationSelectionStartedAt;
-    private bool _hasNavigationSelectionStartTimestamp;
-    private double _navigationSelectionDelta;
-    private double _navigationSelectionDimension;
-    private bool _navigationSelectionSameDepth;
 
     private void CaptureInitialNavigationSelection()
     {
@@ -49,7 +45,7 @@ public sealed partial class MainPage
             return;
         }
 
-        StopNavigationSelectionAnimation();
+        ResetPendingNavigationIndicators();
         _activeSelectionIndicator = nextIndicator;
         if (!FAUISettings.AreAnimationsEnabled()
             || previousIndicator.TranslatePoint(default, NavList) is not { } previousPosition
@@ -62,14 +58,16 @@ public sealed partial class MainPage
 
         _outgoingSelectionIndicator = previousIndicator;
         _incomingSelectionIndicator = nextIndicator;
-        _navigationSelectionDelta = nextPosition.Y - previousPosition.Y;
-        _navigationSelectionDimension = Math.Max(nextIndicator.Bounds.Height, 0.001);
-        _navigationSelectionSameDepth = Math.Abs(nextPosition.X - previousPosition.X) <= 0.001;
-        _hasNavigationSelectionStartTimestamp = false;
+        double delta = nextPosition.Y - previousPosition.Y;
+        double dimension = Math.Max(nextIndicator.Bounds.Height, 0.001);
+        bool sameDepth = Math.Abs(nextPosition.X - previousPosition.X) <= 0.001;
 
         previousIndicator.Opacity = 1;
         nextIndicator.Opacity = 1;
-        if (!_navigationSelectionAnimationTimer.Start(this))
+        bool animated = sameDepth
+            ? AnimateSameDepthIndicators(previousIndicator, nextIndicator, delta, dimension)
+            : AnimateDifferentDepthIndicators(previousIndicator, nextIndicator, delta, dimension);
+        if (!animated)
         {
             ResetNavigationIndicator(previousIndicator);
             ResetNavigationIndicator(nextIndicator);
@@ -88,104 +86,126 @@ public sealed partial class MainPage
             .FirstOrDefault(border => border.Name == "SelectionIndicator");
     }
 
-    private void OnNavigationSelectionAnimationFrame(TimeSpan timestamp)
+    private static bool AnimateSameDepthIndicators(
+        Border outgoing,
+        Border incoming,
+        double delta,
+        double dimension)
     {
-        if (_outgoingSelectionIndicator is not { } outgoing
-            || _incomingSelectionIndicator is not { } incoming)
+        const float phaseBoundary = 0.333f;
+        float peakScale = (float)(Math.Abs(delta) / dimension + 1);
+        bool movingDown = delta > 0;
+        float outgoingMiddleOffset = movingDown ? 0 : (float)delta;
+        float incomingMiddleOffset = movingDown ? (float)-delta : 0;
+        CompositionVisual? outgoingVisual = WinUiCompositorMotion.GetVisual(outgoing);
+        CompositionVisual? incomingVisual = WinUiCompositorMotion.GetVisual(incoming);
+        if (outgoingVisual is null || incomingVisual is null)
         {
-            StopNavigationSelectionAnimation();
-            return;
+            return false;
         }
 
-        if (!_hasNavigationSelectionStartTimestamp)
-        {
-            _navigationSelectionStartedAt = timestamp;
-            _hasNavigationSelectionStartTimestamp = true;
-        }
-
-        double progress = Math.Clamp(
-            (timestamp - _navigationSelectionStartedAt).TotalMilliseconds / NavigationSelectionDuration.TotalMilliseconds,
-            0,
-            1);
-
-        if (_navigationSelectionSameDepth)
-        {
-            ApplySameDepthIndicatorFrame(outgoing, 0, _navigationSelectionDelta, progress, isOutgoing: true);
-            ApplySameDepthIndicatorFrame(incoming, -_navigationSelectionDelta, 0, progress, isOutgoing: false);
-        }
-        else
-        {
-            bool nextIsBelow = _navigationSelectionDelta > 0;
-            ApplyDifferentDepthIndicatorFrame(outgoing, progress, isOutgoing: true, fromTop: !nextIsBelow);
-            ApplyDifferentDepthIndicatorFrame(incoming, progress, isOutgoing: false, fromTop: nextIsBelow);
-        }
-
-        if (progress < 1)
-        {
-            return;
-        }
-
-        StopNavigationSelectionAnimation();
-        ResetNavigationIndicator(outgoing);
-        ResetNavigationIndicator(incoming);
-        _outgoingSelectionIndicator = null;
-        _incomingSelectionIndicator = null;
+        StartVectorAnimation(
+            outgoingVisual,
+            "Scale",
+            new Vector3(1, 1, 1),
+            new Vector3(1, peakScale, 1),
+            new Vector3(1, 1, 1),
+            phaseBoundary);
+        StartVectorAnimation(
+            outgoingVisual,
+            "Translation",
+            Vector3.Zero,
+            new Vector3(0, outgoingMiddleOffset, 0),
+            new Vector3(0, (float)delta, 0),
+            phaseBoundary);
+        StartVectorAnimation(
+            incomingVisual,
+            "Scale",
+            new Vector3(1, 1, 1),
+            new Vector3(1, peakScale, 1),
+            new Vector3(1, 1, 1),
+            phaseBoundary);
+        StartVectorAnimation(
+            incomingVisual,
+            "Translation",
+            new Vector3(0, (float)-delta, 0),
+            new Vector3(0, incomingMiddleOffset, 0),
+            Vector3.Zero,
+            phaseBoundary);
+        StartOutgoingOpacityAnimation(outgoingVisual, phaseBoundary);
+        return true;
     }
 
-    private void ApplySameDepthIndicatorFrame(Border indicator, double from, double to, double progress, bool isOutgoing)
+    private static bool AnimateDifferentDepthIndicators(
+        Border outgoing,
+        Border incoming,
+        double delta,
+        double dimension)
     {
-        const double phaseBoundary = 0.333;
-        double peakScale = Math.Abs(to - from) / _navigationSelectionDimension + 1;
-        double scale;
-        double offset;
-        double center;
-
-        if (progress < phaseBoundary)
+        CompositionVisual? outgoingVisual = WinUiCompositorMotion.GetVisual(outgoing);
+        CompositionVisual? incomingVisual = WinUiCompositorMotion.GetVisual(incoming);
+        if (outgoingVisual is null || incomingVisual is null)
         {
-            double phaseProgress = progress / phaseBoundary;
-            scale = Lerp(1, peakScale, NavigationSelectionStretchEasing.Ease(phaseProgress));
-            offset = from;
-            center = from < to ? 0 : _navigationSelectionDimension;
-        }
-        else
-        {
-            double phaseProgress = (progress - phaseBoundary) / (1 - phaseBoundary);
-            scale = Lerp(peakScale, 1, NavigationSelectionContractEasing.Ease(phaseProgress));
-            offset = to;
-            center = from < to ? _navigationSelectionDimension : 0;
+            return false;
         }
 
-        // Composition's Scale.Y is evaluated around CenterPoint.Y, then Offset.Y
-        // is applied. This matrix is the identical affine transform.
-        double matrixOffset = offset + (center * (1 - scale));
-        indicator.RenderTransform = new MatrixTransform(new Matrix(1, 0, 0, scale, 0, matrixOffset));
-
-        if (isOutgoing)
-        {
-            double opacityProgress = progress < phaseBoundary
-                ? 0
-                : NavigationSelectionContractEasing.Ease((progress - phaseBoundary) / (1 - phaseBoundary));
-            indicator.Opacity = 1 - opacityProgress;
-        }
+        bool nextIsBelow = delta > 0;
+        float outgoingOffset = nextIsBelow ? (float)dimension : 0;
+        float incomingOffset = nextIsBelow ? 0 : (float)dimension;
+        StartSimpleVectorAnimation(outgoingVisual, "Scale", Vector3.One, new Vector3(1, 0, 1));
+        StartSimpleVectorAnimation(outgoingVisual, "Translation", Vector3.Zero, new Vector3(0, outgoingOffset, 0));
+        StartSimpleVectorAnimation(incomingVisual, "Scale", new Vector3(1, 0, 1), Vector3.One);
+        StartSimpleVectorAnimation(incomingVisual, "Translation", new Vector3(0, incomingOffset, 0), Vector3.Zero);
+        return true;
     }
 
-    private void ApplyDifferentDepthIndicatorFrame(Border indicator, double progress, bool isOutgoing, bool fromTop)
+    private static void StartVectorAnimation(
+        CompositionVisual visual,
+        string property,
+        Vector3 from,
+        Vector3 middle,
+        Vector3 to,
+        float phaseBoundary)
     {
-        double scale = isOutgoing ? 1 - progress : progress;
-        double center = fromTop ? 0 : _navigationSelectionDimension;
-        double matrixOffset = center * (1 - scale);
-        indicator.RenderTransform = new MatrixTransform(new Matrix(1, 0, 0, scale, 0, matrixOffset));
+        Vector3KeyFrameAnimation animation = visual.Compositor.CreateVector3KeyFrameAnimation();
+        animation.Target = property;
+        animation.Duration = NavigationSelectionDuration;
+        animation.StopBehavior = AnimationStopBehavior.SetToFinalValue;
+        animation.InsertKeyFrame(0, from);
+        animation.InsertKeyFrame(phaseBoundary, middle, NavigationSelectionStretchEasing);
+        animation.InsertKeyFrame(1, to, NavigationSelectionContractEasing);
+        visual.StartAnimation(property, animation);
     }
 
-    private void StopNavigationSelectionAnimation()
+    private static void StartSimpleVectorAnimation(
+        CompositionVisual visual,
+        string property,
+        Vector3 from,
+        Vector3 to)
     {
-        _navigationSelectionAnimationTimer.Stop();
-        _hasNavigationSelectionStartTimestamp = false;
+        Vector3KeyFrameAnimation animation = visual.Compositor.CreateVector3KeyFrameAnimation();
+        animation.Target = property;
+        animation.Duration = NavigationSelectionDuration;
+        animation.StopBehavior = AnimationStopBehavior.SetToFinalValue;
+        animation.InsertKeyFrame(0, from);
+        animation.InsertKeyFrame(1, to, NavigationSelectionContractEasing);
+        visual.StartAnimation(property, animation);
     }
 
-    private void DisposeNavigationSelectionAnimation()
+    private static void StartOutgoingOpacityAnimation(CompositionVisual visual, float phaseBoundary)
     {
-        _navigationSelectionAnimationTimer.Detach();
+        ScalarKeyFrameAnimation animation = visual.Compositor.CreateScalarKeyFrameAnimation();
+        animation.Target = "Opacity";
+        animation.Duration = NavigationSelectionDuration;
+        animation.StopBehavior = AnimationStopBehavior.SetToFinalValue;
+        animation.InsertKeyFrame(0, 1);
+        animation.InsertKeyFrame(phaseBoundary, 1);
+        animation.InsertKeyFrame(1, 0, NavigationSelectionContractEasing);
+        visual.StartAnimation("Opacity", animation);
+    }
+
+    private void ResetPendingNavigationIndicators()
+    {
         if (_outgoingSelectionIndicator is { } outgoing)
         {
             ResetNavigationIndicator(outgoing);
@@ -198,14 +218,20 @@ public sealed partial class MainPage
 
         _outgoingSelectionIndicator = null;
         _incomingSelectionIndicator = null;
+    }
+
+    private void DisposeNavigationSelectionAnimation()
+    {
+        ResetPendingNavigationIndicators();
         _activeSelectionIndicator = null;
     }
 
     private static void ResetNavigationIndicator(Border indicator)
     {
+        WinUiCompositorMotion.SetScale(indicator, Vector3.One);
+        WinUiCompositorMotion.SetTranslation(indicator, Vector3.Zero);
+        WinUiCompositorMotion.SetOpacity(indicator, (float)indicator.Opacity);
         indicator.ClearValue(Visual.RenderTransformProperty);
         indicator.ClearValue(Visual.OpacityProperty);
     }
-
-    private static double Lerp(double from, double to, double progress) => from + ((to - from) * progress);
 }

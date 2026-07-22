@@ -21,6 +21,9 @@ internal sealed class AvaloniaGraphRenderCache
     private static readonly ImmutableDashStyle DashDashStyle = ToImmutable(DashStyle.Dash);
     private static readonly ImmutableDashStyle DashDotDashStyle = ToImmutable(DashStyle.DashDot);
     private static readonly ImmutableDashStyle DashDotDotDashStyle = ToImmutable(DashStyle.DashDotDot);
+    private static readonly FontFamily GraphFontFamily = new("Segoe UI");
+    private static readonly Typeface GraphTypeface = new(GraphFontFamily);
+    private static readonly Typeface ItalicGraphTypeface = new(GraphFontFamily, FontStyle.Italic);
     private readonly Dictionary<GraphPath, StreamGeometry> _geometries = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<(GraphPath Path, float Width), StreamGeometry> _dashedGeometries = [];
     private readonly Dictionary<HatchGridCommand, StreamGeometry> _hatchGeometries = new(ReferenceEqualityComparer.Instance);
@@ -178,7 +181,10 @@ internal sealed class AvaloniaGraphRenderCache
             ClearTextLayouts();
         }
 
-        layout = new TextLayout(glyph.Text, new Typeface(glyph.FontFamily, glyph.FontStyle == GraphFontStyle.Italic ? FontStyle.Italic : FontStyle.Normal), glyph.FontSize, Brush(glyph.Paint.Color));
+        Typeface typeface = glyph.FontStyle == GraphFontStyle.Italic
+            ? ItalicGraphTypeface
+            : GraphTypeface;
+        layout = new TextLayout(glyph.Text, typeface, glyph.FontSize, Brush(glyph.Paint.Color));
         _textLayouts.Add(key, layout);
         return layout;
     }

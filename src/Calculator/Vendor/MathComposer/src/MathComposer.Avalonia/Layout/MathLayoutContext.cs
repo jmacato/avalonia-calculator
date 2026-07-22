@@ -28,13 +28,26 @@ internal sealed class MathLayoutContext
     {
         if (row.Children.IsEmpty)
         {
-            double ascent = size * 0.65;
-            double descent = size * 0.2;
+            double ascent = Math.Max(
+                size * 0.5,
+                _font.ScaleDesignUnits(_font.Ascender, size));
+            double descent = Math.Max(
+                size * 0.15,
+                _font.ScaleDesignUnits(-_font.Descender, size));
             double width = size * 0.55;
             var empty = new MathLayoutBox(width, ascent, descent);
+            var placeholderBounds = new Rect(0, -ascent, width, ascent + descent);
+            var placeholderPosition = new MathPosition(path, 0);
             empty.Commands.Add(new MathPlaceholderDrawCommand(
-                new Rect(size * 0.08, -ascent * 0.72, width - size * 0.16, ascent * 0.82)));
-            empty.CaretStops.Add(Caret(path, 0, 0, ascent, descent));
+                placeholderBounds,
+                placeholderPosition));
+            empty.CaretStops.Add(new MathCaretStop(
+                placeholderPosition,
+                new Rect(
+                    placeholderBounds.Center.X - 1.5,
+                    placeholderBounds.Top + 1,
+                    3,
+                    Math.Max(1, placeholderBounds.Height - 2))));
             return empty;
         }
 

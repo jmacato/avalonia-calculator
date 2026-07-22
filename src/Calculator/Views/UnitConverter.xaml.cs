@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 using System.ComponentModel;
 using System.Globalization;
+using System.Numerics;
 using Avalonia;
-using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -11,7 +11,6 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Styling;
 using Avalonia.Threading;
 using CalculatorApp.Controls;
 using CalculatorApp.ViewModel;
@@ -22,27 +21,13 @@ namespace CalculatorApp;
 
 public sealed partial class UnitConverter : UserControl, IDisposable
 {
-    private static readonly AttachedProperty<double> ConverterScaleProperty = AvaloniaProperty.RegisterAttached<UnitConverter, Grid, double>("ConverterScale", 1d);
     private UnitConverterViewModel? _subscribedModel;
     private CalculationResult? _contextMenuTarget;
     private DispatcherTimer? _currencyLoadingDelayTimer;
-    private CancellationTokenSource? _entranceAnimationCancellation;
     private bool _isUnitLoaded = true;
     private readonly FlowDirection _layoutDirection;
     private readonly HorizontalAlignment _flowDirectionHorizontalAlignment;
     private int _disposed;
-    static UnitConverter()
-    {
-        ConverterScaleProperty.Changed.AddClassHandler<Grid>(static (grid, args) =>
-        {
-            if (grid.RenderTransform is ScaleTransform transform && args.NewValue is double scale)
-            {
-                transform.ScaleX = scale;
-                transform.ScaleY = scale;
-            }
-        });
-    }
-
     public UnitConverter()
     {
         ConverterPipelineDiagnostics.Record(17);
@@ -63,45 +48,12 @@ public sealed partial class UnitConverter : UserControl, IDisposable
             return;
         }
 
-        var animation = new Animation
-        {
-            Duration = TimeSpan.FromMilliseconds(367),
-            Easing = new UnitConverterWinUiExponentialEaseOut(5),
-            Children =
-            {
-                new KeyFrame
-                {
-                    Cue = new Cue(0),
-                    Setters =
-                    {
-                        new Setter(ConverterScaleProperty, 0.92)
-                    }
-                },
-                new KeyFrame
-                {
-                    Cue = new Cue(1),
-                    Setters =
-                    {
-                        new Setter(ConverterScaleProperty, 1d)
-                    }
-                }
-            }
-        };
-        _entranceAnimationCancellation?.Cancel();
-        _entranceAnimationCancellation?.Dispose();
-        _entranceAnimationCancellation = new CancellationTokenSource();
-        _ = RunConverterAnimationAsync(animation, _entranceAnimationCancellation.Token);
-    }
-
-    private async Task RunConverterAnimationAsync(Animation animation, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await animation.RunAsync(ConverterNumPad, cancellationToken).ConfigureAwait(true);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-        }
+        _ = WinUiCompositorMotion.AnimateScale(
+            ConverterNumPad,
+            new Vector3(0.92f, 0.92f, 1),
+            Vector3.One,
+            TimeSpan.FromMilliseconds(367),
+            new UnitConverterWinUiExponentialEaseOut(5));
     }
 
     public void SetDefaultFocus()
@@ -269,17 +221,17 @@ public sealed partial class UnitConverter : UserControl, IDisposable
         bool shouldAnimate = isLoaded && animateLoadedState && FAUISettings.AreAnimationsEnabled();
         foreach (Visual target in GetCurrencyLoadedAnimationTargets())
         {
-            target.Transitions = shouldAnimate ? new Transitions
-            {
-                new DoubleTransition
-                {
-                    Property = Visual.OpacityProperty,
-                    Duration = TimeSpan.FromSeconds(1)
-                }
-            }
-
-            : null;
+            target.Transitions = null;
             target.Opacity = isLoaded ? 1 : 0;
+            if (shouldAnimate)
+            {
+                _ = WinUiCompositorMotion.AnimateOpacity(
+                    target,
+                    0,
+                    1,
+                    TimeSpan.FromSeconds(1),
+                    new LinearEasing());
+            }
         }
     }
 
@@ -580,9 +532,7 @@ public sealed partial class UnitConverter : UserControl, IDisposable
             return;
         }
 
-        _entranceAnimationCancellation?.Cancel();
-        _entranceAnimationCancellation?.Dispose();
-        _entranceAnimationCancellation = null;
+        WinUiCompositorMotion.SetScale(ConverterNumPad, Vector3.One);
         HideProgressRing();
         if (_subscribedModel is not null)
         {

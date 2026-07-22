@@ -2,11 +2,12 @@
 // Licensed under the MIT License.
 
 using System.Diagnostics;
+using System.Numerics;
 using Avalonia;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
-using Avalonia.Media;
-using GraphControl;
+using Avalonia.Threading;
+using FluentAvalonia.Core;
 
 namespace CalculatorApp.Controls;
 
@@ -18,92 +19,62 @@ public sealed class WinUiEdgeUiTransition
 {
     private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(367);
     private static readonly SplineEasing StandardEasing = new(0.1, 0.9, 0.2, 1);
-    private readonly AnimationFrameTimer _animationTimer;
     private Control? _target;
-    private TranslateTransform? _translation;
-    private ITransform? _savedTransform;
+    private IDisposable? _completionTimer;
     private Action? _completed;
     private long _started;
     private double _from;
     private double _to;
 
-    public WinUiEdgeUiTransition()
-    {
-        _animationTimer = new AnimationFrameTimer(OnAnimationFrame);
-    }
-
-    public bool IsRunning => _animationTimer.IsRunning;
+    public bool IsRunning => _completionTimer is not null;
 
     public void Begin(Control target, bool show, bool animate, Action? completed = null)
     {
         ArgumentNullException.ThrowIfNull(target);
         double extent = Math.Max(0, target.Bounds.Height);
         double requestedFrom = show ? extent : 0;
-        double current = ReferenceEquals(_target, target) && _translation is not null
-            ? _translation.Y
+        double current = ReferenceEquals(_target, target) && IsRunning
+            ? CurrentTranslation()
             : requestedFrom;
         Cancel();
 
         _target = target;
-        _savedTransform = target.RenderTransform;
-        _translation = new TranslateTransform(0, current);
-        var transforms = new TransformGroup();
-        if (_savedTransform is { } existing)
-        {
-            transforms.Children.Add(existing as Transform ?? new MatrixTransform(existing.Value));
-        }
-
-        transforms.Children.Add(_translation);
-        target.SetCurrentValue(Visual.RenderTransformProperty, transforms);
         _from = current;
         _to = show ? 0 : extent;
         _completed = completed;
         _started = Stopwatch.GetTimestamp();
-        if (!animate || extent <= 0 || Math.Abs(_to - _from) <= double.Epsilon || !_animationTimer.Start(target))
+        if (!animate || extent <= 0 || Math.Abs(_to - _from) <= double.Epsilon ||
+            !WinUiCompositorMotion.AnimateTranslation(
+                target,
+                new Vector3(0, (float)_from, 0),
+                new Vector3(0, (float)_to, 0),
+                Duration,
+                StandardEasing))
         {
             Complete();
+            return;
         }
+
+        _completionTimer = DispatcherTimer.RunOnce(Complete, Duration, DispatcherPriority.Render);
     }
 
     public void Cancel()
     {
-        _animationTimer.Stop();
+        _completionTimer?.Dispose();
+        _completionTimer = null;
         _completed = null;
         RestoreTarget();
     }
 
     public void Detach()
     {
-        _animationTimer.Detach();
-        _completed = null;
-        RestoreTarget();
-    }
-
-    private void OnAnimationFrame(TimeSpan timestamp)
-    {
-        _ = timestamp;
-        if (_translation is null)
-        {
-            Complete();
-            return;
-        }
-
-        double progress = Math.Clamp(Stopwatch.GetElapsedTime(_started).TotalMilliseconds / Duration.TotalMilliseconds, 0, 1);
-        _translation.Y = _from + ((_to - _from) * StandardEasing.Ease(progress));
-        if (progress >= 1)
-        {
-            Complete();
-        }
+        Cancel();
     }
 
     private void Complete()
     {
-        if (_translation is not null)
-        {
-            _translation.Y = _to;
-        }
-
-        _animationTimer.Stop();
+        _completionTimer?.Dispose();
+        _completionTimer = null;
         Action? completed = _completed;
         _completed = null;
         RestoreTarget();
@@ -114,11 +85,18 @@ public sealed class WinUiEdgeUiTransition
     {
         if (_target is not null)
         {
-            _target.SetCurrentValue(Visual.RenderTransformProperty, _savedTransform);
+            WinUiCompositorMotion.SetTranslation(_target, Vector3.Zero);
         }
 
         _target = null;
-        _translation = null;
-        _savedTransform = null;
+    }
+
+    private double CurrentTranslation()
+    {
+        double progress = Math.Clamp(
+            Stopwatch.GetElapsedTime(_started).TotalMilliseconds / Duration.TotalMilliseconds,
+            0,
+            1);
+        return _from + ((_to - _from) * StandardEasing.Ease(progress));
     }
 }

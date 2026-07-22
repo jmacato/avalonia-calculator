@@ -305,18 +305,17 @@ public sealed class EquationTextBox : TemplatedControl
 
     private void UpdateVisualState()
     {
-        bool hasContent = _richEditBox?.HasContent == true;
         bool hasError = HasError || _richEditBox?.HasEquationError == true;
         PseudoClasses.Set(":error", hasError);
         PseudoClasses.Set(":add-equation", IsAddEquationMode);
-        if (_removeButton is not null)
+        PseudoClasses.Set(":line-disabled", IsEquationLineDisabled);
+        if (_equationButton is not null)
         {
-            _removeButton.IsVisible = !IsAddEquationMode;
+            _equationButton.Tag = IsAddEquationMode ? string.Empty : EquationButtonContentIndex;
         }
 
         if (_functionButton is not null)
         {
-            _functionButton.IsVisible = !IsAddEquationMode && hasContent;
             _functionButton.IsEnabled = !hasError;
         }
 
@@ -334,7 +333,8 @@ public sealed class EquationTextBox : TemplatedControl
             : $" {EquationButtonContentIndex}";
         if (_equationButton is not null)
         {
-            _equationButton.IsChecked = !IsEquationLineDisabled;
+            _equationButton.IsChecked = IsEquationLineDisabled;
+            _equationButton.Tag = IsAddEquationMode ? string.Empty : EquationButtonContentIndex;
             string action = IsEquationLineDisabled ? "Show" : "Hide";
             AutomationProperties.SetName(_equationButton, $"{action} function{index}");
             ToolTip.SetTip(_equationButton, $"{action} function");

@@ -95,6 +95,7 @@ public sealed class SwipeControl : ContentControl
     private bool _hasRestingAnimationStartTimestamp;
     private bool _isPointerCandidate;
     private bool _isDragging;
+    private bool _itemsCollectionsSubscribed;
     public SwipeControl()
     {
         _restingAnimationTimer = new AnimationFrameTimer(OnRestingAnimationFrame);
@@ -240,11 +241,59 @@ public sealed class SwipeControl : ContentControl
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
+        if (!_itemsCollectionsSubscribed)
+        {
+            _itemsCollectionsSubscribed = true;
+            if (LeftItems is not null)
+            {
+                LeftItems.CollectionChanged += OnLeftItemsChanged;
+            }
+
+            if (RightItems is not null)
+            {
+                RightItems.CollectionChanged += OnRightItemsChanged;
+            }
+
+            if (TopItems is not null)
+            {
+                TopItems.CollectionChanged += OnTopItemsChanged;
+            }
+
+            if (BottomItems is not null)
+            {
+                BottomItems.CollectionChanged += OnBottomItemsChanged;
+            }
+        }
+
         CloseWithoutAnimation();
     }
 
     private void OnUnloaded(object? sender, RoutedEventArgs e)
     {
+        if (_itemsCollectionsSubscribed)
+        {
+            _itemsCollectionsSubscribed = false;
+            if (LeftItems is not null)
+            {
+                LeftItems.CollectionChanged -= OnLeftItemsChanged;
+            }
+
+            if (RightItems is not null)
+            {
+                RightItems.CollectionChanged -= OnRightItemsChanged;
+            }
+
+            if (TopItems is not null)
+            {
+                TopItems.CollectionChanged -= OnTopItemsChanged;
+            }
+
+            if (BottomItems is not null)
+            {
+                BottomItems.CollectionChanged -= OnBottomItemsChanged;
+            }
+        }
+
         _restingAnimationTimer.Detach();
         DetachDismissingHandlers();
         if (s_lastInteractedWithSwipeControl is not null && s_lastInteractedWithSwipeControl.TryGetTarget(out SwipeControl? last) && ReferenceEquals(last, this))
@@ -261,7 +310,7 @@ public sealed class SwipeControl : ContentControl
 
     private void OnItemsCollectionChanged(SwipeControlCreatedContent content, SwipeItems? oldItems, SwipeItems? newItems, NotifyCollectionChangedEventHandler handler)
     {
-        if (oldItems is not null)
+        if (_itemsCollectionsSubscribed && oldItems is not null)
         {
             oldItems.CollectionChanged -= handler;
         }
@@ -269,7 +318,10 @@ public sealed class SwipeControl : ContentControl
         if (newItems is not null)
         {
             ThrowIfHasVerticalAndHorizontalContent();
-            newItems.CollectionChanged += handler;
+            if (_itemsCollectionsSubscribed)
+            {
+                newItems.CollectionChanged += handler;
+            }
         }
 
         if (_createdContent == content)

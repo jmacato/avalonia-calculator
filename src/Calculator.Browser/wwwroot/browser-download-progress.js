@@ -172,6 +172,7 @@ export function createDownloadProgressTracker(options) {
     const states = new Map();
     let loadedBytes = 0;
     let totalBytes = 0;
+    let unknownSizeAssets = 0;
     let completedAssets = 0;
     let framePending = false;
     let framePromise = null;
@@ -179,12 +180,16 @@ export function createDownloadProgressTracker(options) {
     let loadedBytesAtLastPaint = 0;
 
     function snapshot() {
+        const usesByteProgress = states.size > 0 && unknownSizeAssets === 0;
         return {
             loadedBytes,
             totalBytes,
             completedAssets,
             totalAssets: states.size,
-            ratio: totalBytes > 0 ? Math.min(loadedBytes / totalBytes, 1) : 0,
+            usesByteProgress,
+            ratio: usesByteProgress
+                ? Math.min(loadedBytes / totalBytes, 1)
+                : states.size > 0 ? completedAssets / states.size : 0,
         };
     }
 
@@ -229,21 +234,16 @@ export function createDownloadProgressTracker(options) {
         };
         states.set(name, state);
         totalBytes += state.expectedBytes;
+        if (state.expectedBytes === 0) {
+            unknownSizeAssets++;
+        }
         return state;
     }
 
-    function setExpectedBytes(state, value) {
-        const expectedBytes = positiveInteger(value);
-        if (expectedBytes === 0 || expectedBytes === state.expectedBytes) {
-            return;
-        }
-
-        totalBytes += expectedBytes - state.expectedBytes;
-        state.expectedBytes = expectedBytes;
-    }
-
     function resetAttempt(state) {
-        loadedBytes -= state.loadedBytes;
+        if (state.expectedBytes > 0) {
+            loadedBytes -= state.loadedBytes;
+        }
         if (state.complete) {
             completedAssets--;
         }
@@ -258,7 +258,9 @@ export function createDownloadProgressTracker(options) {
         state.loadedBytes = state.expectedBytes > 0
             ? Math.min(state.loadedBytes + bytes, state.expectedBytes)
             : state.loadedBytes + bytes;
-        loadedBytes += state.loadedBytes - previousLoadedBytes;
+        if (state.expectedBytes > 0) {
+            loadedBytes += state.loadedBytes - previousLoadedBytes;
+        }
 
         const paintOpportunity = publishProgress();
         const targetPaintCount = 120;
@@ -276,12 +278,10 @@ export function createDownloadProgressTracker(options) {
             return;
         }
 
-        if (state.expectedBytes === 0) {
-            setExpectedBytes(state, state.loadedBytes);
+        if (state.expectedBytes > 0) {
+            loadedBytes += state.expectedBytes - state.loadedBytes;
+            state.loadedBytes = state.expectedBytes;
         }
-
-        loadedBytes += state.expectedBytes - state.loadedBytes;
-        state.loadedBytes = state.expectedBytes;
 
         state.complete = true;
         completedAssets++;

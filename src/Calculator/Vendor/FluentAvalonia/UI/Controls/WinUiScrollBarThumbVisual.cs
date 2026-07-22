@@ -1,11 +1,12 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Diagnostics;
 using Avalonia;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using FluentAvalonia.Core;
 
@@ -28,10 +29,7 @@ public sealed class WinUiScrollBarThumbVisual : Rectangle
         AvaloniaProperty.Register<WinUiScrollBarThumbVisual, bool>(nameof(IsDisabled));
 
     private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(83);
-    private long _started;
-    private double _fromOpacity;
-    private bool _isAnimating;
-    private bool _frameRequested;
+    private IDisposable? _completionTimer;
 
     public IBrush? NormalFill
     {
@@ -88,8 +86,8 @@ public sealed class WinUiScrollBarThumbVisual : Rectangle
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        _isAnimating = false;
-        _frameRequested = false;
+        _completionTimer?.Dispose();
+        _completionTimer = null;
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -102,50 +100,44 @@ public sealed class WinUiScrollBarThumbVisual : Rectangle
             return;
         }
 
-        _fromOpacity = Opacity;
-        _started = Stopwatch.GetTimestamp();
-        _isAnimating = true;
-        RequestFrame();
+        if (!WinUiCompositorMotion.AnimateOpacity(
+                this,
+                (float)Opacity,
+                0,
+                Duration,
+                new LinearEasing()))
+        {
+            CompleteDisabledState();
+            return;
+        }
+
+        _completionTimer?.Dispose();
+        _completionTimer = DispatcherTimer.RunOnce(
+            CompleteDisabledState,
+            Duration,
+            DispatcherPriority.Render);
     }
 
     private void CompleteNormalState()
     {
-        _isAnimating = false;
-        _frameRequested = false;
+        _completionTimer?.Dispose();
+        _completionTimer = null;
         Fill = NormalFill;
         Opacity = 1;
+        WinUiCompositorMotion.SetOpacity(this, 1);
     }
 
-    private void RequestFrame()
+    private void CompleteDisabledState()
     {
-        if (_frameRequested || TopLevel.GetTopLevel(this) is not { } topLevel)
+        _completionTimer?.Dispose();
+        _completionTimer = null;
+        if (!IsDisabled)
         {
             return;
         }
 
-        _frameRequested = true;
-        topLevel.RequestAnimationFrame(OnAnimationFrame);
-    }
-
-    private void OnAnimationFrame(TimeSpan _)
-    {
-        _frameRequested = false;
-        if (!_isAnimating || !IsDisabled)
-        {
-            return;
-        }
-
-        double progress = Math.Clamp(Stopwatch.GetElapsedTime(_started).TotalSeconds / Duration.TotalSeconds, 0, 1);
-        Opacity = _fromOpacity * (1 - progress);
-        if (progress >= 1)
-        {
-            _isAnimating = false;
-            Fill = DisabledFill;
-            Opacity = 0;
-        }
-        else
-        {
-            RequestFrame();
-        }
+        Fill = DisabledFill;
+        Opacity = 0;
+        WinUiCompositorMotion.SetOpacity(this, 0);
     }
 }

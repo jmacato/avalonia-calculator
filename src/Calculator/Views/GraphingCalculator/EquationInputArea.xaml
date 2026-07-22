@@ -7,74 +7,140 @@
              xmlns:vm="using:CalculatorApp.ViewModel"
              x:DataType="vm:GraphingCalculatorViewModel"
              x:CompileBindings="True">
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Default">
+          <SolidColorBrush x:Key="EquationButtonInactiveBrush" Color="White" Opacity="0.4" />
+          <SolidColorBrush x:Key="EquationButtonOverlayBrush" Color="White" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="EquationButtonInactiveBrush" Color="White" Opacity="0.4" />
+          <SolidColorBrush x:Key="EquationButtonOverlayBrush" Color="White" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="EquationButtonInactiveBrush" Color="Black" Opacity="0.4" />
+          <SolidColorBrush x:Key="EquationButtonOverlayBrush" Color="Black" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
   <UserControl.Styles>
-    <!-- The named editor part hosts Math Composer's structural MathML editor.
-         The graph-specific wrapper owns validation and submission. -->
     <Style Selector="controls|EquationTextBox">
-      <Setter Property="MinHeight" Value="68" />
-      <Setter Property="Margin" Value="4,2" />
+      <Setter Property="MinHeight" Value="44" />
+      <Setter Property="Margin" Value="5,0,4,2" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
       <Setter Property="Template">
         <ControlTemplate>
           <Border x:Name="EquationBoxBorder"
-                  Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                  BorderBrush="{TemplateBinding EquationColor}"
-                  BorderThickness="0,0,0,1"
-                  CornerRadius="4">
-            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="40,*,Auto">
+                  Background="{DynamicResource TextControlBackground}"
+                  BorderBrush="Transparent"
+                  BorderThickness="0,1,1,1"
+                  CornerRadius="{DynamicResource ControlCornerRadius}">
+            <Grid RowDefinitions="Auto,Auto"
+                  ColumnDefinitions="Auto,*,Auto,Auto,Auto">
               <ToggleButton x:Name="EquationButton"
-                            Width="32"
-                            Height="32"
-                            Margin="4,10,2,0"
+                            MinWidth="44"
                             Padding="0"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Top"
-                            Background="Transparent"
-                            BorderThickness="0">
-                <Ellipse Width="14"
-                         Height="14"
-                         Fill="{TemplateBinding EquationColor}" />
+                            VerticalAlignment="Stretch"
+                            Background="{TemplateBinding EquationColor}"
+                            BorderThickness="0"
+                            CornerRadius="{DynamicResource ControlCornerRadius}"
+                            Tag="{TemplateBinding EquationButtonContentIndex}">
+                <ToggleButton.Template>
+                  <ControlTemplate>
+                    <Border x:Name="EquationButtonRoot"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="{TemplateBinding CornerRadius}">
+                      <Grid>
+                        <Border x:Name="EquationButtonOverlay"
+                                Background="{DynamicResource EquationButtonOverlayBrush}"
+                                CornerRadius="{TemplateBinding CornerRadius}"
+                                Opacity="0" />
+                        <StackPanel HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    FlowDirection="LeftToRight"
+                                    Orientation="Horizontal">
+                          <TextBlock VerticalAlignment="Center"
+                                     Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                     FontFamily="{DynamicResource CalculatorFontFamily}"
+                                     FontSize="24"
+                                     Text="&#xF893;" />
+                          <TextBlock x:Name="FunctionNumberLabelTextBlock"
+                                     Margin="-5,17,0,0"
+                                     VerticalAlignment="Center"
+                                     Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                     FontSize="11"
+                                     Text="{TemplateBinding Tag}" />
+                        </StackPanel>
+                      </Grid>
+                    </Border>
+                  </ControlTemplate>
+                </ToggleButton.Template>
               </ToggleButton>
 
               <controls:MathRichEditBox x:Name="MathRichEditBox"
                                         Grid.Column="1"
-                                        MinHeight="54"
-                                        Padding="8,0"
+                                        MinHeight="44"
+                                        Padding="11,5,11,6"
                                         VerticalContentAlignment="Stretch"
                                         Background="Transparent"
                                         BorderThickness="0"
-                                        FontSize="20"
-                                        PlaceholderText="f(x) ="
+                                        FontSize="14"
+                                        Foreground="{TemplateBinding Foreground}"
+                                        PlaceholderText="{utils:ResourceString Name='mathRichEditBox.PlaceholderText'}"
                                         AutomationProperties.AutomationId="GraphingExpressionEditor" />
 
-              <StackPanel Grid.Column="2"
-                          Margin="2,8,6,0"
-                          VerticalAlignment="Top"
-                          Orientation="Horizontal"
-                          Spacing="2">
-                <Button x:Name="FunctionButton"
-                        Width="32"
-                        Height="32"
-                        Padding="0"
-                        AutomationProperties.Name="Function analysis"
-                        Content="ƒ" />
-                <Button x:Name="ColorChooserButton"
-                        Width="32"
-                        Height="32"
-                        Padding="0"
-                        AutomationProperties.Name="Change function style"
-                        Content="●" />
-                <Button x:Name="RemoveButton"
-                        Width="32"
-                        Height="32"
-                        Padding="0"
-                        AutomationProperties.Name="Remove function"
-                        Content="×" />
-              </StackPanel>
+              <Button x:Name="FunctionButton"
+                      Grid.Column="2"
+                      MinWidth="38"
+                      Margin="1,2"
+                      Padding="0"
+                      VerticalAlignment="Stretch"
+                      BorderThickness="0"
+                      Theme="{StaticResource SubtleButtonStyle}"
+                      AutomationProperties.Name="Analyze function">
+                <TextBlock HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontFamily="{DynamicResource CalculatorFontFamily}"
+                           FontSize="18"
+                           Text="&#xE945;" />
+              </Button>
+              <Button x:Name="ColorChooserButton"
+                      Grid.Column="3"
+                      MinWidth="38"
+                      Margin="1,2"
+                      Padding="0"
+                      VerticalAlignment="Stretch"
+                      BorderThickness="0"
+                      Theme="{StaticResource SubtleButtonStyle}"
+                      AutomationProperties.Name="Change function style">
+                <TextBlock HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontFamily="{DynamicResource CalculatorFontFamily}"
+                           FontSize="18"
+                           Text="&#xE790;" />
+              </Button>
+              <Button x:Name="RemoveButton"
+                      Grid.Column="4"
+                      MinWidth="38"
+                      Margin="1,2"
+                      Padding="0"
+                      VerticalAlignment="Stretch"
+                      BorderThickness="0"
+                      Theme="{StaticResource SubtleButtonStyle}"
+                      AutomationProperties.Name="Remove function">
+                <TextBlock HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontFamily="{DynamicResource CalculatorFontFamily}"
+                           FontSize="18"
+                           Text="&#xE74D;" />
+              </Button>
 
               <TextBlock x:Name="ErrorTextBlock"
                          Grid.Row="1"
                          Grid.Column="1"
-                         Grid.ColumnSpan="2"
+                         Grid.ColumnSpan="4"
                          Margin="8,0,8,6"
                          Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                          FontSize="12"
@@ -84,18 +150,55 @@
         </ControlTemplate>
       </Setter>
     </Style>
+    <Style Selector="controls|EquationTextBox /template/ Button#FunctionButton,
+                     controls|EquationTextBox /template/ Button#ColorChooserButton,
+                     controls|EquationTextBox /template/ Button#RemoveButton">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
     <Style Selector="controls|EquationTextBox:pointerover /template/ Border#EquationBoxBorder">
-      <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}" />
+      <Setter Property="BorderBrush" Value="{Binding EquationColor, RelativeSource={RelativeSource TemplatedParent}}" />
+      <Setter Property="BorderThickness" Value="1" />
     </Style>
     <Style Selector="controls|EquationTextBox:editor-focused /template/ Border#EquationBoxBorder">
+      <Setter Property="Background" Value="{DynamicResource TextControlBackgroundFocused}" />
+      <Setter Property="BorderBrush" Value="{Binding EquationColor, RelativeSource={RelativeSource TemplatedParent}}" />
       <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="controls|EquationTextBox:pointerover /template/ Button#FunctionButton,
+                     controls|EquationTextBox:pointerover /template/ Button#ColorChooserButton,
+                     controls|EquationTextBox:pointerover /template/ Button#RemoveButton,
+                     controls|EquationTextBox:editor-focused /template/ Button#FunctionButton,
+                     controls|EquationTextBox:editor-focused /template/ Button#ColorChooserButton,
+                     controls|EquationTextBox:editor-focused /template/ Button#RemoveButton">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="controls|EquationTextBox:add-equation /template/ ToggleButton#EquationButton">
+      <Setter Property="Background" Value="{DynamicResource EquationButtonInactiveBrush}" />
+      <Setter Property="IsEnabled" Value="False" />
+    </Style>
+    <Style Selector="controls|EquationTextBox:line-disabled /template/ ToggleButton#EquationButton">
+      <Setter Property="Background" Value="{DynamicResource EquationButtonInactiveBrush}" />
+    </Style>
+    <Style Selector="controls|EquationTextBox:add-equation:editor-focused /template/ Border#EquationBoxBorder">
+      <Setter Property="BorderBrush" Value="{DynamicResource EquationButtonInactiveBrush}" />
+    </Style>
+    <Style Selector="controls|EquationTextBox:add-equation /template/ TextBlock#FunctionNumberLabelTextBlock">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="controls|EquationTextBox:add-equation /template/ Button#FunctionButton,
+                     controls|EquationTextBox:add-equation /template/ Button#ColorChooserButton,
+                     controls|EquationTextBox:add-equation /template/ Button#RemoveButton">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="controls|EquationTextBox /template/ ToggleButton#EquationButton:pointerover /template/ Border#EquationButtonOverlay">
+      <Setter Property="Opacity" Value="0.2" />
+    </Style>
+    <Style Selector="controls|EquationTextBox /template/ ToggleButton#EquationButton:pressed /template/ Border#EquationButtonOverlay">
+      <Setter Property="Opacity" Value="0.4" />
     </Style>
     <Style Selector="controls|EquationTextBox:error /template/ Border#EquationBoxBorder">
       <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
       <Setter Property="BorderThickness" Value="1" />
-    </Style>
-    <Style Selector="controls|EquationTextBox:add-equation /template/ Button#ColorChooserButton">
-      <Setter Property="IsVisible" Value="False" />
     </Style>
     <Style Selector="TextBox.variableTextBox">
       <Setter Property="MinWidth" Value="30" />

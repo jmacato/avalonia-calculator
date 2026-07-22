@@ -1,10 +1,13 @@
 using Calculator.BrowserHost;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.AspNetCore.Http.Json;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 
 var settings = BrowserHostSettings.Parse(args);
 var builder = WebApplication.CreateSlimBuilder();
+builder.Configuration[WebHostDefaults.StaticWebAssetsKey] = settings.StaticWebAssetsManifest;
+StaticWebAssetsLoader.UseStaticWebAssets(builder.Environment, builder.Configuration);
 builder.Logging.SetMinimumLevel(LogLevel.Warning);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Server.Kestrel", LogLevel.Critical);
 builder.WebHost.ConfigureKestrel(options =>
@@ -29,8 +32,7 @@ builder.Services.AddHostedService(static serviceProvider => new TelemetryMonitor
     serviceProvider.GetRequiredService<TelemetryStore>(),
     serviceProvider.GetRequiredService<ILogger<TelemetryMonitor>>()));
 var app = builder.Build();
-var files = new PhysicalFileProvider(settings.WebRoot);
-var brotliFiles = new BrotliStaticFileServer(files);
+var files = builder.Environment.WebRootFileProvider;
 app.Use(async (context, next) =>
 {
     context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
@@ -112,7 +114,6 @@ app.MapGet("/telemetry/v1/sessions/{sessionId}/inputs", (string sessionId, Telem
 app.MapDelete("/telemetry/v1/sessions", (TelemetryStore store) => Results.Json(
     new TelemetryClearSessionsResponse(store.ClearSessions())));
 app.MapGet("/telemetry", () => Results.Content(TelemetryDashboard.Html, "text/html; charset=utf-8"));
-app.Use((HttpContext context, RequestDelegate next) => brotliFiles.InvokeAsync(context, next));
 app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = files });
 app.UseStaticFiles(new StaticFileOptions { FileProvider = files, ServeUnknownFileTypes = true, DefaultContentType = "application/octet-stream" });
 app.MapFallback(async context =>
@@ -123,10 +124,18 @@ app.MapFallback(async context =>
         return;
     }
 
-    await brotliFiles.ServeFallbackAsync(context).ConfigureAwait(false);
+    var index = files.GetFileInfo("index.html");
+    if (!index.Exists)
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    context.Response.ContentType = "text/html; charset=utf-8";
+    await context.Response.SendFileAsync(index, context.RequestAborted).ConfigureAwait(false);
 });
 Console.WriteLine($"Calculator browser host: https://0.0.0.0:{settings.Port}");
-Console.WriteLine($"Web root: {settings.WebRoot}");
+Console.WriteLine($"Static web assets: {settings.StaticWebAssetsManifest}");
 Console.WriteLine($"Telemetry dashboard: https://127.0.0.1:{settings.Port}/telemetry");
 Console.WriteLine($"Telemetry directory: {settings.TelemetryDirectory}");
 await app.RunAsync().ConfigureAwait(false);

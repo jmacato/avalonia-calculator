@@ -370,8 +370,12 @@
       <controls:CalculatorButton x:Name="SubmitButton" Grid.Row="7" Grid.Column="4" Classes="equals"
                                  AutomationProperties.AutomationId="submitButton"
                                  AutomationProperties.Name="{utils:ResourceString Name='submitButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
-                                 FontFamily="{DynamicResource ContentControlThemeFontFamily}"
-                                 ButtonId="Submit" Content="↵" />
+                                 ButtonId="Submit">
+        <PathIcon x:Name="SubmitIcon"
+                  Width="20"
+                  Height="20"
+                  Data="{StaticResource WindowsCalculatorSubmitIconGeometry}" />
+      </controls:CalculatorButton>
     </Grid>
   </Border>
 </UserControl>

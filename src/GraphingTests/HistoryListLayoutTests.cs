@@ -1,14 +1,27 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using CalculatorApp;
+using CalculatorApp.Controls;
 using CalculatorApp.ViewModel;
 
 namespace GraphingTests;
 
 public sealed class HistoryListLayoutTests
 {
+    [AvaloniaFact(Timeout = 5_000)]
+    public void RecycledSwipeRowsAreNotRootedBySharedSwipeItems()
+    {
+        var sharedItems = new SwipeItems();
+        sharedItems.Add(new SwipeItem());
+        WeakReference<SwipeControl> recycledRow = LoadThenUnloadSwipeRow(sharedItems);
+
+        CollectGarbage();
+        Assert.False(recycledRow.TryGetTarget(out _));
+    }
+
     [AvaloniaFact(Timeout = 5_000)]
     public void NonEmptyHistoryCanRealizeAndMeasureItsFirstRow()
     {
@@ -45,5 +58,25 @@ public sealed class HistoryListLayoutTests
         {
             window.Close();
         }
+    }
+
+    private static WeakReference<SwipeControl> LoadThenUnloadSwipeRow(SwipeItems sharedItems)
+    {
+        var row = new SwipeControl
+        {
+            RightItems = sharedItems,
+            Content = new Border()
+        };
+        var reference = new WeakReference<SwipeControl>(row);
+        row.RaiseEvent(new RoutedEventArgs(Control.LoadedEvent));
+        row.RaiseEvent(new RoutedEventArgs(Control.UnloadedEvent));
+        return reference;
+    }
+
+    private static void CollectGarbage()
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
     }
 }
