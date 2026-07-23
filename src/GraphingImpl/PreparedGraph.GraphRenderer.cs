@@ -9,4 +9,9 @@ using JsMath.Port;
 
 namespace GraphingImpl;
 
-internal sealed record PreparedGraph(GraphSnapshot Snapshot, SamplingViewport Viewport, ImmutableArray<PreparedEquationGeometry> Equations, bool HasMissingData);
+internal sealed record PreparedGraph(
+    GraphSnapshot Snapshot,
+    SamplingViewport Viewport,
+    double SamplingScale,
+    ImmutableArray<PreparedEquationGeometry> Equations,
+    bool HasMissingData);

@@ -56,10 +56,10 @@ public sealed class WinUiToggleSwitch : ToggleSwitch
         }
 
         var easing = new LinearEasing();
-        _ = WinUiCompositorMotion.AnimateOpacity(_outerBorder!, (float)_outerBorder!.Opacity, 0, FadeInDuration, easing);
-        _ = WinUiCompositorMotion.AnimateOpacity(_switchKnobBounds!, (float)_switchKnobBounds!.Opacity, 1, FadeInDuration, easing);
-        _ = WinUiCompositorMotion.AnimateOpacity(_switchKnobOff!, (float)_switchKnobOff!.Opacity, 0, FadeInDuration, easing);
-        _ = WinUiCompositorMotion.AnimateOpacity(_switchKnobOn!, (float)_switchKnobOn!.Opacity, 1, FadeInDuration, easing);
+        _ = CompositionVisualMotion.AnimateOpacity(_outerBorder!, (float)_outerBorder!.Opacity, 0, FadeInDuration, easing);
+        _ = CompositionVisualMotion.AnimateOpacity(_switchKnobBounds!, (float)_switchKnobBounds!.Opacity, 1, FadeInDuration, easing);
+        _ = CompositionVisualMotion.AnimateOpacity(_switchKnobOff!, (float)_switchKnobOff!.Opacity, 0, FadeInDuration, easing);
+        _ = CompositionVisualMotion.AnimateOpacity(_switchKnobOn!, (float)_switchKnobOn!.Opacity, 1, FadeInDuration, easing);
     }
 
     private void ApplySteadyState(bool isOn)
@@ -73,10 +73,10 @@ public sealed class WinUiToggleSwitch : ToggleSwitch
         _switchKnobBounds!.Opacity = isOn ? 1 : 0;
         _switchKnobOff!.Opacity = isOn ? 0 : 1;
         _switchKnobOn!.Opacity = isOn ? 1 : 0;
-        WinUiCompositorMotion.SetOpacity(_outerBorder, isOn ? 0 : 1);
-        WinUiCompositorMotion.SetOpacity(_switchKnobBounds, isOn ? 1 : 0);
-        WinUiCompositorMotion.SetOpacity(_switchKnobOff, isOn ? 0 : 1);
-        WinUiCompositorMotion.SetOpacity(_switchKnobOn, isOn ? 1 : 0);
+        CompositionVisualMotion.SetOpacity(_outerBorder, isOn ? 0 : 1);
+        CompositionVisualMotion.SetOpacity(_switchKnobBounds, isOn ? 1 : 0);
+        CompositionVisualMotion.SetOpacity(_switchKnobOff, isOn ? 0 : 1);
+        CompositionVisualMotion.SetOpacity(_switchKnobOn, isOn ? 1 : 0);
     }
 
     private bool HasVisualParts() =>

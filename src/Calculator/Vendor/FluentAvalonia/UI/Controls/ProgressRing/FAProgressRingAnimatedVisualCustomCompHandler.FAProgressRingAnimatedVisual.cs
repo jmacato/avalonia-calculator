@@ -130,7 +130,7 @@ internal sealed class FAProgressRingAnimatedVisualCustomCompHandler : Compositio
 
             SetArc(
                 IndeterminateBounds,
-                -90 + (900 * progress) + (360 * trimStart),
+                -90 + 900 * progress + 360 * trimStart,
                 360 * (trimEnd - trimStart));
         }
         else if (_isAnimatingToValue)
@@ -160,9 +160,9 @@ internal sealed class FAProgressRingAnimatedVisualCustomCompHandler : Compositio
 
     private void SetDeterminateArc(float progress)
     {
-        _path.Reset();
         if (progress < 0.00833333377f)
         {
+            ReplacePath(new SKPath());
             return;
         }
 
@@ -181,8 +181,16 @@ internal sealed class FAProgressRingAnimatedVisualCustomCompHandler : Compositio
 
     private void SetArc(SKRect bounds, float startAngle, float sweepAngle)
     {
-        _path.Reset();
-        _path.AddArc(bounds, startAngle, sweepAngle);
+        using var builder = new SKPathBuilder();
+        builder.AddArc(bounds, startAngle, sweepAngle);
+        ReplacePath(builder.Detach());
+    }
+
+    private void ReplacePath(SKPath path)
+    {
+        SKPath previous = _path;
+        _path = path;
+        previous.Dispose();
     }
 
     private float Normalize(float value)
@@ -194,7 +202,7 @@ internal sealed class FAProgressRingAnimatedVisualCustomCompHandler : Compositio
     private static float InterpolateSegment(float value, float start, float end, float from, float to) =>
         Lerp(from, to, (value - start) / (end - start));
 
-    private static float Lerp(float from, float to, float progress) => from + ((to - from) * progress);
+    private static float Lerp(float from, float to, float progress) => from + (to - from) * progress;
 
     public override void OnMessage(object message)
     {
@@ -317,7 +325,7 @@ internal sealed class FAProgressRingAnimatedVisualCustomCompHandler : Compositio
 
     private TimeSpan? _lastTime;
     private readonly SKPaint _paint;
-    private readonly SKPath _path;
+    private SKPath _path;
     private readonly SKPaint _layerPaint;
     private SKColor? _background;
     private SKColor _foreground;

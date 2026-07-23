@@ -2,6 +2,7 @@
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:automation="using:CalculatorApp.ViewModel.Common.Automation"
+             xmlns:controls="using:CalculatorApp.Controls"
              xmlns:fa="using:FluentAvalonia.UI.Controls"
              xmlns:utils="using:CalculatorApp.Utils"
              Loaded="OnLoaded">
@@ -34,6 +35,14 @@
                   Margin="24,8,24,24"
                   HorizontalAlignment="Left"
                   Spacing="6">
+        <controls:ThemeTransitionBehavior.ChildrenTransitions>
+          <controls:ThemeTransitionCollection>
+            <controls:EntranceThemeTransition FromVerticalOffset="50"
+                                              IsStaggeringEnabled="True" />
+            <controls:RepositionThemeTransition IsStaggeringEnabled="False" />
+          </controls:ThemeTransitionCollection>
+        </controls:ThemeTransitionBehavior.ChildrenTransitions>
+
         <TextBlock Margin="0,6,0,4"
                    FontSize="15"
                    FontWeight="SemiBold"

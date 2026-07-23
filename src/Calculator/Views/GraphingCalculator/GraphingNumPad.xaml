@@ -24,6 +24,7 @@
        control families, names, and state groupings. -->
   <Border Background="{DynamicResource AppOperatorPanelBackground}">
     <Grid x:Name="GraphingOperators"
+          controls:CompositionMotionBehavior.Profile="{StaticResource KeypadEntranceAnimation}"
           RowDefinitions="Auto,*,*,*,*,*,*,*"
           ColumnDefinitions="*,*,*,*,*">
       <controls:OperatorPanelListView Grid.ColumnSpan="5"

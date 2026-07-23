@@ -50,6 +50,7 @@
             Margin="0,0,16,4"
             HorizontalAlignment="Right"
             ColumnDefinitions="Auto,Auto,Auto"
+            controls:CompositionMotionBehavior.Profile="{StaticResource MemoryHoverAnimation}"
             Opacity="0">
         <Button Theme="{StaticResource MemoryHoverButtonStyle}"
                 AutomationProperties.AutomationId="MClearButton"

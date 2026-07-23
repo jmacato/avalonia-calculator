@@ -1,14 +1,13 @@
 #if COLLECT_AOT_PROFILE
 using System.Globalization;
 using System.Runtime.CompilerServices;
-using Avalonia.Threading;
 
 namespace CalculatorApp.Browser;
 
 internal static class AotProfileCapture
 {
     private const string DelayEnvironmentVariable = "CALCULATOR_AOT_PROFILE_DELAY_SECONDS";
-    private static DispatcherTimer? s_timer;
+    private static Timer? s_timer;
 
     public static void Start()
     {
@@ -20,25 +19,17 @@ internal static class AotProfileCapture
             return;
         }
 
-        var timer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher.UIThread)
-        {
-            Interval = TimeSpan.FromSeconds(seconds)
-        };
-        timer.Tick += Stop;
-        s_timer = timer;
-        timer.Start();
+        var timer = new Timer(
+            static _ => Stop(),
+            state: null,
+            dueTime: TimeSpan.FromSeconds(seconds),
+            period: Timeout.InfiniteTimeSpan);
+        Interlocked.Exchange(ref s_timer, timer)?.Dispose();
     }
 
-    private static void Stop(object? sender, EventArgs eventArgs)
+    private static void Stop()
     {
-        DispatcherTimer? timer = s_timer;
-        s_timer = null;
-        if (timer is not null)
-        {
-            timer.Stop();
-            timer.Tick -= Stop;
-        }
-
+        Interlocked.Exchange(ref s_timer, null)?.Dispose();
         WriteProfile();
     }
 

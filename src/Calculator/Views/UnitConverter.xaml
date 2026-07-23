@@ -149,6 +149,7 @@
           Grid.Row="1"
           Grid.Column="1"
           HorizontalAlignment="Left"
+          controls:CompositionMotionBehavior.Profile="{StaticResource CurrencyLoadedAnimation}"
           AutomationProperties.AccessibilityView="Raw"
           ColumnDefinitions="Auto,*,Auto">
       <TextBlock x:Name="CurrencySymbol1Block"
@@ -186,6 +187,7 @@
     <ComboBox x:Name="Units1"
                                 Grid.Row="2"
                                 Grid.Column="1"
+                                controls:CompositionMotionBehavior.Profile="{StaticResource CurrencyLoadedAnimation}"
                                 Classes="unitPicker"
                                 ItemsSource="{CompiledBinding Units}"
                                 ItemTemplate="{StaticResource UnitTemplate}"
@@ -201,6 +203,7 @@
           Grid.Row="3"
           Grid.Column="1"
           HorizontalAlignment="Left"
+          controls:CompositionMotionBehavior.Profile="{StaticResource CurrencyLoadedAnimation}"
           AutomationProperties.AccessibilityView="Raw"
           ColumnDefinitions="Auto,*,Auto">
       <TextBlock x:Name="CurrencySymbol2Block"
@@ -239,6 +242,7 @@
     <ComboBox x:Name="Units2"
                                 Grid.Row="4"
                                 Grid.Column="1"
+                                controls:CompositionMotionBehavior.Profile="{StaticResource CurrencyLoadedAnimation}"
                                 Classes="unitPicker"
                                 ItemsSource="{CompiledBinding Units}"
                                 ItemTemplate="{StaticResource UnitTemplate}"
@@ -267,12 +271,14 @@
           <TextBlock x:Name="CurrencyRatioEqualityBlock"
                      Margin="16,0,0,0"
                      Classes="caption"
+                     controls:CompositionMotionBehavior.Profile="{StaticResource CurrencyLoadedAnimation}"
                      AutomationProperties.Name="{CompiledBinding CurrencyRatioEqualityAutomationName}"
                      Text="{CompiledBinding CurrencyRatioEquality}" />
           <TextBlock x:Name="CurrencyTimestampTextBlock"
                      Margin="16,0,0,0"
                      Classes="caption currencyTimestamp"
                      Classes.stale="{CompiledBinding CurrencyDataIsWeekOld}"
+                     controls:CompositionMotionBehavior.Profile="{StaticResource CurrencyLoadedAnimation}"
                      Text="{CompiledBinding CurrencyTimestamp}" />
           <StackPanel x:Name="CurrencyRefreshBlockControl"
                       Orientation="Horizontal">
@@ -329,6 +335,7 @@
     </StackPanel>
 
     <Grid x:Name="ConverterNumPad"
+          controls:CompositionMotionBehavior.Profile="{StaticResource KeypadEntranceAnimation}"
           Grid.Row="6"
           Grid.Column="1"
           Margin="3,0,3,3"

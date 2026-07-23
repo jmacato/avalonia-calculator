@@ -293,6 +293,7 @@
       <Grid x:Name="NumpadPanel"
             Grid.Row="5"
             Margin="3,0,3,3"
+            controls:CompositionMotionBehavior.Profile="{StaticResource KeypadEntranceAnimation}"
             RenderTransformOrigin="50%,50%">
         <Grid.RenderTransform>
           <ScaleTransform />
@@ -346,17 +347,21 @@
           IsVisible="False">
       <Border Background="{DynamicResource SmokeFillColorDefaultBrush}"
               PointerPressed="OnFlyoutSmokePointerPressed" />
-      <ContentControl x:Name="HistoryFlyoutHolder"
-                      HorizontalContentAlignment="Stretch"
-                      VerticalContentAlignment="Stretch"
-                      AutomationProperties.AutomationId="HistoryFlyout"
-                      IsVisible="False" />
-      <ContentControl x:Name="MemoryFlyoutHolder"
-                      HorizontalContentAlignment="Stretch"
-                      VerticalContentAlignment="Stretch"
-                      AutomationProperties.AutomationId="MemoryFlyout"
-                      AutomationProperties.Name="{utils:ResourceString Name='MemoryFlyout.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
-                      IsVisible="False" />
+      <controls:CompositionTransitionHost
+          x:Name="HistoryFlyoutHolder"
+          HorizontalContentAlignment="Stretch"
+          VerticalContentAlignment="Stretch"
+          AutomationProperties.AutomationId="HistoryFlyout"
+          Closed="OnFlyoutHostClosed"
+          Profile="{StaticResource BottomEdgeUiAnimation}" />
+      <controls:CompositionTransitionHost
+          x:Name="MemoryFlyoutHolder"
+          HorizontalContentAlignment="Stretch"
+          VerticalContentAlignment="Stretch"
+          AutomationProperties.AutomationId="MemoryFlyout"
+          AutomationProperties.Name="{utils:ResourceString Name='MemoryFlyout.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+          Closed="OnFlyoutHostClosed"
+          Profile="{StaticResource BottomEdgeUiAnimation}" />
     </Grid>
 
     <automation:NarratorNotifier x:Name="AnnouncementText"

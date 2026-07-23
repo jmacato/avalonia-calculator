@@ -7,25 +7,50 @@
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <IsAotCompatible>true</IsAotCompatible>
-    <!-- .NET 10's interpreted threaded runtime attaches the browser UI thread
-         without a pthread stack base and asserts before managed startup. Keep
-         the managed-debuggable build single-threaded; Release remains AOT and
-         uses the threaded compositor/runtime path. -->
+    <!-- Keep the managed-debuggable build single-threaded. Release uses the
+         threaded compositor/runtime path and profile-guided managed AOT. Full
+         managed AOT is deliberately unsupported here: its monolithic module
+         raises WebKit's WebContent footprint by roughly one gigabyte. -->
     <WasmEnableThreads Condition="'$(Configuration)' == 'Release'">true</WasmEnableThreads>
     <WasmEnableThreads Condition="'$(Configuration)' != 'Release'">false</WasmEnableThreads>
+    <!-- Browser background work is channel-based and bounded. A single portable
+         thread-pool worker services it without leaving one full WebAssembly/
+         JavaScriptCore worker resident per reported processor. -->
+    <ThreadPoolMinThreads Condition="'$(Configuration)' == 'Release'">1</ThreadPoolMinThreads>
+    <ThreadPoolMaxThreads Condition="'$(Configuration)' == 'Release'">1</ThreadPoolMaxThreads>
+    <WasmEnableSIMD Condition="'$(Configuration)' == 'Release'">true</WasmEnableSIMD>
+    <!-- This is an application artifact, not a hot-reload development host.
+         Keeping the implicit initializer in the restored graph adds a script
+         evaluation and static assets even when Release disables hot reload. -->
+    <WasmEnableHotReload>false</WasmEnableHotReload>
+    <ShouldIncludeNativeSkiaSharp Condition="'$(Configuration)' == 'Release'">false</ShouldIncludeNativeSkiaSharp>
     <EmccStackSize>1MB</EmccStackSize>
-    <!-- Keep threaded runtime registration inside the initial allocation. The LLVM AOT
-         payload crosses 84 MiB during startup; growing shared memory while worker
-         instances are registering leaves those instances with stale bounds on WebKit. -->
-    <WasmInitialHeapSize Condition="'$(Configuration)' == 'Release'">100663296</WasmInitialHeapSize>
-    <EmccMaximumHeapSize Condition="'$(Configuration)' == 'Release'">209715200</EmccMaximumHeapSize>
+    <!-- Keep threaded runtime registration inside the initial allocation. Growing
+         shared memory while worker instances register can leave stale bounds on
+         WebKit. -->
+    <WasmInitialHeapSize Condition="'$(Configuration)' == 'Release'">109051904</WasmInitialHeapSize>
+    <!-- This is a growth ceiling, not committed memory. Telemetry reached the
+         former 200 MiB ceiling exactly while only 143 MiB was live in malloc;
+         Emscripten could not reserve the GC's next 16 KiB major-heap section. -->
+    <EmccMaximumHeapSize Condition="'$(Configuration)' == 'Release'">536870912</EmccMaximumHeapSize>
+    <!-- Profile collection and shipping builds must link the same native Skia/
+         Graphite capabilities so the recorded workload matches Release. -->
+    <_CalculatorEmdawnWebGpuPort>$([MSBuild]::NormalizePath($(MSBuildProjectDirectory), 'Native', 'EmdawnWebGpu', 'emdawnwebgpu.port.py'))</_CalculatorEmdawnWebGpuPort>
+    <EmccExtraLDFlags Condition="'$(Configuration)' == 'Release'">$(EmccExtraLDFlags) -sUSE_WEBGL2=1 -sDEFAULT_TO_CXX=1 -sTEXTDECODER=1 --use-port=&quot;$(_CalculatorEmdawnWebGpuPort)&quot; -sMEMORY_GROWTH_GEOMETRIC_STEP=0 -sMEMORY_GROWTH_LINEAR_STEP=4194304</EmccExtraLDFlags>
+    <DefineConstants Condition="'$(Configuration)' == 'Release'">$(DefineConstants);CALC_WEBGPU</DefineConstants>
     <InvariantTimezone>true</InvariantTimezone>
     <EventSourceSupport>true</EventSourceSupport>
-    <RunAOTCompilation Condition="'$(Configuration)' == 'Release'">true</RunAOTCompilation>
-    <!-- Local runs use identity assets. Compression is a publish concern and
-         must not change how Debug or Release is served by dotnet run. -->
-    <DisableBuildCompression>true</DisableBuildCompression>
-    <EnableDefaultCompressionFormats>false</EnableDefaultCompressionFormats>
+    <!-- Compile observed hot methods and retain the interpreter for every other
+         method. Release AOT is a shipping requirement; do not disable it to work
+         around missing profile-only interpreter entry wrappers. -->
+    <CalculatorBrowserProfiledAot Condition="'$(CalculatorBrowserProfiledAot)' == '' and '$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'">true</CalculatorBrowserProfiledAot>
+    <CalculatorBrowserProfiledAot Condition="'$(CalculatorBrowserProfiledAot)' == ''">false</CalculatorBrowserProfiledAot>
+    <RunAOTCompilation Condition="'$(RunAOTCompilation)' == '' and '$(CalculatorBrowserProfiledAot)' == 'true'">true</RunAOTCompilation>
+    <RunAOTCompilation Condition="'$(RunAOTCompilation)' == ''">false</RunAOTCompilation>
+    <!-- Keep browser artifacts directly serveable by any static host. The app
+         shell is small, while precompressed-only outputs make identity
+         negotiation fragile and complicate reproducible verification. -->
+    <CompressionEnabled>false</CompressionEnabled>
     <_WebAssemblyUserRunParameters>true</_WebAssemblyUserRunParameters>
     <_CalculatorBrowserHostProject>$([MSBuild]::NormalizePath($(MSBuildProjectDirectory), '..', '..', 'Tools', 'Calculator.BrowserHost', 'Calculator.BrowserHost.csproj'))</_CalculatorBrowserHostProject>
     <_CalculatorBrowserStaticWebAssetsManifest>$([MSBuild]::NormalizePath($(MSBuildProjectDirectory), 'bin', '$(Configuration)', '$(TargetFramework)', '$(AssemblyName).staticwebassets.runtime.json'))</_CalculatorBrowserStaticWebAssetsManifest>
@@ -37,55 +62,120 @@
          Serial project-reference builds prevent duplicate XAML compilers from
          rewriting the same output while dotnet run builds this entry point. -->
     <BuildInParallel>false</BuildInParallel>
+    <_CalculatorStockSkiaArchive>$([MSBuild]::NormalizePath($(MSBuildProjectDirectory), 'Native', 'libSkiaSharp.a'))</_CalculatorStockSkiaArchive>
+    <_CalculatorGraphiteWebGpuArchive>$([MSBuild]::NormalizePath($(MSBuildProjectDirectory), 'Native', 'libCalcNeoGraphiteWebGpu.a'))</_CalculatorGraphiteWebGpuArchive>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(CollectAotProfile)' == 'true'">
     <RunAOTCompilation>false</RunAOTCompilation>
-    <WasmEnableThreads>false</WasmEnableThreads>
+    <WasmEnableThreads>true</WasmEnableThreads>
     <WasmProfilers>aot</WasmProfilers>
     <EnableDiagnostics>false</EnableDiagnostics>
+    <_TrimmerShowRedundantSuppressions>false</_TrimmerShowRedundantSuppressions>
     <DefineConstants>$(DefineConstants);COLLECT_AOT_PROFILE</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'">
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>full</TrimMode>
-    <AOTMode>LLVMOnly</AOTMode>
-    <WasmDedup>true</WasmDedup>
-    <WasmStripILAfterAOT>true</WasmStripILAfterAOT>
+    <CalculatorBrowserAotProfilePath Condition="'$(CalculatorBrowserAotProfilePath)' == ''">$(MSBuildThisFileDirectory)Profiles/Calculator.aotprofile</CalculatorBrowserAotProfilePath>
+    <WasmAotProfilePath Condition="'$(RunAOTCompilation)' == 'true'">$(CalculatorBrowserAotProfilePath)</WasmAotProfilePath>
+    <AOTMode Condition="'$(RunAOTCompilation)' == 'true'">LLVMOnlyInterp</AOTMode>
+    <!-- Mono 10's cross-assembly generic dedup pass emits some profiled generic
+         instances both in their owning assembly and aot-instances.dll. Keep
+         each profiled instance with its owner until that linker defect is fixed. -->
+    <WasmDedup Condition="'$(RunAOTCompilation)' == 'true'">false</WasmDedup>
+    <WasmStripILAfterAOT Condition="'$(RunAOTCompilation)' == 'true'">true</WasmStripILAfterAOT>
+    <WasmStripILAfterAOT Condition="'$(RunAOTCompilation)' != 'true'">false</WasmStripILAfterAOT>
     <WasmNativeDebugSymbols>false</WasmNativeDebugSymbols>
     <WasmNativeStrip>true</WasmNativeStrip>
     <WasmEmitSymbolMap>false</WasmEmitSymbolMap>
     <WasmEmitSourceMap>false</WasmEmitSourceMap>
     <WasmRunWasmOpt>true</WasmRunWasmOpt>
-    <EmccCompileOptimizationFlag>-O3</EmccCompileOptimizationFlag>
-    <WasmBitcodeCompileOptimizationFlag>-O3</WasmBitcodeCompileOptimizationFlag>
-    <EmccLinkOptimizationFlag>-O3</EmccLinkOptimizationFlag>
+    <EmccCompileOptimizationFlag Condition="'$(RunAOTCompilation)' == 'true'">-O2</EmccCompileOptimizationFlag>
+    <WasmBitcodeCompileOptimizationFlag Condition="'$(RunAOTCompilation)' == 'true'">-O2</WasmBitcodeCompileOptimizationFlag>
+    <EmccLinkOptimizationFlag Condition="'$(RunAOTCompilation)' == 'true'">-O2</EmccLinkOptimizationFlag>
+    <EmccCompileOptimizationFlag Condition="'$(RunAOTCompilation)' != 'true'">-O3</EmccCompileOptimizationFlag>
+    <WasmBitcodeCompileOptimizationFlag Condition="'$(RunAOTCompilation)' != 'true'">-O3</WasmBitcodeCompileOptimizationFlag>
+    <EmccLinkOptimizationFlag Condition="'$(RunAOTCompilation)' != 'true'">-O3</EmccLinkOptimizationFlag>
     <EnableDiagnostics>false</EnableDiagnostics>
     <DebugSymbols>false</DebugSymbols>
     <DebugType>none</DebugType>
-    <!-- Preserve the native exception type, message, and WebAssembly stack when a
-         pthread fails. Without this Emscripten surfaces only an opaque
-         WebAssembly.Exception and the browser cannot report the failing runtime
-         path to telemetry. This does not enable managed debugging. -->
-    <EmccFlags>$(EmccFlags) -sEXCEPTION_STACK_TRACES=1</EmccFlags>
-    <PublishCompressionFormats>brotli</PublishCompressionFormats>
-    <CompressionIncludePatterns>$(CompressionIncludePatterns);**/*.ttf</CompressionIncludePatterns>
+    <!-- Avalonia.Base 9999.0.0-localbuild contains two now-redundant IL2070/
+         IL2075 suppression attributes. Ignore only IL2121 (the redundant-
+         suppression diagnostic); all substantive linker warnings stay fatal. -->
+    <_TrimmerShowRedundantSuppressions>false</_TrimmerShowRedundantSuppressions>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'">
-    <WasmOptConfigurationFlags Include="-O3" />
+    <!-- Keep managed retention bounded independently of the native/WASM growth
+         ceiling. This leaves room for Skia surfaces without teaching the GC
+         that it may retain the entire 512 MiB linear memory. -->
+    <RuntimeHostConfigurationOption Include="System.GC.HeapHardLimit" Value="134217728" />
+    <WasmOptConfigurationFlags Include="-O2" Condition="'$(RunAOTCompilation)' == 'true'" />
+    <WasmOptConfigurationFlags Include="-O3" Condition="'$(RunAOTCompilation)' != 'true'" />
     <WasmOptConfigurationFlags Include="--merge-similar-functions" />
     <WasmOptConfigurationFlags Include="--duplicate-function-elimination" />
+    <!-- Stock Skia m150 uses saturating float-to-integer conversions. Keep the
+         feature declaration with the application link instead of modifying the
+         installed .NET workload's post-link wasm-opt command. -->
+    <WasmOptConfigurationFlags Include="--enable-nontrapping-float-to-int" />
+    <EmccExportedRuntimeMethod Include="WebGPU" />
+    <EmccExportedFunction Include="_sk_graphite_webgpu_context_create" />
   </ItemGroup>
+
+  <Target Name="ValidateCalculatorBrowserAotProfile"
+          BeforeTargets="_WasmAotCompileApp"
+          Condition="'$(RunAOTCompilation)' == 'true'">
+    <Error Condition="'$(AOTMode)' != 'LLVMOnlyInterp'"
+           Text="Calculator browser AOT must use LLVMOnlyInterp so methods outside the profile retain an interpreter fallback." />
+    <Error Condition="'$(WasmAotProfilePath)' == '' or !Exists('$(WasmAotProfilePath)')"
+           Text="Calculator browser profiled AOT requires an existing WasmAotProfilePath. Full unprofiled AOT is not permitted." />
+    <Message Importance="High"
+             Text="Building Calculator browser with profile-guided hybrid AOT: $(WasmAotProfilePath)" />
+  </Target>
+
+  <Target Name="ValidateCalculatorWebGpuInputs"
+          BeforeTargets="_PrepareForBrowserWasmBuildNative"
+          Condition="'$(Configuration)' == 'Release'">
+    <Error Condition="'$(EmscriptenVersion)' != '3.1.56'"
+           Text="Calculator WebGPU native inputs were built with the .NET 10.0.8 workload's Emscripten 3.1.56 toolchain; the active workload reports $(EmscriptenVersion)." />
+    <Error Condition="!Exists('$(_CalculatorEmdawnWebGpuPort)')"
+           Text="CalcNeo's Emdawnwebgpu port is missing. Run eng/browser/build-skia-webgpu.sh first." />
+    <Error Condition="!Exists('$(_CalculatorStockSkiaArchive)')"
+           Text="CalcNeo's stock Skia archive is missing. Run eng/browser/build-skia-webgpu.sh first." />
+    <Error Condition="!Exists('$(_CalculatorGraphiteWebGpuArchive)')"
+           Text="CalcNeo's Graphite/WebGPU bridge is missing. Run eng/browser/build-skia-webgpu.sh first." />
+  </Target>
+
+  <Target Name="ValidateCalculatorBrowserAotNativeSize"
+          AfterTargets="_CompleteWasmBuildNative"
+          Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true' and '$(RunAOTCompilation)' == 'true'">
+    <PropertyGroup>
+      <!-- The current representative profile produces a 20.41 MiB module
+           without Mono's broken generic-dedup pass. Preserve narrow growth room
+           while rejecting the former 84+ MiB full-AOT module before publish. -->
+      <CalculatorBrowserMaxNativeWasmBytes Condition="'$(CalculatorBrowserMaxNativeWasmBytes)' == ''">23068672</CalculatorBrowserMaxNativeWasmBytes>
+      <_CalculatorAotNativeWasmPath>$(_WasmIntermediateOutputPath)dotnet.native.wasm</_CalculatorAotNativeWasmPath>
+      <_CalculatorEmscriptenNode>$([MSBuild]::NormalizePath($(EmscriptenNodeToolsPath), 'bin', 'node$(_ExeExt)'))</_CalculatorEmscriptenNode>
+      <_CalculatorNativeSizeValidator>$([MSBuild]::NormalizePath($(MSBuildProjectDirectory), '..', '..', 'eng', 'browser', 'validate-native-wasm-size.mjs'))</_CalculatorNativeSizeValidator>
+    </PropertyGroup>
+    <Exec Command="&quot;$(_CalculatorEmscriptenNode)&quot; &quot;$(_CalculatorNativeSizeValidator)&quot; &quot;$(_CalculatorAotNativeWasmPath)&quot; &quot;$(CalculatorBrowserMaxNativeWasmBytes)&quot;" />
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="Avalonia.Browser" Version="9999.0.0-localbuild" />
     <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" Condition="'$(WasmEnableThreads)' == 'true'" />
-    <NativeFileReference Include="Native/mono-aot-exception-diagnostics.c"
+    <NativeFileReference Include="Native/mono-satellite-loader.c"
                          Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'" />
-    <EmccExportedFunction Include="_calc_browser_take_current_managed_exception"
-                          Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'" />
+    <NativeFileReference Include="Native/dotnet-emscripten-sjlj-compat.c"
+                         Condition="'$(Configuration)' == 'Release'" />
+    <NativeFileReference Include="$(_CalculatorStockSkiaArchive)"
+                         Condition="'$(Configuration)' == 'Release'" />
+    <NativeFileReference Include="$(_CalculatorGraphiteWebGpuArchive)"
+                         Condition="'$(Configuration)' == 'Release'" />
+    <NativeFileReference Include="Native/sk_graphite_webgpu_stubs.c"
+                         Condition="'$(Configuration)' != 'Release'" />
     <EmccExportedFunction Include="_calc_browser_load_configured_satellite"
                           Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'" />
     <EmccExportedFunction Include="_calc_browser_get_satellite_load_status"
@@ -213,34 +303,4 @@
     </ItemGroup>
   </Target>
 
-  <Target Name="PatchCalculatorNativeBrowserRuntime"
-          AfterTargets="WasmLinkDotNet"
-          BeforeTargets="_CompleteWasmBuildNative"
-          Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'">
-    <PropertyGroup>
-      <_CalculatorNativeWorkerPath>$(_WasmIntermediateOutputPath)dotnet.native.worker.mjs</_CalculatorNativeWorkerPath>
-      <_CalculatorEmscriptenNode>$([MSBuild]::NormalizePath($(EmscriptenNodeToolsPath), 'bin', 'node$(_ExeExt)'))</_CalculatorEmscriptenNode>
-      <_CalculatorNativeWorkerPatch>$([MSBuild]::NormalizePath($(MSBuildProjectDirectory), '..', '..', 'eng', 'browser', 'patch-dotnet-native-worker.mjs'))</_CalculatorNativeWorkerPatch>
-    </PropertyGroup>
-    <Exec Command="&quot;$(_CalculatorEmscriptenNode)&quot; &quot;$(_CalculatorNativeWorkerPatch)&quot; &quot;$(_CalculatorNativeWorkerPath)&quot;"
-          Condition="Exists('$(_CalculatorNativeWorkerPath)')" />
-  </Target>
-
-  <Target Name="ProjectCalculatorBrotliOnlyPublish"
-          AfterTargets="Publish"
-          Condition="'$(Configuration)' == 'Release' and '$(CollectAotProfile)' != 'true'">
-    <PropertyGroup>
-      <_CalculatorEmscriptenNode>$([MSBuild]::NormalizePath($(EmscriptenNodeToolsPath), 'bin', 'node$(_ExeExt)'))</_CalculatorEmscriptenNode>
-      <_CalculatorRuntimePatch>$([MSBuild]::NormalizePath($(MSBuildProjectDirectory), '..', '..', 'eng', 'browser', 'patch-dotnet-runtime-worker-preload.mjs'))</_CalculatorRuntimePatch>
-    </PropertyGroup>
-    <ItemGroup>
-      <_CalculatorBrotliSidecar Include="$(PublishDir)wwwroot/**/*.br" />
-      <_CalculatorBrotliRuntimeSidecar Include="$(PublishDir)wwwroot/_framework/dotnet.runtime*.js.br" />
-      <_CalculatorRawAssetWithBrotli Include="@(_CalculatorBrotliSidecar->'%(RootDir)%(Directory)%(Filename)')" />
-      <_CalculatorObsoleteGzipSidecar Include="$(PublishDir)wwwroot/**/*.gz" />
-    </ItemGroup>
-    <Exec Command="&quot;$(_CalculatorEmscriptenNode)&quot; &quot;$(_CalculatorRuntimePatch)&quot; &quot;%(_CalculatorBrotliRuntimeSidecar.FullPath)&quot;"
-          Condition="'@(_CalculatorBrotliRuntimeSidecar)' != ''" />
-    <Delete Files="@(_CalculatorRawAssetWithBrotli);@(_CalculatorObsoleteGzipSidecar)" />
-  </Target>
 </Project>

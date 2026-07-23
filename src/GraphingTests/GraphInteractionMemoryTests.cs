@@ -30,6 +30,61 @@ public sealed class GraphInteractionMemoryTests
         Assert.NotSame(firstGeometry, cache.Geometry(firstPath));
     }
 
+    [AvaloniaFact]
+    public void ProjectedFrameCacheReusesShortPathGeometry()
+    {
+        var cache = new GraphControl.AvaloniaGraphRenderCache();
+        var path = new GraphPath(
+        [
+            new GraphPoint(0, 0),
+            new GraphPoint(1, 2),
+            new GraphPoint(2, 1),
+            new GraphPoint(3, 3),
+        ]);
+        ImmutableArray<GraphFrameCommand> equationCommands =
+        [
+            new StrokePathCommand(path, new GraphPaint(new Color(0, 0, 0))),
+        ];
+        var frame = new GraphFrame(
+            393,
+            659,
+            96,
+            96,
+            1,
+            new Color(255, 255, 255),
+            [new CommandGroupCommand(equationCommands)]);
+
+        cache.BeginFrame(frame);
+
+        Assert.Same(cache.Geometry(path), cache.Geometry(path));
+    }
+
+    [AvaloniaFact]
+    public void RenderCacheUsesValueEqualityForPaintAndTextKeys()
+    {
+        var cache = new GraphControl.AvaloniaGraphRenderCache();
+        var color = new Color(12, 34, 56, 78);
+        var paint = new GraphPaint(color, 2.5f, LineStyle.Dash, AntiAlias: false);
+        var glyph = new GlyphCommand(
+            "5",
+            new GraphPoint(10, 20),
+            "Segoe UI",
+            12,
+            paint,
+            GraphTextAlignment.End,
+            GraphFontStyle.Italic);
+
+        Assert.Same(cache.Brush(color), cache.Brush(new Color(12, 34, 56, 78)));
+        Assert.Same(
+            cache.Pen(paint),
+            cache.Pen(new GraphPaint(new Color(12, 34, 56, 78), 2.5f, LineStyle.Dash, AntiAlias: false)));
+        Assert.Same(
+            cache.Format(glyph),
+            cache.Format(glyph with { Origin = new GraphPoint(30, 40) }));
+
+        cache.Clear();
+    }
+
     [Fact]
     public void RapidRangeChangesAreCoalescedUntilAFrameIsRequested()
     {
@@ -98,6 +153,8 @@ public sealed class GraphInteractionMemoryTests
 
         Assert.Contains(current.Commands, command => command is PushCoordinateTransformCommand);
         Assert.IsType<PushClipCommand>(current.Commands[0]);
+        Assert.DoesNotContain(current.Commands, command => command is StrokePathCommand);
+        Assert.Equal(2, current.Commands.OfType<GridLineSeriesCommand>().Count());
         CommandGroupCommand equations = Assert.Single(current.Commands.OfType<CommandGroupCommand>());
         Assert.Contains(
             equations.Commands.OfType<StrokePathCommand>(),
@@ -169,9 +226,9 @@ public sealed class GraphInteractionMemoryTests
         int maximumPathVertices = 0;
         for (int index = 0; index < refreshCount; index++)
         {
-            double scale = 1 - ((index % 7) * 0.035);
-            double xMinimum = -10 + (index * 0.31);
-            double xMaximum = xMinimum + (20 * scale);
+            double scale = 1 - index % 7 * 0.035;
+            double xMinimum = -10 + index * 0.31;
+            double xMaximum = xMinimum + 20 * scale;
             double yHalfRange = 10 * scale;
             Assert.Equal(GraphStatus.Ok, renderer.SetDisplayRanges(xMinimum, xMaximum, -yHalfRange, yHalfRange));
             Assert.NotNull(renderer.CurrentFrame);
@@ -196,6 +253,37 @@ public sealed class GraphInteractionMemoryTests
     }
 
     [Fact]
+    public void HighDpiResamplesCurvesAtPhysicalPixelTolerance()
+    {
+        IMathSolver solver = MathSolver.CreateMathSolver();
+        solver.ParsingOptions().SetFormatType(FormatType.Linear);
+        IExpression expression = solver.ParseInput("sin(x^3)", out int errorCode, out int errorType)
+            ?? throw new InvalidOperationException($"Parse failed: {errorCode}/{errorType}");
+        IGraph graph = solver.CreateGrapher();
+        Assert.NotNull(graph.TryInitialize(expression));
+
+        IGraphRenderer renderer = graph.GetRenderer();
+        Assert.Equal(GraphStatus.Ok, renderer.SetGraphSize(393, 659));
+        Assert.Equal(GraphStatus.Ok, renderer.SetDpi(96, 96));
+        Assert.Equal(GraphStatus.Ok, renderer.PrepareGraph());
+        GraphFrame standardDpiFrame = Assert.IsType<GraphFrame>(renderer.CurrentFrame);
+        int standardDpiVertices = MaximumStrokePathVertices(standardDpiFrame.Commands);
+
+        Assert.Equal(GraphStatus.Ok, renderer.SetDpi(288, 288));
+        Assert.Null(renderer.CurrentFrame);
+        Assert.Equal(GraphStatus.Ok, renderer.PrepareGraph());
+        GraphFrame highDpiFrame = Assert.IsType<GraphFrame>(renderer.CurrentFrame);
+        int highDpiVertices = MaximumStrokePathVertices(highDpiFrame.Commands);
+
+        Assert.Equal(288, highDpiFrame.DpiX);
+        Assert.Equal(288, highDpiFrame.DpiY);
+        Assert.True(
+            highDpiVertices > standardDpiVertices,
+            $"Expected high-DPI sampling to exceed {standardDpiVertices:N0} vertices; got {highDpiVertices:N0}.");
+        Assert.InRange(highDpiVertices, 2, 16_384);
+    }
+
+    [Fact]
     public void ConcurrentInteractionRefreshCommitsOnlyTheLatestViewport()
     {
         IMathSolver solver = MathSolver.CreateMathSolver();
@@ -213,7 +301,7 @@ public sealed class GraphInteractionMemoryTests
         const int refreshCount = 48;
         for (int index = 0; index < refreshCount; index++)
         {
-            double xMinimum = -9.8 + (index * 0.2);
+            double xMinimum = -9.8 + index * 0.2;
             Assert.Equal(GraphStatus.Ok, renderer.SetDisplayRanges(xMinimum, xMinimum + 20, -10, 10));
             Assert.Equal(GraphStatus.Ok, concurrentRenderer.RequestPrepareGraph());
             Assert.Contains(Assert.IsType<GraphFrame>(renderer.CurrentFrame).Commands, command => command is PushCoordinateTransformCommand);

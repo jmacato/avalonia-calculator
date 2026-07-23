@@ -164,12 +164,23 @@
       <Setter Property="BorderBrush" Value="{Binding EquationColor, RelativeSource={RelativeSource TemplatedParent}}" />
       <Setter Property="BorderThickness" Value="1" />
     </Style>
+    <Style Selector="controls|EquationTextBox:focus-within /template/ Border#EquationBoxBorder">
+      <Setter Property="Background" Value="{DynamicResource TextControlBackgroundFocused}" />
+      <Setter Property="BorderBrush" Value="{Binding EquationColor, RelativeSource={RelativeSource TemplatedParent}}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
     <Style Selector="controls|EquationTextBox:pointerover /template/ Button#FunctionButton,
                      controls|EquationTextBox:pointerover /template/ Button#ColorChooserButton,
                      controls|EquationTextBox:pointerover /template/ Button#RemoveButton,
                      controls|EquationTextBox:editor-focused /template/ Button#FunctionButton,
                      controls|EquationTextBox:editor-focused /template/ Button#ColorChooserButton,
-                     controls|EquationTextBox:editor-focused /template/ Button#RemoveButton">
+                     controls|EquationTextBox:editor-focused /template/ Button#RemoveButton,
+                     controls|EquationTextBox:focus-within /template/ Button#FunctionButton,
+                     controls|EquationTextBox:focus-within /template/ Button#ColorChooserButton,
+                     controls|EquationTextBox:focus-within /template/ Button#RemoveButton,
+                     controls|EquationTextBox /template/ Button#FunctionButton:pressed,
+                     controls|EquationTextBox /template/ Button#ColorChooserButton:pressed,
+                     controls|EquationTextBox /template/ Button#RemoveButton:pressed">
       <Setter Property="IsVisible" Value="True" />
     </Style>
     <Style Selector="controls|EquationTextBox:add-equation /template/ ToggleButton#EquationButton">

@@ -19,7 +19,7 @@ namespace CalculatorApp.ViewModel;
 public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
 {
     private readonly ISettingsStore _settingsStore;
-    private readonly UnitConverterPreparationWorker _converterPreparationWorker;
+    private UnitConverterPreparationWorker? _converterPreparationWorker;
     private readonly int _diagnosticPageId;
     private int _converterPreparationStarted;
     private int _disposed;
@@ -49,7 +49,7 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
     private bool _displayNormalAlwaysOnTopOption;
 
     [ObservableProperty]
-    private ObservableCollection<NavCategoryGroup> _categories = new();
+    private ObservableCollection<NavCategoryGroup> _categories = [];
 
     [ObservableProperty]
     private bool _isNavigationPaneOpen;
@@ -66,9 +66,6 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _diagnosticPageId = diagnosticPageId;
         ConverterPipelineDiagnostics.RecordUiThread(Environment.CurrentManagedThreadId);
-        _converterPreparationWorker = new UnitConverterPreparationWorker(
-            settingsStore,
-            Environment.CurrentManagedThreadId);
         Categories = NavCategoryStates.CreateMenuOptions();
         NavigationItems = ExpandNavigationGroups(Categories);
         foreach (object item in NavigationItems)
@@ -167,8 +164,10 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private void ToggleNavigationPane() =>
+    private void ToggleNavigationPane()
+    {
         IsNavigationPaneOpen = !IsNavigationPaneOpen;
+    }
 
     private static List<object> ExpandNavigationGroups(
         IEnumerable<NavCategoryGroup> groups)
@@ -236,6 +235,26 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
 
         ConverterPipelineDiagnostics.RecordRequest();
         ThreadedManagedDebugging.Checkpoint(111);
+        var created = new UnitConverterPreparationWorker(
+            _settingsStore,
+            Environment.CurrentManagedThreadId);
+        UnitConverterPreparationWorker worker =
+            Interlocked.CompareExchange(
+                ref _converterPreparationWorker,
+                created,
+                null) ?? created;
+        if (!ReferenceEquals(worker, created))
+        {
+            created.Dispose();
+        }
+
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            Interlocked.Exchange(ref _converterPreparationWorker, null)?.Dispose();
+            Interlocked.Exchange(ref _converterPreparationStarted, 0);
+            return;
+        }
+
         _ = PrepareConverterAsync();
     }
 
@@ -244,7 +263,11 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
         ThreadedManagedDebugging.Checkpoint(120);
         try
         {
-            UnitConversionManager.IUnitConverter model = await _converterPreparationWorker
+            UnitConverterPreparationWorker preparationWorker =
+                Volatile.Read(ref _converterPreparationWorker) ??
+                throw new InvalidOperationException(
+                    "Converter preparation started without a worker.");
+            UnitConversionManager.IUnitConverter model = await preparationWorker
                 .PrepareAsync()
                 .ConfigureAwait(false);
             ThreadedManagedDebugging.Checkpoint(121);
@@ -296,7 +319,7 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        _converterPreparationWorker.Dispose();
+        Interlocked.Exchange(ref _converterPreparationWorker, null)?.Dispose();
         ConverterViewModel?.Dispose();
         ConverterViewModel = null;
         GC.SuppressFinalize(this);

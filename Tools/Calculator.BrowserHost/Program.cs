@@ -1,18 +1,22 @@
 using Calculator.BrowserHost;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Options;
 
+const long maximumRequestBodySize = 8L * 1024 * 1024;
+
 var settings = BrowserHostSettings.Parse(args);
-var builder = WebApplication.CreateSlimBuilder();
-builder.Configuration[WebHostDefaults.StaticWebAssetsKey] = settings.StaticWebAssetsManifest;
-StaticWebAssetsLoader.UseStaticWebAssets(builder.Environment, builder.Configuration);
+var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
+{
+    WebRootPath = BrowserHostStaticAssets.GetWebRootPath(settings),
+});
+BrowserHostStaticAssets.ConfigureBuilder(builder, settings);
 builder.Logging.SetMinimumLevel(LogLevel.Warning);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Server.Kestrel", LogLevel.Critical);
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 256 * 1024;
+    // A representative Mono AOT profile is several MiB. Individual telemetry
+    // batches retain their stricter limit in the endpoint below.
+    options.Limits.MaxRequestBodySize = maximumRequestBodySize;
     options.ListenAnyIP(settings.Port, listen => listen.UseHttps());
 });
 builder.Services.Configure<JsonOptions>(options =>
@@ -46,17 +50,19 @@ app.Use(async (context, next) =>
         : context.Request.Query.ContainsKey("v")
             ? "public,max-age=31536000,immutable"
             : "public,max-age=300";
-    if (HttpMethods.IsGet(context.Request.Method)
-        && (context.Request.Path == "/" || context.Request.Path == "/index.html")
-        && !context.Request.Query.ContainsKey("telemetry"))
+    if (BrowserHostStaticAssets.TryRedirectDocumentRequest(context, settings))
     {
-        var separator = context.Request.QueryString.HasValue ? "&" : "?";
-        context.Response.Redirect($"{context.Request.PathBase}{context.Request.Path}{context.Request.QueryString}{separator}telemetry=1");
         return;
     }
 
     if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path == "/aot-profile")
     {
+        if (context.Request.ContentLength is > maximumRequestBodySize)
+        {
+            context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+            return;
+        }
+
         var profilePath = Environment.GetEnvironmentVariable("CALCULATOR_AOT_PROFILE_PATH");
         if (string.IsNullOrWhiteSpace(profilePath))
         {
@@ -114,8 +120,7 @@ app.MapGet("/telemetry/v1/sessions/{sessionId}/inputs", (string sessionId, Telem
 app.MapDelete("/telemetry/v1/sessions", (TelemetryStore store) => Results.Json(
     new TelemetryClearSessionsResponse(store.ClearSessions())));
 app.MapGet("/telemetry", () => Results.Content(TelemetryDashboard.Html, "text/html; charset=utf-8"));
-app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = files });
-app.UseStaticFiles(new StaticFileOptions { FileProvider = files, ServeUnknownFileTypes = true, DefaultContentType = "application/octet-stream" });
+BrowserHostStaticAssets.Map(app, files, settings);
 app.MapFallback(async context =>
 {
     if (context.Request.Path.StartsWithSegments("/telemetry", StringComparison.Ordinal))

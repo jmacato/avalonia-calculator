@@ -9,6 +9,17 @@ namespace CalcEngine;
 
 public class RatPak
 {
+    private const int RationalPoolCapacity = 256;
+
+    [ThreadStatic]
+    private static RatPakNumberPool? t_numberPool;
+
+    [ThreadStatic]
+    private static RAT? t_rationalPoolHead;
+
+    [ThreadStatic]
+    private static int t_rationalPoolCount;
+
     /*
      Converted to csharp using this monster regex:
      ```
@@ -1320,6 +1331,11 @@ public class RatPak
             throw new ArgumentNullException(nameof(b));
         }
 
+        if (ReferenceEquals(a, b))
+        {
+            return;
+        }
+
         destroynum(ref a);
         createnum(ref a, (uint32_t)b._cdigit);
         _dupnum(a, b);
@@ -1331,6 +1347,11 @@ public class RatPak
         if (b is null)
         {
             throw new ArgumentNullException(nameof(b));
+        }
+
+        if (ReferenceEquals(a, b))
+        {
+            return;
         }
 
         destroyrat(ref a);
@@ -1568,7 +1589,7 @@ public class RatPak
         if (b._cdigit > 1 || b._mant[0] != 1 || b._exp != 0)
         {
             // If b is not one we multiply
-            if ((pa)._cdigit > 1 || (pa)._mant[0] != 1 || (pa)._exp != 0)
+            if (pa._cdigit > 1 || pa._mant[0] != 1 || pa._exp != 0)
             {
                 // pa and b are both non-one.
                 _mulnumx(ref pa, b);
@@ -1646,7 +1667,7 @@ public class RatPak
             for (ibdigit = b._cdigit; ibdigit > 0; ibdigit--)
             {
                 cy = 0;
-                mcy = (TWO_MANTTYPE)da * (ptrb[ptrbCnt]);
+                mcy = (TWO_MANTTYPE)da * ptrb[ptrbCnt];
 
                 if (mcy != 0)
                 {
@@ -1664,10 +1685,10 @@ public class RatPak
                     var cMantCnt = ptrcCnt + icdigit;
 
                     // Update carry from addition(s) and multiply
-                    cy += (TWO_MANTTYPE)c._mant[cMantCnt] + ((uint32_t)mcy & ((uint32_t)~BASEX));
+                    cy += (TWO_MANTTYPE)c._mant[cMantCnt] + ((uint32_t)mcy & (uint32_t)~BASEX);
 
                     // Update result digit
-                    c._mant[cMantCnt] = (MANTTYPE)((uint32_t)cy & ((uint32_t)~BASEX));
+                    c._mant[cMantCnt] = (MANTTYPE)((uint32_t)cy & (uint32_t)~BASEX);
 
                     icdigit++;
 
@@ -1824,7 +1845,7 @@ public class RatPak
         // Create c (the divide answer) and set up exponent and sign.
         createnum(ref c, (uint32_t)(thismax + 1));
 
-        c._exp = (a._cdigit + a._exp) - (b._cdigit + b._exp) + 1;
+        c._exp = a._cdigit + a._exp - (b._cdigit + b._exp) + 1;
         c._sign = a._sign * b._sign;
 
         // In C++: ptrc = c.mant + thismax; - convert to array index
@@ -1918,7 +1939,7 @@ public class RatPak
     // Default decimal separator
     private wchar_t g_decimalSeparator = '.';
 
-    private static uint64_t Calc_UInt32x32To64(UInt32 a, UInt32 b) => (a * (uint64_t)b);
+    private static uint64_t Calc_UInt32x32To64(UInt32 a, UInt32 b) => a * (uint64_t)b;
 
     public const int32_t
         IntsafeArithmeticOverflow = unchecked((int32_t)0x80070216U); // 0x216 = 534 = ERROR_ARITHMETIC_OVERFLOW
@@ -1930,9 +1951,9 @@ public class RatPak
         int32_t hr = IntsafeArithmeticOverflow;
         pulResult = UlongError;
 
-        if ((ulAugend + ulAddend) >= ulAugend)
+        if (ulAugend + ulAddend >= ulAugend)
         {
-            pulResult = (ulAugend + ulAddend);
+            pulResult = ulAugend + ulAddend;
             hr = (int32_t)S_OK;
         }
 
@@ -2002,7 +2023,14 @@ public class RatPak
     //-----------------------------------------------------------------------------
     private static void _destroynum(ref PNUMBER? pnum)
     {
+        var value = pnum;
         pnum = null;
+        if (value is null)
+        {
+            return;
+        }
+
+        (t_numberPool ??= new RatPakNumberPool()).Return(value);
     }
 
     //-----------------------------------------------------------------------------
@@ -2019,7 +2047,28 @@ public class RatPak
     //-----------------------------------------------------------------------------
     private static void _destroyrat(ref PRAT? prat)
     {
+        var value = prat;
         prat = null;
+        if (value is null)
+        {
+            return;
+        }
+
+        PNUMBER? numerator = value._pp;
+        PNUMBER? denominator = value._pq;
+        value._pp = null!;
+        value._pq = null!;
+        _destroynum(ref numerator);
+        _destroynum(ref denominator);
+
+        if (t_rationalPoolCount >= RationalPoolCapacity)
+        {
+            return;
+        }
+
+        value._poolNext = t_rationalPoolHead;
+        t_rationalPoolHead = value;
+        t_rationalPoolCount++;
     }
 
     //-----------------------------------------------------------------------------
@@ -2047,17 +2096,14 @@ public class RatPak
             && mantissaLength <= int.MaxValue)
         {
 
-            pnumret = new PNUMBER
-            {
-                _mant = new uint32_t[(int)mantissaLength]
-            };
+            pnumret = (t_numberPool ??= new RatPakNumberPool()).Rent((int)mantissaLength);
         }
         else
         {
             throw new CalcErrException(CalcErr.InvalidRange);
         }
 
-        return (pnumret);
+        return pnumret;
     }
 
     //-----------------------------------------------------------------------------
@@ -2075,7 +2121,16 @@ public class RatPak
     //-----------------------------------------------------------------------------
     private static PRAT _createrat()
     {
-        return new PRAT(); //(PRAT)zmalloc(sizeof(RAT));
+        var value = t_rationalPoolHead;
+        if (value is null)
+        {
+            return new PRAT(); //(PRAT)zmalloc(sizeof(RAT));
+        }
+
+        t_rationalPoolHead = value._poolNext;
+        value._poolNext = null;
+        t_rationalPoolCount--;
+        return value;
     }
 
     //-----------------------------------------------------------------------------
@@ -2117,7 +2172,7 @@ public class RatPak
         destroynum(ref pnRadixn);
         destroynum(ref qnRadixn);
 
-        return (pout);
+        return pout;
     }
 
     //----------------------------------------------------------------------------
@@ -2507,11 +2562,11 @@ public class RatPak
         switch (state)
         {
             case MANTS:
-                pnumret._sign = (curChar == '-') ? -1 : 1;
+                pnumret._sign = curChar == '-' ? -1 : 1;
                 break;
             case EXPSZ:
             case EXPS:
-                expSign = (curChar == '-') ? -1 : 1;
+                expSign = curChar == '-' ? -1 : 1;
                 break;
             case EXPDZ:
             case EXPD:
@@ -2522,7 +2577,7 @@ public class RatPak
                     if (pos != -1) //wstring_view.npos)
                     {
                         expValue *= (int32_t)radix;
-                        expValue += (int32_t)(pos);
+                        expValue += (int32_t)pos;
                     }
                     else
                     {
@@ -2538,9 +2593,9 @@ public class RatPak
                     curChar = NormalizeCharDigit(curChar, radix);
 
                     var pos = DIGITS.IndexOf(curChar);
-                    if (pos != -1 /*wstring_view.npos*/ && pos < /*static_cast<size_t>*/(radix))
+                    if (pos != -1 /*wstring_view.npos*/ && pos < /*static_cast<size_t>*/radix)
                     {
-                        pmant[pmantCnt--] = (MANTTYPE)(pos);
+                        pmant[pmantCnt--] = (MANTTYPE)pos;
                         pnumret._exp--;
                         pnumret._cdigit++;
                     }
@@ -2571,7 +2626,7 @@ public class RatPak
         int32_t expValue = 0; // expValue is exponent mantissa, should be unsigned
 
         PNUMBER? pnumret = null;
-        createnum(ref pnumret, (uint32_t)(numberString.Length));
+        createnum(ref pnumret, (uint32_t)numberString.Length);
         pnumret._sign = 1;
         pnumret._cdigit = 0;
         pnumret._exp = 0;
@@ -2582,7 +2637,7 @@ public class RatPak
         foreach (var c in numberString)
         {
             // If the character is the decimal separator, use '.' for the purposes of the state machine.
-            wchar_t curChar = (c == g_decimalSeparator ? '.' : c);
+            wchar_t curChar = c == g_decimalSeparator ? '.' : c;
 
             // Switch states based on the character we encountered
             StringToNumberSwitchState(ref state, curChar, radix);
@@ -2591,7 +2646,7 @@ public class RatPak
             StringToNumberUpdateResult(ref state, curChar, radix, pnumret, pmant, ref pmantCnt, ref expSign, ref expValue);
         }
 
-        if (state == DZ || state == EXPDZ)
+        if (state is DZ or EXPDZ)
         {
             pnumret._cdigit = 1;
             pnumret._exp = 0;
@@ -2599,7 +2654,7 @@ public class RatPak
         }
         else
         {
-            while (pnumret._cdigit < (int32_t)(numberString.Length))
+            while (pnumret._cdigit < (int32_t)numberString.Length)
             {
                 pnumret._cdigit++;
                 pnumret._exp--;
@@ -2640,7 +2695,7 @@ public class RatPak
         createrat(ref pratret);
         pratret._pp = i32tonum(ini32, BASEX);
         pratret._pq = i32tonum(1, BASEX);
-        return (pratret);
+        return pratret;
     }
 
     //-----------------------------------------------------------------------------
@@ -2662,7 +2717,7 @@ public class RatPak
         createrat(ref pratret);
         pratret._pp = Ui32tonum(inui32, BASEX);
         pratret._pq = i32tonum(1, BASEX);
-        return (pratret);
+        return pratret;
     }
 
     //-----------------------------------------------------------------------------
@@ -2699,15 +2754,15 @@ public class RatPak
         // PORTFIX1: Get absolute value safely using long to avoid overflow.
         // Gotta watch out for differences in overflow handling in C# and C++.
         // C# just wraps around to max while C++ discards the overflown bits.
-        uint32_t value = (uint32_t)(ini32 < 0 ? -((long)ini32) : ini32);
+        uint32_t value = (uint32_t)(ini32 < 0 ? -(long)ini32 : ini32);
         do
         {
-            pmant[pmantCnt++] = (value % radix);
+            pmant[pmantCnt++] = value % radix;
             value /= radix;
             pnumret._cdigit++;
         } while (value != 0);
 
-        return (pnumret);
+        return pnumret;
     }
 
     //-----------------------------------------------------------------------------
@@ -2740,7 +2795,7 @@ public class RatPak
             pnumret._cdigit++;
         } while (ini32 != 0);
 
-        return (pnumret);
+        return pnumret;
     }
 
     //-----------------------------------------------------------------------------
@@ -2769,14 +2824,14 @@ public class RatPak
         duprat(ref pint, prat);
 
         intrat(ref pint, radix, precision);
-        divnumx(ref (pint._pp), pint._pq, precision);
+        divnumx(ref pint._pp, pint._pq, precision);
         dupnum(ref pint._pq, num_one);
 
         int32_t lret = numtoi32(pint._pp, BASEX);
 
         destroyrat(ref pint);
 
-        return (lret);
+        return lret;
     }
 
     //-----------------------------------------------------------------------------
@@ -2804,7 +2859,7 @@ public class RatPak
         duprat(ref pint, prat);
 
         intrat(ref pint, radix, precision);
-        divnumx(ref (pint._pp), pint._pq, precision);
+        divnumx(ref pint._pp, pint._pq, precision);
         dupnum(ref pint._pq, num_one);
 
         // uint32_t lret = (uint32_t)numtoi32(pint.pp, BASEX); // This happens to work even if it is only signed
@@ -2813,7 +2868,7 @@ public class RatPak
 
         destroyrat(ref pint);
 
-        return (lret);
+        return lret;
     }
 
     //-----------------------------------------------------------------------------
@@ -2849,7 +2904,7 @@ public class RatPak
         destroyrat(ref prat32);
         destroyrat(ref pint);
 
-        return (((uint64_t)hi << 32) | lo);
+        return ((uint64_t)hi << 32) | lo;
     }
 
     //-----------------------------------------------------------------------------
@@ -2881,7 +2936,7 @@ public class RatPak
         for (int32_t length = pnum._cdigit; length > 0 && length + expt > 0; length--)
         {
             lret = (int32_t)(lret * radix);
-            lret = (int32_t)(lret + (pmant[pmantCnt--]));
+            lret = (int32_t)(lret + pmant[pmantCnt--]);
         }
 
         while (expt-- > 0)
@@ -2926,7 +2981,7 @@ public class RatPak
         }
 
         // Check we haven't gone too far, and we are still looking at zeros.
-        while ((cdigits > 0) && pmant[pmantCnt] == 0)
+        while (cdigits > 0 && pmant[pmantCnt] == 0)
         {
             // move to next significant digit and keep track of digits we can
             // ignore later.
@@ -2942,11 +2997,11 @@ public class RatPak
             Array.Copy(pnum._mant, pmantCnt, pnum._mant, 0, cdigits);
 
             // And adjust exponent and digit count accordingly.
-            pnum._exp += (pnum._cdigit - cdigits);
+            pnum._exp += pnum._cdigit - cdigits;
             pnum._cdigit = cdigits;
         }
 
-        return (fstrip);
+        return fstrip;
     }
 
     private PNUMBER? NumberToStringMakeRound(PNUMBER pnum, NumberFormat format, uint32_t radix, int32_t precision, int32_t exponent, ref int32_t length)
@@ -2981,7 +3036,7 @@ public class RatPak
         if (format == NumberFormat.FloatingPoint)
         {
             // Figure out if the exponent will fill more space than the non-exponent field.
-            if ((length - exponent > precision) || (exponent > precision + 3))
+            if (length - exponent > precision || exponent > precision + 3)
             {
                 if (exponent >= -MAX_ZEROS_AFTER_DECIMAL)
                 {
@@ -3010,14 +3065,14 @@ public class RatPak
 
         // Case where too many digits are to the left of the decimal or
         // NumberFormat.Scientific or NumberFormat.Engineering was specified.
-        if ((format == NumberFormat.Scientific) || (format == NumberFormat.Engineering))
+        if (format is NumberFormat.Scientific or NumberFormat.Engineering)
         {
             useSciForm = true;
             if (eout != 0)
             {
                 if (format == NumberFormat.Engineering)
                 {
-                    exponent = (eout % 3);
+                    exponent = eout % 3;
                     eout -= exponent;
                     exponent++;
 
@@ -3051,7 +3106,7 @@ public class RatPak
         StringBuilder result = new();
 
         // Make sure negative zeros aren't allowed.
-        if ((pnum._sign == -1) && (length > 0))
+        if (pnum._sign == -1 && length > 0)
         {
             result.Append('-');
         }
@@ -3169,7 +3224,7 @@ public class RatPak
         if (round != null)
         {
             addnum(ref pnum, round, radix);
-            int32_t offset = (pnum._cdigit + pnum._exp) - (round._cdigit + round._exp);
+            int32_t offset = pnum._cdigit + pnum._exp - (round._cdigit + round._exp);
             destroynum(ref round);
             if (stripzeroesnum(ref pnum, offset))
             {
@@ -3350,7 +3405,7 @@ public class RatPak
             destroynum(ref tmp);
         }
 
-        return (lret);
+        return lret;
     }
 
     //-----------------------------------------------------------------------------
@@ -3384,7 +3439,7 @@ public class RatPak
             start++;
         }
 
-        return (lret);
+        return lret;
     }
 
     //-----------------------------------------------------------------------------
@@ -3448,9 +3503,9 @@ public class RatPak
             // Take the positive power and invert answer.
             PNUMBER? pnumtemp = null;
             ratpowi32(ref proot, -power, precision);
-            pnumtemp = (proot)._pp;
-            (proot)._pp = (proot)._pq;
-            (proot)._pq = pnumtemp;
+            pnumtemp = proot._pp;
+            proot._pp = proot._pq;
+            proot._pq = pnumtemp;
         }
         else
         {
@@ -3462,8 +3517,8 @@ public class RatPak
             {
                 if ((power & 1) != 0)
                 {
-                    mulnumx(ref (lret._pp), (proot)._pp);
-                    mulnumx(ref (lret._pq), (proot)._pq);
+                    mulnumx(ref lret._pp, proot._pp);
+                    mulnumx(ref lret._pq, proot._pq);
                 }
 
                 mulrat(ref proot, proot, precision);
@@ -3503,8 +3558,8 @@ public class RatPak
     {
         CREATETAYLOR(ref px, precision, out var xx, out var n2, out var pret, out var thisterm);
 
-        addnum(ref (pret._pp), num_one, BASEX);
-        addnum(ref (pret._pq), num_one, BASEX);
+        addnum(ref pret._pp, num_one, BASEX);
+        addnum(ref pret._pq, num_one, BASEX);
         duprat(ref thisterm, pret);
 
         n2 = i32tonum(0, BASEX);
@@ -3587,15 +3642,15 @@ public class RatPak
         createrat(ref thisterm);
 
         // sub one from x
-        (px)._pq._sign *= -1;
-        addnum(ref ((px)._pp), (px)._pq, BASEX);
-        (px)._pq._sign *= -1;
+        px._pq._sign *= -1;
+        addnum(ref px._pp, px._pq, BASEX);
+        px._pq._sign *= -1;
 
         duprat(ref pret, px);
         duprat(ref thisterm, px);
 
         n2 = i32tonum(1, BASEX);
-        (px)._pp._sign *= -1;
+        px._pp._sign *= -1;
 
         do
         {
@@ -3626,9 +3681,9 @@ public class RatPak
         bool fneglog = RatLt(px, rat_one, precision);
         if (fneglog)
         {
-            PNUMBER pnumtemp = (px)._pp;
-            (px)._pp = (px)._pq;
-            (px)._pq = pnumtemp;
+            PNUMBER pnumtemp = px._pp;
+            px._pp = px._pq;
+            px._pq = pnumtemp;
         }
 
         // Scale the number within BASEX factor of 1, for the large scale.
@@ -3636,7 +3691,7 @@ public class RatPak
         if (LOGRAT2(px) > 1)
         {
             int32_t intpwr = LOGRAT2(px) - 1;
-            (px)._pq._exp += intpwr;
+            px._pq._exp += intpwr;
             pwr = i32torat(unchecked((int32_t)(intpwr * BASEXPWR))); // TODO: Check this for overflowhandling
             mulrat(ref pwr, ln_two, precision);
             // ln(x+e)-ln(x) looks close to e when x is close to one using some
@@ -3671,7 +3726,7 @@ public class RatPak
         // If number started out < 1 rescale answer to negative.
         if (fneglog)
         {
-            (px)._pp._sign *= -1;
+            px._pp._sign *= -1;
         }
 
         destroyrat(ref offset);
@@ -3877,8 +3932,8 @@ public class RatPak
         int32_t sign = SIGN(px);
 
         // Take the absolute value
-        (px)._pp._sign = 1;
-        (px)._pq._sign = 1;
+        px._pp._sign = 1;
+        px._pq._sign = 1;
 
         if (zerrat(px))
         {
@@ -3900,7 +3955,7 @@ public class RatPak
             PRAT? pxint = null;
             duprat(ref pxint, px);
             subrat(ref pxint, rat_one, precision);
-            if (RatGt(pxint, rat_negsmallest, precision) && RatLt(pxint, rat_smallest, precision) && (sign == 1))
+            if (RatGt(pxint, rat_negsmallest, precision) && RatLt(pxint, rat_smallest, precision) && sign == 1)
             {
                 // *px is one, special case a 1 return.
                 duprat(ref px, rat_one);
@@ -4008,7 +4063,7 @@ public class RatPak
             destroyrat(ref pxint);
         }
 
-        (px)._pp._sign *= sign;
+        px._pp._sign *= sign;
     }
 
     // Methods to replace the C++ macros
@@ -4142,9 +4197,9 @@ public class RatPak
             // WARNING: mixing numbers and rationals here.
             // for speed and efficiency.
             INC(ref count);
-            mulnumx(ref (factorial._pp), count);
+            mulnumx(ref factorial._pp, count);
             INC(ref count);
-            mulnumx(ref (factorial._pp), count);
+            mulnumx(ref factorial._pp, count);
 
             divrat(ref factorial, a2, precision);
 
@@ -4213,11 +4268,11 @@ public class RatPak
         fracrat(ref frac, radix, precision);
 
         // Check for negative integers and throw an error.
-        if ((zerrat(frac) || (LOGRATRADIX(frac) <= -precision)) && (SIGN(px) == -1))
+        if ((zerrat(frac) || LOGRATRADIX(frac) <= -precision) && SIGN(px) == -1)
         {
             throw new CalcErrException(CalcErr.Domain);
         }
-        while (RatGt(px, rat_zero, precision) && (LOGRATRADIX(px) > -precision))
+        while (RatGt(px, rat_zero, precision) && LOGRATRADIX(px) > -precision)
         {
             mulrat(ref fact, px, precision);
             subrat(ref px, rat_one, precision);
@@ -4752,7 +4807,7 @@ public class RatPak
         PRAT? pwr = null;
 
         intrat(ref pa, radix, precision);
-        if (!zernum((pa)._pp))
+        if (!zernum(pa._pp))
         {
             // If input is zero we're done.
             if (RatGt(b, rat_max_exp, precision))
@@ -4779,7 +4834,7 @@ public class RatPak
         PRAT? pwr = null;
 
         intrat(ref pa, radix, precision);
-        if (!zernum((pa)._pp))
+        if (!zernum(pa._pp))
         {
             // If input is zero we're done.
             if (RatLt(b, rat_min_exp, precision))
@@ -4830,7 +4885,7 @@ public class RatPak
         duprat(ref tmp, b);
         intrat(ref tmp, radix, precision);
 
-        boolnum(ref ((pa)._pp), tmp._pp, func);
+        boolnum(ref pa._pp, tmp._pp, func);
         destroyrat(ref tmp);
     }
 
@@ -4875,8 +4930,8 @@ public class RatPak
         pchc = c._mant;
         for (; cdigits > 0; cdigits--, mexp++)
         {
-            da = (((mexp >= a._exp) && (cdigits + a._exp - c._exp > (c._cdigit - a._cdigit))) ? pcha[pchaCnt++] : 0);
-            db = (((mexp >= b._exp) && (cdigits + b._exp - c._exp > (c._cdigit - b._cdigit))) ? pchb[pchbCnt++] : 0);
+            da = mexp >= a._exp && cdigits + a._exp - c._exp > c._cdigit - a._cdigit ? pcha[pchaCnt++] : 0;
+            db = mexp >= b._exp && cdigits + b._exp - c._exp > c._cdigit - b._cdigit ? pchb[pchbCnt++] : 0;
             switch (func)
             {
                 case (int)BoolFuncs.FUNC_AND:
@@ -4929,10 +4984,10 @@ public class RatPak
         PRAT? tmp = null;
         duprat(ref tmp, b);
 
-        mulnumx(ref ((pa)._pp), tmp._pq);
-        mulnumx(ref (tmp._pp), (pa)._pq);
-        remnum(ref ((pa)._pp), tmp._pp, BASEX);
-        mulnumx(ref ((pa)._pq), tmp._pq);
+        mulnumx(ref pa._pp, tmp._pq);
+        mulnumx(ref tmp._pp, pa._pq);
+        remnum(ref pa._pp, tmp._pp, BASEX);
+        mulnumx(ref pa._pq, tmp._pq);
 
         // Get *pa back in the integer over integer form.
         RENORMALIZE(pa);
@@ -4976,12 +5031,12 @@ public class RatPak
         PRAT? tmp = null;
         duprat(ref tmp, b);
 
-        var needAdjust = (SIGN(pa) == -1 ? (SIGN(b) == 1) : (SIGN(b) == -1));
+        var needAdjust = SIGN(pa) == -1 ? SIGN(b) == 1 : SIGN(b) == -1;
 
-        mulnumx(ref ((pa)._pp), tmp._pq);
-        mulnumx(ref (tmp._pp), (pa)._pq);
-        remnum(ref ((pa)._pp), tmp._pp, BASEX);
-        mulnumx(ref ((pa)._pq), tmp._pq);
+        mulnumx(ref pa._pp, tmp._pq);
+        mulnumx(ref tmp._pp, pa._pq);
+        remnum(ref pa._pp, tmp._pp, BASEX);
+        mulnumx(ref pa._pq, tmp._pq);
 
         if (needAdjust && !zerrat(pa))
         {
@@ -5026,7 +5081,7 @@ public class RatPak
         if (b._cdigit > 1 || b._mant[0] != 0)
         {
             // If b is zero we are done.
-            if (pa._cdigit > 1 || (pa)._mant[0] != 0)
+            if (pa._cdigit > 1 || pa._mant[0] != 0)
             {
                 // pa and b are both nonzero.
                 _addnum(ref pa, b, radix);
@@ -5075,8 +5130,8 @@ public class RatPak
         if (a._sign != b._sign)
         {
             cy = 1;
-            fcompla = (a._sign == -1) ? 1 : 0;
-            fcomplb = (b._sign == -1) ? 1 : 0;
+            fcompla = a._sign == -1 ? 1 : 0;
+            fcomplb = b._sign == -1 ? 1 : 0;
         }
 
         // Loop over all the digits, real and 0 padded. Here we know a and b are
@@ -5084,20 +5139,20 @@ public class RatPak
         for (; cdigits > 0; cdigits--, mexp++)
         {
             // Get digit from a, taking padding into account.
-            da = (((mexp >= a._exp) && (cdigits + a._exp - c._exp > (c._cdigit - a._cdigit))) ? pcha[pchaCnt++] : 0);
+            da = mexp >= a._exp && cdigits + a._exp - c._exp > c._cdigit - a._cdigit ? pcha[pchaCnt++] : 0;
             // Get digit from b, taking padding into account.
-            db = (((mexp >= b._exp) && (cdigits + b._exp - c._exp > (c._cdigit - b._cdigit))) ? pchb[pchbCnt++] : 0);
+            db = mexp >= b._exp && cdigits + b._exp - c._exp > c._cdigit - b._cdigit ? pchb[pchbCnt++] : 0;
 
             // Handle complementing for a and b digit. Might be a better way, but
             // haven't found it yet.
             if (fcompla != 0)
             {
-                da = (MANTTYPE)(radix) - 1 - da;
+                da = (MANTTYPE)radix - 1 - da;
             }
 
             if (fcomplb != 0)
             {
-                db = (MANTTYPE)(radix) - 1 - db;
+                db = (MANTTYPE)radix - 1 - db;
             }
 
             // Update carry as necessary
@@ -5187,7 +5242,7 @@ public class RatPak
         if (b._cdigit > 1 || b._mant[0] != 1 || b._exp != 0)
         {
             // If b is one we don't multiply exactly.
-            if ((pa)._cdigit > 1 || (pa)._mant[0] != 1 || (pa)._exp != 0)
+            if (pa._cdigit > 1 || pa._mant[0] != 1 || pa._exp != 0)
             {
                 // pa and b are both non-one.
                 _mulnum(ref pa, b, radix);
@@ -5195,15 +5250,15 @@ public class RatPak
             else
             {
                 // if pa is one and b isn't just copy b, and adjust the sign.
-                int32_t sign = (pa)._sign;
+                int32_t sign = pa._sign;
                 dupnum(ref pa, b);
-                (pa)._sign *= sign;
+                pa._sign *= sign;
             }
         }
         else
         {
             // But we do have to set the sign.
-            (pa)._sign *= b._sign;
+            pa._sign *= b._sign;
         }
     }
 
@@ -5270,7 +5325,7 @@ public class RatPak
                     int absPos = pchcCnt + icdigit;
 
                     // update carry from addition(s) and multiply.
-                    cy += (TWO_MANTTYPE)c._mant[absPos] + (mcy % (TWO_MANTTYPE)radix);
+                    cy += (TWO_MANTTYPE)c._mant[absPos] + mcy % (TWO_MANTTYPE)radix;
                     // CHANGED: pchc[icdigit] becomes c.mant[absPos]
 
                     // update result digit from
@@ -5324,7 +5379,7 @@ public class RatPak
             if (lessnum(tmp, pa))
             {
                 // Start off close to the right answer for subtraction.
-                tmp._exp = (pa)._cdigit + (pa)._exp - tmp._cdigit;
+                tmp._exp = pa._cdigit + pa._exp - tmp._cdigit;
                 if (MSD(pa) <= MSD(tmp))
                 {
                     // Don't take the chance that the numbers are equal.
@@ -5350,7 +5405,7 @@ public class RatPak
             }
 
             // Subtract the working remainder from the remainder holder.
-            tmp._sign = -1 * (pa)._sign;
+            tmp._sign = -1 * pa._sign;
             addnum(ref pa, tmp, radix);
             destroynum(ref tmp);
             destroynum(ref lasttmp);
@@ -5411,7 +5466,7 @@ public class RatPak
 
         PNUMBER? c = null;
         createnum(ref c, (uint32_t)(thismax + 1));
-        c._exp = (a._cdigit + a._exp) - (b._cdigit + b._exp) + 1;
+        c._exp = a._cdigit + a._exp - (b._cdigit + b._exp) + 1;
         c._sign = a._sign * b._sign;
 
         MANTTYPE[] ptrc = c._mant;
@@ -5530,7 +5585,7 @@ public class RatPak
         MANTTYPE da;
         MANTTYPE db;
 
-        diff = (a._cdigit + a._exp) - (b._cdigit + b._exp);
+        diff = a._cdigit + a._exp - (b._cdigit + b._exp);
         if (diff < 0)
         {
             // If the exponents are different, these are different numbers.
@@ -5557,8 +5612,8 @@ public class RatPak
                 // difference in the digits.
                 for (; cdigits > 0; cdigits--)
                 {
-                    da = ((cdigits > (ccdigits - a._cdigit)) ? pa[paCnt--] : 0);
-                    db = ((cdigits > (ccdigits - b._cdigit)) ? pb[pbCnt--] : 0);
+                    da = cdigits > ccdigits - a._cdigit ? pa[paCnt--] : 0;
+                    db = cdigits > ccdigits - b._cdigit ? pb[pbCnt--] : 0;
                     if (da != db)
                     {
                         return false;
@@ -5586,7 +5641,7 @@ public class RatPak
     //---------------------------------------------------------------------------
     static bool lessnum(PNUMBER a, PNUMBER b)
     {
-        int32_t diff = (a._cdigit + a._exp) - (b._cdigit + b._exp);
+        int32_t diff = a._cdigit + a._exp - (b._cdigit + b._exp);
         if (diff < 0)
         {
             // The exponent of a is less than b
@@ -5609,12 +5664,12 @@ public class RatPak
         for (; cdigits > 0; cdigits--)
         {
             // PORT: FIX: Apply post-decrement to the array index, not the value
-            MANTTYPE da = ((cdigits > (ccdigits - a._cdigit)) ? pa[paCnt--] : 0);
-            MANTTYPE db = ((cdigits > (ccdigits - b._cdigit)) ? pb[pbCnt--] : 0);
+            MANTTYPE da = cdigits > ccdigits - a._cdigit ? pa[paCnt--] : 0;
+            MANTTYPE db = cdigits > ccdigits - b._cdigit ? pb[pbCnt--] : 0;
             diff = (int32_t)(da - db);
             if (diff != 0)
             {
-                return (diff < 0);
+                return diff < 0;
             }
         }
 
@@ -5692,8 +5747,8 @@ public class RatPak
 
         if (!zernum(pgcd))
         {
-            divnumx(ref (a._pp), pgcd, precision);
-            divnumx(ref (a._pq), pgcd, precision);
+            divnumx(ref a._pp, pgcd, precision);
+            divnumx(ref a._pq, pgcd, precision);
         }
 
         destroynum(ref pgcd);
@@ -5722,12 +5777,12 @@ public class RatPak
 
         // Only do the flatrat operation if number is nonzero.
         // and only if the bottom part is not one.
-        if (!zernum((pa)._pp) && !equnum(pa._pq, num_one))
+        if (!zernum(pa._pp) && !equnum(pa._pq, num_one))
         {
             flatrat(ref pa, radix, precision);
         }
 
-        remnum(ref ((pa)._pp), (pa)._pq, BASEX);
+        remnum(ref pa._pp, pa._pq, BASEX);
 
         // Get *pa back in the integer over integer form.
         RENORMALIZE(pa);
@@ -5758,16 +5813,16 @@ public class RatPak
         }
 
         // Only do the multiply if it isn't zero.
-        if (!zernum((pa)._pp))
+        if (!zernum(pa._pp))
         {
-            mulnumx(ref ((pa)._pp), b._pp);
-            mulnumx(ref ((pa)._pq), b._pq);
+            mulnumx(ref pa._pp, b._pp);
+            mulnumx(ref pa._pq, b._pq);
             trimit(ref pa, precision);
         }
         else
         {
             // If it is zero, blast a one in the denominator.
-            dupnum(ref ((pa)._pq), num_one);
+            dupnum(ref pa._pq, num_one);
         }
 
 #if MULGCD
@@ -5799,13 +5854,13 @@ public class RatPak
             throw new ArgumentNullException(nameof(b));
         }
 
-        if (!zernum((pa)._pp))
+        if (!zernum(pa._pp))
         {
             // Only do the divide if the top isn't zero.
-            mulnumx(ref ((pa)._pp), b._pq);
-            mulnumx(ref ((pa)._pq), b._pp);
+            mulnumx(ref pa._pp, b._pq);
+            mulnumx(ref pa._pq, b._pp);
 
-            if (zernum((pa)._pq))
+            if (zernum(pa._pq))
             {
                 // raise an exception if the bottom is 0.
                 throw new CalcErrException(CalcErr.DivideByZero);
@@ -5825,7 +5880,7 @@ public class RatPak
             else
             {
                 // 0/x make a unique 0.
-                dupnum(ref ((pa)._pq), num_one);
+                dupnum(ref pa._pq, num_one);
             }
         }
 
@@ -5884,32 +5939,32 @@ public class RatPak
 
         PNUMBER? bot = null;
 
-        if (equnum((pa)._pq, b._pq))
+        if (equnum(pa._pq, b._pq))
         {
             // Very special case, q's match.,
             // make sure signs are involved in the calculation
             // we have to do this since the optimization here is only
             // working with the top half of the rationals.
-            (pa)._pp._sign *= (pa)._pq._sign;
-            (pa)._pq._sign = 1;
+            pa._pp._sign *= pa._pq._sign;
+            pa._pq._sign = 1;
             b._pp._sign *= b._pq._sign;
             b._pq._sign = 1;
-            addnum(ref ((pa)._pp), b._pp, BASEX);
+            addnum(ref pa._pp, b._pp, BASEX);
         }
         else
         {
             // Usual case q's aren't the same.
-            dupnum(ref bot, (pa)._pq);
+            dupnum(ref bot, pa._pq);
             mulnumx(ref bot, b._pq);
-            mulnumx(ref ((pa)._pp), b._pq);
-            mulnumx(ref ((pa)._pq), b._pp);
-            addnum(ref ((pa)._pp), (pa)._pq, BASEX);
-            (pa)._pq = bot;
+            mulnumx(ref pa._pp, b._pq);
+            mulnumx(ref pa._pq, b._pp);
+            addnum(ref pa._pp, pa._pq, BASEX);
+            pa._pq = bot;
             trimit(ref pa, precision);
 
             // Get rid of negative zeros here.
-            (pa)._pp._sign *= (pa)._pq._sign;
-            (pa)._pq._sign = 1;
+            pa._pp._sign *= pa._pq._sign;
+            pa._pq._sign = 1;
         }
 
 #if ADDGCD
@@ -5960,7 +6015,7 @@ public class RatPak
             throw new ArgumentNullException(nameof(a));
         }
 
-        return (zernum(a._pp));
+        return zernum(a._pp);
     }
 
     static void DUMPRAWRAT(RAT v)
@@ -5978,8 +6033,8 @@ public class RatPak
     static void READRAWRAT([NotNull] ref RAT? v, NUMBER initp, NUMBER initq)
     {
         createrat(ref v);
-        dupnum(ref (v)._pp, initp);
-        dupnum(ref (v)._pq, initq);
+        dupnum(ref v._pp, initp);
+        dupnum(ref v._pq, initq);
     }
 
     static void READRAWNUM([NotNull] ref NUMBER? v, NUMBER init) => dupnum(ref v, init);
@@ -6042,12 +6097,12 @@ public class RatPak
         // in the internal BASEX radix, this is important for length calculations
         // in translating from radix to BASEX and back.
 
-        g_ratio = (int32_t)(Math.Ceiling(BASEXPWR / Math.Log(radix, 2))) - 1;
+        g_ratio = (int32_t)Math.Ceiling(BASEXPWR / Math.Log(radix, 2)) - 1;
 
         rat_nRadix = i32torat((int32_t)radix);
 
         // Check to see what we have to recalculate and what we don't
-        if (cbitsofprecision < (g_ratio * (int32_t)(radix) * precision))
+        if (cbitsofprecision < g_ratio * (int32_t)radix * precision)
         {
             g_ftrueinfinite = false;
 
@@ -6101,17 +6156,17 @@ public class RatPak
             }
 
             duprat(ref rat_qword, rat_two);
-            numpowi32(ref (rat_qword._pp), 64, BASEX, precision);
+            numpowi32(ref rat_qword._pp, 64, BASEX, precision);
             subrat(ref rat_qword, rat_one, precision);
             DUMPRAWRAT(rat_qword);
 
             duprat(ref rat_dword, rat_two);
-            numpowi32(ref (rat_dword._pp), 32, BASEX, precision);
+            numpowi32(ref rat_dword._pp, 32, BASEX, precision);
             subrat(ref rat_dword, rat_one, precision);
             DUMPRAWRAT(rat_dword);
 
             duprat(ref rat_max_i32, rat_two);
-            numpowi32(ref (rat_max_i32._pp), 31, BASEX, precision);
+            numpowi32(ref rat_max_i32._pp, 31, BASEX, precision);
             duprat(ref rat_min_i32, rat_max_i32);
             subrat(ref rat_max_i32, rat_one, precision); // rat_max_i32 = 2^31 -1
             DUMPRAWRAT(rat_max_i32);
@@ -6202,7 +6257,7 @@ public class RatPak
 
         // Only do the intrat operation if number is nonzero.
         // and only if the bottom part is not one.
-        if (!zernum((px)._pp) && !equnum((px)._pq, num_one))
+        if (!zernum(px._pp) && !equnum(px._pq, num_one))
         {
             flatrat(ref px, radix, precision);
 
@@ -6212,7 +6267,7 @@ public class RatPak
             remrat(ref pret, rat_one);
 
             // Flatten pret in case it's not aligned with px after remrat operation
-            if (!equnum((px)._pq, pret._pq))
+            if (!equnum(px._pq, pret._pq))
             {
                 flatrat(ref pret, radix, precision);
             }
@@ -6244,7 +6299,7 @@ public class RatPak
         addrat(ref rattmp, b, precision);
         bool bret = zernum(rattmp._pp);
         destroyrat(ref rattmp);
-        return (bret);
+        return bret;
     }
 
     //---------------------------------------------------------------------------
@@ -6265,9 +6320,9 @@ public class RatPak
         b._pp._sign *= -1;
         addrat(ref rattmp, b, precision);
         b._pp._sign *= -1;
-        bool bret = (zernum(rattmp._pp) || SIGN(rattmp) == 1);
+        bool bret = zernum(rattmp._pp) || SIGN(rattmp) == 1;
         destroyrat(ref rattmp);
-        return (bret);
+        return bret;
     }
 
     //---------------------------------------------------------------------------
@@ -6293,9 +6348,9 @@ public class RatPak
         b._pp._sign *= -1;
         addrat(ref rattmp, b, precision);
         b._pp._sign *= -1;
-        bool bret = (!zernum(rattmp._pp) && SIGN(rattmp) == 1);
+        bool bret = !zernum(rattmp._pp) && SIGN(rattmp) == 1;
         destroyrat(ref rattmp);
-        return (bret);
+        return bret;
     }
 
     //---------------------------------------------------------------------------
@@ -6316,9 +6371,9 @@ public class RatPak
         b._pp._sign *= -1;
         addrat(ref rattmp, b, precision);
         b._pp._sign *= -1;
-        bool bret = (zernum(rattmp._pp) || SIGN(rattmp) == -1);
+        bool bret = zernum(rattmp._pp) || SIGN(rattmp) == -1;
         destroyrat(ref rattmp);
-        return (bret);
+        return bret;
     }
 
     //---------------------------------------------------------------------------
@@ -6345,9 +6400,9 @@ public class RatPak
         b._pp._sign *= -1;
         addrat(ref rattmp, b, precision);
         b._pp._sign *= -1;
-        bool bret = (!zernum(rattmp._pp) && SIGN(rattmp) == -1);
+        bool bret = !zernum(rattmp._pp) && SIGN(rattmp) == -1;
         destroyrat(ref rattmp);
-        return (bret);
+        return bret;
     }
 
     //---------------------------------------------------------------------------
@@ -6367,9 +6422,9 @@ public class RatPak
         duprat(ref rattmp, a);
         rattmp._pp._sign *= -1;
         addrat(ref rattmp, b, precision);
-        bool bret = !(zernum(rattmp._pp));
+        bool bret = !zernum(rattmp._pp);
         destroyrat(ref rattmp);
-        return (bret);
+        return bret;
     }
 
     //---------------------------------------------------------------------------
@@ -6390,7 +6445,7 @@ public class RatPak
 
         // Logscale is a quick way to tell how much extra precision is needed for
         // scaling by scalefact.
-        int32_t logscale = g_ratio * ((pret._pp._cdigit + pret._pp._exp) - (pret._pq._cdigit + pret._pq._exp));
+        int32_t logscale = g_ratio * (pret._pp._cdigit + pret._pp._exp - (pret._pq._cdigit + pret._pq._exp));
         if (logscale > 0)
         {
             precision += logscale;
@@ -6424,7 +6479,7 @@ public class RatPak
 
         // Logscale is a quick way to tell how much extra precision is needed for
         // scaling by 2 pi.
-        int32_t logscale = g_ratio * ((pret._pp._cdigit + pret._pp._exp) - (pret._pq._cdigit + pret._pq._exp));
+        int32_t logscale = g_ratio * (pret._pp._cdigit + pret._pp._exp - (pret._pq._cdigit + pret._pq._exp));
         if (logscale > 0)
         {
             precision += logscale;
@@ -6620,7 +6675,7 @@ public class RatPak
             PNUMBER pp = px._pp;
             PNUMBER pq = px._pq;
 
-            int32_t trim = g_ratio * (Math.Min((pp._cdigit + pp._exp), (pq._cdigit + pq._exp)) - 1) - precision;
+            int32_t trim = g_ratio * (Math.Min(pp._cdigit + pp._exp, pq._cdigit + pq._exp) - 1) - precision;
 
             if (trim > g_ratio)
             {
@@ -7154,8 +7209,8 @@ public class RatPak
         duprat(ref ptmp, px);
         sinhrat(ref px, radix, precision);
         coshrat(ref ptmp, radix, precision);
-        mulnumx(ref (px._pp), ptmp._pq);
-        mulnumx(ref (px._pq), ptmp._pp);
+        mulnumx(ref px._pp, ptmp._pq);
+        mulnumx(ref px._pq, ptmp._pp);
 
         destroyrat(ref ptmp);
     }

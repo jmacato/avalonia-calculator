@@ -19,6 +19,8 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
     private const int MinimumVerticesPerEquation = 2_048;
     private const int VerticesPerViewportPerimeterPixel = 4;
     private const double SamplingOverscanScale = 2;
+    private const double StandardDpi = 96;
+    private const double MaximumSamplingScale = 4;
     private static readonly string[] TickFormats = ["0", "0.#", "0.##", "0.###", "0.####", "0.#####", "0.######", "0.#######", "0.########", "0.#########", "0.##########", "0.###########", "0.############"];
     private readonly int _ownerThreadId = Environment.CurrentManagedThreadId;
     private readonly ManagedGraphingOptions _options;
@@ -45,12 +47,16 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
     private uint _height = 600;
     private float _dpiX = 96;
     private float _dpiY = 96;
+    private double _samplingScale = 1;
     private PreparedGraph? _prepared;
     private GraphFrame? _frame;
     private PreparedGraph? _equationCommandSource;
     private ImmutableArray<GraphFrameCommand> _equationCommands = ImmutableArray<GraphFrameCommand>.Empty;
     private PreparedGraph? _contentCommandSource;
     private ImmutableArray<GraphFrameCommand> _contentCommands = ImmutableArray<GraphFrameCommand>.Empty;
+    private readonly ImmutableArray<GraphFrameCommand>.Builder _interactionCommands = ImmutableArray.CreateBuilder<GraphFrameCommand>(96);
+    private readonly ImmutableArray<GraphFrameCommand>.Builder _interactionTickLabels = ImmutableArray.CreateBuilder<GraphFrameCommand>(48);
+    private readonly ImmutableArray<GraphFrameCommand>.Builder _interactionAxisAliases = ImmutableArray.CreateBuilder<GraphFrameCommand>(4);
     private Task? _prepareWorker;
     private long _prepareGeneration;
     private long _latestRequestedGeneration;
@@ -58,6 +64,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
     private int _lastCompletedStatus = GraphStatus.Ok.Value;
     private long _lastRequestedSnapshotRevision = -1;
     private SamplingViewport _lastRequestedViewport;
+    private double _lastRequestedSamplingScale = double.NaN;
     private int _disposed;
     private int _lifetimeCancellationDisposed;
     public ManagedGraphRenderer(ManagedGraphingOptions options, EvaluationOptions evaluationOptions)
@@ -74,9 +81,11 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         get
         {
             VerifyAccess();
-            if (_frame is null && _prepared is not null)
+            if (_frame is null &&
+                _prepared is { } prepared &&
+                prepared.SamplingScale == _samplingScale)
             {
-                _frame = BuildFrame(_prepared);
+                _frame = BuildFrame(prepared);
             }
 
             return _frame;
@@ -119,7 +128,15 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
 
         _dpiX = dpiX;
         _dpiY = dpiY;
-        RebuildFrameFromPrepared();
+        _samplingScale = Math.Clamp(
+            Math.Max(dpiX, dpiY) / StandardDpi,
+            1,
+            MaximumSamplingScale);
+        // The prepared curve was tessellated for the previous device scale.
+        // Do not publish it with only new DPI metadata: that leaves coarse
+        // logical-pixel segments visible on high-density displays. The next
+        // prepare/draw will sample at the new physical-pixel tolerance.
+        _frame = null;
         return GraphStatus.Ok;
     }
 
@@ -169,10 +186,13 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         }
     }
 
-    public GraphStatus GetClosePointData(double screenPointX, double screenPointY, double precision, out int formulaId, out float screenX, out float screenY, out double x, out double y, out double rho, out double theta, out double t)
+    public GraphStatus GetClosePointData(ref ClosePointRequest request)
     {
-        SetUnavailable(out formulaId, out screenX, out screenY, out x, out y, out rho, out theta, out t);
-        if (!double.IsFinite(screenPointX) || !double.IsFinite(screenPointY) || !double.IsFinite(precision) || precision < 0)
+        request.Result = ClosestPointData.Unavailable;
+        if (!double.IsFinite(request.ScreenPointX) ||
+            !double.IsFinite(request.ScreenPointY) ||
+            !double.IsFinite(request.Precision) ||
+            request.Precision < 0)
         {
             return GraphStatus.InvalidArgument;
         }
@@ -197,8 +217,8 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
             return GraphStatus.False;
         }
 
-        double maximumDistance = Math.Clamp(Math.Max(6, precision * viewport.Width / viewport.XRange.Length), 6, 32);
-        var target = new GraphPoint(screenPointX, screenPointY);
+        double maximumDistance = Math.Clamp(Math.Max(6, request.Precision * viewport.Width / viewport.XRange.Length), 6, 32);
+        var target = new GraphPoint(request.ScreenPointX, request.ScreenPointY);
         ManagedGraphRendererClosestCandidate best = ManagedGraphRendererClosestCandidate.None;
         for (int equationIndex = 0; equationIndex < prepared.Equations.Length; equationIndex++)
         {
@@ -214,14 +234,17 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
             return GraphStatus.False;
         }
 
-        formulaId = best.EquationIndex;
-        screenX = (float)best.Screen.X;
-        screenY = (float)best.Screen.Y;
-        x = best.User.X;
-        y = best.User.Y;
-        rho = Hypotenuse(x, y);
-        theta = Math.Atan2(y, x);
-        t = best.Parameter;
+        double x = best.User.X;
+        double y = best.User.Y;
+        request.Result = new ClosestPointData(
+            best.EquationIndex,
+            (float)best.Screen.X,
+            (float)best.Screen.Y,
+            x,
+            y,
+            Hypotenuse(x, y),
+            Math.Atan2(y, x),
+            best.Parameter);
         return GraphStatus.Ok;
     }
 
@@ -233,8 +256,8 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         }
 
         VerifyAccess();
-        double graphCenterX = _xRange.Center + (Math.Clamp(centerX, -1, 1) * _xRange.Length * 0.5);
-        double graphCenterY = _yRange.Center + (Math.Clamp(centerY, -1, 1) * _yRange.Length * 0.5);
+        double graphCenterX = _xRange.Center + Math.Clamp(centerX, -1, 1) * _xRange.Length * 0.5;
+        double graphCenterY = _yRange.Center + Math.Clamp(centerY, -1, 1) * _yRange.Length * 0.5;
         AxisRange x = Scale(_xRange, graphCenterX, scale);
         AxisRange y = Scale(_yRange, graphCenterY, scale);
         if (!IsAllowed(x) || !IsAllowed(y))
@@ -334,7 +357,11 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
 
         GraphSnapshot snapshot = _snapshot;
         SamplingViewport viewport = EffectiveViewport();
-        if (_prepared is not null && _prepared.Snapshot.Revision == snapshot.Revision && _prepared.Viewport == viewport)
+        double samplingScale = _samplingScale;
+        if (_prepared is not null &&
+            _prepared.Snapshot.Revision == snapshot.Revision &&
+            _prepared.Viewport == viewport &&
+            _prepared.SamplingScale == samplingScale)
         {
             _frame ??= BuildFrame(_prepared);
             return GraphStatus.Ok;
@@ -353,7 +380,13 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         PreparedGraph prepared;
         try
         {
-            prepared = SampleSnapshot(snapshot, viewport, _evaluationOptions.GetTrigUnitMode(), 0, effectiveCancellationToken);
+            prepared = SampleSnapshot(
+                snapshot,
+                viewport,
+                samplingScale,
+                _evaluationOptions.GetTrigUnitMode(),
+                0,
+                effectiveCancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -364,7 +397,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
             timeout?.Dispose();
         }
 
-        if (snapshot.Revision != _snapshot.Revision)
+        if (snapshot.Revision != _snapshot.Revision || samplingScale != _samplingScale)
         {
             return GraphStatus.Cancelled;
         }
@@ -385,7 +418,11 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
 
         GraphSnapshot snapshot = _snapshot;
         SamplingViewport viewport = EffectiveViewport();
-        if (_prepared is not null && _prepared.Snapshot.Revision == snapshot.Revision && _prepared.Viewport == viewport)
+        double samplingScale = _samplingScale;
+        if (_prepared is not null &&
+            _prepared.Snapshot.Revision == snapshot.Revision &&
+            _prepared.Viewport == viewport &&
+            _prepared.SamplingScale == samplingScale)
         {
             _frame ??= BuildFrame(_prepared);
             return GraphStatus.Ok;
@@ -393,20 +430,34 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
 
         long requested = Volatile.Read(ref _latestRequestedGeneration);
         long completed = Volatile.Read(ref _latestCompletedGeneration);
-        if (requested != 0 && completed == requested && _lastRequestedSnapshotRevision == snapshot.Revision && _lastRequestedViewport == viewport)
+        if (requested != 0 &&
+            completed == requested &&
+            _lastRequestedSnapshotRevision == snapshot.Revision &&
+            _lastRequestedViewport == viewport &&
+            _lastRequestedSamplingScale == samplingScale)
         {
             return new GraphStatus(Volatile.Read(ref _lastCompletedStatus));
         }
 
-        if (completed < requested && _lastRequestedSnapshotRevision == snapshot.Revision && _lastRequestedViewport == viewport)
+        if (completed < requested &&
+            _lastRequestedSnapshotRevision == snapshot.Revision &&
+            _lastRequestedViewport == viewport &&
+            _lastRequestedSamplingScale == samplingScale)
         {
             return GraphStatus.Ok;
         }
 
         long generation = Interlocked.Increment(ref _prepareGeneration);
-        var request = new ManagedGraphPrepareRequest(generation, snapshot, viewport, _evaluationOptions.GetTrigUnitMode(), _options.GetMaxExecutionTime());
+        var request = new ManagedGraphPrepareRequest(
+            generation,
+            snapshot,
+            viewport,
+            samplingScale,
+            _evaluationOptions.GetTrigUnitMode(),
+            _options.GetMaxExecutionTime());
         _lastRequestedSnapshotRevision = snapshot.Revision;
         _lastRequestedViewport = viewport;
+        _lastRequestedSamplingScale = samplingScale;
         Volatile.Write(ref _latestRequestedGeneration, generation);
         EnsurePrepareWorkerStarted();
         if (!_prepareRequests.Writer.TryWrite(request))
@@ -455,7 +506,8 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         }
 
         PreparedGraph prepared = newest.Prepared;
-        if (prepared.Snapshot.Revision != _snapshot.Revision)
+        if (prepared.Snapshot.Revision != _snapshot.Revision ||
+            prepared.SamplingScale != _samplingScale)
         {
             Volatile.Write(ref _lastCompletedStatus, GraphStatus.Cancelled.Value);
             GraphPipelineDiagnostics.RecordCommit(newest.Generation, GraphStatus.Cancelled);
@@ -506,6 +558,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         Volatile.Write(ref _latestCompletedGeneration, generation);
         Volatile.Write(ref _lastCompletedStatus, GraphStatus.Cancelled.Value);
         _lastRequestedSnapshotRevision = -1;
+        _lastRequestedSamplingScale = double.NaN;
         while (_prepareRequests.Reader.TryRead(out _))
         {
         }
@@ -581,12 +634,18 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         _frame = null;
     }
 
-    private PreparedGraph SampleSnapshot(GraphSnapshot snapshot, SamplingViewport viewport, EvalTrigUnitMode trigMode, long generation, CancellationToken cancellationToken)
+    private PreparedGraph SampleSnapshot(
+        GraphSnapshot snapshot,
+        SamplingViewport viewport,
+        double samplingScale,
+        EvalTrigUnitMode trigMode,
+        long generation,
+        CancellationToken cancellationToken)
     {
         SamplingViewport samplingViewport = CreateOverscanViewport(viewport);
         var geometries = ImmutableArray.CreateBuilder<PreparedEquationGeometry>(snapshot.Definitions.Length);
         double[] values = ArrayPool<double>.Shared.Rent(Math.Max(1, snapshot.Values.Length));
-        int viewportVertexBudget = ViewportVertexBudget(viewport);
+        int viewportVertexBudget = ViewportVertexBudget(viewport, samplingScale);
         int totalVertices = 0;
         bool missing = false;
         try
@@ -606,7 +665,15 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
                 int definitionsRemaining = snapshot.Definitions.Length - index;
                 int equationBudget = Math.Max(2, Math.Min(viewportVertexBudget, remaining / definitionsRemaining));
                 SamplingViewport boundaryViewport = definition.IsInequality && IsAffineBoundary(definition.BoundarySyntax) ? viewport : samplingViewport;
-                SampledCurve boundary = SampleBoundary(definition, values, boundaryViewport, equationBudget, trigMode, generation, cancellationToken);
+                SampledCurve boundary = SampleBoundary(
+                    definition,
+                    values,
+                    boundaryViewport,
+                    samplingScale,
+                    equationBudget,
+                    trigMode,
+                    generation,
+                    cancellationToken);
                 InequalityHatchGrid hatch = definition.IsInequality ? SampleInequalityHatch(definition, values, viewport, trigMode, generation, cancellationToken) : InequalityHatchGrid.Empty;
                 totalVertices += boundary.VertexCount;
                 missing |= boundary.HasMissingData;
@@ -619,10 +686,10 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         }
 
         missing |= geometries.Count != snapshot.Definitions.Length;
-        return new PreparedGraph(snapshot, viewport, geometries.ToImmutable(), missing);
+        return new PreparedGraph(snapshot, viewport, samplingScale, geometries.ToImmutable(), missing);
     }
 
-    private static int ViewportVertexBudget(SamplingViewport viewport)
+    private static int ViewportVertexBudget(SamplingViewport viewport, double samplingScale)
     {
         // A sampled point is retained in user coordinates, copied into a
         // screen-space GraphPath, and then consumed by the platform geometry.
@@ -630,11 +697,22 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         // data for a curve whose output is only a few hundred pixels wide.
         // Four vertices per viewport-perimeter pixel remains deliberately
         // oversampled for cusps and implicit curves while bounding that cost.
-        double requested = (viewport.Width + viewport.Height) * VerticesPerViewportPerimeterPixel;
+        double requested =
+            (viewport.Width + viewport.Height) *
+            VerticesPerViewportPerimeterPixel *
+            samplingScale;
         return (int)Math.Clamp(Math.Ceiling(requested), MinimumVerticesPerEquation, MaximumVerticesPerEquation);
     }
 
-    private SampledCurve SampleBoundary(CompiledGraphEquation definition, double[] values, SamplingViewport viewport, int maximumVertices, EvalTrigUnitMode trigMode, long generation, CancellationToken cancellationToken)
+    private SampledCurve SampleBoundary(
+        CompiledGraphEquation definition,
+        double[] values,
+        SamplingViewport viewport,
+        double samplingScale,
+        int maximumVertices,
+        EvalTrigUnitMode trigMode,
+        long generation,
+        CancellationToken cancellationToken)
     {
         if (definition.Kind == GraphEquationKind.Implicit)
         {
@@ -642,7 +720,9 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
             {
                 ThrowIfSamplingCancelled(generation, cancellationToken);
                 return EvaluateBoundaryField(definition, values, x, y, trigMode);
-            }, viewport, new ImplicitTraceOptions(MaximumVertices: maximumVertices), cancellationToken);
+            }, viewport, new ImplicitTraceOptions(
+                MaximumVertices: maximumVertices,
+                StepInPixels: 2.5 / samplingScale), cancellationToken);
         }
 
         bool inverse = definition.Kind == GraphEquationKind.InverseX;
@@ -662,7 +742,18 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
             return result.IsFinite ? new CurveSample(parameter, inverse ? result.Value : parameter, inverse ? parameter : result.Value, SampleState.Finite) : CurveSample.Undefined(parameter, ToSampleState(result.State));
         };
         AxisRange parameterRange = inverse ? viewport.YRange : viewport.XRange;
-        return AdaptiveCurveSampler.Sample(evaluator, parameterRange.Minimum, parameterRange.Maximum, viewport, SamplingOptions.Settled with { MaximumVertices = maximumVertices }, cancellationToken);
+        return AdaptiveCurveSampler.Sample(
+            evaluator,
+            parameterRange.Minimum,
+            parameterRange.Maximum,
+            viewport,
+            SamplingOptions.Settled with
+            {
+                MaximumVertices = maximumVertices,
+                FlatnessTolerance = SamplingOptions.Settled.FlatnessTolerance / samplingScale,
+                MaximumSegmentLength = SamplingOptions.Settled.MaximumSegmentLength / samplingScale
+            },
+            cancellationToken);
     }
 
     private GraphFrame BuildFrame(PreparedGraph prepared)
@@ -679,18 +770,30 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
             // rebuild the cheap viewport furniture at its true coordinates.
             // This avoids blank edges, stretched labels and scaled grid strokes
             // while panning/zooming without evaluating the function again.
-            var builder = ImmutableArray.CreateBuilder<GraphFrameCommand>();
-            var tickLabels = ImmutableArray.CreateBuilder<GraphFrameCommand>();
-            var axisAliases = ImmutableArray.CreateBuilder<GraphFrameCommand>();
-            builder.Add(new PushClipCommand(new GraphRect(0, 0, viewport.Width, viewport.Height)));
-            AppendGridAndAxes(builder, tickLabels, axisAliases, viewport, compactLines: true);
-            builder.AddRange(tickLabels);
-            builder.AddRange(axisAliases);
-            builder.Add(new PushCoordinateTransformCommand(CoordinateTransform(prepared.Viewport, viewport)));
-            builder.Add(new CommandGroupCommand(GetEquationCommands(prepared)));
-            builder.Add(new PopCoordinateTransformCommand());
-            builder.Add(new PopClipCommand());
-            commands = builder.ToImmutable();
+            _interactionCommands.Clear();
+            _interactionTickLabels.Clear();
+            _interactionAxisAliases.Clear();
+            try
+            {
+                _interactionCommands.Add(new PushClipCommand(new GraphRect(0, 0, viewport.Width, viewport.Height)));
+                AppendGridAndAxes(_interactionCommands, _interactionTickLabels, _interactionAxisAliases, viewport, compactLines: true);
+                _interactionCommands.AddRange(_interactionTickLabels);
+                _interactionCommands.AddRange(_interactionAxisAliases);
+                _interactionCommands.Add(new PushCoordinateTransformCommand(CoordinateTransform(prepared.Viewport, viewport)));
+                _interactionCommands.Add(new CommandGroupCommand(GetEquationCommands(prepared)));
+                _interactionCommands.Add(new PopCoordinateTransformCommand());
+                _interactionCommands.Add(new PopClipCommand());
+                commands = _interactionCommands.ToImmutable();
+            }
+            finally
+            {
+                // The immutable frame owns its copied command array. Clear the
+                // retained builders immediately so they neither allocate on the
+                // next pan frame nor keep the previous frame alive.
+                _interactionCommands.Clear();
+                _interactionTickLabels.Clear();
+                _interactionAxisAliases.Clear();
+            }
         }
 
         return new GraphFrame(_width, _height, _dpiX, _dpiY, prepared.Snapshot.Revision, _options.GetBackColor(), commands, prepared.HasMissingData);
@@ -698,7 +801,12 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
 
     private GraphFrame BuildPendingFrame()
     {
-        var pending = new PreparedGraph(_snapshot, EffectiveViewport(), ImmutableArray<PreparedEquationGeometry>.Empty, HasMissingData: true);
+        var pending = new PreparedGraph(
+            _snapshot,
+            EffectiveViewport(),
+            _samplingScale,
+            ImmutableArray<PreparedEquationGeometry>.Empty,
+            HasMissingData: true);
         return BuildFrame(pending);
     }
 
@@ -783,7 +891,31 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
 
         if (_options.GetShowBox())
         {
-            commands.Add(new StrokePathCommand(new GraphPath([new GraphPoint(0, 0), new GraphPoint(viewport.Width, 0), new GraphPoint(viewport.Width, viewport.Height), new GraphPoint(0, viewport.Height)], isClosed: true), new GraphPaint(_options.GetBoxColor(), 1)));
+            var boxPaint = new GraphPaint(_options.GetBoxColor(), 1);
+            if (compactLines)
+            {
+                var topLeft = new GraphPoint(0, 0);
+                var topRight = new GraphPoint(viewport.Width, 0);
+                var bottomRight = new GraphPoint(viewport.Width, viewport.Height);
+                var bottomLeft = new GraphPoint(0, viewport.Height);
+                AppendLine(commands, topLeft, topRight, boxPaint, compact: true);
+                AppendLine(commands, topRight, bottomRight, boxPaint, compact: true);
+                AppendLine(commands, bottomRight, bottomLeft, boxPaint, compact: true);
+                AppendLine(commands, bottomLeft, topLeft, boxPaint, compact: true);
+            }
+            else
+            {
+                commands.Add(new StrokePathCommand(
+                    new GraphPath(
+                    [
+                        new GraphPoint(0, 0),
+                        new GraphPoint(viewport.Width, 0),
+                        new GraphPoint(viewport.Width, viewport.Height),
+                        new GraphPoint(0, viewport.Height),
+                    ],
+                    isClosed: true),
+                    boxPaint));
+            }
         }
     }
 
@@ -846,14 +978,14 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
             if (_options.GetMarkZeros() && left.Y * right.Y <= 0 && left.Y != right.Y)
             {
                 double amount = -left.Y / (right.Y - left.Y);
-                double x = left.X + ((right.X - left.X) * amount);
+                double x = left.X + (right.X - left.X) * amount;
                 commands.Add(new MarkerCommand(viewport.ToScreen(x, 0), 3, GraphMarkerShape.Circle, new GraphPaint(_options.GetZerosColor()), new GraphPaint(equationColor, 1)));
             }
 
             if (_options.GetMarkYIntercept() && left.X * right.X <= 0 && left.X != right.X)
             {
                 double amount = -left.X / (right.X - left.X);
-                double y = left.Y + ((right.Y - left.Y) * amount);
+                double y = left.Y + (right.Y - left.Y) * amount;
                 commands.Add(new MarkerCommand(viewport.ToScreen(0, y), 3, GraphMarkerShape.Circle, new GraphPaint(_options.GetZerosColor()), new GraphPaint(equationColor, 1)));
             }
         }
@@ -879,7 +1011,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
                     continue;
                 }
 
-                int bitIndex = (column * (latticeIntervals - 1)) + row - 1;
+                int bitIndex = column * (latticeIntervals - 1) + row - 1;
                 occupancy[bitIndex >> 6] |= 1UL << (bitIndex & 63);
             }
         }
@@ -934,10 +1066,21 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         double minorStep = majorStep / 5;
         double first = Math.Floor(viewport.XRange.Minimum / minorStep) * minorStep;
         double last = Math.Ceiling(viewport.XRange.Maximum / minorStep) * minorStep;
+        if (compactLines)
+        {
+            int lineCount = GridLineCount(first, last, minorStep);
+            if (lineCount > 0)
+            {
+                commands.Add(new GridLineSeriesCommand(viewport.XRange, viewport.Width, viewport.Height, first, minorStep, majorStep, lineCount, IsVertical: true, majorPaint, minorPaint));
+            }
+
+            return;
+        }
+
         for (int count = 0; count < 512; count++)
         {
-            double value = first + (count * minorStep);
-            if (value > last + (minorStep * 1e-10))
+            double value = first + count * minorStep;
+            if (value > last + minorStep * 1e-10)
             {
                 break;
             }
@@ -952,10 +1095,21 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         double minorStep = majorStep / 5;
         double first = Math.Floor(viewport.YRange.Minimum / minorStep) * minorStep;
         double last = Math.Ceiling(viewport.YRange.Maximum / minorStep) * minorStep;
+        if (compactLines)
+        {
+            int lineCount = GridLineCount(first, last, minorStep);
+            if (lineCount > 0)
+            {
+                commands.Add(new GridLineSeriesCommand(viewport.YRange, viewport.Width, viewport.Height, first, minorStep, majorStep, lineCount, IsVertical: false, majorPaint, minorPaint));
+            }
+
+            return;
+        }
+
         for (int count = 0; count < 512; count++)
         {
-            double value = first + (count * minorStep);
-            if (value > last + (minorStep * 1e-10))
+            double value = first + count * minorStep;
+            if (value > last + minorStep * 1e-10)
             {
                 break;
             }
@@ -969,6 +1123,17 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
     {
         double quotient = value / majorStep;
         return Math.Abs(quotient - Math.Round(quotient)) <= 1e-9;
+    }
+
+    private static int GridLineCount(double first, double last, double minorStep)
+    {
+        int count = 0;
+        while (count < 512 && first + count * minorStep <= last + minorStep * 1e-10)
+        {
+            count++;
+        }
+
+        return count;
     }
 
     private static void AppendHorizontalAxis(ImmutableArray<GraphFrameCommand>.Builder commands, SamplingViewport viewport, double y, GraphPaint paint, bool compactLines)
@@ -1000,8 +1165,8 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         double first = Math.Ceiling(viewport.XRange.Minimum / step) * step;
         for (int count = 0; count < 128; count++)
         {
-            double value = first + (count * step);
-            if (value > viewport.XRange.Maximum + (step * 1e-10))
+            double value = first + count * step;
+            if (value > viewport.XRange.Maximum + step * 1e-10)
             {
                 break;
             }
@@ -1023,8 +1188,8 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         double first = Math.Ceiling(viewport.YRange.Minimum / step) * step;
         for (int count = 0; count < 128; count++)
         {
-            double value = first + (count * step);
-            if (value > viewport.YRange.Maximum + (step * 1e-10))
+            double value = first + count * step;
+            if (value > viewport.YRange.Maximum + step * 1e-10)
             {
                 break;
             }
@@ -1133,18 +1298,18 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         GraphPoint right = viewport.ToScreen(userRight.X, userRight.Y);
         double dx = right.X - left.X;
         double dy = right.Y - left.Y;
-        double denominator = (dx * dx) + (dy * dy);
-        double amount = denominator <= double.Epsilon ? 0 : Math.Clamp((((target.X - left.X) * dx) + ((target.Y - left.Y) * dy)) / denominator, 0, 1);
-        GraphPoint screen = new(left.X + (amount * dx), left.Y + (amount * dy));
+        double denominator = dx * dx + dy * dy;
+        double amount = denominator <= double.Epsilon ? 0 : Math.Clamp(((target.X - left.X) * dx + (target.Y - left.Y) * dy) / denominator, 0, 1);
+        GraphPoint screen = new(left.X + amount * dx, left.Y + amount * dy);
         double distanceX = screen.X - target.X;
         double distanceY = screen.Y - target.Y;
-        double distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+        double distanceSquared = distanceX * distanceX + distanceY * distanceY;
         if (distanceSquared >= best.DistanceSquared)
         {
             return;
         }
 
-        best = new ManagedGraphRendererClosestCandidate(true, equationIndex, distanceSquared, screen, new GraphPoint(userLeft.X + (amount * (userRight.X - userLeft.X)), userLeft.Y + (amount * (userRight.Y - userLeft.Y))), double.IsNaN(parameterLeft) ? double.NaN : parameterLeft + (amount * (parameterRight - parameterLeft)));
+        best = new ManagedGraphRendererClosestCandidate(true, equationIndex, distanceSquared, screen, new GraphPoint(userLeft.X + amount * (userRight.X - userLeft.X), userLeft.Y + amount * (userRight.Y - userLeft.Y)), double.IsNaN(parameterLeft) ? double.NaN : parameterLeft + amount * (parameterRight - parameterLeft));
     }
 
     private static GraphPath ToScreenPath(ImmutableArray<GraphPoint> points, SamplingViewport viewport, bool isClosed)
@@ -1190,7 +1355,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         EvaluationState.BudgetExceeded => SampleState.BudgetExceeded,
         _ => SampleState.Undefined
     };
-    private static AxisRange Scale(AxisRange range, double center, double scale) => new(center + ((range.Minimum - center) * scale), center + ((range.Maximum - center) * scale));
+    private static AxisRange Scale(AxisRange range, double center, double scale) => new(center + (range.Minimum - center) * scale, center + (range.Maximum - center) * scale);
     private static bool IsAllowed(AxisRange range) => range.IsFiniteAndOrdered && range.Length >= MinimumRangeLength && range.Length <= MaximumRangeLength;
     private static double NiceStep(double range)
     {
@@ -1218,19 +1383,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         }
 
         double ratio = Math.Min(first, second) / maximum;
-        return maximum * Math.Sqrt(1 + (ratio * ratio));
-    }
-
-    private static void SetUnavailable(out int formulaId, out float screenX, out float screenY, out double x, out double y, out double rho, out double theta, out double t)
-    {
-        formulaId = -1;
-        screenX = float.NaN;
-        screenY = float.NaN;
-        x = double.NaN;
-        y = double.NaN;
-        rho = double.NaN;
-        theta = double.NaN;
-        t = double.NaN;
+        return maximum * Math.Sqrt(1 + ratio * ratio);
     }
 
     private void ThrowIfSamplingCancelled(long generation, CancellationToken cancellationToken)
@@ -1306,7 +1459,13 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
 
         try
         {
-            PreparedGraph prepared = SampleSnapshot(request.Snapshot, request.Viewport, request.TrigMode, request.Generation, cancellationToken);
+            PreparedGraph prepared = SampleSnapshot(
+                request.Snapshot,
+                request.Viewport,
+                request.SamplingScale,
+                request.TrigMode,
+                request.Generation,
+                cancellationToken);
             return new ManagedGraphPrepareResult(request.Generation, GraphStatus.Ok, prepared);
         }
         catch (OperationCanceledException)

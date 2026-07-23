@@ -27,9 +27,9 @@ internal sealed class AvaloniaGraphRenderCache
     private readonly Dictionary<GraphPath, StreamGeometry> _geometries = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<(GraphPath Path, float Width), StreamGeometry> _dashedGeometries = [];
     private readonly Dictionary<HatchGridCommand, StreamGeometry> _hatchGeometries = new(ReferenceEqualityComparer.Instance);
-    private readonly Dictionary<Graphing.Color, ImmutableSolidColorBrush> _brushes = [];
-    private readonly Dictionary<GraphPaint, ImmutablePen> _pens = [];
-    private readonly Dictionary<AvaloniaGraphRenderCacheTextLayoutKey, TextLayout> _textLayouts = [];
+    private readonly (Graphing.Color Key, ImmutableSolidColorBrush? Value)[] _brushes = new (Graphing.Color, ImmutableSolidColorBrush?)[MaximumBrushes];
+    private readonly (GraphPaint Key, ImmutablePen? Value)[] _pens = new (GraphPaint, ImmutablePen?)[MaximumPens];
+    private readonly (AvaloniaGraphRenderCacheTextLayoutKey Key, TextLayout? Value)[] _textLayouts = new (AvaloniaGraphRenderCacheTextLayoutKey, TextLayout?)[MaximumTextLayouts];
     private GraphFrame? _settledFrame;
     private ImmutableArray<GraphFrameCommand> _projectedEquationCommands;
     private GraphPath? _lastPath;
@@ -38,6 +38,9 @@ internal sealed class AvaloniaGraphRenderCache
     private StreamGeometry? _lastDashedGeometry;
     private int _cachedGeometryPoints;
     private int _cachedHatchGeometryPoints;
+    private int _brushCount;
+    private int _penCount;
+    private int _textLayoutCount;
     public void BeginFrame(GraphFrame frame)
     {
         if (ReferenceEquals(frame, _settledFrame))
@@ -65,11 +68,6 @@ internal sealed class AvaloniaGraphRenderCache
 
     public StreamGeometry Geometry(GraphPath path)
     {
-        if (path.Points.Length < 8)
-        {
-            return AvaloniaGraphDrawingTarget.CreateGeometry(path);
-        }
-
         if (ReferenceEquals(path, _lastPath))
         {
             return _lastGeometry!;
@@ -111,14 +109,18 @@ internal sealed class AvaloniaGraphRenderCache
 
     public ImmutablePen Pen(GraphPaint paint)
     {
-        if (_pens.TryGetValue(paint, out ImmutablePen? pen))
+        for (int index = 0; index < _penCount; index++)
         {
-            return pen;
+            ref readonly var entry = ref _pens[index];
+            if (PaintEquals(entry.Key, paint))
+            {
+                return entry.Value!;
+            }
         }
 
-        if (_pens.Count >= MaximumPens)
+        if (_penCount >= MaximumPens)
         {
-            _pens.Clear();
+            ClearPens();
         }
 
         ImmutableDashStyle? dash = paint.LineStyle switch
@@ -129,8 +131,8 @@ internal sealed class AvaloniaGraphRenderCache
             LineStyle.DashDotDot => DashDotDotDashStyle,
             _ => null
         };
-        pen = new ImmutablePen(Brush(paint.Color), paint.StrokeWidth, dash, paint.LineStyle == LineStyle.Dot ? PenLineCap.Round : PenLineCap.Flat, PenLineJoin.Round, 10);
-        _pens.Add(paint, pen);
+        var pen = new ImmutablePen(Brush(paint.Color), paint.StrokeWidth, dash, paint.LineStyle == LineStyle.Dot ? PenLineCap.Round : PenLineCap.Flat, PenLineJoin.Round, 10);
+        _pens[_penCount++] = (paint, pen);
         return pen;
     }
 
@@ -153,30 +155,38 @@ internal sealed class AvaloniaGraphRenderCache
 
     public ImmutableSolidColorBrush Brush(Graphing.Color color)
     {
-        if (_brushes.TryGetValue(color, out ImmutableSolidColorBrush? brush))
+        for (int index = 0; index < _brushCount; index++)
         {
-            return brush;
+            ref readonly var entry = ref _brushes[index];
+            if (entry.Key.PackedValue == color.PackedValue)
+            {
+                return entry.Value!;
+            }
         }
 
-        if (_brushes.Count >= MaximumBrushes)
+        if (_brushCount >= MaximumBrushes)
         {
-            _brushes.Clear();
+            ClearBrushes();
         }
 
-        brush = new ImmutableSolidColorBrush(AvaloniaColor.FromArgb(color.A, color.R, color.G, color.B));
-        _brushes.Add(color, brush);
+        var brush = new ImmutableSolidColorBrush(AvaloniaColor.FromArgb(color.A, color.R, color.G, color.B));
+        _brushes[_brushCount++] = (color, brush);
         return brush;
     }
 
     public TextLayout Format(GlyphCommand glyph)
     {
         var key = new AvaloniaGraphRenderCacheTextLayoutKey(glyph.Text, glyph.FontFamily, glyph.FontSize, glyph.FontStyle, glyph.Paint.Color);
-        if (_textLayouts.TryGetValue(key, out TextLayout? layout))
+        for (int index = 0; index < _textLayoutCount; index++)
         {
-            return layout;
+            ref readonly var entry = ref _textLayouts[index];
+            if (TextLayoutKeyEquals(entry.Key, key))
+            {
+                return entry.Value!;
+            }
         }
 
-        if (_textLayouts.Count >= MaximumTextLayouts)
+        if (_textLayoutCount >= MaximumTextLayouts)
         {
             ClearTextLayouts();
         }
@@ -184,8 +194,8 @@ internal sealed class AvaloniaGraphRenderCache
         Typeface typeface = glyph.FontStyle == GraphFontStyle.Italic
             ? ItalicGraphTypeface
             : GraphTypeface;
-        layout = new TextLayout(glyph.Text, typeface, glyph.FontSize, Brush(glyph.Paint.Color));
-        _textLayouts.Add(key, layout);
+        var layout = new TextLayout(glyph.Text, typeface, glyph.FontSize, Brush(glyph.Paint.Color));
+        _textLayouts[_textLayoutCount++] = (key, layout);
         return layout;
     }
 
@@ -193,8 +203,8 @@ internal sealed class AvaloniaGraphRenderCache
     {
         _settledFrame = null;
         _projectedEquationCommands = default;
-        _brushes.Clear();
-        _pens.Clear();
+        ClearBrushes();
+        ClearPens();
         ClearGeometryCaches();
         ClearTextLayouts();
     }
@@ -237,15 +247,43 @@ internal sealed class AvaloniaGraphRenderCache
     }
 
     private bool CanCache(GraphPath path) => _geometries.Count + _dashedGeometries.Count + _hatchGeometries.Count < MaximumGeometries && path.Points.Length <= MaximumGeometryPoints - _cachedGeometryPoints - _cachedHatchGeometryPoints;
+    private void ClearBrushes()
+    {
+        Array.Clear(_brushes, 0, _brushCount);
+        _brushCount = 0;
+    }
+
+    private void ClearPens()
+    {
+        Array.Clear(_pens, 0, _penCount);
+        _penCount = 0;
+    }
+
     private void ClearTextLayouts()
     {
-        foreach (TextLayout layout in _textLayouts.Values)
+        for (int index = 0; index < _textLayoutCount; index++)
         {
-            layout.Dispose();
+            _textLayouts[index].Value?.Dispose();
         }
 
-        _textLayouts.Clear();
+        Array.Clear(_textLayouts, 0, _textLayoutCount);
+        _textLayoutCount = 0;
     }
+
+    private static bool PaintEquals(GraphPaint left, GraphPaint right) =>
+        left.Color.PackedValue == right.Color.PackedValue &&
+        left.StrokeWidth.Equals(right.StrokeWidth) &&
+        left.LineStyle == right.LineStyle &&
+        left.AntiAlias == right.AntiAlias;
+
+    private static bool TextLayoutKeyEquals(
+        AvaloniaGraphRenderCacheTextLayoutKey left,
+        AvaloniaGraphRenderCacheTextLayoutKey right) =>
+        string.Equals(left.Text, right.Text, StringComparison.Ordinal) &&
+        string.Equals(left.FontFamily, right.FontFamily, StringComparison.Ordinal) &&
+        left.FontSize.Equals(right.FontSize) &&
+        left.FontStyle == right.FontStyle &&
+        left.Color.PackedValue == right.Color.PackedValue;
 
     private static ImmutableDashStyle ToImmutable(IDashStyle dashStyle) => new(dashStyle.Dashes, dashStyle.Offset);
 }

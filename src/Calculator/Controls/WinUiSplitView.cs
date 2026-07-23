@@ -94,7 +94,7 @@ public sealed class WinUiSplitView : SplitView
         _animationStarted = Stopwatch.GetTimestamp();
         _isAnimating = true;
         paneRoot.IsHitTestVisible = isOpen;
-        if (!WinUiCompositorMotion.AnimateTranslation(
+        if (!CompositionVisualMotion.AnimateTranslation(
                 paneRoot,
                 new Vector3((float)_animationStart, 0, 0),
                 new Vector3((float)_animationTarget, 0, 0),
@@ -133,7 +133,7 @@ public sealed class WinUiSplitView : SplitView
             return;
         }
 
-        WinUiCompositorMotion.SetTranslation(
+        CompositionVisualMotion.SetTranslation(
             paneRoot,
             new Vector3((float)translation, 0, 0));
         bool isClosed = Math.Abs(translation - ClosedTranslation) <= 0.001;

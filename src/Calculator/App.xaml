@@ -58,6 +58,59 @@
       <x:Double x:Key="CalcButtonCaptionSize">34</x:Double>
       <x:Double x:Key="CalcOperatorCaptionSize">20</x:Double>
       <x:Int32 x:Key="Zero">0</x:Int32>
+
+      <!-- Reusable composition-thread motion profiles. Targets precommit the
+           first values while hidden, before their first realized frame. -->
+      <controls:CompositionMotionProfile
+          x:Key="KeypadEntranceAnimation"
+          Trigger="EffectiveVisibility"
+          DataContextPropertyNames="IsStandard,IsScientific,IsProgrammer">
+        <controls:CompositionMotionTrack
+            Property="Scale"
+            FromX="0.92"
+            FromY="0.92"
+            FromZ="1"
+            ToX="1"
+            ToY="1"
+            ToZ="1"
+            Duration="0:0:0.367"
+            Easing="ExponentialOut"
+            Exponent="5" />
+      </controls:CompositionMotionProfile>
+
+      <controls:CompositionMotionProfile
+          x:Key="CurrencyLoadedAnimation"
+          Trigger="EffectiveVisibility"
+          AnimateOnFirstActivation="False">
+        <controls:CompositionMotionTrack
+            Property="Opacity"
+            From="0"
+            To="1"
+            Duration="0:0:1"
+            Easing="Linear" />
+      </controls:CompositionMotionProfile>
+
+      <controls:CompositionMotionProfile
+          x:Key="MemoryHoverAnimation"
+          Trigger="PointerOver"
+          ReverseOnExit="True">
+        <controls:CompositionMotionTrack
+            Property="Opacity"
+            From="0"
+            To="1" />
+      </controls:CompositionMotionProfile>
+
+      <controls:CompositionMotionProfile
+          x:Key="BottomEdgeUiAnimation">
+        <controls:CompositionMotionTrack
+            Property="Translation"
+            FromYFactor="1"
+            Duration="0:0:0.367"
+            Easing="Spline"
+            ControlPoint1="0.1,0.9"
+            ControlPoint2="0.2,1" />
+      </controls:CompositionMotionProfile>
+
       <!-- UnitConverter.xaml's original ControlBorderThemeThickness is zero
            in light/dark themes and one device-independent pixel in high contrast. -->
       <Thickness x:Key="ConverterComboBoxBorderThemeThickness">0</Thickness>

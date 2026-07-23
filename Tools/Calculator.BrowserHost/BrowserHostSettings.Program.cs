@@ -6,6 +6,10 @@ using Microsoft.Extensions.Options;
 
 internal sealed record BrowserHostSettings(string StaticWebAssetsManifest, string TelemetryDirectory, int Port)
 {
+    public bool UsesPublishEndpoints => StaticWebAssetsManifest.EndsWith(
+        ".staticwebassets.endpoints.json",
+        StringComparison.OrdinalIgnoreCase);
+
     public static BrowserHostSettings Parse(string[] arguments)
     {
         if (arguments.Length != 1)

@@ -102,118 +102,44 @@ function configuredDownloadAssets(config) {
     return assets;
 }
 
-function responseWithTrackedBody(response, state, updateLoaded, finishAsset) {
-    if (!response.body) {
-        finishAsset(state);
-        return response;
-    }
-
-    const reader = response.body.getReader();
-    const maximumProgressChunkBytes = 64 * 1024;
-    let pendingChunk = null;
-    let pendingOffset = 0;
-    const body = new ReadableStream({
-        async pull(controller) {
-            try {
-                if (!pendingChunk) {
-                    const result = await reader.read();
-                    if (result.done) {
-                        finishAsset(state);
-                        controller.close();
-                        return;
-                    }
-
-                    pendingChunk = result.value;
-                    pendingOffset = 0;
-                }
-
-                const endOffset = Math.min(
-                    pendingOffset + maximumProgressChunkBytes,
-                    pendingChunk.byteLength);
-                const deliveredChunk = pendingOffset === 0 && endOffset === pendingChunk.byteLength
-                    ? pendingChunk
-                    : pendingChunk.subarray(pendingOffset, endOffset);
-                pendingOffset = endOffset;
-                if (pendingOffset === pendingChunk.byteLength) {
-                    pendingChunk = null;
-                    pendingOffset = 0;
-                }
-
-                const paintOpportunity = updateLoaded(state, deliveredChunk.byteLength);
-                controller.enqueue(deliveredChunk);
-                if (paintOpportunity) {
-                    await paintOpportunity;
-                }
-            } catch (error) {
-                controller.error(error);
-            }
-        },
-        cancel(reason) {
-            return reader.cancel(reason);
-        },
-    });
-
-    return new Response(body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-    });
-}
-
 export function createDownloadProgressTracker(options) {
     const assetSizes = options.assetSizes instanceof Map
         ? options.assetSizes
         : new Map(Object.entries(options.assetSizes ?? {}));
-    const fetchResource = options.fetchResource ?? globalThis.fetch.bind(globalThis);
     const requestFrame = options.requestFrame ?? globalThis.requestAnimationFrame.bind(globalThis);
-    const scheduleAfterPaint = options.scheduleAfterPaint ??
-        (callback => globalThis.setTimeout(callback, 0));
     const onProgress = options.onProgress;
-    const states = new Map();
-    let loadedBytes = 0;
+    const registeredAssets = new Set();
     let totalBytes = 0;
-    let unknownSizeAssets = 0;
-    let completedAssets = 0;
+    let runtimeCompletedAssets = 0;
+    let runtimeTotalAssets = 0;
     let framePending = false;
-    let framePromise = null;
-    let resolveFrame = null;
-    let loadedBytesAtLastPaint = 0;
 
     function snapshot() {
-        const usesByteProgress = states.size > 0 && unknownSizeAssets === 0;
+        const currentTotalAssets = runtimeTotalAssets > 0
+            ? runtimeTotalAssets
+            : registeredAssets.size;
         return {
-            loadedBytes,
+            loadedBytes: 0,
             totalBytes,
-            completedAssets,
-            totalAssets: states.size,
-            usesByteProgress,
-            ratio: usesByteProgress
-                ? Math.min(loadedBytes / totalBytes, 1)
-                : states.size > 0 ? completedAssets / states.size : 0,
+            completedAssets: runtimeCompletedAssets,
+            totalAssets: currentTotalAssets,
+            usesByteProgress: false,
+            ratio: currentTotalAssets > 0
+                ? runtimeCompletedAssets / currentTotalAssets
+                : 0,
         };
     }
 
     function publishProgress() {
         if (framePending) {
-            return framePromise;
+            return;
         }
 
         framePending = true;
-        framePromise = new Promise(resolve => {
-            resolveFrame = resolve;
-        });
         requestFrame(() => {
             framePending = false;
             onProgress?.(snapshot());
-            loadedBytesAtLastPaint = loadedBytes;
-
-            const completeFrame = resolveFrame;
-            framePromise = null;
-            resolveFrame = null;
-            scheduleAfterPaint(completeFrame);
         });
-
-        return framePromise;
     }
 
     function knownSize(name) {
@@ -221,71 +147,12 @@ export function createDownloadProgressTracker(options) {
     }
 
     function registerAsset(name) {
-        if (!name || states.has(name)) {
-            return states.get(name) ?? null;
-        }
-
-        const expectedBytes = knownSize(name);
-        const state = {
-            name,
-            expectedBytes,
-            loadedBytes: 0,
-            complete: false,
-        };
-        states.set(name, state);
-        totalBytes += state.expectedBytes;
-        if (state.expectedBytes === 0) {
-            unknownSizeAssets++;
-        }
-        return state;
-    }
-
-    function resetAttempt(state) {
-        if (state.expectedBytes > 0) {
-            loadedBytes -= state.loadedBytes;
-        }
-        if (state.complete) {
-            completedAssets--;
-        }
-
-        state.loadedBytes = 0;
-        state.complete = false;
-    }
-
-    function updateLoaded(state, byteCount) {
-        const bytes = positiveInteger(byteCount);
-        const previousLoadedBytes = state.loadedBytes;
-        state.loadedBytes = state.expectedBytes > 0
-            ? Math.min(state.loadedBytes + bytes, state.expectedBytes)
-            : state.loadedBytes + bytes;
-        if (state.expectedBytes > 0) {
-            loadedBytes += state.loadedBytes - previousLoadedBytes;
-        }
-
-        const paintOpportunity = publishProgress();
-        const targetPaintCount = 120;
-        const minimumPaintBatchBytes = 64 * 1024;
-        const paintBatchBytes = Math.max(
-            minimumPaintBatchBytes,
-            Math.ceil(totalBytes / targetPaintCount));
-        return loadedBytes - loadedBytesAtLastPaint >= paintBatchBytes
-            ? paintOpportunity
-            : null;
-    }
-
-    function finishAsset(state) {
-        if (state.complete) {
+        if (!name || registeredAssets.has(name)) {
             return;
         }
 
-        if (state.expectedBytes > 0) {
-            loadedBytes += state.expectedBytes - state.loadedBytes;
-            state.loadedBytes = state.expectedBytes;
-        }
-
-        state.complete = true;
-        completedAssets++;
-        publishProgress();
+        registeredAssets.add(name);
+        totalBytes += knownSize(name);
     }
 
     function registerConfiguration(config) {
@@ -297,37 +164,18 @@ export function createDownloadProgressTracker(options) {
         return snapshot();
     }
 
-    async function loadTrackedBootResource(name, defaultUri, integrity) {
-        const state = registerAsset(name);
-        resetAttempt(state);
+    function reportResourceProgress(loadedResources, totalResources) {
+        runtimeTotalAssets = positiveInteger(totalResources);
+        runtimeCompletedAssets = Math.min(
+            positiveInteger(loadedResources),
+            runtimeTotalAssets);
         publishProgress();
-
-        const request = {
-            credentials: 'same-origin',
-        };
-        if (integrity) {
-            request.integrity = integrity;
-        }
-
-        const response = await fetchResource(defaultUri, request);
-        if (!response.ok) {
-            return response;
-        }
-
-        return responseWithTrackedBody(response, state, updateLoaded, finishAsset);
-    }
-
-    function loadBootResource(_type, name, defaultUri, integrity, behavior) {
-        if (!trackedBehaviors.has(behavior)) {
-            return undefined;
-        }
-
-        return loadTrackedBootResource(name, defaultUri, integrity);
+        return snapshot();
     }
 
     return {
         getSnapshot: snapshot,
-        loadBootResource,
         registerConfiguration,
+        reportResourceProgress,
     };
 }

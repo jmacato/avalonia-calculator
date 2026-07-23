@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 using System.ComponentModel;
-using System.Numerics;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -11,7 +10,6 @@ using Avalonia.Media;
 using CalculatorApp.Controls;
 using CalculatorApp.ViewModel;
 using CalculatorApp.ViewModel.Common;
-using FluentAvalonia.Core;
 
 namespace CalculatorApp;
 
@@ -29,7 +27,6 @@ public sealed partial class Calculator : UserControl, IDisposable
     private bool _isLastFlyoutMemory;
     private bool _isLoaded;
     private CalculatorOpenFlyout _openFlyout;
-    private readonly WinUiEdgeUiTransition _flyoutTransition;
     private CalculatorOpenFlyout _closingFlyout;
     private bool _restoreFocusAfterFlyoutClose;
     private int _disposed;
@@ -37,7 +34,6 @@ public sealed partial class Calculator : UserControl, IDisposable
     public Calculator()
     {
         InitializeComponent();
-        _flyoutTransition = new WinUiEdgeUiTransition();
     }
 
     public StandardCalculatorViewModel? Model => DataContext as StandardCalculatorViewModel;
@@ -48,27 +44,6 @@ public sealed partial class Calculator : UserControl, IDisposable
         {
             Results.Focus();
         }
-    }
-
-    /// <summary>
-    /// Ports the two Calculator.xaml numpad storyboards from Windows Calculator.
-    /// Both source storyboards animate the same target from 0.92 to 1 over
-    /// 367 ms with ExponentialEase(EaseOut, Exponent=5).
-    /// </summary>
-    public void AnimateCalculator(bool resultAnimate)
-    {
-        _ = resultAnimate;
-        if (!FAUISettings.AreAnimationsEnabled())
-        {
-            return;
-        }
-
-        _ = WinUiCompositorMotion.AnimateScale(
-            NumpadPanel,
-            new Vector3(0.92f, 0.92f, 1),
-            Vector3.One,
-            TimeSpan.FromMilliseconds(367),
-            new UnitConverterWinUiExponentialEaseOut(5));
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
@@ -83,9 +58,7 @@ public sealed partial class Calculator : UserControl, IDisposable
     private void OnUnloaded(object? sender, RoutedEventArgs e)
     {
         _isLoaded = false;
-        WinUiCompositorMotion.SetScale(NumpadPanel, Vector3.One);
-        CloseFullScreenFlyout(restoreFocus: false, animate: false);
-        _flyoutTransition.Detach();
+        CloseFullScreenFlyout(restoreFocus: false, deferCleanup: false);
         DetachHistoryControl();
         DetachMemoryControl();
         UnsubscribeFromModel();
@@ -99,9 +72,7 @@ public sealed partial class Calculator : UserControl, IDisposable
         }
 
         _isLoaded = false;
-        WinUiCompositorMotion.SetScale(NumpadPanel, Vector3.One);
-        CloseFullScreenFlyout(restoreFocus: false, animate: false);
-        _flyoutTransition.Detach();
+        CloseFullScreenFlyout(restoreFocus: false, deferCleanup: false);
         DetachHistoryControl();
         DetachMemoryControl();
         UnsubscribeFromModel();
@@ -401,48 +372,48 @@ public sealed partial class Calculator : UserControl, IDisposable
 
     private void OpenHistoryFlyout()
     {
-        CloseFullScreenFlyout(restoreFocus: false, animate: false);
+        CloseFullScreenFlyout(restoreFocus: false, deferCleanup: false);
         DetachHistoryControl();
         HistoryList historyList = EnsureHistoryControl();
         historyList.SetDockedLayout(false);
         historyList.RowHeight = new GridLength(NumpadPanel.Bounds.Height);
         HistoryFlyoutHolder.Content = historyList;
-        HistoryFlyoutHolder.IsVisible = true;
-        MemoryFlyoutHolder.IsVisible = false;
         FullScreenFlyoutOverlay.IsVisible = true;
+        HistoryFlyoutHolder.IsOpen = true;
+        MemoryFlyoutHolder.IsOpen = false;
         _openFlyout = CalculatorOpenFlyout.History;
         _isLastFlyoutHistory = true;
         _isLastFlyoutMemory = false;
         EnableCalculatorControls(false);
         AutomationProperties.SetName(HistoryButton, AppResourceProvider.Instance.GetResourceString("HistoryButton_Close"));
         historyList.ScrollToBottom();
-        BeginFlyoutOpenTransition(HistoryFlyoutHolder);
     }
 
     private void OpenMemoryFlyout()
     {
-        CloseFullScreenFlyout(restoreFocus: false, animate: false);
+        CloseFullScreenFlyout(restoreFocus: false, deferCleanup: false);
         DetachMemoryControl();
         Memory memory = EnsureMemoryControl();
         memory.SetDockedLayout(false);
         memory.RowHeight = new GridLength(NumpadPanel.Bounds.Height);
         MemoryFlyoutHolder.Content = memory;
-        MemoryFlyoutHolder.IsVisible = true;
-        HistoryFlyoutHolder.IsVisible = false;
         FullScreenFlyoutOverlay.IsVisible = true;
+        MemoryFlyoutHolder.IsOpen = true;
+        HistoryFlyoutHolder.IsOpen = false;
         _openFlyout = CalculatorOpenFlyout.Memory;
         _isLastFlyoutHistory = false;
         _isLastFlyoutMemory = true;
         EnableCalculatorControls(false);
         AutomationProperties.SetName(MemoryButton, AppResourceProvider.Instance.GetResourceString("MemoryButton_Close"));
-        BeginFlyoutOpenTransition(MemoryFlyoutHolder);
     }
 
-    private void CloseFullScreenFlyout(bool restoreFocus = true, bool animate = true)
+    private void CloseFullScreenFlyout(
+        bool restoreFocus = true,
+        bool deferCleanup = true)
     {
         if (_openFlyout == CalculatorOpenFlyout.None && _closingFlyout != CalculatorOpenFlyout.None)
         {
-            if (animate)
+            if (deferCleanup)
             {
                 return;
             }
@@ -450,7 +421,6 @@ public sealed partial class Calculator : UserControl, IDisposable
             CalculatorOpenFlyout interruptedClosing = _closingFlyout;
             _closingFlyout = CalculatorOpenFlyout.None;
             _restoreFocusAfterFlyoutClose = false;
-            _flyoutTransition.Cancel();
             CompleteFlyoutClose(interruptedClosing, restoreFocus: false);
             return;
         }
@@ -459,33 +429,32 @@ public sealed partial class Calculator : UserControl, IDisposable
         _openFlyout = CalculatorOpenFlyout.None;
         AutomationProperties.SetName(HistoryButton, AppResourceProvider.Instance.GetResourceString("HistoryButton_Open"));
         AutomationProperties.SetName(MemoryButton, AppResourceProvider.Instance.GetResourceString("MemoryButton_Open"));
-        ContentControl? target = closing switch
+        CompositionTransitionHost? target = closing switch
         {
             CalculatorOpenFlyout.History => HistoryFlyoutHolder,
             CalculatorOpenFlyout.Memory => MemoryFlyoutHolder,
             _ => null
         };
-        bool shouldAnimate = animate && target is { IsVisible: true } && FAUISettings.AreAnimationsEnabled();
-        if (shouldAnimate)
+        if (deferCleanup && target is { IsVisible: true })
         {
             _closingFlyout = closing;
             _restoreFocusAfterFlyoutClose = restoreFocus;
-            _flyoutTransition.Begin(target!, show: false, animate: true, CompleteFlyoutClose);
+            target.IsOpen = false;
             return;
         }
 
-        _flyoutTransition.Cancel();
+        if (target is not null)
+        {
+            target.IsOpen = false;
+        }
+
         CompleteFlyoutClose(closing, restoreFocus);
     }
 
-    private void BeginFlyoutOpenTransition(ContentControl target)
+    private void OnFlyoutHostClosed(object? sender, RoutedEventArgs e)
     {
-        UpdateLayout();
-        _flyoutTransition.Begin(target, show: true, FAUISettings.AreAnimationsEnabled());
-    }
-
-    private void CompleteFlyoutClose()
-    {
+        _ = sender;
+        _ = e;
         CalculatorOpenFlyout closing = _closingFlyout;
         bool restoreFocus = _restoreFocusAfterFlyoutClose;
         _closingFlyout = CalculatorOpenFlyout.None;
@@ -507,8 +476,8 @@ public sealed partial class Calculator : UserControl, IDisposable
             MemoryFlyoutHolder.Content = null;
         }
 
-        HistoryFlyoutHolder.IsVisible = false;
-        MemoryFlyoutHolder.IsVisible = false;
+        HistoryFlyoutHolder.IsOpen = false;
+        MemoryFlyoutHolder.IsOpen = false;
         FullScreenFlyoutOverlay.IsVisible = false;
         EnableCalculatorControls(true);
         if (!restoreFocus)
@@ -746,7 +715,7 @@ public sealed partial class Calculator : UserControl, IDisposable
             return;
         }
 
-        CloseFullScreenFlyout(restoreFocus: false, animate: false);
+        CloseFullScreenFlyout(restoreFocus: false, deferCleanup: false);
         if (programmer || _isLastFlyoutMemory)
         {
             DockTabs.SelectedItem = MemoryTab;

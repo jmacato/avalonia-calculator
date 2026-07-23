@@ -23,6 +23,15 @@ internal sealed partial class Program
                     // native atomic event ring. This keeps the hot input path
                     // synchronous and avoids per-event JS-to-managed promises.
                     PreferManagedThreadDispatcher = true,
+#if CALC_WEBGPU
+                    RenderingMode =
+                    [
+                        BrowserRenderingMode.WebGPU,
+                        BrowserRenderingMode.WebGL2,
+                        BrowserRenderingMode.WebGL1,
+                        BrowserRenderingMode.Software2D,
+                    ],
+#endif
                     SatelliteAssemblyCulture = satelliteCulture,
                 }).ConfigureAwait(false);
         }
@@ -33,7 +42,9 @@ internal sealed partial class Program
         }
     }
 
-    public static AppBuilder BuildAvaloniaApp() =>
-        AppBuilder.Configure<App>()
+    public static AppBuilder BuildAvaloniaApp()
+    {
+        return AppBuilder.Configure<App>()
             .AfterSetup(_ => BrowserGraphPipelineTelemetry.Start());
+    }
 }

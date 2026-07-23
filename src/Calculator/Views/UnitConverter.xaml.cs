@@ -2,9 +2,7 @@
 // Licensed under the MIT License.
 using System.ComponentModel;
 using System.Globalization;
-using System.Numerics;
 using Avalonia;
-using Avalonia.Animation.Easings;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -15,7 +13,6 @@ using Avalonia.Threading;
 using CalculatorApp.Controls;
 using CalculatorApp.ViewModel;
 using CalculatorApp.ViewModel.Common;
-using FluentAvalonia.Core;
 
 namespace CalculatorApp;
 
@@ -24,7 +21,6 @@ public sealed partial class UnitConverter : UserControl, IDisposable
     private UnitConverterViewModel? _subscribedModel;
     private CalculationResult? _contextMenuTarget;
     private DispatcherTimer? _currencyLoadingDelayTimer;
-    private bool _isUnitLoaded = true;
     private readonly FlowDirection _layoutDirection;
     private readonly HorizontalAlignment _flowDirectionHorizontalAlignment;
     private int _disposed;
@@ -40,21 +36,6 @@ public sealed partial class UnitConverter : UserControl, IDisposable
     }
 
     public UnitConverterViewModel? Model => DataContext as UnitConverterViewModel;
-
-    public void AnimateConverter()
-    {
-        if (!FAUISettings.AreAnimationsEnabled())
-        {
-            return;
-        }
-
-        _ = WinUiCompositorMotion.AnimateScale(
-            ConverterNumPad,
-            new Vector3(0.92f, 0.92f, 1),
-            Vector3.One,
-            TimeSpan.FromMilliseconds(367),
-            new UnitConverterWinUiExponentialEaseOut(5));
-    }
 
     public void SetDefaultFocus()
     {
@@ -195,9 +176,7 @@ public sealed partial class UnitConverter : UserControl, IDisposable
         bool isCurrency = Model?.IsCurrencyCurrentCategory == true;
         bool isLoading = isCurrency && Model?.IsCurrencyLoadingVisible == true;
         bool isLoaded = !isCurrency || (!isLoading && !string.IsNullOrEmpty(Model?.CurrencyTimestamp));
-        bool animateLoadedState = isCurrency && !_isUnitLoaded && isLoaded;
-        _isUnitLoaded = isLoaded;
-        ApplyUnitLoadedState(isLoaded, animateLoadedState);
+        ApplyUnitLoadedState(isLoaded);
         if (isLoading)
         {
             StartProgressRingWithDelay();
@@ -208,34 +187,19 @@ public sealed partial class UnitConverter : UserControl, IDisposable
         }
     }
 
-    private void ApplyUnitLoadedState(bool isLoaded, bool animateLoadedState)
+    private void ApplyUnitLoadedState(bool isLoaded)
     {
         CurrencyLoadingGrid.IsVisible = !isLoaded;
         Value1Container.IsVisible = isLoaded;
         Units1.IsVisible = isLoaded;
         Value2Container.IsVisible = isLoaded;
         Units2.IsVisible = isLoaded;
+        CurrencyRatioEqualityBlock.IsVisible = isLoaded;
+        CurrencyTimestampTextBlock.IsVisible = isLoaded;
         NumberPad.IsEnabled = isLoaded;
         ClearEntryButtonPos0.IsEnabled = isLoaded;
         BackSpaceButtonSmall.IsEnabled = isLoaded;
-        bool shouldAnimate = isLoaded && animateLoadedState && FAUISettings.AreAnimationsEnabled();
-        foreach (Visual target in GetCurrencyLoadedAnimationTargets())
-        {
-            target.Transitions = null;
-            target.Opacity = isLoaded ? 1 : 0;
-            if (shouldAnimate)
-            {
-                _ = WinUiCompositorMotion.AnimateOpacity(
-                    target,
-                    0,
-                    1,
-                    TimeSpan.FromSeconds(1),
-                    new LinearEasing());
-            }
-        }
     }
-
-    private Visual[] GetCurrencyLoadedAnimationTargets() => [CurrencyRatioEqualityBlock, CurrencyTimestampTextBlock, Units1, Value1Container, Units2, Value2Container];
     private void StartProgressRingWithDelay()
     {
         HideProgressRing();
@@ -532,7 +496,6 @@ public sealed partial class UnitConverter : UserControl, IDisposable
             return;
         }
 
-        WinUiCompositorMotion.SetScale(ConverterNumPad, Vector3.One);
         HideProgressRing();
         if (_subscribedModel is not null)
         {

@@ -13,6 +13,7 @@ public class RAT
 {
     internal PNUMBER _pp = null!;
     internal PNUMBER _pq = null!;
+    internal RAT? _poolNext;
 
     public PNUMBER Pp
     {

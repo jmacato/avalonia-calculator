@@ -1,13 +1,97 @@
 const isBrowser = typeof window !== 'undefined';
 const cacheBustVersion = new URL(import.meta.url).searchParams.get('v') ?? `${Date.now()}`;
 const pageUrl = new URL(globalThis.location.href);
+// Keep enough already-loaded workers in reserve for synchronous pthread
+// creation during cold startup. WebKit can deadlock if the pool has to load a
+// worker while the requesting pthread is blocked in Atomics.wait.
+const pthreadPoolInitialSize = 8;
+const pthreadPoolStartupUnusedSize = 1;
+// Startup creates several runtime threads back-to-back. Preloading all eight
+// workers keeps the final worker ready instead of growing a six-worker pool to
+// nine while preserving a two-worker reserve. Once managed startup completes,
+// that one ready worker also services the app's single bounded ThreadPool
+// worker without retaining another JavaScriptCore worker for the page lifetime.
+const pthreadPoolIdleSize = 1;
+const usesThreadedRuntime = globalThis.crossOriginIsolated &&
+    typeof globalThis.SharedArrayBuffer === 'function';
 const aotProfileDelaySeconds = Number(pageUrl.searchParams.get('collect-aot-profile'));
 const collectAotProfile = Number.isFinite(aotProfileDelaySeconds) && aotProfileDelaySeconds > 0;
 const inputReplaySessionId = pageUrl.searchParams.get('replay-input');
 let browserTelemetry = null;
 let inputReplayScheduled = false;
 let fatalErrorVisible = false;
-let runtimeHealthMonitorId = 0;
+
+function terminateUnusedPthread(worker) {
+    try {
+        worker.terminate();
+        worker.onmessage = () => {};
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function compactUnusedPthreads(pthreads, maximumLoadedWorkers) {
+    const unusedWorkers = pthreads?.unusedWorkers;
+    if (!Array.isArray(unusedWorkers)) {
+        return 0;
+    }
+
+    let loadedCount = unusedWorkers.reduce(
+        (count, worker) => count + (worker?.loaded === true ? 1 : 0),
+        0);
+    let terminated = 0;
+    while (loadedCount > maximumLoadedWorkers) {
+        let candidateIndex = -1;
+        for (let index = unusedWorkers.length - 1; index >= 0; index--) {
+            const worker = unusedWorkers[index];
+            if (worker?.loaded === true && Number(worker.info?.reuseCount) > 0) {
+                candidateIndex = index;
+                break;
+            }
+        }
+        if (candidateIndex < 0) {
+            for (let index = unusedWorkers.length - 1; index >= 0; index--) {
+                if (unusedWorkers[index]?.loaded === true) {
+                    candidateIndex = index;
+                    break;
+                }
+            }
+        }
+        if (candidateIndex < 0) {
+            break;
+        }
+
+        const [worker] = unusedWorkers.splice(candidateIndex, 1);
+        loadedCount--;
+        if (terminateUnusedPthread(worker)) {
+            terminated++;
+        } else {
+            unusedWorkers.splice(candidateIndex, 0, worker);
+            loadedCount++;
+            break;
+        }
+    }
+
+    return terminated;
+}
+
+function boundIdlePthreadPool(dotnetRuntime) {
+    const pthreads = dotnetRuntime?.Module?.PThread;
+    const originalReturnWorker = pthreads?.returnWorkerToPool;
+    if (typeof originalReturnWorker !== 'function' || originalReturnWorker.__calculatorIdleBound === true) {
+        return 0;
+    }
+
+    const boundedReturnWorker = worker => {
+        const result = originalReturnWorker(worker);
+        compactUnusedPthreads(pthreads, pthreadPoolIdleSize);
+        return result;
+    };
+    boundedReturnWorker.__calculatorIdleBound = true;
+    pthreads.returnWorkerToPool = boundedReturnWorker;
+    return compactUnusedPthreads(pthreads, pthreadPoolIdleSize);
+}
 
 if (!isBrowser) {
     throw new Error('Expected to run in a browser');
@@ -79,34 +163,23 @@ function hashDiagnosticText(text) {
     return (hash >>> 0).toString(16).padStart(8, '0').toUpperCase();
 }
 
-function formatUnsignedHex(value, width) {
-    return (Number(value) >>> 0).toString(16).padStart(width, '0').toUpperCase();
-}
-
-function createDiagnosticId(source, description, nativeState) {
+function createDiagnosticId(source, description) {
     const timestamp = Date.now().toString(36).toUpperCase();
     const sourceCode = source.replace(/[^a-z0-9]/gi, '').slice(0, 5).toUpperCase() || 'ERROR';
-    const signature = nativeState
-        ? `${formatUnsignedHex(nativeState.stage, 2)}${formatUnsignedHex(nativeState.exceptionType, 2)}${formatUnsignedHex(nativeState.hResult, 8)}`
-        : hashDiagnosticText(description);
+    const signature = hashDiagnosticText(description);
 
     return `CALC-${timestamp}-${sourceCode}-${signature}`;
 }
 
-function showFatalError(error, source, nativeState = null) {
+function showFatalError(error, source) {
     if (fatalErrorVisible) {
         return;
     }
 
     const description = describeError(error);
-    const diagnosticId = createDiagnosticId(source, description, nativeState);
+    const diagnosticId = createDiagnosticId(source, description);
     const isStartupFailure = source === 'boot' || source === 'startup' || source === 'wasm-abort';
     fatalErrorVisible = true;
-
-    if (runtimeHealthMonitorId !== 0) {
-        clearInterval(runtimeHealthMonitorId);
-        runtimeHealthMonitorId = 0;
-    }
 
     loadingProgress.root?.remove();
     document.body.classList.add('runtime-failed');
@@ -147,63 +220,6 @@ function isFatalRuntimeError(error) {
         error instanceof WebAssembly.Exception;
     return isWebAssemblyRuntimeError || isWebAssemblyException ||
         /(?:indirect call|function) signature mismatch|out of bounds memory access|memory access out of bounds|mono[^\n]*assert|runtime[^\n]*(?:abort|terminated)|wasm[^\n]*(?:exception|trap)/i.test(description);
-}
-
-function startRuntimeHealthMonitor(dotnetRuntime) {
-    let lastDispatcherStage = 0;
-    let lastDispatcherStageSequence = 0;
-    let lastDispatcherProgressAt = performance.now();
-
-    const inspectRuntime = () => {
-        if (fatalErrorVisible) {
-            return;
-        }
-
-        try {
-            const module = dotnetRuntime?.Module ?? globalThis.getDotnetRuntime?.(0)?.Module;
-            const getField = module?._avalonia_browser_dispatcher_debug_get;
-            if (typeof getField === 'function') {
-                const dispatcherStage = getField(1) >>> 0;
-                const dispatcherStageSequence = getField(2) >>> 0;
-                if (dispatcherStage !== lastDispatcherStage ||
-                    dispatcherStageSequence !== lastDispatcherStageSequence) {
-                    lastDispatcherStage = dispatcherStage;
-                    lastDispatcherStageSequence = dispatcherStageSequence;
-                    lastDispatcherProgressAt = performance.now();
-                } else if (pageUrl.searchParams.get('runtime-diagnostics') === '1' &&
-                    (dispatcherStage === 10 || dispatcherStage === 20 ||
-                        dispatcherStage === 30 || dispatcherStage === 40) &&
-                    performance.now() - lastDispatcherProgressAt >= 1_000) {
-                    browserTelemetry?.mark(
-                        'dispatcher-stalled',
-                        `stage=${dispatcherStage}; sequence=${dispatcherStageSequence}`);
-                    lastDispatcherProgressAt = performance.now();
-                }
-
-                const loopExitCount = getField(16) >>> 0;
-                if (loopExitCount !== 0) {
-                    const nativeState = {
-                        stage: dispatcherStage,
-                        hResult: getField(14) >>> 0,
-                        exceptionType: getField(15) >>> 0,
-                        loopExitCount,
-                    };
-                    const error = new Error(
-                        `Managed UI dispatcher exited at stage ${nativeState.stage}; ` +
-                        `exception type ${nativeState.exceptionType}; ` +
-                        `HRESULT 0x${formatUnsignedHex(nativeState.hResult, 8)}.`);
-                    showFatalError(error, 'dispatcher', nativeState);
-                    return;
-                }
-            }
-        } catch (error) {
-            showFatalError(error, 'health-monitor');
-            return;
-        }
-    };
-
-    runtimeHealthMonitorId = setInterval(inspectRuntime, 250);
-    inspectRuntime();
 }
 
 fatalError.reload?.addEventListener('click', () => {
@@ -518,6 +534,9 @@ async function boot() {
                 'download-plan-ready',
                 `assets=${snapshot.totalAssets}; bytes=${snapshot.totalBytes}`);
         },
+        onDownloadResourceProgress(loadedResources, totalResources) {
+            downloadTracker.reportResourceProgress(loadedResources, totalResources);
+        },
         onAbort(reason) {
             const error = reason instanceof Error
                 ? reason
@@ -525,10 +544,15 @@ async function boot() {
             showFatalError(error, 'wasm-abort');
         },
     };
+    const runtimeConfig = usesThreadedRuntime
+        ? {
+            pthreadPoolInitialSize,
+            pthreadPoolUnusedSize: pthreadPoolStartupUnusedSize,
+        }
+        : {};
     let dotnetBuilder = dotnet
         .withModuleConfig(moduleConfig)
-        .withResourceLoader(downloadTracker.loadBootResource)
-        .withDiagnosticTracing(pageUrl.searchParams.get('runtime-diagnostics') === '1')
+        .withConfig(runtimeConfig)
         .withApplicationArgumentsFromQuery();
 
     if (collectAotProfile) {
@@ -583,7 +607,9 @@ async function boot() {
     browserTelemetry?.mark(
         'pthread-pool-ready',
         `running=${pthreads?.runningWorkers?.length ?? -1}; ` +
-        `unused=${pthreads?.unusedWorkers?.length ?? -1}`);
+        `unused=${pthreads?.unusedWorkers?.length ?? -1}; ` +
+        `initial=${usesThreadedRuntime ? pthreadPoolInitialSize : 0}; ` +
+        `reserve=${usesThreadedRuntime ? pthreadPoolStartupUnusedSize : 0}`);
 
     startupPhase = true;
     setLoadingIndeterminate('Starting Calculator');
@@ -591,12 +617,19 @@ async function boot() {
 
     const config = dotnetRuntime.getConfig();
     browserTelemetry?.attachRuntime(dotnetRuntime);
-    startRuntimeHealthMonitor(dotnetRuntime);
     dismissSplashWhenAvaloniaStarts();
     scheduleAotProfileCapture(dotnetRuntime);
     browserTelemetry?.setBootStage('run-main-start');
     browserTelemetry?.mark('run-main-start');
     await dotnetRuntime.runMain(config.mainAssemblyName, [globalThis.location.href]);
+    const terminatedIdlePthreads = boundIdlePthreadPool(dotnetRuntime);
+    const boundedPthreads = dotnetRuntime.Module?.PThread;
+    browserTelemetry?.mark(
+        'pthread-pool-bounded',
+        `terminated=${terminatedIdlePthreads}; ` +
+        `running=${boundedPthreads?.runningWorkers?.length ?? -1}; ` +
+        `unused=${boundedPthreads?.unusedWorkers?.length ?? -1}; ` +
+        `reserve=${usesThreadedRuntime ? pthreadPoolIdleSize : 0}`);
     browserTelemetry?.setBootStage('running');
     browserTelemetry?.mark('run-main-complete');
 }

@@ -67,6 +67,9 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
             case StrokeLineCommand line:
                 _context.DrawLine(Pen(line.Paint), ToPoint(Transform(line.Start)), ToPoint(Transform(line.End)));
                 break;
+            case GridLineSeriesCommand series:
+                DrawGridLineSeries(series);
+                break;
             case StrokePathCommand stroke:
                 if (stroke.Paint.LineStyle == LineStyle.Dash)
                 {
@@ -112,6 +115,15 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
     }
 
     public void Dispose() => EndFrame();
+    private void DrawGridLineSeries(GridLineSeriesCommand series)
+    {
+        for (int index = 0; index < series.Count; index++)
+        {
+            series.GetLine(index, out GraphPoint start, out GraphPoint end, out GraphPaint paint);
+            _context.DrawLine(Pen(paint), ToPoint(Transform(start)), ToPoint(Transform(end)));
+        }
+    }
+
     private void DrawDashedPath(GraphPath path, GraphPaint graphPaint)
     {
         if (path.Points.Length < 2)
@@ -225,7 +237,7 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
     private TextLayout Format(GlyphCommand glyph) => _cache.Format(glyph);
     private static double AlignedX(GraphTextAlignment alignment, double originX, double width) => alignment switch
     {
-        GraphTextAlignment.Center => originX - (width * 0.5),
+        GraphTextAlignment.Center => originX - width * 0.5,
         GraphTextAlignment.End => originX - width,
         _ => originX
     };
@@ -269,7 +281,7 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
             GraphPoint target = path.Points[(segmentIndex + 1) % path.Points.Length];
             double dx = target.X - current.X;
             double dy = target.Y - current.Y;
-            double segmentRemaining = Math.Sqrt((dx * dx) + (dy * dy));
+            double segmentRemaining = Math.Sqrt(dx * dx + dy * dy);
             if (segmentRemaining <= 1e-12)
             {
                 current = target;
@@ -281,7 +293,7 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
             while (segmentRemaining > 1e-12)
             {
                 double amount = Math.Min(segmentRemaining, remaining);
-                var next = new GraphPoint(current.X + (unitX * amount), current.Y + (unitY * amount));
+                var next = new GraphPoint(current.X + unitX * amount, current.Y + unitY * amount);
                 if (drawing)
                 {
                     writer.LineTo(ToPoint(next));

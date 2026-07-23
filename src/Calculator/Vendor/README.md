@@ -28,7 +28,7 @@ Local patches:
 - Imported scope: `src/Avalonia.Labs.Lottie`
 
 Local patches retarget the project to `net10.0`, Avalonia `12.1.0`, and stable
-SkiaSharp/Skottie `3.119.4`.
+SkiaSharp/Skottie `4.150.1`.
 
 ## Updating a snapshot
 

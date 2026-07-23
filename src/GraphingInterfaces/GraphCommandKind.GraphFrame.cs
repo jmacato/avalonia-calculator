@@ -16,5 +16,6 @@ public enum GraphCommandKind
     PopCoordinateTransform = 8,
     CommandGroup = 9,
     HatchGrid = 10,
-    StrokeLine = 11
+    StrokeLine = 11,
+    GridLineSeries = 12
 }

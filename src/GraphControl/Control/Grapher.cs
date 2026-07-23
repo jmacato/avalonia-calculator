@@ -64,6 +64,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     private long _panInertiaTimestamp;
     private bool _panInertiaEligible;
     private bool _panInertiaActive;
+    private bool _panInertiaSuppressedForGesture;
     private bool _resizePreparePending;
     private bool _hasSettledViewport;
     private double _settledXMinimum;
@@ -95,6 +96,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     {
         Focusable = true;
         ClipToBounds = true;
+        RenderOptions.SetEdgeMode(this, EdgeMode.Antialias);
         _solver = MathSolver.CreateMathSolver();
         _solver.ParsingOptions().SetFormatType(FormatType.MathML);
         _solver.FormatOptions().SetFormatType(FormatType.MathML);
@@ -159,6 +161,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         _viewportRenderPending = false;
         _pendingWheelDelta = 0;
         ResetPanInertia();
+        _panInertiaSuppressedForGesture = false;
         _hasInteractionViewport = false;
         _rendererMatchesInteractionViewport = false;
         _settlePreparationPending = false;
@@ -197,6 +200,9 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     public EquationCollection Equations { get; }
     public IReadOnlyDictionary<string, Variable> Variables { get; private set; } = new Dictionary<string, Variable>(StringComparer.OrdinalIgnoreCase);
     internal bool IsGraphPreparationDeferred => _prepareGraphOnAttach;
+    internal bool IsPanInertiaActive => _panInertiaActive;
+    internal bool IsPanInertiaEligible => _panInertiaEligible;
+    internal bool IsPanInertiaSuppressedForGesture => _panInertiaSuppressedForGesture;
 
     public bool ActiveTracing
     {
@@ -433,7 +439,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
             return null;
         }
 
-        if (analyzer.PerformFunctionAnalysis((uint)Graphing.Analyzer.PerformAnalysisType.All) != GraphStatus.Ok)
+        if (analyzer.PerformFunctionAnalysis((uint)PerformAnalysisType.All) != GraphStatus.Ok)
         {
             return null;
         }
@@ -538,12 +544,22 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
 
         ResetPanInertia();
         _interactionSettleTimer.Stop();
+        if (_activePointers.Count == 0)
+        {
+            _panInertiaSuppressedForGesture = false;
+        }
+
         Point point = e.GetPosition(this);
         _activePointers[e.Pointer.Id] = new GrapherPointerState(point, point);
         ResetPointerBaselines();
         if (_activePointers.Count == 1)
         {
             BeginPanVelocityTracking();
+        }
+        else
+        {
+            _panInertiaSuppressedForGesture = true;
+            CancelPanVelocityTracking();
         }
 
         e.Pointer.Capture(this);
@@ -632,6 +648,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     {
         if (_activePointers.Count >= 2)
         {
+            _panInertiaSuppressedForGesture = true;
             CancelPanVelocityTracking();
             if (!TryGetFirstTwoPointers(out int firstId, out GrapherPointerState first, out int secondId, out GrapherPointerState second))
             {
@@ -653,8 +670,8 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
             bool changed = TryPanInteractionViewport(currentCenter.X - previousCenter.X, currentCenter.Y - previousCenter.Y);
             if (previousDistance > 0 && currentDistance > 0)
             {
-                double centerX = (2 * currentCenter.X / Math.Max(1, Bounds.Width)) - 1;
-                double centerY = 1 - (2 * currentCenter.Y / Math.Max(1, Bounds.Height));
+                double centerX = 2 * currentCenter.X / Math.Max(1, Bounds.Width) - 1;
+                double centerY = 1 - 2 * currentCenter.Y / Math.Max(1, Bounds.Height);
                 changed |= TryScaleInteractionViewport(centerX, centerY, previousDistance / currentDistance);
             }
 
@@ -699,20 +716,26 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         }
 
         bool changed = ApplyPendingPointerManipulation();
+        bool suppressPanInertia = _panInertiaSuppressedForGesture;
         _activePointers.Remove(pointer.Id);
         pointer.Capture(null);
         ResetPointerBaselines();
-        if (allowInertia && hadPointer && wasSinglePointer && _activePointers.Count == 0)
+        if (allowInertia && hadPointer && wasSinglePointer && _activePointers.Count == 0 && !suppressPanInertia)
         {
             StartPanInertia();
         }
-        else if (_activePointers.Count == 1)
+        else if (_activePointers.Count == 1 && !suppressPanInertia)
         {
             BeginPanVelocityTracking();
         }
         else
         {
             CancelPanVelocityTracking();
+        }
+
+        if (_activePointers.Count == 0)
+        {
+            _panInertiaSuppressedForGesture = false;
         }
 
         if (changed || _hasInteractionViewport)
@@ -784,11 +807,13 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
 
     private void UpdateTracing(Point point)
     {
-        GraphStatus status = _graph.GetRenderer().GetClosePointData(point.X, point.Y, 0.01, out _, out float screenX, out float screenY, out double x, out double y, out _, out _, out _);
+        var request = new ClosePointRequest(point.X, point.Y, 0.01);
+        GraphStatus status = _graph.GetRenderer().GetClosePointData(ref request);
         if (status == GraphStatus.Ok)
         {
-            TraceLocation = new Point(screenX, screenY);
-            TracingValueChanged?.Invoke(this, new TracingValueChangedEventArgs(x, y));
+            ClosestPointData result = request.Result;
+            TraceLocation = new Point(result.ScreenX, result.ScreenY);
+            TracingValueChanged?.Invoke(this, new TracingValueChangedEventArgs(result.X, result.Y));
             if (ActiveTracing)
             {
                 InvalidateVisual();
@@ -1336,8 +1361,8 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
 
         double delta = _pendingWheelDelta;
         _pendingWheelDelta = 0;
-        double centerX = (2 * _pendingWheelPosition.X / Bounds.Width) - 1;
-        double centerY = 1 - (2 * _pendingWheelPosition.Y / Bounds.Height);
+        double centerX = 2 * _pendingWheelPosition.X / Bounds.Width - 1;
+        double centerY = 1 - 2 * _pendingWheelPosition.Y / Bounds.Height;
         return TryScaleInteractionViewport(centerX, centerY, Math.Pow(1.15, -delta));
     }
 
@@ -1565,7 +1590,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
 
     private bool TryMoveInteractionViewport(double ratioX, double ratioY)
     {
-        if ((!double.IsFinite(ratioX) || !double.IsFinite(ratioY)) || (ratioX == 0 && ratioY == 0) || !EnsureInteractionViewport())
+        if (!double.IsFinite(ratioX) || !double.IsFinite(ratioY) || (ratioX == 0 && ratioY == 0) || !EnsureInteractionViewport())
         {
             return false;
         }
@@ -1641,8 +1666,8 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         bool previousSampleIsFresh = _panLastMotionTimestamp != 0 && Stopwatch.GetElapsedTime(_panLastMotionTimestamp, now) <= PanInertiaVelocityLifetime;
         _panVelocity = previousSampleIsFresh
             ? new Vector(
-                (_panVelocity.X * (1 - PanVelocityBlend)) + (instantaneousVelocity.X * PanVelocityBlend),
-                (_panVelocity.Y * (1 - PanVelocityBlend)) + (instantaneousVelocity.Y * PanVelocityBlend))
+                _panVelocity.X * (1 - PanVelocityBlend) + instantaneousVelocity.X * PanVelocityBlend,
+                _panVelocity.Y * (1 - PanVelocityBlend) + instantaneousVelocity.Y * PanVelocityBlend)
             : instantaneousVelocity;
         _panLastMotionTimestamp = now;
     }
@@ -1695,10 +1720,10 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         }
 
         double travelSeconds = Math.Min(Math.Min(elapsedSeconds, MaximumPanInertiaFrameSeconds), speed / PanInertiaDeceleration);
-        double distance = (speed * travelSeconds) - (0.5 * PanInertiaDeceleration * travelSeconds * travelSeconds);
+        double distance = speed * travelSeconds - 0.5 * PanInertiaDeceleration * travelSeconds * travelSeconds;
         Vector direction = _panVelocity / speed;
         bool changed = TryPanInteractionViewport(direction.X * distance, direction.Y * distance);
-        double remainingSpeed = Math.Max(0, speed - (PanInertiaDeceleration * elapsedSeconds));
+        double remainingSpeed = Math.Max(0, speed - PanInertiaDeceleration * elapsedSeconds);
         _panVelocity = direction * remainingSpeed;
         if (!changed || remainingSpeed <= PanInertiaStopSpeed)
         {
@@ -1733,12 +1758,12 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
 
         centerX = Math.Clamp(centerX, -1, 1);
         centerY = Math.Clamp(centerY, -1, 1);
-        double graphCenterX = ((_interactionXMinimum + _interactionXMaximum) * 0.5) + (centerX * oldXLength * 0.5);
-        double graphCenterY = ((_interactionYMinimum + _interactionYMaximum) * 0.5) + (centerY * oldYLength * 0.5);
-        _interactionXMinimum = graphCenterX + ((_interactionXMinimum - graphCenterX) * scale);
-        _interactionXMaximum = graphCenterX + ((_interactionXMaximum - graphCenterX) * scale);
-        _interactionYMinimum = graphCenterY + ((_interactionYMinimum - graphCenterY) * scale);
-        _interactionYMaximum = graphCenterY + ((_interactionYMaximum - graphCenterY) * scale);
+        double graphCenterX = (_interactionXMinimum + _interactionXMaximum) * 0.5 + centerX * oldXLength * 0.5;
+        double graphCenterY = (_interactionYMinimum + _interactionYMaximum) * 0.5 + centerY * oldYLength * 0.5;
+        _interactionXMinimum = graphCenterX + (_interactionXMinimum - graphCenterX) * scale;
+        _interactionXMaximum = graphCenterX + (_interactionXMaximum - graphCenterX) * scale;
+        _interactionYMinimum = graphCenterY + (_interactionYMinimum - graphCenterY) * scale;
+        _interactionYMaximum = graphCenterY + (_interactionYMaximum - graphCenterY) * scale;
         _rendererMatchesInteractionViewport = false;
         return true;
     }
@@ -1814,7 +1839,7 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
     {
         double x = left.X - right.X;
         double y = left.Y - right.Y;
-        return Math.Sqrt((x * x) + (y * y));
+        return Math.Sqrt(x * x + y * y);
     }
 
     private static Point Midpoint(Point left, Point right) => new((left.X + right.X) * 0.5, (left.Y + right.Y) * 0.5);

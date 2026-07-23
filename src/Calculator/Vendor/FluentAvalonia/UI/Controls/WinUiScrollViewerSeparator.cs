@@ -49,7 +49,7 @@ public sealed class WinUiScrollViewerSeparator : Panel
     {
         base.OnAttachedToVisualTree(e);
         Opacity = 0;
-        WinUiCompositorMotion.SetOpacity(this, 0);
+        CompositionVisualMotion.SetOpacity(this, 0);
         if (IsExpanded)
         {
             StartStateChange();
@@ -59,7 +59,7 @@ public sealed class WinUiScrollViewerSeparator : Panel
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         _isAnimating = false;
-        WinUiCompositorMotion.SetOpacity(this, IsExpanded ? 1 : 0);
+        CompositionVisualMotion.SetOpacity(this, IsExpanded ? 1 : 0);
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -71,7 +71,7 @@ public sealed class WinUiScrollViewerSeparator : Panel
         _stateChanged = Stopwatch.GetTimestamp();
         _isAnimating = true;
         if (!FAUISettings.AreAnimationsEnabled() ||
-            !WinUiCompositorMotion.AnimateOpacity(
+            !CompositionVisualMotion.AnimateOpacity(
                 this,
                 (float)_fromOpacity,
                 (float)_targetOpacity,
@@ -107,6 +107,6 @@ public sealed class WinUiScrollViewerSeparator : Panel
     {
         _isAnimating = false;
         Opacity = IsExpanded ? 1 : 0;
-        WinUiCompositorMotion.SetOpacity(this, IsExpanded ? 1 : 0);
+        CompositionVisualMotion.SetOpacity(this, IsExpanded ? 1 : 0);
     }
 }

@@ -8,6 +8,16 @@
              x:DataType="local:MainPage">
 
   <UserControl.Resources>
+    <!-- Microsoft.UI.Xaml.Controls.NavigationView.cpp, v2.8.7. -->
+    <controls:NavigationSelectionTransitionSettings
+        x:Key="NavigationSelectionAnimation"
+        Duration="0:0:0.6"
+        PhaseBoundary="0.333"
+        StretchControlPoint1="0.9,0.1"
+        StretchControlPoint2="1,0.2"
+        ContractControlPoint1="0.1,0.9"
+        ContractControlPoint2="0.2,1" />
+
     <ControlTheme x:Key="WinUiSplitViewTheme"
                   TargetType="controls:WinUiSplitView"
                   BasedOn="{StaticResource {x:Type SplitView}}" />
@@ -99,6 +109,8 @@
       <Button AutomationProperties.AutomationId="{CompiledBinding AutomationId}"
               AutomationProperties.Name="{CompiledBinding AutomationName}"
               Classes.selected="{CompiledBinding IsSelected}"
+              controls:NavigationSelectionTransition.IsSelected="{CompiledBinding IsSelected}"
+              controls:NavigationSelectionTransition.Settings="{StaticResource NavigationSelectionAnimation}"
               Command="{CompiledBinding NavigationCommand}"
               CommandParameter="{CompiledBinding}"
               HorizontalAlignment="Stretch"
@@ -137,17 +149,18 @@
   </UserControl.DataTemplates>
 
   <Grid>
-    <controls:WinUiSplitView x:Name="NavSplitView"
-               CompactPaneLength="0"
-               DisplayMode="Overlay"
-               IsPaneOpen="{CompiledBinding Model.IsNavigationPaneOpen, Mode=TwoWay}"
-               OpenPaneLength="320"
-               PaneClosed="OnNavPaneClosed"
-               PanePlacement="Left"
-               Theme="{StaticResource WinUiSplitViewTheme}"
-               UseLightDismissOverlayMode="False">
-      <controls:WinUiSplitView.Pane>
-        <Border Width="320"
+    <Grid x:Name="NavigationContent">
+      <controls:WinUiSplitView x:Name="NavSplitView"
+                               CompactPaneLength="0"
+                               DisplayMode="Overlay"
+                               IsPaneOpen="{CompiledBinding Model.IsNavigationPaneOpen, Mode=TwoWay}"
+                               OpenPaneLength="320"
+                               PaneClosed="OnNavPaneClosed"
+                               PanePlacement="Left"
+                               Theme="{StaticResource WinUiSplitViewTheme}"
+                               UseLightDismissOverlayMode="False">
+        <controls:WinUiSplitView.Pane>
+          <Border Width="320"
                 Background="{DynamicResource NavigationViewDefaultPaneBackground}"
                 BoxShadow="0 16 32 #17000000">
           <Grid RowDefinitions="43,*,62">
@@ -193,63 +206,70 @@
               </Button>
             </Border>
           </Grid>
-        </Border>
-      </controls:WinUiSplitView.Pane>
+          </Border>
+        </controls:WinUiSplitView.Pane>
 
-      <controls:WinUiSplitView.Content>
-        <Grid>
+        <controls:WinUiSplitView.Content>
           <Grid>
-            <Border x:Name="CalcHolder" />
-            <Border x:Name="DateCalcHolder" />
-            <Border x:Name="GraphingCalcHolder" />
-            <Border x:Name="ConverterHolder" />
+            <Grid>
+              <Border x:Name="CalcHolder" />
+              <Border x:Name="DateCalcHolder" />
+              <Border x:Name="GraphingCalcHolder" />
+              <Border x:Name="ConverterHolder" />
+            </Grid>
+
+            <Grid Height="{StaticResource HamburgerHeight}"
+                  HorizontalAlignment="Left"
+                  VerticalAlignment="Top">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="{StaticResource HamburgerHeightGridLength}" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+
+              <TextBlock x:Name="Header"
+                         Grid.Column="1"
+                         Margin="0,-3,0,0"
+                         FontSize="20"
+                         FontWeight="SemiBold"
+                         IsVisible="{CompiledBinding !Model.IsAlwaysOnTop}"
+                         Text="{CompiledBinding Model.CategoryName}"
+                         VerticalAlignment="Center" />
+
+              <Button x:Name="NormalAlwaysOnTopButton"
+                      Grid.Column="2"
+                      Theme="{StaticResource SquareIconButtonStyle}"
+                      AutomationProperties.AutomationId="NormalAlwaysOnTopButton"
+                      AutomationProperties.Name="{utils:ResourceString Name='EnterAlwaysOnTopButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                      Click="AlwaysOnTopButtonClick"
+                      Content="&#xEE49;"
+                      IsVisible="{CompiledBinding Model.DisplayNormalAlwaysOnTopOption}"
+                      ToolTip.Tip="{utils:ResourceString Name='EnterAlwaysOnTopButton.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip'}" />
+            </Grid>
           </Grid>
+        </controls:WinUiSplitView.Content>
+      </controls:WinUiSplitView>
 
-          <Grid Height="{StaticResource HamburgerHeight}"
-                HorizontalAlignment="Left"
-                VerticalAlignment="Top">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="{StaticResource HamburgerHeightGridLength}" />
-              <ColumnDefinition Width="Auto" />
-              <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <TextBlock x:Name="Header"
-                       Grid.Column="1"
-                       Margin="0,-3,0,0"
-                       FontSize="20"
-                       FontWeight="SemiBold"
-                       IsVisible="{CompiledBinding !Model.IsAlwaysOnTop}"
-                       Text="{CompiledBinding Model.CategoryName}"
-                       VerticalAlignment="Center" />
-
-            <Button x:Name="NormalAlwaysOnTopButton"
-                    Grid.Column="2"
-                    Theme="{StaticResource SquareIconButtonStyle}"
-                    AutomationProperties.AutomationId="NormalAlwaysOnTopButton"
-                    AutomationProperties.Name="{utils:ResourceString Name='EnterAlwaysOnTopButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
-                    Click="AlwaysOnTopButtonClick"
-                    Content="&#xEE49;"
-                    IsVisible="{CompiledBinding Model.DisplayNormalAlwaysOnTopOption}"
-                    ToolTip.Tip="{utils:ResourceString Name='EnterAlwaysOnTopButton.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip'}" />
-          </Grid>
-        </Grid>
-      </controls:WinUiSplitView.Content>
-    </controls:WinUiSplitView>
-
-    <Button x:Name="PaneToggleButton"
-            Width="48"
-            Height="40"
-            Margin="0,4,0,0"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Top"
-            AutomationProperties.Name="Open Navigation"
-            Command="{CompiledBinding Model.ToggleNavigationPaneCommand}"
-            Theme="{StaticResource PaneToggleButtonStyle}"
-            ToolTip.Tip="Open Navigation" />
+      <Button x:Name="PaneToggleButton"
+              Width="48"
+              Height="40"
+              Margin="0,4,0,0"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Top"
+              AutomationProperties.Name="Open Navigation"
+              Command="{CompiledBinding Model.ToggleNavigationPaneCommand}"
+              Theme="{StaticResource PaneToggleButtonStyle}"
+              ToolTip.Tip="Open Navigation" />
+    </Grid>
 
     <!-- The WinUI Settings page is hosted as a full-window view while the
          navigation chrome is collapsed. -->
-    <Border x:Name="SettingsHolder" IsVisible="False" />
+    <controls:ThemeTransitionHost
+        x:Name="SettingsHolder"
+        RetainedElement="{Binding #NavigationContent}">
+      <controls:ThemeTransitionHost.ThemeTransitions>
+        <controls:EntranceThemeTransition />
+      </controls:ThemeTransitionHost.ThemeTransitions>
+    </controls:ThemeTransitionHost>
   </Grid>
 </UserControl>

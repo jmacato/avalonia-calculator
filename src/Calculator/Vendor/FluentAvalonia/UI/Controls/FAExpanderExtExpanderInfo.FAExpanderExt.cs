@@ -123,7 +123,7 @@ internal sealed class FAExpanderExtExpanderInfo
         }
 
         float startY = (float)(down ? -_contentSize.Height : _contentSize.Height);
-        _ = WinUiCompositorMotion.AnimateTranslation(
+        _ = CompositionVisualMotion.AnimateTranslation(
             content,
             new Vector3(0, startY, 0),
             Vector3.Zero,
@@ -143,7 +143,7 @@ internal sealed class FAExpanderExtExpanderInfo
         content.Measure(Size.Infinity);
         _contentSize = content.DesiredSize;
         float startX = (float)(right ? -_contentSize.Width : _contentSize.Width);
-        _ = WinUiCompositorMotion.AnimateTranslation(
+        _ = CompositionVisualMotion.AnimateTranslation(
             content,
             new Vector3(startX, 0, 0),
             Vector3.Zero,
@@ -160,7 +160,7 @@ internal sealed class FAExpanderExtExpanderInfo
     private void BeginCollapse(Border content, Vector3 translation)
     {
         content.SetCurrentValue(Visual.IsVisibleProperty, true);
-        if (!WinUiCompositorMotion.AnimateTranslation(
+        if (!CompositionVisualMotion.AnimateTranslation(
                 content,
                 Vector3.Zero,
                 translation,
@@ -186,7 +186,7 @@ internal sealed class FAExpanderExtExpanderInfo
             content.SetValue(Visual.IsVisibleProperty, false);
         }
 
-        WinUiCompositorMotion.SetTranslation(content, Vector3.Zero);
+        CompositionVisualMotion.SetTranslation(content, Vector3.Zero);
     }
 
     public void Detach()

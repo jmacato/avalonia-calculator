@@ -1,17 +1,12 @@
 #include <stddef.h>
 #include <stdatomic.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 typedef struct _MonoAssembly MonoAssembly;
 typedef struct _MonoAssemblyLoadContext MonoAssemblyLoadContext;
 typedef struct _MonoAssemblyName MonoAssemblyName;
-typedef struct _MonoClass MonoClass;
 typedef struct _MonoError MonoError;
 typedef struct _MonoImage MonoImage;
-typedef struct _MonoObject MonoObject;
-typedef struct _MonoString MonoString;
 typedef int MonoImageOpenStatus;
 typedef int (*MonoAssemblyCandidatePredicate)(MonoAssembly *assembly, void *user_data);
 typedef struct _MonoAssemblyLoadRequest
@@ -52,7 +47,6 @@ extern void mono_install_assembly_search_hook_v2(
     int append);
 extern MonoAssemblyName *mono_assembly_get_name(MonoAssembly *assembly);
 extern const char *mono_assembly_name_get_name(MonoAssemblyName *assembly_name);
-extern const char *mono_assembly_name_get_culture(MonoAssemblyName *assembly_name);
 extern MonoImage *mono_assembly_open_from_bundle(
     MonoAssemblyLoadContext *alc,
     const char *file_name,
@@ -67,93 +61,6 @@ extern MonoAssembly *mono_assembly_request_load_from(
     const MonoAssemblyLoadRequest *request,
     MonoImageOpenStatus *status);
 extern void mono_image_close(MonoImage *image);
-
-// LLVM-only Mono uses a native int* exception solely as an unwind token. The
-// corresponding managed exception remains rooted in the current thread's JIT
-// TLS until the generated catch path consumes it. A pthread that unwinds into
-// JavaScript has no generated managed catch path, so expose the TLS payload to
-// the worker's terminal error handler before that worker exits.
-extern MonoObject *mini_llvmonly_load_exception(void);
-extern void mini_llvmonly_clear_exception(void);
-extern MonoClass *mono_object_get_class(MonoObject *object);
-extern const char *mono_class_get_name(MonoClass *klass);
-extern const char *mono_class_get_namespace(MonoClass *klass);
-extern MonoString *mono_object_to_string(MonoObject *object, MonoObject **exception);
-extern char *mono_string_to_utf8(MonoString *string_object);
-extern void mono_free(void *memory);
-
-static char *calc_copy_exception_text(
-    const char *namespace_name,
-    const char *class_name,
-    const char *formatted)
-{
-    const char *safe_namespace = namespace_name == NULL ? "" : namespace_name;
-    const char *safe_class = class_name == NULL ? "managed exception" : class_name;
-    const char *separator = safe_namespace[0] == '\0' ? "" : ".";
-    const char *detail_separator = formatted == NULL ? "" : "\n";
-    const char *safe_formatted = formatted == NULL ? "" : formatted;
-    size_t namespace_length = strlen(safe_namespace);
-    size_t separator_length = strlen(separator);
-    size_t class_length = strlen(safe_class);
-    size_t detail_separator_length = strlen(detail_separator);
-    size_t formatted_length = strlen(safe_formatted);
-    size_t result_length = namespace_length
-        + separator_length
-        + class_length
-        + detail_separator_length
-        + formatted_length;
-    char *result = malloc(result_length + 1);
-
-    if (result == NULL)
-    {
-        return NULL;
-    }
-
-    char *cursor = result;
-    memcpy(cursor, safe_namespace, namespace_length);
-    cursor += namespace_length;
-    memcpy(cursor, separator, separator_length);
-    cursor += separator_length;
-    memcpy(cursor, safe_class, class_length);
-    cursor += class_length;
-    memcpy(cursor, detail_separator, detail_separator_length);
-    cursor += detail_separator_length;
-    memcpy(cursor, safe_formatted, formatted_length);
-    cursor[formatted_length] = '\0';
-    return result;
-}
-
-char *calc_browser_take_current_managed_exception(void)
-{
-    MonoObject *exception = mini_llvmonly_load_exception();
-
-    if (exception == NULL)
-    {
-        return NULL;
-    }
-
-    MonoClass *exception_class = mono_object_get_class(exception);
-    const char *namespace_name = exception_class == NULL
-        ? ""
-        : mono_class_get_namespace(exception_class);
-    const char *class_name = exception_class == NULL
-        ? "managed exception"
-        : mono_class_get_name(exception_class);
-    MonoObject *format_exception = NULL;
-    MonoString *formatted_string = mono_object_to_string(exception, &format_exception);
-    char *formatted = format_exception == NULL && formatted_string != NULL
-        ? mono_string_to_utf8(formatted_string)
-        : NULL;
-    char *result = calc_copy_exception_text(namespace_name, class_name, formatted);
-
-    if (formatted != NULL)
-    {
-        mono_free(formatted);
-    }
-
-    mini_llvmonly_clear_exception();
-    return result;
-}
 
 static _Atomic int calc_satellite_loader_installed;
 static _Atomic int calc_satellite_load_status;
@@ -293,9 +200,7 @@ static void calc_load_configured_satellite(
 
 // Mono 10's satellite resolver attempts to reopen a parent assembly as a file
 // before searching its bundled satellite. Browser assemblies are memory-backed,
-// so the parent reopen fails even when Calculator.resources is registered.
-// Wait until Calculator is loaded, preload its configured satellite in the
-// parent's ALC, then satisfy Mono's identity search from that stable pointer.
+// so preload the configured satellite in Calculator's assembly load context.
 int calc_browser_load_configured_satellite(void)
 {
     if (atomic_load(&calc_satellite_loader_installed) != 0)

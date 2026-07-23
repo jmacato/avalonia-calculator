@@ -42,7 +42,7 @@ internal sealed class TelemetryStoreSessionState
                     lastDistinctUiAt = now;
                 }
 
-                timeline = AppendCapped(timeline, new TelemetryTimelineSample(now, batch.WorkerSequence, batch.WorkerUptimeMs, batch.WorkerUploadFailures, batch.SkippedUploads, batch.UiAgeMs, ui.Sequence, ui.BootStage ?? string.Empty, ui.Visibility ?? string.Empty, ui.HasFocus, ui.FrameRate, ui.MaxFrameGapMs, ui.MaxFrameGapTotalMs, ui.LongFrameCountTotal, ui.LongTaskCountTotal, ui.MaxLongTaskMs, ui.PointerDownTotal, ui.PointerMoveTotal, ui.PointerMoveSinceLast, ui.PointerUpTotal, ui.PointerCancelTotal, ui.ActivePointers, ui.LastPointerAgeMs, ui.LostPointerCaptureTotal, ui.CanvasPresentSinceLast, ui.CanvasPresentAgeMs, ui.CanvasFrameReceivedTotal, ui.CanvasFramePresentedTotal, ui.CanvasFrameDroppedTotal, ui.CanvasFramePending, ui.InputQueueDepth, ui.InputQueueHighWater, ui.InputQueueDequeued, ui.InputQueueRetries, ui.InputQueueShed, ui.WebGlContextLost, ui.WebGlContextLosses, ui.ActiveElement ?? string.Empty, ui.NativeInputFocused, ui.SelectionChangeTotal, ui.ContextMenuTotal, ui.VisualViewportHeight, ui.InnerHeight, ui.CanvasWidth, ui.CanvasHeight, ui.WasmMemoryBytes, ui.WasmMemoryMaxBytes, ui.JsHeapBytes, ui.ManagedHeapBytes, ui.ManagedAllocatedBytes, ui.ManagedGen0Collections, ui.ManagedGen1Collections, ui.ManagedGen2Collections, ui.ManagedProbeStarted, ui.ManagedProbeInFlight, ui.ManagedSampleAgeMs, ui.ManagedDispatcherPulse, ui.ManagedDispatcherAgeMs, ui.GraphPipelineProbeStarted, ui.GraphPipelineProbeInFlight, ui.GraphRequestedGeneration, ui.GraphWorkerGeneration, ui.GraphCompletedGeneration, ui.GraphPublishedGeneration, ui.GraphCommittedGeneration, ui.GraphWorkerActive, ui.GraphCompletedStatus, ui.GraphCommitStatus, ui.GraphSettlementTimerCount, ui.GraphSettlementRequestCount, ui.GraphRenderCount, ui.GraphRendererActiveCount, ui.GraphRendererCreatedCount, ui.GraphRendererDisposedCount), MaximumTimelineSamples);
+                timeline = AppendCapped(timeline, new TelemetryTimelineSample(now, batch.WorkerSequence, batch.WorkerUptimeMs, batch.WorkerUploadFailures, batch.SkippedUploads, batch.UiAgeMs, ui.Sequence, ui.BootStage ?? string.Empty, ui.Visibility ?? string.Empty, ui.HasFocus, ui.FrameRate, ui.MaxFrameGapMs, ui.MaxFrameGapTotalMs, ui.LongFrameCountTotal, ui.LongTaskCountTotal, ui.MaxLongTaskMs, ui.PointerDownTotal, ui.PointerMoveTotal, ui.PointerMoveSinceLast, ui.PointerUpTotal, ui.PointerCancelTotal, ui.ActivePointers, ui.LastPointerAgeMs, ui.LostPointerCaptureTotal, ui.CanvasPresentSinceLast, ui.CanvasPresentAgeMs, ui.CanvasFrameReceivedTotal, ui.CanvasFramePresentedTotal, ui.CanvasFrameDroppedTotal, ui.CanvasFramePending, ui.InputQueueDepth, ui.InputQueueHighWater, ui.InputQueueDequeued, ui.InputQueueRetries, ui.InputQueueShed, ui.WebGlContextLost, ui.WebGlContextLosses, ui.ActiveElement ?? string.Empty, ui.NativeInputFocused, ui.SelectionChangeTotal, ui.ContextMenuTotal, ui.VisualViewportHeight, ui.InnerHeight, ui.CanvasWidth, ui.CanvasHeight, ui.WasmMemoryBytes, ui.WasmMemoryMaxBytes, ui.JsHeapBytes, ui.GraphPipelineProbeStarted, ui.GraphPipelineProbeInFlight, ui.GraphRequestedGeneration, ui.GraphWorkerGeneration, ui.GraphCompletedGeneration, ui.GraphPublishedGeneration, ui.GraphCommittedGeneration, ui.GraphWorkerActive, ui.GraphCompletedStatus, ui.GraphCommitStatus, ui.GraphSettlementTimerCount, ui.GraphSettlementRequestCount, ui.GraphRenderCount, ui.GraphRendererActiveCount, ui.GraphRendererCreatedCount, ui.GraphRendererDisposedCount), MaximumTimelineSamples);
             }
 
             bool pageEnded = current.PageEnded;
@@ -60,7 +60,11 @@ internal sealed class TelemetryStoreSessionState
         }
     }
 
-    public TelemetrySessionSummary GetSummary(DateTimeOffset now) => BuildSummary(Volatile.Read(ref _state), now);
+    public TelemetrySessionSummary GetSummary(DateTimeOffset now)
+    {
+        return BuildSummary(Volatile.Read(ref _state), now);
+    }
+
     public TelemetrySessionDetail GetDetail(DateTimeOffset now)
     {
         TelemetryStoreSessionStateState state = Volatile.Read(ref _state);
@@ -108,8 +112,8 @@ internal sealed class TelemetryStoreSessionState
         var uiAgeMs = state.LatestUi is null ? -1 : Math.Max(state.LatestReportedUiAgeMs + lastReceiveAgeMs, Age(now, state.LastDistinctUiAt));
         var signals = BuildSignals(state.LatestUi, uiAgeMs);
         var status = Classify(state, workerAgeMs, uiAgeMs, signals);
-        var (wasmGrowth, managedGrowth) = CalculateGrowth(state.Timeline, now);
-        return new TelemetrySessionSummary(SessionId, state.RunId, state.RemoteAddress, status, signals, StartedAt, state.LastReceivedAt, lastReceiveAgeMs, workerAgeMs, uiAgeMs, state.ErrorCount, state.LatestUi, wasmGrowth, managedGrowth);
+        var wasmGrowth = CalculateWasmGrowth(state.Timeline, now);
+        return new TelemetrySessionSummary(SessionId, state.RunId, state.RemoteAddress, status, signals, StartedAt, state.LastReceivedAt, lastReceiveAgeMs, workerAgeMs, uiAgeMs, state.ErrorCount, state.LatestUi, wasmGrowth);
     }
 
     private static string[] BuildSignals(TelemetryUiSnapshot? ui, double uiAgeMs)
@@ -123,13 +127,6 @@ internal sealed class TelemetryStoreSessionState
         if (ui.WebGlContextLost)
         {
             signals.Add("webgl-context-lost");
-        }
-
-        if (ui.ManagedProbeStarted &&
-            ui.Visibility is null or "visible" &&
-            (ui.ManagedSampleAgeMs > UiStaleAfter.TotalMilliseconds || ui.ManagedDispatcherAgeMs > UiStaleAfter.TotalMilliseconds))
-        {
-            signals.Add("managed-dispatcher-stalled");
         }
 
         if (ui.ActivePointers > 0 && ui.PointerMoveSinceLast > 0 && ui.CanvasFound && ui.CanvasPresentSinceLast == 0 && ui.CanvasPresentAgeMs > 2_000 && uiAgeMs < UiStaleAfter.TotalMilliseconds)
@@ -196,11 +193,11 @@ internal sealed class TelemetryStoreSessionState
         return "healthy";
     }
 
-    private static (double Wasm, double Managed) CalculateGrowth(TelemetryTimelineSample[] timeline, DateTimeOffset now)
+    private static double CalculateWasmGrowth(TelemetryTimelineSample[] timeline, DateTimeOffset now)
     {
         if (timeline.Length < 2)
         {
-            return (0, 0);
+            return 0;
         }
 
         var latest = timeline[^1];
@@ -215,7 +212,7 @@ internal sealed class TelemetryStoreSessionState
             }
         }
 
-        return (Math.Max(0, latest.WasmMemoryBytes - baseline.WasmMemoryBytes), Math.Max(0, latest.ManagedHeapBytes - baseline.ManagedHeapBytes));
+        return Math.Max(0, latest.WasmMemoryBytes - baseline.WasmMemoryBytes);
     }
 
     private static T[] AppendCapped<T>(T[] current, T item, int capacity)
@@ -305,5 +302,8 @@ internal sealed class TelemetryStoreSessionState
         return AppendCapped(current, chunk, MaximumInputTraceChunks);
     }
 
-    private static double Age(DateTimeOffset now, DateTimeOffset then) => Math.Max(0, (now - then).TotalMilliseconds);
+    private static double Age(DateTimeOffset now, DateTimeOffset then)
+    {
+        return Math.Max(0, (now - then).TotalMilliseconds);
+    }
 }

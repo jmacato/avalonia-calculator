@@ -1,6 +1,5 @@
 const snapshotIntervalMs = 1000;
 const maximumPendingEvents = 48;
-const dispatcherTelemetryChannelName = 'avalonia-browser-dispatcher-v1';
 const inputTraceCapacity = 4096;
 const inputTraceStride = 16;
 const inputTraceKind = Object.freeze({
@@ -76,11 +75,6 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
     let focusInTotal = 0;
     let focusOutTotal = 0;
     let lastSnapshotMonoMs = performance.now();
-    let dispatcherTelemetryChannel = null;
-    let dispatcherRuntimeId = '';
-    let managedProbeStarted = false;
-    let managedDispatcherPulse = 0;
-    let lastManagedDispatcherMonoMs = 0;
     let graphPipelineProbeStarted = false;
     let graphPipelineState = new Int32Array(33);
     const inputTrace = createInputTrace();
@@ -108,37 +102,6 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
         intervalMs: snapshotIntervalMs,
         inputTrace: inputTrace?.descriptor ?? null,
     });
-
-    try {
-        dispatcherTelemetryChannel = new BroadcastChannel(dispatcherTelemetryChannelName);
-        dispatcherTelemetryChannel.addEventListener('message', event => {
-            const message = event.data;
-            if (message?.source !== dispatcherTelemetryChannelName || typeof message.runtimeId !== 'string') {
-                return;
-            }
-
-            if (message.kind === 'started') {
-                dispatcherRuntimeId = message.runtimeId;
-                queueEvent('managed-dispatcher-started', `runtime=${cleanText(dispatcherRuntimeId, 96)}`);
-                return;
-            }
-
-            if (message.kind !== 'pulse' || message.runtimeId !== dispatcherRuntimeId) {
-                return;
-            }
-
-            const sequence = finiteNumber(message.sequence);
-            if (sequence <= managedDispatcherPulse) {
-                return;
-            }
-
-            managedProbeStarted = true;
-            managedDispatcherPulse = sequence;
-            lastManagedDispatcherMonoMs = performance.now();
-        });
-    } catch {
-        dispatcherTelemetryChannel = null;
-    }
 
     function queueEvent(kind, detail = '') {
         if (pendingEvents.length >= maximumPendingEvents) {
@@ -315,25 +278,6 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
         }
     }
 
-    function readNativeDispatcher() {
-        try {
-            const module = runtimeApi?.Module ?? globalThis.getDotnetRuntime?.(0)?.Module;
-            const getField = module?._avalonia_browser_dispatcher_debug_get;
-            if (typeof getField !== 'function') {
-                return null;
-            }
-
-            const fields = new Uint32Array(17);
-            for (let index = 0; index < fields.length; index++) {
-                fields[index] = getField(index) >>> 0;
-            }
-
-            return fields;
-        } catch {
-            return null;
-        }
-    }
-
     function refreshGraphPipeline() {
         const state = globalThis.calculatorGraphPipeline;
         if (typeof state !== 'string') {
@@ -363,11 +307,7 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
         const rect = canvas?.getBoundingClientRect();
         const inputHost = canvas?.parentElement;
         const wasm = readWasmMemory();
-        const nativeDispatcher = readNativeDispatcher();
         const jsHeapBytes = finiteNumber(performance.memory?.usedJSHeapSize);
-        const managedDispatcherAgeMs = lastManagedDispatcherMonoMs > 0
-            ? now - lastManagedDispatcherMonoMs
-            : 0;
         refreshGraphPipeline();
         const events = pendingEvents.length > 0 ? pendingEvents : null;
         pendingEvents = [];
@@ -442,28 +382,6 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
             wasmMemoryBytes: wasm.bytes,
             wasmMemoryMaxBytes: wasm.maximumBytes,
             jsHeapBytes,
-            managedProbeStarted,
-            managedProbeInFlight: false,
-            managedSampleAgeMs: managedDispatcherAgeMs,
-            managedDispatcherPulse,
-            managedDispatcherAgeMs,
-            nativeDispatcherThreadId: finiteNumber(nativeDispatcher?.[0]),
-            nativeDispatcherStage: finiteNumber(nativeDispatcher?.[1]),
-            nativeDispatcherStageSequence: finiteNumber(nativeDispatcher?.[2]),
-            nativeDispatcherStageTick: finiteNumber(nativeDispatcher?.[3]),
-            nativeDispatcherWakeSequence: finiteNumber(nativeDispatcher?.[4]),
-            nativeDispatcherInputDepth: finiteNumber(nativeDispatcher?.[5]),
-            nativeDispatcherUiCommandDepth: finiteNumber(nativeDispatcher?.[6]),
-            nativeDispatcherDumpRequested: finiteNumber(nativeDispatcher?.[7]),
-            nativeDispatcherDumpCompleted: finiteNumber(nativeDispatcher?.[8]),
-            nativeDispatcherEventRead: finiteNumber(nativeDispatcher?.[9]),
-            nativeDispatcherEventWrite: finiteNumber(nativeDispatcher?.[10]),
-            nativeDispatcherUiCommandRead: finiteNumber(nativeDispatcher?.[11]),
-            nativeDispatcherUiCommandWrite: finiteNumber(nativeDispatcher?.[12]),
-            nativeDispatcherUiCommandDrainScheduled: finiteNumber(nativeDispatcher?.[13]),
-            nativeDispatcherFaultHResult: finiteNumber(nativeDispatcher?.[14]),
-            nativeDispatcherFaultType: finiteNumber(nativeDispatcher?.[15]),
-            nativeDispatcherLoopExitCount: finiteNumber(nativeDispatcher?.[16]),
             graphPipelineProbeStarted,
             graphPipelineProbeInFlight: false,
             graphRequestedGeneration: finiteNumber(graphPipelineState[0]),
@@ -620,7 +538,6 @@ export function startBrowserTelemetry(pageUrl, cacheBustVersion) {
     window.addEventListener('pagehide', event => {
         queueEvent('pagehide', `persisted=${event.persisted}`);
         sendFinalBeacon('pagehide');
-        dispatcherTelemetryChannel?.close();
     });
     document.addEventListener('freeze', () => {
         queueEvent('freeze');

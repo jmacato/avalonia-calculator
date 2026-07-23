@@ -9,7 +9,7 @@ namespace FluentAvalonia.Core;
 /// <summary>
 /// Runs visual-only WinUI motion on Avalonia's composition thread.
 /// </summary>
-public static class WinUiCompositorMotion
+public static class CompositionVisualMotion
 {
     public static CompositionVisual? GetVisual(Visual target)
     {
@@ -76,7 +76,8 @@ public static class WinUiCompositorMotion
         Vector3 from,
         Vector3 to,
         TimeSpan duration,
-        Easing easing)
+        Easing easing,
+        TimeSpan delay = default)
     {
         CompositionVisual? visual = GetVisual(target);
         if (visual is null)
@@ -84,19 +85,69 @@ public static class WinUiCompositorMotion
             return false;
         }
 
-        visual.CenterPoint = new Vector3(
-            (float)(target.Bounds.Width * 0.5),
-            (float)(target.Bounds.Height * 0.5),
-            0);
+        ExpressionAnimation centerPointAnimation =
+            visual.Compositor.CreateExpressionAnimation(
+                "Vector3(this.Target.Size.X * 0.5, this.Target.Size.Y * 0.5, 0)");
+        visual.StartAnimation("CenterPoint", centerPointAnimation);
         visual.Scale = to;
         Vector3KeyFrameAnimation animation = visual.Compositor.CreateVector3KeyFrameAnimation();
         animation.Target = "Scale";
         animation.Duration = duration;
+        animation.DelayTime = delay;
+        animation.DelayBehavior = AnimationDelayBehavior.SetInitialValueBeforeDelay;
         animation.StopBehavior = AnimationStopBehavior.SetToFinalValue;
         animation.InsertKeyFrame(0, from);
         animation.InsertKeyFrame(1, to, easing);
         visual.StartAnimation("Scale", animation);
         return true;
+    }
+
+    public static bool AnimateImplicitTranslationAndOpacity(
+        Visual target,
+        Vector3 translation,
+        float opacity,
+        TimeSpan duration,
+        Easing easing,
+        TimeSpan delay = default)
+    {
+        CompositionVisual? visual = GetVisual(target);
+        if (visual is null)
+        {
+            return false;
+        }
+
+        var translationAnimation = visual.Compositor.CreateVector3KeyFrameAnimation();
+        translationAnimation.Target = "Translation";
+        translationAnimation.Duration = duration;
+        translationAnimation.DelayTime = delay;
+        translationAnimation.DelayBehavior = AnimationDelayBehavior.SetInitialValueAfterDelay;
+        translationAnimation.StopBehavior = AnimationStopBehavior.SetToFinalValue;
+        translationAnimation.InsertExpressionKeyFrame(1, "this.FinalValue", easing);
+
+        var opacityAnimation = visual.Compositor.CreateScalarKeyFrameAnimation();
+        opacityAnimation.Target = "Opacity";
+        opacityAnimation.Duration = duration;
+        opacityAnimation.DelayTime = delay;
+        opacityAnimation.DelayBehavior = AnimationDelayBehavior.SetInitialValueAfterDelay;
+        opacityAnimation.StopBehavior = AnimationStopBehavior.SetToFinalValue;
+        opacityAnimation.InsertExpressionKeyFrame(1, "this.FinalValue", easing);
+
+        ImplicitAnimationCollection implicitAnimations =
+            visual.Compositor.CreateImplicitAnimationCollection();
+        implicitAnimations["Translation"] = translationAnimation;
+        implicitAnimations["Opacity"] = opacityAnimation;
+        visual.ImplicitAnimations = implicitAnimations;
+        visual.Translation = translation;
+        visual.Opacity = opacity;
+        return true;
+    }
+
+    public static void ClearImplicitAnimations(Visual target)
+    {
+        if (GetVisual(target) is { } visual)
+        {
+            visual.ImplicitAnimations = null;
+        }
     }
 
     public static void SetOpacity(Visual target, float opacity)

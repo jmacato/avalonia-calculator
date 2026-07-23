@@ -3,7 +3,6 @@
 
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Interactivity;
 using CalculatorApp.Controls;
 using CalculatorApp.ViewModel;
@@ -24,23 +23,6 @@ public sealed partial class MemoryListItem : UserControl
     {
         get => GetValue(ModelProperty) ?? DataContext as MemoryItemViewModel;
         set => SetValue(ModelProperty, value);
-    }
-
-    protected override void OnPointerEntered(PointerEventArgs e)
-    {
-        System.ArgumentNullException.ThrowIfNull(e);
-        base.OnPointerEntered(e);
-
-        if (e.Pointer.Type is PointerType.Mouse or PointerType.Pen)
-        {
-            MemoryHoverButtons.Opacity = 1;
-        }
-    }
-
-    protected override void OnPointerExited(PointerEventArgs e)
-    {
-        base.OnPointerExited(e);
-        MemoryHoverButtons.Opacity = 0;
     }
 
     private void OnMemoryAddButtonClicked(object? sender, RoutedEventArgs e) => Model?.MemoryAdd();

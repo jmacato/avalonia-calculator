@@ -85,19 +85,19 @@ public sealed class GraphModeToggleButton : ToggleButton
         _onOpacityTo = targetOnOpacity;
         _animationStarted = Stopwatch.GetTimestamp();
         _isAnimating = true;
-        bool animated = WinUiCompositorMotion.AnimateTranslation(
+        bool animated = CompositionVisualMotion.AnimateTranslation(
             _knob,
             new Vector3((float)_knobFrom, 0, 0),
             new Vector3((float)_knobTo, 0, 0),
             KnobDuration,
             KnobEasing);
-        animated &= WinUiCompositorMotion.AnimateOpacity(
+        animated &= CompositionVisualMotion.AnimateOpacity(
             _iconsPanelOff,
             (float)_offOpacityFrom,
             (float)_offOpacityTo,
             IconDuration,
             new LinearEasing());
-        animated &= WinUiCompositorMotion.AnimateOpacity(
+        animated &= CompositionVisualMotion.AnimateOpacity(
             _iconsPanelOn,
             (float)_onOpacityFrom,
             (float)_onOpacityTo,
@@ -149,19 +149,19 @@ public sealed class GraphModeToggleButton : ToggleButton
 
         if (_knob is not null)
         {
-            WinUiCompositorMotion.SetTranslation(
+            CompositionVisualMotion.SetTranslation(
                 _knob,
                 new Vector3((float)_currentKnobTranslation, 0, 0));
         }
 
         if (_iconsPanelOff is not null)
         {
-            WinUiCompositorMotion.SetOpacity(_iconsPanelOff, isOn ? 0 : 1);
+            CompositionVisualMotion.SetOpacity(_iconsPanelOff, isOn ? 0 : 1);
         }
 
         if (_iconsPanelOn is not null)
         {
-            WinUiCompositorMotion.SetOpacity(_iconsPanelOn, isOn ? 1 : 0);
+            CompositionVisualMotion.SetOpacity(_iconsPanelOn, isOn ? 1 : 0);
         }
     }
 

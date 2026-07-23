@@ -100,7 +100,7 @@ public sealed class WinUiScrollBarThumbVisual : Rectangle
             return;
         }
 
-        if (!WinUiCompositorMotion.AnimateOpacity(
+        if (!CompositionVisualMotion.AnimateOpacity(
                 this,
                 (float)Opacity,
                 0,
@@ -124,7 +124,7 @@ public sealed class WinUiScrollBarThumbVisual : Rectangle
         _completionTimer = null;
         Fill = NormalFill;
         Opacity = 1;
-        WinUiCompositorMotion.SetOpacity(this, 1);
+        CompositionVisualMotion.SetOpacity(this, 1);
     }
 
     private void CompleteDisabledState()
@@ -138,6 +138,6 @@ public sealed class WinUiScrollBarThumbVisual : Rectangle
 
         Fill = DisabledFill;
         Opacity = 0;
-        WinUiCompositorMotion.SetOpacity(this, 0);
+        CompositionVisualMotion.SetOpacity(this, 0);
     }
 }

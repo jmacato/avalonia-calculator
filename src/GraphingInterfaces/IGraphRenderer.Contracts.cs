@@ -10,7 +10,7 @@ namespace Graphing
             GraphStatus SetGraphSize(uint width, uint height);
             GraphStatus SetDpi(float dpiX, float dpiY);
             GraphStatus Draw(IGraphDrawingTarget drawingTarget, out bool hasSomeMissingData);
-            GraphStatus GetClosePointData(double screenPointX, double screenPointY, double precision, out int formulaId, out float screenX, out float screenY, out double x, out double y, out double rho, out double theta, out double t);
+            GraphStatus GetClosePointData(ref ClosePointRequest request);
             GraphStatus ScaleRange(double centerX, double centerY, double scale);
             GraphStatus ChangeRange(ChangeRangeAction action);
             GraphStatus MoveRangeByRatio(double ratioX, double ratioY);

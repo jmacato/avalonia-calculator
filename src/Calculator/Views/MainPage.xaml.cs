@@ -35,7 +35,6 @@ public sealed partial class MainPage : UserControl, IDisposable
         CalcHolder.Child = new Calculator { DataContext = Model.CalculatorViewModel };
         UpdateModeHolders();
         UpdatePaneToggleAutomation();
-        Dispatcher.UIThread.Post(CaptureInitialNavigationSelection, DispatcherPriority.Render);
     }
 
     public ApplicationViewModel Model { get; }
@@ -45,10 +44,12 @@ public sealed partial class MainPage : UserControl, IDisposable
     private void OnSettingsClick(object? sender, RoutedEventArgs e)
     {
         _isSettingsVisible = true;
-        PreferencesPage settings = EnsureSettingsView();
-        UpdateModeHolders();
-        settings.BeginOpenAnimation();
+        _ = EnsureSettingsView();
         Model.IsNavigationPaneOpen = false;
+        SettingsHolder.IsOpen = true;
+#if CALCULATOR_BROWSER
+        ScheduleInactiveBrowserViewRelease();
+#endif
     }
 
     private void AlwaysOnTopButtonClick(object? sender, RoutedEventArgs e)
@@ -70,23 +71,10 @@ public sealed partial class MainPage : UserControl, IDisposable
             }
 
             UpdateModeHolders();
-            Dispatcher.UIThread.Post(AnimateNavigationSelectionChange, DispatcherPriority.Render);
-            if (NavCategory.IsCalculatorViewMode(Model.Mode)
-                && CalcHolder.Child is Calculator calculator)
-            {
-                calculator.AnimateCalculator(NavCategory.IsConverterViewMode(Model.PreviousMode));
-            }
             if (NavCategory.IsConverterViewMode(Model.Mode))
             {
                 ThreadedManagedDebugging.Checkpoint(312);
             }
-            if (NavCategory.IsConverterViewMode(Model.Mode)
-                && !NavCategory.IsConverterViewMode(Model.PreviousMode)
-                && ConverterHolder.Child is UnitConverter converter)
-            {
-                converter.AnimateConverter();
-            }
-
             SetDefaultFocus();
         }
         else if (e.PropertyName == nameof(ApplicationViewModel.IsNavigationPaneOpen))
@@ -103,7 +91,6 @@ public sealed partial class MainPage : UserControl, IDisposable
             UpdateModeHolders();
             if (ConverterHolder.Child is UnitConverter converter)
             {
-                converter.AnimateConverter();
                 converter.SetDefaultFocus();
             }
         }
@@ -192,9 +179,9 @@ public sealed partial class MainPage : UserControl, IDisposable
         SetHolderVisibility("GraphingCalcHolder", !_isSettingsVisible && NavCategory.IsGraphingCalculatorViewMode(Model.Mode));
         SetHolderVisibility("ConverterHolder", !_isSettingsVisible && NavCategory.IsConverterViewMode(Model.Mode));
         SetHolderVisibility("CalcHolder", !_isSettingsVisible && NavCategory.IsCalculatorViewMode(Model.Mode));
-        SetHolderVisibility("SettingsHolder", _isSettingsVisible);
         NavSplitView.IsVisible = !_isSettingsVisible;
         PaneToggleButton.IsVisible = !_isSettingsVisible;
+        SettingsHolder.IsOpen = _isSettingsVisible;
 
 #if CALCULATOR_BROWSER
         ScheduleInactiveBrowserViewRelease();
@@ -355,7 +342,6 @@ public sealed partial class MainPage : UserControl, IDisposable
         }
 
         Model.PropertyChanged -= OnAppPropertyChanged;
-        DisposeNavigationSelectionAnimation();
         if (SettingsHolder.Child is PreferencesPage settings)
         {
             settings.BackButtonClick -= OnSettingsBackButtonClick;

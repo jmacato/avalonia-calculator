@@ -71,7 +71,7 @@ public sealed class WinUiDiscretePressScaleHost : Decorator
     {
         _pressDelay?.Dispose();
         _pressDelay = null;
-        WinUiCompositorMotion.SetScale(
+        CompositionVisualMotion.SetScale(
             this,
             new Vector3((float)scale, (float)scale, 1));
     }

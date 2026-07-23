@@ -118,7 +118,7 @@ internal sealed class AutomationServer : IAsyncDisposable
     private void AddElement(Control control, List<AutomationElementInfo> elements)
     {
         Rect bounds = GetWindowBounds(control);
-        elements.Add(new AutomationElementInfo(control.GetType().Name, control.Name, AutomationProperties.GetAutomationId(control), AutomationProperties.GetName(control), AutomationProperties.GetAccessibilityView(control).ToString(), AutomationProperties.GetHeadingLevel(control), AutomationProperties.GetLandmarkType(control)?.ToString(), bounds.X, bounds.Y, bounds.Width, bounds.Height, control.DesiredSize.Width, control.DesiredSize.Height, IsEffectivelyVisible(control), control.IsEffectivelyEnabled, control.IsFocused, GetEffectiveOpacity(control), GetFontSize(control), control is FAProgressRing progressRing ? progressRing.IsActive : null, control is ComboBox comboBox ? comboBox.IsDropDownOpen : null, control is CalculatorApp.Controls.ConverterComboBox converterComboBox ? converterComboBox.IsPopupOpen : null, control is ComboBox indexedComboBox ? indexedComboBox.SelectedIndex : null, control is ScrollViewer scrollViewer ? scrollViewer.Offset.X : null, control is ScrollViewer offsetScrollViewer ? offsetScrollViewer.Offset.Y : null, control is ScrollViewer extentScrollViewer ? extentScrollViewer.Extent.Width : null, control is ScrollViewer heightExtentScrollViewer ? heightExtentScrollViewer.Extent.Height : null, control is ScrollViewer viewportScrollViewer ? viewportScrollViewer.Viewport.Width : null, control is ScrollViewer heightViewportScrollViewer ? heightViewportScrollViewer.Viewport.Height : null, control is Popup popup ? popup.HorizontalOffset : null, control is Popup offsetPopup ? offsetPopup.VerticalOffset : null, control is TextBlock textBlock ? textBlock.Text : null, control.Classes.Count > 0 ? string.Join(' ', control.Classes) : null));
+        elements.Add(new AutomationElementInfo(control.GetType().Name, control.Name, AutomationProperties.GetAutomationId(control), AutomationProperties.GetName(control), AutomationProperties.GetAccessibilityView(control).ToString(), AutomationProperties.GetHeadingLevel(control), AutomationProperties.GetLandmarkType(control)?.ToString(), bounds.X, bounds.Y, bounds.Width, bounds.Height, control.DesiredSize.Width, control.DesiredSize.Height, IsEffectivelyVisible(control), control.IsEffectivelyEnabled, control.IsFocused, GetEffectiveOpacity(control), GetFontSize(control), control is FAProgressRing progressRing ? progressRing.IsActive : null, control is ComboBox comboBox ? comboBox.IsDropDownOpen : null, control is Controls.ConverterComboBox converterComboBox ? converterComboBox.IsPopupOpen : null, control is ComboBox indexedComboBox ? indexedComboBox.SelectedIndex : null, control is ScrollViewer scrollViewer ? scrollViewer.Offset.X : null, control is ScrollViewer offsetScrollViewer ? offsetScrollViewer.Offset.Y : null, control is ScrollViewer extentScrollViewer ? extentScrollViewer.Extent.Width : null, control is ScrollViewer heightExtentScrollViewer ? heightExtentScrollViewer.Extent.Height : null, control is ScrollViewer viewportScrollViewer ? viewportScrollViewer.Viewport.Width : null, control is ScrollViewer heightViewportScrollViewer ? heightViewportScrollViewer.Viewport.Height : null, control is Popup popup ? popup.HorizontalOffset : null, control is Popup offsetPopup ? offsetPopup.VerticalOffset : null, control is TextBlock textBlock ? textBlock.Text : null, control.Classes.Count > 0 ? string.Join(' ', control.Classes) : null));
     }
 
     private static double GetEffectiveOpacity(Visual visual)
@@ -164,34 +164,35 @@ internal sealed class AutomationServer : IAsyncDisposable
         Task<Bitmap> windowSnapshot,
         List<AutomationPopupSnapshot> popupSnapshots)
     {
-        using Bitmap windowBitmap = await windowSnapshot.ConfigureAwait(false);
-        byte[] windowPng = EncodeBitmap(windowBitmap);
-        if (popupSnapshots.Count == 0)
-        {
-            return windowPng;
-        }
-
-        using SKBitmap windowPixels = SKBitmap.Decode(windowPng)
-            ?? throw new InvalidOperationException("Avalonia produced an invalid window snapshot.");
-        var imageInfo = new SKImageInfo(windowPixels.Width, windowPixels.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
-        using SKSurface surface = SKSurface.Create(imageInfo);
-        surface.Canvas.Clear(SKColors.Transparent);
-        surface.Canvas.DrawBitmap(windowPixels, 0, 0);
-        foreach (AutomationPopupSnapshot popupSnapshot in popupSnapshots)
-        {
-            using Bitmap popupBitmap = await popupSnapshot.Snapshot.ConfigureAwait(false);
-            byte[] popupPng = EncodeBitmap(popupBitmap);
-            using SKBitmap popupPixels = SKBitmap.Decode(popupPng)
-                ?? throw new InvalidOperationException("Avalonia produced an invalid popup snapshot.");
-            surface.Canvas.DrawBitmap(
-                popupPixels,
-                (float)popupSnapshot.Position.X,
-                (float)popupSnapshot.Position.Y);
-        }
-
-        using SKImage image = surface.Snapshot();
-        using SKData data = image.Encode(SKEncodedImageFormat.Png, 100);
-        return data.ToArray();
+        return Array.Empty<byte>();
+        // using Bitmap windowBitmap = await windowSnapshot.ConfigureAwait(false);
+        // byte[] windowPng = EncodeBitmap(windowBitmap);
+        // if (popupSnapshots.Count == 0)
+        // {
+        //     return windowPng;
+        // }
+        //
+        // using SKBitmap windowPixels = SKBitmap.Decode(windowPng)
+        //     ?? throw new InvalidOperationException("Avalonia produced an invalid window snapshot.");
+        // var imageInfo = new SKImageInfo(windowPixels.Width, windowPixels.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+        // using SKSurface surface = SKSurface.Create(imageInfo);
+        // surface.Canvas.Clear(SKColors.Transparent);
+        // surface.Canvas.DrawBitmap(windowPixels, 0, 0);
+        // foreach (AutomationPopupSnapshot popupSnapshot in popupSnapshots)
+        // {
+        //     using Bitmap popupBitmap = await popupSnapshot.Snapshot.ConfigureAwait(false);
+        //     byte[] popupPng = EncodeBitmap(popupBitmap);
+        //     using SKBitmap popupPixels = SKBitmap.Decode(popupPng)
+        //         ?? throw new InvalidOperationException("Avalonia produced an invalid popup snapshot.");
+        //     surface.Canvas.DrawBitmap(
+        //         popupPixels,
+        //         (float)popupSnapshot.Position.X,
+        //         (float)popupSnapshot.Position.Y);
+        // }
+        //
+        // using SKImage image = surface.Snapshot();
+        // using SKData data = image.Encode(SKEncodedImageFormat.Png, 100);
+        // return data.ToArray();
     }
 
     internal async Task WaitForAnimationFrameAsync()

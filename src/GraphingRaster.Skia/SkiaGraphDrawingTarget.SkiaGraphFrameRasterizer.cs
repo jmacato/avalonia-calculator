@@ -98,6 +98,9 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
                 }
 
                 break;
+            case GridLineSeriesCommand series:
+                DrawGridLineSeries(canvas, series, _coordinateTransform);
+                break;
             case StrokePathCommand stroke:
                 if (stroke.Paint.LineStyle == LineStyle.Dash)
                 {
@@ -168,6 +171,20 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
         GC.SuppressFinalize(this);
     }
 
+    private static void DrawGridLineSeries(SKCanvas canvas, GridLineSeriesCommand series, GraphCoordinateTransform? transform)
+    {
+        using SKPaint majorPaint = ToStrokePaint(series.MajorPaint);
+        using SKPaint minorPaint = ToStrokePaint(series.MinorPaint);
+        for (int index = 0; index < series.Count; index++)
+        {
+            series.GetLine(index, out GraphPoint start, out GraphPoint end, out GraphPaint paint);
+            start = Transform(start, transform);
+            end = Transform(end, transform);
+            SKPaint skiaPaint = paint == series.MajorPaint ? majorPaint : minorPaint;
+            canvas.DrawLine((float)start.X, (float)start.Y, (float)end.X, (float)end.Y, skiaPaint);
+        }
+    }
+
     private static void DrawMarker(SKCanvas canvas, MarkerCommand marker, GraphCoordinateTransform? transform)
     {
         using SKPaint fill = ToFillPaint(marker.Fill);
@@ -199,13 +216,14 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
                 }
 
             case GraphMarkerShape.Diamond:
-                using (var path = new SKPath())
+                using (var builder = new SKPathBuilder())
                 {
-                    path.MoveTo(x, y - radius);
-                    path.LineTo(x + radius, y);
-                    path.LineTo(x, y + radius);
-                    path.LineTo(x - radius, y);
-                    path.Close();
+                    builder.MoveTo(x, y - radius);
+                    builder.LineTo(x + radius, y);
+                    builder.LineTo(x, y + radius);
+                    builder.LineTo(x - radius, y);
+                    builder.Close();
+                    using SKPath path = builder.Detach();
                     canvas.DrawPath(path, fill);
                     if (stroke is not null)
                     {
@@ -271,7 +289,7 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
         double interval = Math.Max(1, graphPaint.StrokeWidth) * 2;
         double remaining = interval;
         bool drawing = true;
-        SKPath? dash = new();
+        SKPathBuilder? dash = new();
         GraphPoint current = Transform(path.Points[0], transform);
         dash.MoveTo((float)current.X, (float)current.Y);
         bool dashHasLine = false;
@@ -282,7 +300,7 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
             GraphPoint target = Transform(path.Points[(segmentIndex + 1) % path.Points.Length], transform);
             double dx = target.X - current.X;
             double dy = target.Y - current.Y;
-            double segmentRemaining = Math.Sqrt((dx * dx) + (dy * dy));
+            double segmentRemaining = Math.Sqrt(dx * dx + dy * dy);
             if (segmentRemaining <= 1e-12)
             {
                 current = target;
@@ -294,7 +312,7 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
             while (segmentRemaining > 1e-12)
             {
                 double amount = Math.Min(segmentRemaining, remaining);
-                var next = new GraphPoint(current.X + (unitX * amount), current.Y + (unitY * amount));
+                var next = new GraphPoint(current.X + unitX * amount, current.Y + unitY * amount);
                 if (drawing)
                 {
                     dash!.LineTo((float)next.X, (float)next.Y);
@@ -313,7 +331,8 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
                 {
                     if (dashHasLine)
                     {
-                        canvas.DrawPath(dash!, paint);
+                        using SKPath dashPath = dash!.Detach();
+                        canvas.DrawPath(dashPath, paint);
                     }
 
                     dash!.Dispose();
@@ -325,7 +344,7 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
                 remaining = interval;
                 if (drawing)
                 {
-                    dash = new SKPath();
+                    dash = new SKPathBuilder();
                     dash.MoveTo((float)current.X, (float)current.Y);
                 }
             }
@@ -335,7 +354,8 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
 
         if (drawing && dashHasLine)
         {
-            canvas.DrawPath(dash!, paint);
+            using SKPath dashPath = dash!.Detach();
+            canvas.DrawPath(dashPath, paint);
         }
 
         dash?.Dispose();
@@ -343,20 +363,26 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
 
     private static void DrawGlyph(SKCanvas canvas, GlyphCommand glyph, GraphCoordinateTransform? transform)
     {
-        using SKTypeface typeface = Typeface(glyph);
-        using var font = new SKFont(typeface, glyph.FontSize);
+        using var fontLease = SkiaGraphFontCache.Rent(glyph.FontFamily, glyph.FontStyle, glyph.FontSize);
+        var font = fontLease.Font;
         using SKPaint paint = ToFillPaint(glyph.Paint);
         float width = font.MeasureText(glyph.Text);
         GraphPoint origin = Transform(glyph.Origin, transform);
         float x = AlignedX(glyph.Alignment, (float)origin.X, width);
-        canvas.DrawText(glyph.Text, x, (float)origin.Y + glyph.FontSize, font, paint);
+        canvas.DrawText(
+            glyph.Text,
+            x,
+            (float)origin.Y + glyph.FontSize,
+            SKTextAlign.Left,
+            font,
+            paint);
     }
 
     private static void DrawGlyphBackground(SKCanvas canvas, GlyphBackgroundCommand background, GraphCoordinateTransform? transform)
     {
         GlyphCommand glyph = background.Glyph;
-        using SKTypeface typeface = Typeface(glyph);
-        using var font = new SKFont(typeface, glyph.FontSize);
+        using var fontLease = SkiaGraphFontCache.Rent(glyph.FontFamily, glyph.FontStyle, glyph.FontSize);
+        var font = fontLease.Font;
         float width = font.MeasureText(glyph.Text);
         SKFontMetrics metrics = font.Metrics;
         float height = metrics.Descent - metrics.Ascent + metrics.Leading;
@@ -366,35 +392,34 @@ public sealed class SkiaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
         canvas.DrawRect(x, (float)origin.Y, width, height, paint);
     }
 
-    private static SKTypeface Typeface(GlyphCommand glyph) => SKTypeface.FromFamilyName(glyph.FontFamily, glyph.FontStyle == GraphFontStyle.Italic ? SKFontStyle.Italic : SKFontStyle.Normal) ?? SKTypeface.Default;
     private static float AlignedX(GraphTextAlignment alignment, float originX, float width) => alignment switch
     {
-        GraphTextAlignment.Center => originX - (width * 0.5f),
+        GraphTextAlignment.Center => originX - width * 0.5f,
         GraphTextAlignment.End => originX - width,
         _ => originX
     };
     private static SKPath ToSkia(GraphPath graphPath, GraphCoordinateTransform? transform)
     {
-        var path = new SKPath();
+        using var builder = new SKPathBuilder();
         if (graphPath.Points.IsEmpty)
         {
-            return path;
+            return builder.Detach();
         }
 
         GraphPoint first = Transform(graphPath.Points[0], transform);
-        path.MoveTo((float)first.X, (float)first.Y);
+        builder.MoveTo((float)first.X, (float)first.Y);
         for (int index = 1; index < graphPath.Points.Length; index++)
         {
             GraphPoint point = Transform(graphPath.Points[index], transform);
-            path.LineTo((float)point.X, (float)point.Y);
+            builder.LineTo((float)point.X, (float)point.Y);
         }
 
         if (graphPath.IsClosed)
         {
-            path.Close();
+            builder.Close();
         }
 
-        return path;
+        return builder.Detach();
     }
 
     private static GraphPoint Transform(GraphPoint point, GraphCoordinateTransform? transform) => transform?.Transform(point) ?? point;
