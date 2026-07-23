@@ -31,6 +31,15 @@ internal sealed class AdaptiveCurveSamplerSamplingContext(
 
     public void BeginInitialSegment(int index, int segmentCount)
     {
+        if (_segmentBudgetExceeded)
+        {
+            // A segment that exhausted its proportional budget may have
+            // returned before visiting its right-hand leaves. Do not connect
+            // that partial geometry to the next seed interval across the
+            // unsampled gap.
+            Break();
+        }
+
         _segmentVertexLimit = Math.Max(_vertexCount, (int)((long)Options.MaximumVertices * (index + 1) / segmentCount));
         _segmentBudgetExceeded = false;
     }

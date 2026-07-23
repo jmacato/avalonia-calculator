@@ -22,10 +22,10 @@ public sealed partial class CalculatorProgrammerOperators : UserControl
 
     internal void SetRadixButton(NumberBase numberBase)
     {
-        HexButton.IsChecked = numberBase == NumberBase.HexBase;
-        DecimalButton.IsChecked = numberBase == NumberBase.DecBase;
-        OctButton.IsChecked = numberBase == NumberBase.OctBase;
-        BinaryButton.IsChecked = numberBase == NumberBase.BinBase;
+        HexButton.Classes.Set("selected", numberBase == NumberBase.HexBase);
+        DecimalButton.Classes.Set("selected", numberBase == NumberBase.DecBase);
+        OctButton.Classes.Set("selected", numberBase == NumberBase.OctBase);
+        BinaryButton.Classes.Set("selected", numberBase == NumberBase.BinBase);
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)

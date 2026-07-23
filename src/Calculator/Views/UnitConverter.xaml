@@ -70,8 +70,9 @@
       <Setter Property="Margin" Value="4,0,0,0" />
       <Setter Property="MinFontSize" Value="14" />
       <Setter Property="MaxFontSize" Value="40" />
+      <Setter Property="FontFamily" Value="{DynamicResource ContentControlThemeFontFamily}" />
       <Setter Property="DisplayMargin" Value="0,0,0,4" />
-      <Setter Property="AdornmentSpacingEm" Value="2" />
+      <Setter Property="AdornmentSpacing" Value="1" />
       <Setter Property="AdornmentFontFamily" Value="{DynamicResource CurrencySymbolFontFamily}" />
       <Setter Property="AdornmentFontSize" Value="20" />
       <Setter Property="AdornmentFontWeight" Value="Light" />

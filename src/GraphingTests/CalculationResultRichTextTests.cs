@@ -18,11 +18,13 @@ public sealed class CalculationResultRichTextTests
         {
             Width = 320,
             Height = 80,
+            FontFamily = new FontFamily("Hind2"),
             MinFontSize = 14,
             MaxFontSize = 40,
             DisplayValue = "1,234.5",
             AdornmentText = "$",
-            AdornmentSpacingEm = 2,
+            AdornmentFontFamily = new FontFamily("Noto Sans"),
+            AdornmentSpacing = 1,
             Template = new FuncControlTemplate<CalculationResult>((_, scope) =>
             {
                 output = new SelectableTextBlock
@@ -52,14 +54,24 @@ public sealed class CalculationResultRichTextTests
             InlineCollection inlines = Assert.IsType<InlineCollection>(richOutput.Inlines);
             Assert.Equal(2, inlines.Count);
             Assert.All(inlines, inline => Assert.IsType<Span>(inline));
-            Assert.Equal("$\u2003\u20031,234.5", inlines.Text);
+            Assert.Equal("$ 1,234.5", inlines.Text);
+            Span adornment = Assert.IsType<Span>(inlines[0]);
+            Span value = Assert.IsType<Span>(inlines[1]);
+            Assert.Equal(result.AdornmentFontFamily, adornment.FontFamily);
+            Assert.Equal(result.FontFamily, value.FontFamily);
 
             result.IsAdornmentOnRight = true;
-            Assert.Equal("1,234.5\u2003\u2003$", inlines.Text);
+            Assert.Equal("1,234.5 $", inlines.Text);
+            Assert.Same(value, inlines[0]);
+            Assert.Same(adornment, inlines[1]);
+
+            var replacementValueFamily = new FontFamily("Replacement");
+            result.FontFamily = replacementValueFamily;
+            Assert.Equal(replacementValueFamily, value.FontFamily);
 
             result.DisplayValue = "2";
             result.AdornmentText = "m";
-            result.AdornmentSpacingEm = 0;
+            result.AdornmentSpacing = 0;
             Assert.Equal("2m", inlines.Text);
             Assert.Equal("2", result.GetRawDisplayValue());
         }

@@ -10,7 +10,6 @@ namespace MathComposer.Avalonia.Rendering;
 public sealed class MathRenderer
 {
     private readonly Typeface _typeface;
-    private readonly GlyphTypeface _glyphTypeface;
 
     /// <summary>Initializes the renderer and resolves the required embedded math font.</summary>
     public MathRenderer()
@@ -18,13 +17,6 @@ public sealed class MathRenderer
         MathFontFamily = new FontFamily(
             "avares://MathComposer.Avalonia/Assets/Fonts#XCharter Math");
         _typeface = new Typeface(MathFontFamily);
-        if (!FontManager.Current.TryGetGlyphTypeface(_typeface, out GlyphTypeface? glyphTypeface))
-        {
-            throw new InvalidOperationException(
-                "The embedded XCharter Math font could not be initialized.");
-        }
-
-        _glyphTypeface = glyphTypeface;
     }
 
     /// <summary>Gets the required embedded font family.</summary>
@@ -54,6 +46,7 @@ public sealed class MathRenderer
             renderScaling = 1;
         }
 
+        GlyphTypeface glyphTypeface = ResolveGlyphTypeface();
         var selectionBrush = new SolidColorBrush(Color.FromArgb(72, 43, 124, 224));
         foreach (Rect rectangle in layout.GetSelectionRectangles(document, selection))
         {
@@ -68,7 +61,13 @@ public sealed class MathRenderer
                     DrawText(context, text, origin, foreground);
                     break;
                 case MathGlyphDrawCommand glyph:
-                    DrawGlyph(context, glyph, origin, foreground, renderScaling);
+                    DrawGlyph(
+                        context,
+                        glyph,
+                        origin,
+                        foreground,
+                        glyphTypeface,
+                        renderScaling);
                     break;
                 case MathRuleDrawCommand rule:
                     context.FillRectangle(
@@ -142,11 +141,12 @@ public sealed class MathRenderer
         context.DrawText(formatted, new Point(baseline.X, baseline.Y - formatted.Baseline));
     }
 
-    private void DrawGlyph(
+    private static void DrawGlyph(
         DrawingContext context,
         MathGlyphDrawCommand command,
         Point origin,
         IBrush foreground,
+        GlyphTypeface glyphTypeface,
         double renderScaling)
     {
         Point baseline = origin + command.BaselineOrigin;
@@ -154,12 +154,25 @@ public sealed class MathRenderer
             Snap(baseline.X, renderScaling),
             Snap(baseline.Y, renderScaling));
         using var glyphRun = new GlyphRun(
-            _glyphTypeface,
+            glyphTypeface,
             command.FontSize,
             ReadOnlyMemory<char>.Empty,
             new[] { command.GlyphId },
             baseline);
         context.DrawGlyphRun(foreground, glyphRun);
+    }
+
+    private GlyphTypeface ResolveGlyphTypeface()
+    {
+        if (!FontManager.Current.TryGetGlyphTypeface(
+                _typeface,
+                out GlyphTypeface? glyphTypeface))
+        {
+            throw new InvalidOperationException(
+                "The embedded XCharter Math font could not be initialized.");
+        }
+
+        return glyphTypeface;
     }
 
     private static void DrawInputRegion(

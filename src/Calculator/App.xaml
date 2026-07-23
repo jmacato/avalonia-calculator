@@ -564,16 +564,27 @@
         </ControlTemplate>
       </Setter>
     </Style>
-    <Style Selector="controls|RadixButton.radix">
-      <Setter Property="Margin" Value="0" />
-      <Setter Property="Padding" Value="8,0" />
+    <Style Selector="Button.radix">
+      <Setter Property="Margin" Value="2,1" />
+      <Setter Property="Padding" Value="0" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorTransparentBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
       <Setter Property="FontFamily" Value="{DynamicResource ContentControlThemeFontFamily}" />
       <Setter Property="FontSize" Value="13" />
       <Setter Property="Template">
         <ControlTemplate>
-          <Border Background="{TemplateBinding Background}">
+          <Border x:Name="LayoutRoot"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  TemplatedControl.IsTemplateFocusTarget="True">
             <Grid ColumnDefinitions="3,44,*">
               <Border x:Name="SelectionIndicator"
                       Width="3" Height="14"
@@ -583,18 +594,32 @@
               <TextBlock Grid.Column="1"
                          Margin="8,0,4,0"
                          VerticalAlignment="Center"
+                         Foreground="{TemplateBinding Foreground}"
                          FontSize="11"
                          Text="{TemplateBinding Tag}" />
               <TextBlock Grid.Column="2"
                          Margin="4,0"
                          VerticalAlignment="Center"
+                         Foreground="{TemplateBinding Foreground}"
                          Text="{TemplateBinding Content}" />
             </Grid>
           </Border>
         </ControlTemplate>
       </Setter>
     </Style>
-    <Style Selector="controls|RadixButton.radix:checked /template/ Border#SelectionIndicator">
+    <Style Selector="Button.radix:pointerover /template/ Border#LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.radix:pressed /template/ Border#LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+    </Style>
+    <Style Selector="Button.radix.selected /template/ Border#LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.radix.selected:pointerover /template/ Border#LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+    </Style>
+    <Style Selector="Button.radix.selected /template/ Border#SelectionIndicator">
       <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
     </Style>
     <Style Selector="controls|FlipButtons">

@@ -138,6 +138,7 @@ public sealed class MathDisplay : Control
         }
         else if (change.Property == DocumentProperty && change.GetNewValue<MathDocument>() is { } document)
         {
+            _document = document;
             AutomationProperties.SetName(
                 this,
                 MathInterchange.Serialize(document, MathTextFormat.UnicodeMath));

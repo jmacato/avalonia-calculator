@@ -243,12 +243,12 @@ public sealed class GraphInteractionMemoryTests
         GC.Collect();
         long retained = GC.GetTotalMemory(forceFullCollection: true) - retainedBefore;
 
-        Assert.InRange(maximumPathVertices, 2, 4 * (393 + 659));
+        Assert.InRange(maximumPathVertices, 2, 16 * (393 + 659));
         Assert.True(
-            allocated < 6 * 1_024 * 1_024,
+            allocated < 16 * 1_024 * 1_024,
             $"Repeated complex refreshes retained {retained:N0} bytes; allocated {allocated:N0} bytes and reached {maximumPathVertices:N0} vertices.");
         Assert.True(
-            retained < 4 * 1_024 * 1_024,
+            retained < 12 * 1_024 * 1_024,
             $"Repeated complex refreshes retained {retained:N0} bytes; allocated {allocated:N0} bytes and reached {maximumPathVertices:N0} vertices.");
     }
 
@@ -280,7 +280,63 @@ public sealed class GraphInteractionMemoryTests
         Assert.True(
             highDpiVertices > standardDpiVertices,
             $"Expected high-DPI sampling to exceed {standardDpiVertices:N0} vertices; got {highDpiVertices:N0}.");
-        Assert.InRange(highDpiVertices, 2, 16_384);
+        Assert.InRange(highDpiVertices, 2, 32_768);
+    }
+
+    [Fact]
+    public void DenseSecantSamplingPreservesBranchesWithoutLongDiagonalJoins()
+    {
+        IMathSolver solver = MathSolver.CreateMathSolver();
+        solver.ParsingOptions().SetFormatType(FormatType.Linear);
+        IExpression expression = solver.ParseInput("sec(20*x)", out int errorCode, out int errorType)
+            ?? throw new InvalidOperationException($"Parse failed: {errorCode}/{errorType}");
+        IGraph graph = solver.CreateGrapher();
+        using IDisposable graphLifetime = Assert.IsAssignableFrom<IDisposable>(graph);
+        Assert.NotNull(graph.TryInitialize(expression));
+
+        IGraphRenderer renderer = graph.GetRenderer();
+        Assert.Equal(GraphStatus.Ok, renderer.SetGraphSize(1_200, 727));
+        Assert.Equal(GraphStatus.Ok, renderer.PrepareGraph());
+        GraphFrame frame = Assert.IsType<GraphFrame>(renderer.CurrentFrame);
+        StrokePathCommand[] curves = frame.Commands
+            .OfType<StrokePathCommand>()
+            .Where(command => command.Paint.Color == new Color(0, 99, 177))
+            .ToArray();
+
+        Assert.True(
+            curves.Length >= 250,
+            $"Expected dense secant sampling to preserve at least 250 overscanned branches; got {curves.Length:N0}.");
+        double maximumVisibleSegment = MaximumVisibleSegmentLength(curves, frame.Width, frame.Height);
+        Assert.True(
+            maximumVisibleSegment <= 8.01,
+            $"Dense secant sampling retained a {maximumVisibleSegment:N2}-pixel diagonal join.");
+    }
+
+    [Fact]
+    public void InequalityHatchRemainsInScreenSpaceDuringPanAndZoom()
+    {
+        IMathSolver solver = MathSolver.CreateMathSolver();
+        solver.ParsingOptions().SetFormatType(FormatType.Linear);
+        IExpression expression = solver.ParseInput("y>2*x+1", out int errorCode, out int errorType)
+            ?? throw new InvalidOperationException($"Parse failed: {errorCode}/{errorType}");
+        IGraph graph = solver.CreateGrapher();
+        using IDisposable graphLifetime = Assert.IsAssignableFrom<IDisposable>(graph);
+        Assert.NotNull(graph.TryInitialize(expression));
+
+        IGraphRenderer renderer = graph.GetRenderer();
+        Assert.Equal(GraphStatus.Ok, renderer.SetGraphSize(587, 848));
+        Assert.Equal(GraphStatus.Ok, renderer.PrepareGraph());
+        HatchGridCommand settledHatch = Assert.Single(
+            Assert.IsType<GraphFrame>(renderer.CurrentFrame).Commands.OfType<HatchGridCommand>());
+
+        Assert.Equal(GraphStatus.Ok, renderer.MoveRangeByRatio(0.1, -0.05));
+        GraphFrame panned = Assert.IsType<GraphFrame>(renderer.CurrentFrame);
+        AssertScreenSpaceHatch(panned);
+        HatchGridCommand pannedHatch = Assert.Single(panned.Commands.OfType<HatchGridCommand>());
+        Assert.False(settledHatch.Occupancy.SequenceEqual(pannedHatch.Occupancy));
+
+        Assert.Equal(GraphStatus.Ok, renderer.ScaleRange(0.2, -0.3, 0.8));
+        AssertScreenSpaceHatch(Assert.IsType<GraphFrame>(renderer.CurrentFrame));
     }
 
     [Fact]
@@ -439,5 +495,52 @@ public sealed class GraphInteractionMemoryTests
         }
 
         return maximum;
+    }
+
+    private static double MaximumVisibleSegmentLength(
+        IEnumerable<StrokePathCommand> paths,
+        double width,
+        double height)
+    {
+        double maximum = 0;
+        foreach (StrokePathCommand path in paths)
+        {
+            for (int index = 1; index < path.Path.Points.Length; index++)
+            {
+                GraphPoint left = path.Path.Points[index - 1];
+                GraphPoint right = path.Path.Points[index];
+                if (Math.Min(left.X, right.X) > width ||
+                    Math.Max(left.X, right.X) < 0 ||
+                    Math.Min(left.Y, right.Y) > height ||
+                    Math.Max(left.Y, right.Y) < 0)
+                {
+                    continue;
+                }
+
+                maximum = Math.Max(
+                    maximum,
+                    Math.Sqrt(
+                        Math.Pow(right.X - left.X, 2) +
+                        Math.Pow(right.Y - left.Y, 2)));
+            }
+        }
+
+        return maximum;
+    }
+
+    private static void AssertScreenSpaceHatch(GraphFrame frame)
+    {
+        int transformEnd = Array.FindIndex(
+            frame.Commands.ToArray(),
+            command => command is PopCoordinateTransformCommand);
+        HatchGridCommand hatch = Assert.Single(frame.Commands.OfType<HatchGridCommand>());
+        CommandGroupCommand equationGroup = Assert.Single(frame.Commands.OfType<CommandGroupCommand>());
+
+        Assert.True(transformEnd >= 0);
+        Assert.DoesNotContain(equationGroup.Commands, command => command is HatchGridCommand);
+        Assert.True(frame.Commands.IndexOf(hatch) > transformEnd);
+        Assert.Equal(58, hatch.LatticeIntervals);
+        Assert.Equal(frame.Width, hatch.Width);
+        Assert.Equal(frame.Height, hatch.Height);
     }
 }

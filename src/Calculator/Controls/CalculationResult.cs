@@ -48,7 +48,7 @@ public sealed class CalculationResult : TemplatedControl
     public static readonly StyledProperty<VerticalAlignment> VerticalContentAlignmentProperty = AvaloniaProperty.Register<CalculationResult, VerticalAlignment>(nameof(VerticalContentAlignment), VerticalAlignment.Top);
     public static readonly StyledProperty<string> AdornmentTextProperty = AvaloniaProperty.Register<CalculationResult, string>(nameof(AdornmentText), string.Empty);
     public static readonly StyledProperty<bool> IsAdornmentOnRightProperty = AvaloniaProperty.Register<CalculationResult, bool>(nameof(IsAdornmentOnRight));
-    public static readonly StyledProperty<int> AdornmentSpacingEmProperty = AvaloniaProperty.Register<CalculationResult, int>(nameof(AdornmentSpacingEm), validate: value => value >= 0);
+    public static readonly StyledProperty<int> AdornmentSpacingProperty = AvaloniaProperty.Register<CalculationResult, int>(nameof(AdornmentSpacing), validate: value => value >= 0);
     public static readonly StyledProperty<FontFamily> AdornmentFontFamilyProperty = AvaloniaProperty.Register<CalculationResult, FontFamily>(nameof(AdornmentFontFamily), FontFamily.Default);
     public static readonly StyledProperty<double> AdornmentFontSizeProperty = AvaloniaProperty.Register<CalculationResult, double>(nameof(AdornmentFontSize));
     public static readonly StyledProperty<FontWeight> AdornmentFontWeightProperty = AvaloniaProperty.Register<CalculationResult, FontWeight>(nameof(AdornmentFontWeight), FontWeight.Light);
@@ -79,7 +79,7 @@ public sealed class CalculationResult : TemplatedControl
     public VerticalAlignment VerticalContentAlignment { get => GetValue(VerticalContentAlignmentProperty); set => SetValue(VerticalContentAlignmentProperty, value); }
     public string AdornmentText { get => GetValue(AdornmentTextProperty); set => SetValue(AdornmentTextProperty, value); }
     public bool IsAdornmentOnRight { get => GetValue(IsAdornmentOnRightProperty); set => SetValue(IsAdornmentOnRightProperty, value); }
-    public int AdornmentSpacingEm { get => GetValue(AdornmentSpacingEmProperty); set => SetValue(AdornmentSpacingEmProperty, value); }
+    public int AdornmentSpacing { get => GetValue(AdornmentSpacingProperty); set => SetValue(AdornmentSpacingProperty, value); }
     public FontFamily AdornmentFontFamily { get => GetValue(AdornmentFontFamilyProperty); set => SetValue(AdornmentFontFamilyProperty, value); }
     public double AdornmentFontSize { get => GetValue(AdornmentFontSizeProperty); set => SetValue(AdornmentFontSizeProperty, value); }
     public FontWeight AdornmentFontWeight { get => GetValue(AdornmentFontWeightProperty); set => SetValue(AdornmentFontWeightProperty, value); }
@@ -255,10 +255,11 @@ public sealed class CalculationResult : TemplatedControl
             change.Property == MinFontSizeProperty ||
             change.Property == MaxFontSizeProperty ||
             change.Property == FontSizeProperty ||
+            change.Property == FontFamilyProperty ||
             change.Property == FlowDirectionProperty ||
             change.Property == AdornmentTextProperty ||
             change.Property == IsAdornmentOnRightProperty ||
-            change.Property == AdornmentSpacingEmProperty ||
+            change.Property == AdornmentSpacingProperty ||
             change.Property == AdornmentFontFamilyProperty ||
             change.Property == AdornmentFontSizeProperty ||
             change.Property == AdornmentFontWeightProperty)
@@ -400,10 +401,11 @@ public sealed class CalculationResult : TemplatedControl
         }
 
         string space = !string.IsNullOrEmpty(AdornmentText)
-            ? new string('\u2003', AdornmentSpacingEm)
+            ? new string(' ', AdornmentSpacing)
             : string.Empty;
         _valueRun.Text = DisplayValue;
         _adornmentRun.Text = adornmentIsFirst ? AdornmentText + space : space + AdornmentText;
+        _valueSpan.FontFamily = FontFamily;
         _adornmentSpan.FontFamily = AdornmentFontFamily;
         _adornmentSpan.FontWeight = AdornmentFontWeight;
         if (AdornmentFontSize > 0)

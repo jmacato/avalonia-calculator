@@ -14,10 +14,13 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
 {
     private const double MinimumRangeLength = 1e-12;
     private const double MaximumRangeLength = 1e12;
-    private const int MaximumRetainedVertices = 65_536;
-    private const int MaximumVerticesPerEquation = 16_384;
+    private const int MaximumRetainedVertices = 131_072;
+    private const int MaximumVerticesPerEquation = 32_768;
     private const int MinimumVerticesPerEquation = 2_048;
-    private const int VerticesPerViewportPerimeterPixel = 4;
+    private const int VerticesPerViewportPerimeterPixel = 16;
+    private const int VerticesReservedPerInitialSegment = 24;
+    private const double InitialSegmentLengthInPhysicalPixels = 4;
+    private const int InequalityLatticeIntervals = 58;
     private const double SamplingOverscanScale = 2;
     private const double StandardDpi = 96;
     private const double MaximumSamplingScale = 4;
@@ -52,6 +55,8 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
     private GraphFrame? _frame;
     private PreparedGraph? _equationCommandSource;
     private ImmutableArray<GraphFrameCommand> _equationCommands = ImmutableArray<GraphFrameCommand>.Empty;
+    private PreparedGraph? _transformableEquationCommandSource;
+    private ImmutableArray<GraphFrameCommand> _transformableEquationCommands = ImmutableArray<GraphFrameCommand>.Empty;
     private PreparedGraph? _contentCommandSource;
     private ImmutableArray<GraphFrameCommand> _contentCommands = ImmutableArray<GraphFrameCommand>.Empty;
     private readonly ImmutableArray<GraphFrameCommand>.Builder _interactionCommands = ImmutableArray.CreateBuilder<GraphFrameCommand>(96);
@@ -674,7 +679,16 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
                     trigMode,
                     generation,
                     cancellationToken);
-                InequalityHatchGrid hatch = definition.IsInequality ? SampleInequalityHatch(definition, values, viewport, trigMode, generation, cancellationToken) : InequalityHatchGrid.Empty;
+                InequalityHatchGrid hatch = definition.IsInequality
+                    ? SampleInequalityHatch(
+                        definition,
+                        values,
+                        samplingViewport,
+                        InequalityLatticeIntervals * (int)SamplingOverscanScale,
+                        trigMode,
+                        generation,
+                        cancellationToken)
+                    : InequalityHatchGrid.Empty;
                 totalVertices += boundary.VertexCount;
                 missing |= boundary.HasMissingData;
                 geometries.Add(new PreparedEquationGeometry(definition, boundary, hatch));
@@ -693,15 +707,33 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
     {
         // A sampled point is retained in user coordinates, copied into a
         // screen-space GraphPath, and then consumed by the platform geometry.
-        // A fixed 32K ceiling therefore creates several megabytes of transient
-        // data for a curve whose output is only a few hundred pixels wide.
-        // Four vertices per viewport-perimeter pixel remains deliberately
-        // oversampled for cusps and implicit curves while bounding that cost.
+        // A fixed ceiling creates several megabytes of transient data for a
+        // curve whose output is only a few hundred pixels wide. Sixteen
+        // vertices per viewport-perimeter pixel leaves enough headroom for
+        // compressed periodic branches while retaining an explicit bound.
         double requested =
             (viewport.Width + viewport.Height) *
             VerticesPerViewportPerimeterPixel *
             samplingScale;
         return (int)Math.Clamp(Math.Ceiling(requested), MinimumVerticesPerEquation, MaximumVerticesPerEquation);
+    }
+
+    private static int InitialCurveSegmentCount(
+        SamplingViewport viewport,
+        double samplingScale,
+        int maximumVertices)
+    {
+        int requested = (int)Math.Ceiling(
+            viewport.Width *
+            samplingScale /
+            InitialSegmentLengthInPhysicalPixels);
+        int maximum = Math.Max(
+            SamplingOptions.Settled.InitialSegments,
+            maximumVertices / VerticesReservedPerInitialSegment);
+        return Math.Clamp(
+            requested,
+            SamplingOptions.Settled.InitialSegments,
+            maximum);
     }
 
     private SampledCurve SampleBoundary(
@@ -749,6 +781,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
             viewport,
             SamplingOptions.Settled with
             {
+                InitialSegments = InitialCurveSegmentCount(viewport, samplingScale, maximumVertices),
                 MaximumVertices = maximumVertices,
                 FlatnessTolerance = SamplingOptions.Settled.FlatnessTolerance / samplingScale,
                 MaximumSegmentLength = SamplingOptions.Settled.MaximumSegmentLength / samplingScale
@@ -780,8 +813,9 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
                 _interactionCommands.AddRange(_interactionTickLabels);
                 _interactionCommands.AddRange(_interactionAxisAliases);
                 _interactionCommands.Add(new PushCoordinateTransformCommand(CoordinateTransform(prepared.Viewport, viewport)));
-                _interactionCommands.Add(new CommandGroupCommand(GetEquationCommands(prepared)));
+                _interactionCommands.Add(new CommandGroupCommand(GetTransformableEquationCommands(prepared)));
                 _interactionCommands.Add(new PopCoordinateTransformCommand());
+                AppendInequalityHatches(_interactionCommands, prepared, viewport);
                 _interactionCommands.Add(new PopClipCommand());
                 commands = _interactionCommands.ToImmutable();
             }
@@ -845,10 +879,34 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         return _equationCommands;
     }
 
+    private ImmutableArray<GraphFrameCommand> GetTransformableEquationCommands(PreparedGraph prepared)
+    {
+        if (ReferenceEquals(_transformableEquationCommandSource, prepared))
+        {
+            return _transformableEquationCommands;
+        }
+
+        ImmutableArray<GraphFrameCommand> equations = GetEquationCommands(prepared);
+        var commands = ImmutableArray.CreateBuilder<GraphFrameCommand>(equations.Length);
+        foreach (GraphFrameCommand command in equations)
+        {
+            if (command is not HatchGridCommand)
+            {
+                commands.Add(command);
+            }
+        }
+
+        _transformableEquationCommands = commands.ToImmutable();
+        _transformableEquationCommandSource = prepared;
+        return _transformableEquationCommands;
+    }
+
     private void ClearCommandCache()
     {
         _equationCommandSource = null;
         _equationCommands = ImmutableArray<GraphFrameCommand>.Empty;
+        _transformableEquationCommandSource = null;
+        _transformableEquationCommands = ImmutableArray<GraphFrameCommand>.Empty;
         _contentCommandSource = null;
         _contentCommands = ImmutableArray<GraphFrameCommand>.Empty;
     }
@@ -953,7 +1011,7 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
                     }
                 }
 
-                AppendInequalityHatch(commands, geometry.InequalityHatch, prepared.Viewport, color);
+                AppendInequalityHatch(commands, geometry.InequalityHatch, viewport, color);
                 continue;
             }
 
@@ -968,6 +1026,24 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
                 commands.Add(new StrokePathCommand(ToScreenPath(component.Points, viewport, isClosed: false), linePaint));
                 AppendFeatureMarkers(commands, component.Points, viewport, color);
             }
+        }
+    }
+
+    private static void AppendInequalityHatches(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        PreparedGraph prepared,
+        SamplingViewport viewport)
+    {
+        for (int index = 0; index < prepared.Equations.Length; index++)
+        {
+            PreparedEquationGeometry geometry = prepared.Equations[index];
+            if (!geometry.Definition.IsInequality)
+            {
+                continue;
+            }
+
+            Color color = prepared.Snapshot.Equations[index].GetGraphEquationOptions().GetGraphColor();
+            AppendInequalityHatch(commands, geometry.InequalityHatch, viewport, color);
         }
     }
 
@@ -998,9 +1074,15 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
         }
     }
 
-    private InequalityHatchGrid SampleInequalityHatch(CompiledGraphEquation definition, double[] values, SamplingViewport viewport, EvalTrigUnitMode trigMode, long generation, CancellationToken cancellationToken)
+    private InequalityHatchGrid SampleInequalityHatch(
+        CompiledGraphEquation definition,
+        double[] values,
+        SamplingViewport viewport,
+        int latticeIntervals,
+        EvalTrigUnitMode trigMode,
+        long generation,
+        CancellationToken cancellationToken)
     {
-        const int latticeIntervals = 58;
         int sampleCount = latticeIntervals * (latticeIntervals - 1);
         var occupancy = ImmutableArray.CreateBuilder<ulong>((sampleCount + 63) / 64);
         occupancy.Count = occupancy.Capacity;
@@ -1023,18 +1105,86 @@ internal sealed class ManagedGraphRenderer : IGraphRenderer, IConcurrentGraphRen
             }
         }
 
-        return new InequalityHatchGrid(occupancy.MoveToImmutable(), latticeIntervals);
+        return new InequalityHatchGrid(
+            occupancy.MoveToImmutable(),
+            latticeIntervals,
+            viewport);
     }
 
-    private static void AppendInequalityHatch(ImmutableArray<GraphFrameCommand>.Builder commands, InequalityHatchGrid hatch, SamplingViewport sourceViewport, Color color)
+    private static void AppendInequalityHatch(
+        ImmutableArray<GraphFrameCommand>.Builder commands,
+        InequalityHatchGrid hatch,
+        SamplingViewport viewport,
+        Color color)
     {
         if (hatch.Occupancy.IsDefaultOrEmpty)
         {
             return;
         }
 
+        ImmutableArray<ulong> occupancy = ProjectInequalityHatch(hatch, viewport);
         var paint = new GraphPaint(color, 1, LineStyle.Solid, AntiAlias: false);
-        commands.Add(new HatchGridCommand(hatch.Occupancy, hatch.LatticeIntervals, sourceViewport.Width, sourceViewport.Height, 1, paint));
+        commands.Add(new HatchGridCommand(
+            occupancy,
+            InequalityLatticeIntervals,
+            viewport.Width,
+            viewport.Height,
+            1,
+            paint));
+    }
+
+    private static ImmutableArray<ulong> ProjectInequalityHatch(
+        InequalityHatchGrid hatch,
+        SamplingViewport targetViewport)
+    {
+        int sampleCount = InequalityLatticeIntervals * (InequalityLatticeIntervals - 1);
+        var occupancy = ImmutableArray.CreateBuilder<ulong>((sampleCount + 63) / 64);
+        occupancy.Count = occupancy.Capacity;
+        GraphCoordinateTransform sourceToTarget = CoordinateTransform(
+            hatch.Viewport,
+            targetViewport);
+        for (int column = 0; column < InequalityLatticeIntervals; column++)
+        {
+            double targetX = column * targetViewport.Width / InequalityLatticeIntervals;
+            double sourceX = (targetX - sourceToTarget.OffsetX) / sourceToTarget.ScaleX;
+            int sourceColumn = (int)Math.Round(
+                sourceX * hatch.LatticeIntervals / hatch.Viewport.Width);
+            if (sourceColumn < 0 || sourceColumn >= hatch.LatticeIntervals)
+            {
+                continue;
+            }
+
+            for (int row = 1; row < InequalityLatticeIntervals; row++)
+            {
+                double targetY = row * targetViewport.Height / InequalityLatticeIntervals;
+                double sourceY = (targetY - sourceToTarget.OffsetY) / sourceToTarget.ScaleY;
+                int sourceRow = (int)Math.Round(
+                    sourceY * hatch.LatticeIntervals / hatch.Viewport.Height);
+                if (!IsHatchOccupied(hatch, sourceColumn, sourceRow))
+                {
+                    continue;
+                }
+
+                int bitIndex = column * (InequalityLatticeIntervals - 1) + row - 1;
+                occupancy[bitIndex >> 6] |= 1UL << (bitIndex & 63);
+            }
+        }
+
+        return occupancy.MoveToImmutable();
+    }
+
+    private static bool IsHatchOccupied(
+        InequalityHatchGrid hatch,
+        int column,
+        int row)
+    {
+        if (row < 1 || row >= hatch.LatticeIntervals)
+        {
+            return false;
+        }
+
+        int bitIndex = column * (hatch.LatticeIntervals - 1) + row - 1;
+        return (hatch.Occupancy[bitIndex >> 6] & (1UL << (bitIndex & 63))) != 0;
     }
 
     private static SamplingViewport CreateOverscanViewport(SamplingViewport viewport)
