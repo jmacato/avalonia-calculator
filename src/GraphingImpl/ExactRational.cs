@@ -10,7 +10,7 @@ internal readonly struct ExactRational : IComparable<ExactRational>, IEquatable<
 {
     private const uint Radix = 10;
     private const int MaximumDecimalExpansionDigits = 1_234;
-    private const int OperationPrecision = (MaximumDecimalExpansionDigits * 2) + 32;
+    private const int OperationPrecision = MaximumDecimalExpansionDigits * 2 + 32;
     [ThreadStatic]
     private static RatPak? s_threadPak;
     private static readonly EngineNumber ZeroNumber = new();
@@ -45,7 +45,7 @@ internal readonly struct ExactRational : IComparable<ExactRational>, IEquatable<
         }
     }
 
-    public string DenominatorText { get => FormatInteger(Denominator); }
+    public string DenominatorText => FormatInteger(Denominator);
 
     public static ExactRational ParseDecimal(string text)
     {
@@ -210,8 +210,16 @@ internal readonly struct ExactRational : IComparable<ExactRational>, IEquatable<
         }
     }
 
-    public bool Equals(ExactRational other) => CompareTo(other) == 0;
-    public override bool Equals(object? obj) => obj is ExactRational other && Equals(other);
+    public bool Equals(ExactRational other)
+    {
+        return CompareTo(other) == 0;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is ExactRational other && Equals(other);
+    }
+
     public override int GetHashCode()
     {
         unchecked
@@ -263,9 +271,21 @@ internal readonly struct ExactRational : IComparable<ExactRational>, IEquatable<
         }
     }
 
-    public static ExactRational operator +(ExactRational left, ExactRational right) => ApplyBinary(left, right, ExactRationalBinaryOperation.Add);
-    public static ExactRational operator -(ExactRational left, ExactRational right) => ApplyBinary(left, right, ExactRationalBinaryOperation.Subtract);
-    public static ExactRational operator *(ExactRational left, ExactRational right) => ApplyBinary(left, right, ExactRationalBinaryOperation.Multiply);
+    public static ExactRational operator +(ExactRational left, ExactRational right)
+    {
+        return ApplyBinary(left, right, ExactRationalBinaryOperation.Add);
+    }
+
+    public static ExactRational operator -(ExactRational left, ExactRational right)
+    {
+        return ApplyBinary(left, right, ExactRationalBinaryOperation.Subtract);
+    }
+
+    public static ExactRational operator *(ExactRational left, ExactRational right)
+    {
+        return ApplyBinary(left, right, ExactRationalBinaryOperation.Multiply);
+    }
+
     public static ExactRational operator /(ExactRational left, ExactRational right)
     {
         if (right.Sign == 0)
@@ -276,18 +296,46 @@ internal readonly struct ExactRational : IComparable<ExactRational>, IEquatable<
         return ApplyBinary(left, right, ExactRationalBinaryOperation.Divide);
     }
 
-    public static bool operator ==(ExactRational left, ExactRational right) => left.Equals(right);
-    public static bool operator !=(ExactRational left, ExactRational right) => !left.Equals(right);
-    public static bool operator <(ExactRational left, ExactRational right) => left.CompareTo(right) < 0;
-    public static bool operator >(ExactRational left, ExactRational right) => left.CompareTo(right) > 0;
-    public static bool operator <=(ExactRational left, ExactRational right) => left.CompareTo(right) <= 0;
-    public static bool operator >=(ExactRational left, ExactRational right) => left.CompareTo(right) >= 0;
-    public static implicit operator ExactRational(int value) => value switch
+    public static bool operator ==(ExactRational left, ExactRational right)
     {
-        0 => Zero,
-        1 => One,
-        _ => FromInt32Core(value)
-    };
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(ExactRational left, ExactRational right)
+    {
+        return !left.Equals(right);
+    }
+
+    public static bool operator <(ExactRational left, ExactRational right)
+    {
+        return left.CompareTo(right) < 0;
+    }
+
+    public static bool operator >(ExactRational left, ExactRational right)
+    {
+        return left.CompareTo(right) > 0;
+    }
+
+    public static bool operator <=(ExactRational left, ExactRational right)
+    {
+        return left.CompareTo(right) <= 0;
+    }
+
+    public static bool operator >=(ExactRational left, ExactRational right)
+    {
+        return left.CompareTo(right) >= 0;
+    }
+
+    public static implicit operator ExactRational(int value)
+    {
+        return value switch
+        {
+            0 => Zero,
+            1 => One,
+            _ => FromInt32Core(value)
+        };
+    }
+
     public static implicit operator ExactRational(long value)
     {
         if (value is >= int.MinValue and <= int.MaxValue)
@@ -390,7 +438,11 @@ internal readonly struct ExactRational : IComparable<ExactRational>, IEquatable<
         }
     }
 
-    private static bool IsOne(EngineNumber value) => value.Sign == 1 && value.Exp == 0 && value.CDigits == 1 && value.Mantissa[0] == 1;
+    private static bool IsOne(EngineNumber value)
+    {
+        return value.Sign == 1 && value.Exp == 0 && value.CDigits == 1 && value.Mantissa[0] == 1;
+    }
+
     private static int BitLength(NUMBER value)
     {
         if (RatPak.zernum(value))
@@ -406,7 +458,7 @@ internal readonly struct ExactRational : IComparable<ExactRational>, IEquatable<
             leadingBits++;
         }
 
-        return checked(((value.Cdigit + value.Exp - 1) * 31) + leadingBits);
+        return checked((value.Cdigit + value.Exp - 1) * 31 + leadingBits);
     }
 
     private static int HashNumber(EngineNumber value)

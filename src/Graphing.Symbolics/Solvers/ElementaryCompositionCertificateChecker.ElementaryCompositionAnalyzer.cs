@@ -1,8 +1,0 @@
-using System.Collections.Immutable;
-
-namespace Graphing.Symbolics;
-
-internal static class ElementaryCompositionCertificateChecker
-{
-    public static bool Check(AnalysisRequest request, SemanticExpression expression, ElementaryCompositionProofCertificate certificate, string claim, ResourceBudget budget) => ElementaryCompositionCertificateReplay.Check(request, expression, certificate, claim, budget);
-}

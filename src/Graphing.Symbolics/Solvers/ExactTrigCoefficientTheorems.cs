@@ -150,7 +150,7 @@ internal static class ExactTrigCoefficientTheorems
             .Multiply(pattern.Amplitude.Reciprocal(budget), budget);
         int comparison = 0;
         if (pattern.Kind != ExactCoefficientPatternKind.AffineTangent &&
-            (!target.TryCompareAbsoluteTo(BigRational.One, budget, out comparison)))
+            !target.TryCompareAbsoluteTo(BigRational.One, budget, out comparison))
         {
             value = null!;
             return false;
@@ -426,25 +426,32 @@ internal static class ExactTrigCoefficientTheorems
             period), out value);
     }
 
-    private static Graphing.Symbolics.PeriodicIntervalSet PeriodicInterval(
+    private static PeriodicIntervalSet PeriodicInterval(
         ExactTrigPattern pattern,
         AngleUnit angleUnit,
         ExactReal period,
         BigRational lower,
-        BigRational upper) => new PeriodicIntervalSet(
-        period,
-        "m",
-        IntegerConstraint.All("m"),
-        [new PeriodicInterval(
-            SolveAngle(pattern, Angle(angleUnit, lower)),
-            false,
-            SolveAngle(pattern, Angle(angleUnit, upper)),
-            false)]);
+        BigRational upper)
+    {
+        return new PeriodicIntervalSet(
+            period,
+            "m",
+            IntegerConstraint.All("m"),
+            [
+                new PeriodicInterval(
+                    SolveAngle(pattern, Angle(angleUnit, lower)),
+                    false,
+                    SolveAngle(pattern, Angle(angleUnit, upper)),
+                    false)
+            ]);
+    }
 
-    private static ExactReal SolveAngle(ExactTrigPattern pattern, ExactReal angle) =>
-        DivideAngle(
+    private static ExactReal SolveAngle(ExactTrigPattern pattern, ExactReal angle)
+    {
+        return DivideAngle(
             ExactRealArithmetic.Subtract(angle, pattern.Phase.Value),
             pattern.Frequency);
+    }
 
     private static ExactReal DivideAngle(ExactReal angle, ExactScalar frequency)
     {
@@ -473,8 +480,10 @@ internal static class ExactTrigCoefficientTheorems
             : ExactRealArithmetic.Divide(angle, frequency.Value);
     }
 
-    private static ExactReal Angle(AngleUnit unit, BigRational piFraction) =>
-        ExactAngleArithmetic.PiFraction(unit, piFraction);
+    private static ExactReal Angle(AngleUnit unit, BigRational piFraction)
+    {
+        return ExactAngleArithmetic.PiFraction(unit, piFraction);
+    }
 
     private static bool TryPhaseFraction(
         ExactScalar phase,

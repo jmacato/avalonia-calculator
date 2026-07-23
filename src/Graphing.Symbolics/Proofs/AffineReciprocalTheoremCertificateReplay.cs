@@ -77,8 +77,9 @@ internal static class AffineReciprocalTheoremCertificateReplay
         Formula definedWhen,
         AffineReciprocalTrigPattern pattern,
         string variable,
-        ResourceBudget budget) =>
-        ExactFormulaVerifier.MatchesSingleGuard(
+        ResourceBudget budget)
+    {
+        return ExactFormulaVerifier.MatchesSingleGuard(
             definedWhen,
             operand => MatchesDenominatorGuard(
                 operand,
@@ -86,6 +87,7 @@ internal static class AffineReciprocalTheoremCertificateReplay
                 variable,
                 budget),
             budget);
+    }
 
     private static bool MatchesDenominatorGuard(
         Formula formula,
@@ -258,7 +260,7 @@ internal static class AffineReciprocalTheoremCertificateReplay
         }
     }
 
-    private static Graphing.Symbolics.PeriodicIntervalSet BuildDomain(
+    private static PeriodicIntervalSet BuildDomain(
         AffineReciprocalTrigPattern pattern,
         AngleUnit angleUnit,
         ResourceBudget budget)
@@ -439,7 +441,7 @@ internal static class AffineReciprocalTheoremCertificateReplay
             return [];
         }
 
-        bool positiveCore = minimum == (pattern.Amplitude.Sign > 0);
+        bool positiveCore = minimum == pattern.Amplitude.Sign > 0;
         BigRational fraction = pattern.Function switch
         {
             "sec" when positiveCore => BigRational.Zero,
@@ -583,8 +585,9 @@ internal static class AffineReciprocalTheoremCertificateReplay
         BigRational upper,
         BigRational periodFraction,
         Monotonicity direction,
-        ResourceBudget budget) =>
-        new(
+        ResourceBudget budget)
+    {
+        return new MonotoneRegion(
             new PeriodicIntervalSet(
                 Scale(
                     Angle(angleUnit, periodFraction),
@@ -600,6 +603,7 @@ internal static class AffineReciprocalTheoremCertificateReplay
                         false)
                 ]),
             direction);
+    }
 
     private static Periodicity BuildPeriod(
         AffineReciprocalTrigPattern pattern,
@@ -691,8 +695,10 @@ internal static class AffineReciprocalTheoremCertificateReplay
         return result;
     }
 
-    private static ExactReal Angle(AngleUnit unit, BigRational fraction) =>
-        ExactAngleArithmetic.PiFraction(unit, fraction);
+    private static ExactReal Angle(AngleUnit unit, BigRational fraction)
+    {
+        return ExactAngleArithmetic.PiFraction(unit, fraction);
+    }
 
     private static bool IsSingleFeature(AnalysisFeatures feature)
     {

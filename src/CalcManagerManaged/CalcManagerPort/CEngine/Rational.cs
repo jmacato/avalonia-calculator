@@ -56,7 +56,7 @@ public class Rational
     {
         _ratPak = ratPak;
 
-        PRAT? pr = RatPak.i32torat((i));
+        PRAT? pr = RatPak.i32torat(i);
 
         P = new EngineNumber(pr._pp);
         Q = new EngineNumber(pr._pq);
@@ -68,7 +68,7 @@ public class Rational
     {
         _ratPak = ratPak;
 
-        PRAT? pr = RatPak.Ui32torat((i));
+        PRAT? pr = RatPak.Ui32torat(i);
 
         P = new EngineNumber(pr._pp);
         Q = new EngineNumber(pr._pq);
@@ -79,7 +79,7 @@ public class Rational
     public Rational(RatPak ratPak, uint64_t ui)
     {
         _ratPak = ratPak;
-        uint32_t hi = (uint32_t)(((ui) >> 32) & 0xffffffff);
+        uint32_t hi = (uint32_t)((ui >> 32) & 0xffffffff);
         uint32_t lo = (uint32_t)ui;
 
         Rational temp = (new Rational(_ratPak, hi) <<

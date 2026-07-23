@@ -1,0 +1,3 @@
+namespace GraphingImpl;
+
+internal readonly record struct CompatibilityValueProjection(CompatibilityFeatureFlag Feature, CompatibilityValueProjectionKind Kind);

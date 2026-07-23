@@ -1,7 +1,3 @@
-using System.Buffers;
-using System.Collections.Immutable;
-using System.Text;
-
 namespace MathComposer.Core;
 
 /// <summary>An explicit supported mathematical space.</summary>

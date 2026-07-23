@@ -88,7 +88,7 @@ public sealed partial class NumberPad : UserControl
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
-        System.ArgumentNullException.ThrowIfNull(change);
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
         if (change.Property == CurrentRadixTypeProperty)
         {

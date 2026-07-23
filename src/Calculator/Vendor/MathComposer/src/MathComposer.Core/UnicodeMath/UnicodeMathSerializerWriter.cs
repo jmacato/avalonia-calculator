@@ -36,7 +36,10 @@ internal sealed class UnicodeMathSerializerWriter
         }
     }
 
-    public override string ToString() => _builder.ToString();
+    public override string ToString()
+    {
+        return _builder.ToString();
+    }
 
     private void WriteNode(MathNode node, int parentPrecedence, bool followingCanMerge = false)
     {
@@ -250,23 +253,30 @@ internal sealed class UnicodeMathSerializerWriter
         _builder.Append(closing);
     }
 
-    private static bool IsSingleIdentifier(MathRow row) =>
-        row.Children is [{ } child] && StartsWithIdentifier(child) && child is MathText or MathFunction;
-
-    private static bool StartsWithIdentifier(MathNode node) => node switch
+    private static bool IsSingleIdentifier(MathRow row)
     {
-        MathText text => text.AtomClass is MathAtomClass.Identifier or MathAtomClass.OrdinaryText,
-        MathFunction => true,
-        MathScript script => StartsWithIdentifier(script.Base),
-        MathFraction fraction => RowStartsWithIdentifier(fraction.Numerator),
-        MathRow row => RowStartsWithIdentifier(row),
-        MathUnderOver underOver => RowStartsWithIdentifier(underOver.Base),
-        MathError error => error.RawFragment.Length > 0 && char.IsLetter(error.RawFragment, 0),
-        _ => false
-    };
+        return row.Children is [{ } child] && StartsWithIdentifier(child) && child is MathText or MathFunction;
+    }
 
-    private static bool RowStartsWithIdentifier(MathRow row) =>
-        row.Children.Length > 0 && StartsWithIdentifier(row.Children[0]);
+    private static bool StartsWithIdentifier(MathNode node)
+    {
+        return node switch
+        {
+            MathText text => text.AtomClass is MathAtomClass.Identifier or MathAtomClass.OrdinaryText,
+            MathFunction => true,
+            MathScript script => StartsWithIdentifier(script.Base),
+            MathFraction fraction => RowStartsWithIdentifier(fraction.Numerator),
+            MathRow row => RowStartsWithIdentifier(row),
+            MathUnderOver underOver => RowStartsWithIdentifier(underOver.Base),
+            MathError error => error.RawFragment.Length > 0 && char.IsLetter(error.RawFragment, 0),
+            _ => false
+        };
+    }
+
+    private static bool RowStartsWithIdentifier(MathRow row)
+    {
+        return row.Children.Length > 0 && StartsWithIdentifier(row.Children[0]);
+    }
 
     private void WriteTable(MathTable table)
     {
@@ -300,37 +310,43 @@ internal sealed class UnicodeMathSerializerWriter
         _builder.Append(')');
     }
 
-    private static string GetAccentControl(MathAccentKind kind) => kind switch
+    private static string GetAccentControl(MathAccentKind kind)
     {
-        MathAccentKind.Acute => "\\acute",
-        MathAccentKind.Grave => "\\grave",
-        MathAccentKind.Hat => "\\hat",
-        MathAccentKind.Check => "\\check",
-        MathAccentKind.Breve => "\\breve",
-        MathAccentKind.Tilde => "\\tilde",
-        MathAccentKind.Bar => "\\bar",
-        MathAccentKind.Dot => "\\dot",
-        MathAccentKind.DoubleDot => "\\ddot",
-        MathAccentKind.TripleDot => "\\dddot",
-        MathAccentKind.Vector => "\\vec",
-        _ => throw new ArgumentOutOfRangeException(nameof(kind))
-    };
+        return kind switch
+        {
+            MathAccentKind.Acute => "\\acute",
+            MathAccentKind.Grave => "\\grave",
+            MathAccentKind.Hat => "\\hat",
+            MathAccentKind.Check => "\\check",
+            MathAccentKind.Breve => "\\breve",
+            MathAccentKind.Tilde => "\\tilde",
+            MathAccentKind.Bar => "\\bar",
+            MathAccentKind.Dot => "\\dot",
+            MathAccentKind.DoubleDot => "\\ddot",
+            MathAccentKind.TripleDot => "\\dddot",
+            MathAccentKind.Vector => "\\vec",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        };
+    }
 
-    private static string GetUnderAccentMark(MathAccentKind kind) => kind switch
+    private static string GetUnderAccentMark(MathAccentKind kind)
     {
-        MathAccentKind.Acute => "\u0317",
-        MathAccentKind.Grave => "\u0316",
-        MathAccentKind.Hat => "\u032d",
-        MathAccentKind.Check => "\u032c",
-        MathAccentKind.Breve => "\u032e",
-        MathAccentKind.Tilde => "\u0330",
-        MathAccentKind.Bar => "\u0331",
-        MathAccentKind.Dot => "\u0323",
-        MathAccentKind.DoubleDot => "\u0324",
-        MathAccentKind.TripleDot => "\u20e8",
-        MathAccentKind.Vector => "\u20ef",
-        _ => throw new ArgumentOutOfRangeException(nameof(kind))
-    };
+        return kind switch
+        {
+            MathAccentKind.Acute => "\u0317",
+            MathAccentKind.Grave => "\u0316",
+            MathAccentKind.Hat => "\u032d",
+            MathAccentKind.Check => "\u032c",
+            MathAccentKind.Breve => "\u032e",
+            MathAccentKind.Tilde => "\u0330",
+            MathAccentKind.Bar => "\u0331",
+            MathAccentKind.Dot => "\u0323",
+            MathAccentKind.DoubleDot => "\u0324",
+            MathAccentKind.TripleDot => "\u20e8",
+            MathAccentKind.Vector => "\u20ef",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        };
+    }
 
     private static int GetRowPrecedence(MathRow row)
     {
@@ -366,11 +382,14 @@ internal sealed class UnicodeMathSerializerWriter
         return precedence;
     }
 
-    private static int GetNodePrecedence(MathNode node) => node switch
+    private static int GetNodePrecedence(MathNode node)
     {
-        MathRow row => GetRowPrecedence(row),
-        MathFraction => FractionPrecedence,
-        MathScript => ScriptPrecedence,
-        _ => PrimaryPrecedence
-    };
+        return node switch
+        {
+            MathRow row => GetRowPrecedence(row),
+            MathFraction => FractionPrecedence,
+            MathScript => ScriptPrecedence,
+            _ => PrimaryPrecedence
+        };
+    }
 }

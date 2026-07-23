@@ -1,8 +1,6 @@
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
-using Avalonia.VisualTree;
-using System.Threading;
 
 namespace FluentAvalonia.UI.Controls;
 
@@ -71,8 +69,8 @@ public sealed class FASymbolIcon : FAIconElement, IDisposable
         using (context.PushClip(destination))
         {
             var origin = new Point(
-                destination.Center.X - (layout.Width * 0.5),
-                destination.Center.Y - (layout.Height * 0.5));
+                destination.Center.X - layout.Width * 0.5,
+                destination.Center.Y - layout.Height * 0.5);
             layout.Draw(context, origin);
         }
     }
@@ -102,7 +100,10 @@ public sealed class FASymbolIcon : FAIconElement, IDisposable
         return created;
     }
 
-    private void ReleaseTextLayout() => Interlocked.Exchange(ref _textLayout, null)?.Dispose();
+    private void ReleaseTextLayout()
+    {
+        Interlocked.Exchange(ref _textLayout, null)?.Dispose();
+    }
 
     private static readonly FontFamily SymbolFontFamily =
         new("avares://FluentAvalonia/Fonts#Symbols");

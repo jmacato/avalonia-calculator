@@ -164,7 +164,11 @@ public sealed class KeyGraphFeaturesViewModel : ViewModelBase, IDisposable
         AddTooComplexFeature(info);
     }
 
-    private static string Resource(string name) => AppResourceProvider.Instance.GetResourceString(name);
+    private static string Resource(string name)
+    {
+        return AppResourceProvider.Instance.GetResourceString(name);
+    }
+
     private void AddParityFeature(KeyGraphFeaturesInfo info)
     {
         var item = new KeyGraphFeaturesItem

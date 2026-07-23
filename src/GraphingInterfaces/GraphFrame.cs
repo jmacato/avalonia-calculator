@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using Graphing.Renderer;
 
 namespace Graphing;
 /// <summary>

@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace MathComposer.Avalonia.OpenType;
 
 /// <summary>One part of a stretchy glyph assembly.</summary>

@@ -199,7 +199,7 @@ internal sealed class UnivariatePolynomial : IEquatable<UnivariatePolynomial>
         for (int degree = Degree; degree >= 0; degree--)
         {
             budget.Charge();
-            result = (result * value) + _coefficients[degree];
+            result = result * value + _coefficients[degree];
             budget.CheckCoefficient(result);
         }
 
@@ -238,9 +238,12 @@ internal sealed class UnivariatePolynomial : IEquatable<UnivariatePolynomial>
         return (Create(quotient, budget), Create(remainder, budget));
     }
 
-    public UnivariatePolynomial Monic(ResourceBudget budget) => IsZero
-        ? Zero
-        : Multiply(LeadingCoefficient.Reciprocal(), budget);
+    public UnivariatePolynomial Monic(ResourceBudget budget)
+    {
+        return IsZero
+            ? Zero
+            : Multiply(LeadingCoefficient.Reciprocal(), budget);
+    }
 
     public UnivariatePolynomial PrimitivePositive(ResourceBudget budget)
     {
@@ -338,7 +341,10 @@ internal sealed class UnivariatePolynomial : IEquatable<UnivariatePolynomial>
         return true;
     }
 
-    public override bool Equals(object? obj) => Equals(obj as UnivariatePolynomial);
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as UnivariatePolynomial);
+    }
 
     public override int GetHashCode()
     {
@@ -370,8 +376,13 @@ internal sealed class UnivariatePolynomial : IEquatable<UnivariatePolynomial>
         }
     }
 
-    public override string ToString() => Canonical;
+    public override string ToString()
+    {
+        return Canonical;
+    }
 
-    private static ExactInteger Lcm(ExactInteger left, ExactInteger right) =>
-        ExactInteger.Abs((left / ExactInteger.GreatestCommonDivisor(left, right)) * right);
+    private static ExactInteger Lcm(ExactInteger left, ExactInteger right)
+    {
+        return ExactInteger.Abs(left / ExactInteger.GreatestCommonDivisor(left, right) * right);
+    }
 }

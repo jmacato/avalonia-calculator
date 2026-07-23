@@ -9,7 +9,10 @@ namespace FluentAvalonia.UI.Input;
 /// </summary>
 public partial class FAXamlUICommand : AvaloniaObject, ICommand
 {
-    public void NotifyCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    public void NotifyCanExecuteChanged()
+    {
+        CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     public bool CanExecute(object? parameter)
     {

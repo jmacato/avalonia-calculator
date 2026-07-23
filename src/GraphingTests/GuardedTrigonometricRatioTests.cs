@@ -86,8 +86,10 @@ public sealed class GuardedTrigonometricRatioTests
             static rewrite => rewrite.Rule == "guarded-sine-cosine-to-tangent");
     }
 
-    private static AnalysisRequest Request(InputExpression expression) =>
-        new(expression, AnalysisFeatures.All, AngleUnit.Radians, "x", static () => true);
+    private static AnalysisRequest Request(InputExpression expression)
+    {
+        return new AnalysisRequest(expression, AnalysisFeatures.All, AngleUnit.Radians, "x", static () => true);
+    }
 
     private static T Proved<T>(ProofOutcome<T> outcome)
     {
@@ -97,18 +99,27 @@ public sealed class GuardedTrigonometricRatioTests
 
     private static InputExpression Ratio(
         InputExpression sineArgument,
-        InputExpression cosineArgument) =>
-        InputExpression.Binary(
+        InputExpression cosineArgument)
+    {
+        return InputExpression.Binary(
             InputExpressionKind.Divide,
             Function("sin", sineArgument),
             Function("cos", cosineArgument),
             Source);
+    }
 
-    private static InputExpression Function(string name, InputExpression argument) =>
-        InputExpression.Function(name, ImmutableArray.Create(argument), Source);
+    private static InputExpression Function(string name, InputExpression argument)
+    {
+        return InputExpression.Function(name, ImmutableArray.Create(argument), Source);
+    }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Number(int value) =>
-        InputExpression.Number(new BigRational(value), Source);
+    private static InputExpression Number(int value)
+    {
+        return InputExpression.Number(new BigRational(value), Source);
+    }
 }

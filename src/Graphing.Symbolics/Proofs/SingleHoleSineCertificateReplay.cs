@@ -73,7 +73,13 @@ internal static class SingleHoleSineCertificateReplay
         return string.Equals(rewrite.Rule, "self-division-value", StringComparison.Ordinal) && string.Equals(rewrite.Before, BinaryCanonical(ValueKind.Divide, numerator.Value, denominator.Value), StringComparison.Ordinal) && string.Equals(rewrite.After, expression.Value.Canonical, StringComparison.Ordinal) && SameFormula(rewrite.Guard, expectedGuard) && SameFormula(expression.DefinedWhen, expectedGuard) && SameFormula(expression.ContinuousWhen, expectedGuard) && SameFormula(expression.DifferentiableWhen, expectedGuard);
     }
 
-    private static bool IsSourceVariable(SemanticExpression expression, string variable, ResourceBudget budget) => expression.Value is { Kind: ValueKind.Variable, Name: var name } && name.Equals(variable, StringComparison.OrdinalIgnoreCase) && expression.SourceOperands.IsEmpty && expression.RewriteHistory.IsEmpty && IsTotalAndRegular(expression, budget);
+    private static bool IsSourceVariable(SemanticExpression expression, string variable, ResourceBudget budget)
+    {
+        return expression.Value is { Kind: ValueKind.Variable, Name: var name } &&
+               name.Equals(variable, StringComparison.OrdinalIgnoreCase) && expression.SourceOperands.IsEmpty &&
+               expression.RewriteHistory.IsEmpty && IsTotalAndRegular(expression, budget);
+    }
+
     private static bool TryExtractCenteredSine(SemanticExpression expression, string variable, ResourceBudget budget, out SingleHoleSineCertificateReplayReplayPattern pattern)
     {
         if (!IsTotalAndRegular(expression, budget) || !TryStripAmplitude(expression.Value, budget, out ValueTerm trig, out ExactScalar amplitude) || trig is not { Kind: ValueKind.Function, Name: "sin", Operands: [var argument] } || !TryExtractRational(argument, variable, budget, out SingleHoleSineCertificateReplayReplayRational rational) || rational.HasVariableExclusion || !rational.Function.Denominator.IsConstant || rational.Function.Denominator[0].IsZero || rational.Function.Numerator.Degree > 1)
@@ -175,7 +181,7 @@ internal static class SingleHoleSineCertificateReplay
         return value is not null;
     }
 
-    private static Graphing.Symbolics.IntervalSet Range(SingleHoleSineCertificateReplayReplayPattern pattern)
+    private static IntervalSet Range(SingleHoleSineCertificateReplayReplayPattern pattern)
     {
         ExactReal magnitude = pattern.Amplitude.Abs().Value;
         return new IntervalSet(RealBound.Finite(ExactRealArithmetic.Negate(magnitude)), true, RealBound.Finite(magnitude), true);
@@ -201,7 +207,11 @@ internal static class SingleHoleSineCertificateReplay
         return [new MonotoneRegion(new PeriodicIntervalSet(fullTurn, Parameter, new IntegerConstraint(Parameter, Comparison.NotEqual, 0), [new PeriodicInterval(negativeQuarter, false, positiveQuarter, false)]), aroundZero), new MonotoneRegion(new IntervalSet(RealBound.Finite(negativeQuarter), false, RealBound.Finite(zero), false), aroundZero), new MonotoneRegion(new IntervalSet(RealBound.Finite(zero), false, RealBound.Finite(positiveQuarter), false), aroundZero), new MonotoneRegion(new PeriodicIntervalSet(fullTurn, Parameter, IntegerConstraint.All(Parameter), [new PeriodicInterval(positiveQuarter, false, threeQuarters, false)]), opposite)];
     }
 
-    private static ExactReal Solve(SingleHoleSineCertificateReplayReplayPattern pattern, ExactReal angle) => ExactRealArithmetic.Scale(angle, pattern.Frequency.Reciprocal());
+    private static ExactReal Solve(SingleHoleSineCertificateReplayReplayPattern pattern, ExactReal angle)
+    {
+        return ExactRealArithmetic.Scale(angle, pattern.Frequency.Reciprocal());
+    }
+
     private static bool TryExtractRational(ValueTerm term, string variable, ResourceBudget budget, out SingleHoleSineCertificateReplayReplayRational rational)
     {
         budget.Charge();
@@ -254,14 +264,31 @@ internal static class SingleHoleSineCertificateReplay
         return false;
     }
 
-    private static bool IsTotalAndRegular(SemanticExpression expression, ResourceBudget budget) => ExactFormulaVerifier.IsAlwaysTrue(expression.DefinedWhen, budget) && ExactFormulaVerifier.IsAlwaysTrue(expression.ContinuousWhen, budget) && ExactFormulaVerifier.IsAlwaysTrue(expression.DifferentiableWhen, budget);
+    private static bool IsTotalAndRegular(SemanticExpression expression, ResourceBudget budget)
+    {
+        return ExactFormulaVerifier.IsAlwaysTrue(expression.DefinedWhen, budget) &&
+               ExactFormulaVerifier.IsAlwaysTrue(expression.ContinuousWhen, budget) &&
+               ExactFormulaVerifier.IsAlwaysTrue(expression.DifferentiableWhen, budget);
+    }
+
     private static bool IsSingleFeature(AnalysisFeatures feature)
     {
         uint value = (uint)feature;
         return value != 0 && (value & (value - 1)) == 0 && (feature & AnalysisFeatures.All) == feature;
     }
 
-    private static string BinaryCanonical(ValueKind kind, ValueTerm left, ValueTerm right) => $"{(int)kind}:({left.Canonical},{right.Canonical})";
-    private static ValueTerm Constant(BigRational value) => new(-1, ValueKind.Constant, value, string.Empty, [], $"q:{value}");
-    private static bool SameFormula(Formula actual, Formula expected) => string.Equals(actual.Canonical, expected.Canonical, StringComparison.Ordinal);
+    private static string BinaryCanonical(ValueKind kind, ValueTerm left, ValueTerm right)
+    {
+        return $"{(int)kind}:({left.Canonical},{right.Canonical})";
+    }
+
+    private static ValueTerm Constant(BigRational value)
+    {
+        return new ValueTerm(-1, ValueKind.Constant, value, string.Empty, [], $"q:{value}");
+    }
+
+    private static bool SameFormula(Formula actual, Formula expected)
+    {
+        return string.Equals(actual.Canonical, expected.Canonical, StringComparison.Ordinal);
+    }
 }

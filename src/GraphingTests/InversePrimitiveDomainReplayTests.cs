@@ -70,29 +70,48 @@ public sealed class InversePrimitiveDomainReplayTests
 
     private static AnalysisRequest Request(
         InputExpression expression,
-        AnalysisFeatures features) =>
-        new(expression, features, AngleUnit.Radians, "x", static () => true);
+        AnalysisFeatures features)
+    {
+        return new AnalysisRequest(expression, features, AngleUnit.Radians, "x", static () => true);
+    }
 
-    private static SemanticExpression Build(InputExpression expression) =>
-        new SemanticGraphBuilder(new ResourceBudget()).Build(expression);
+    private static SemanticExpression Build(InputExpression expression)
+    {
+        return new SemanticGraphBuilder(new ResourceBudget()).Build(expression);
+    }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Number(int value) =>
-        InputExpression.Number(new BigRational(value), Source);
+    private static InputExpression Number(int value)
+    {
+        return InputExpression.Number(new BigRational(value), Source);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Subtract(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
 
-    private static InputExpression Function(string name, InputExpression argument) =>
-        InputExpression.Function(name, [argument], Source);
+    private static InputExpression Function(string name, InputExpression argument)
+    {
+        return InputExpression.Function(name, [argument], Source);
+    }
 }

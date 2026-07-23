@@ -49,7 +49,14 @@ internal static class MonotoneTrigonometricPhaseCertificateReplay
         return true;
     }
 
-    private static bool TryReplayOuter(SemanticExpression expression, MonotoneTrigonometricPhaseProofCertificate certificate, out string outerFunction, out ValueTerm phaseValue, out bool isDirectComposition, out ValueTerm? quotientDenominator) => TryExtractOuterFunction(expression.Value, certificate.Feature, out outerFunction, out phaseValue, out isDirectComposition, out quotientDenominator) && string.Equals(outerFunction, certificate.OuterFunction, StringComparison.Ordinal) && string.Equals(certificate.PhaseCanonical, phaseValue.Canonical, StringComparison.Ordinal);
+    private static bool TryReplayOuter(SemanticExpression expression, MonotoneTrigonometricPhaseProofCertificate certificate, out string outerFunction, out ValueTerm phaseValue, out bool isDirectComposition, out ValueTerm? quotientDenominator)
+    {
+        return TryExtractOuterFunction(expression.Value, certificate.Feature, out outerFunction, out phaseValue,
+                   out isDirectComposition, out quotientDenominator) &&
+               string.Equals(outerFunction, certificate.OuterFunction, StringComparison.Ordinal) &&
+               string.Equals(certificate.PhaseCanonical, phaseValue.Canonical, StringComparison.Ordinal);
+    }
+
     private static bool TryReplayDomain(AnalysisRequest request, SemanticExpression expression, MonotoneTrigonometricPhaseProofCertificate certificate, ResourceBudget budget, out bool parameterIsNonnegative, out bool boundaryIncluded, out BigRational coordinateOffset)
     {
         if (!PolynomialFormulaConverter.TryConvert(expression.DefinedWhen, request.Variable, budget, out PolynomialFormula domainFormula) || !string.Equals(domainFormula.Canonical, certificate.DomainFormula.Canonical, StringComparison.Ordinal) || !string.Equals(certificate.DomainCells.Formula.Canonical, domainFormula.Canonical, StringComparison.Ordinal) || !CellDecomposer.Verify(certificate.DomainCells, budget) || !TryClassifyDomain(certificate.DomainCells.Result, out parameterIsNonnegative, out boundaryIncluded, out coordinateOffset) || parameterIsNonnegative != certificate.ParameterIsNonnegative || boundaryIncluded != certificate.BoundaryIncluded || coordinateOffset != certificate.CoordinateOffset)

@@ -95,9 +95,20 @@ public sealed class AnimationFrameTimer
         _owner = null;
     }
 
-    internal static bool IsStartMessage(object message) => ReferenceEquals(message, StartMessage);
-    internal static bool IsStopMessage(object message) => ReferenceEquals(message, StopMessage);
-    internal static bool IsReleaseMessage(object message) => ReferenceEquals(message, ReleaseMessage);
+    internal static bool IsStartMessage(object message)
+    {
+        return ReferenceEquals(message, StartMessage);
+    }
+
+    internal static bool IsStopMessage(object message)
+    {
+        return ReferenceEquals(message, StopMessage);
+    }
+
+    internal static bool IsReleaseMessage(object message)
+    {
+        return ReferenceEquals(message, ReleaseMessage);
+    }
 
     internal void PublishFrame(TimeSpan timestamp, int generation)
     {

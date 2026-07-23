@@ -3,11 +3,9 @@
 
 using Avalonia;
 using Avalonia.Animation.Easings;
-using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Media;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using FluentAvalonia.Core;
 
 namespace FluentAvalonia.UI.Controls;

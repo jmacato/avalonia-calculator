@@ -27,13 +27,28 @@ public readonly record struct GraphStatus(int Value)
 
     public bool Failed => Value < 0;
 
-    public int ToInt32() => Value;
+    public int ToInt32()
+    {
+        return Value;
+    }
 
-    public static GraphStatus FromInt32(int value) => new(value);
+    public static GraphStatus FromInt32(int value)
+    {
+        return new GraphStatus(value);
+    }
 
-    public static implicit operator GraphStatus(int value) => FromInt32(value);
+    public static implicit operator GraphStatus(int value)
+    {
+        return FromInt32(value);
+    }
 
-    public static explicit operator int(GraphStatus status) => status.ToInt32();
+    public static explicit operator int(GraphStatus status)
+    {
+        return status.ToInt32();
+    }
 
-    public override string ToString() => $"0x{unchecked((uint)Value):X8}";
+    public override string ToString()
+    {
+        return $"0x{unchecked((uint)Value):X8}";
+    }
 }

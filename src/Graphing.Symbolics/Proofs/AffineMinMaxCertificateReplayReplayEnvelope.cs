@@ -1,0 +1,3 @@
+namespace Graphing.Symbolics;
+
+internal sealed record AffineMinMaxCertificateReplayReplayEnvelope(string Function, SemanticExpression FirstOperand, SemanticExpression SecondOperand, AffineMinMaxCertificateReplayReplayLine FirstLine, AffineMinMaxCertificateReplayReplayLine SecondLine, string PatternCanonical, AffineMinMaxCertificateReplayReplayModel Model);

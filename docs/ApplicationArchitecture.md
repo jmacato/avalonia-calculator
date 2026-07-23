@@ -1,9 +1,8 @@
 # Application Architecture
 
-Windows Calculator is a [C++/CX][C++/CX] application, built for the Universal Windows Platform ([UWP][What is UWP?]).
-Calculator uses the [XAML][XAML Overview] UI framework, and the project follows the Model-View-ViewModel ([MVVM][MVVM])
-design pattern. This document discusses each of the layers and how they are related to the three Visual Studio projects
-that build into the final Calculator application.
+Calculator is a C# application built with [Avalonia][Avalonia]. It follows the
+Model-View-ViewModel ([MVVM][MVVM]) design pattern and ships through desktop and browser front ends.
+This document describes the layers shared by those front ends.
 
 --------------------
 ## Table of Contents
@@ -19,18 +18,12 @@ that build into the final Calculator application.
 
 ## View
 
-The View layer is contained in the [Calculator project][Calculator folder]. This project contains mostly XAML files
-and various custom controls that support the UI. [App.xaml][App.xaml] contains many of the [static][StaticResource] and
-[theme][ThemeResource] resources that the other XAML files will reference. Its code-behind file, [App.xaml.cs][App.xaml.cs],
-contains the main entry point to the application. On startup, it navigates to the main page.
+The View layer is contained in the [Calculator project][Calculator folder]. This project contains XAML files
+and custom controls that support the UI. [App.xaml][App.xaml] contains shared resources referenced by the views,
+while [App.xaml.cs][App.xaml.cs] initializes application services and the active Avalonia lifetime.
 
-```C#
-rootFrame.Navigate(typeof(MainPage), argument)
-```
-
-In Calculator, there is only one concrete [Page][Page] class: [MainPage.xaml][MainPage.xaml]. `MainPage` is the root
-container for all the other application UI elements.  As you can see, there's not much content. `MainPage` uses a
-`NavigationView` control to display the toggleable navigation menu, and empty containers for delay-loaded UI elements.
+[MainPage.xaml][MainPage.xaml] is the root container for the calculator UI. `MainPage` uses a
+`NavigationView` control to display the toggleable navigation menu and hosts the active mode.
 Of the many modes that Calculator shows in its menu, there are actually only three XAML files that `MainPage` needs to
 manage in order to support all modes. They are:
 
@@ -71,106 +64,73 @@ a Portrait or Landscape aspect ratio.
 
 ### Data-Binding
 
-Calculator uses [data binding][Data Binding] to dynamically update the properties of UI elements. If this concept
-is new for you, it's also worth reading about [data binding in depth][Data binding in depth].
-
-The [x:Bind][x:Bind] markup extension is a newer replacement for the older [Binding][Binding] style. You may see both
-styles in the Calculator codebase. Prefer `x:Bind` in new contributions because it has better performance. If you need
-to add or modify an existing `Binding`, updating to `x:Bind` is a great first step. Make sure to read and understand
-the difference between the two styles, as there are some subtle behavioral changes. Refer to the
-[binding feature comparison][BindingComparison] to learn more.
+Calculator uses [data binding][Data Binding] to update UI properties from its ViewModels.
+Compiled bindings are enabled project-wide. Views should declare an `x:DataType` and use `{Binding ...}` so
+binding paths are checked at build time and remain compatible with trimming and managed AOT.
 
 ------------
 ## ViewModel
 
-The ViewModel layer is contained in the [CalcViewModel][CalcViewModel folder] project. ViewModels provide a source of
+The ViewModel layer is contained in the [ViewModels folder][ViewModels folder]. ViewModels provide a source of
 data for the UI to bind against and act as the intermediary separating pure business logic from UI components that
 should not care about the model's implementation. Just as the View layer consists of a hierarchy of XAML files, the
 ViewModel consists of a hierarchy of ViewModel files. The relationship between XAML and ViewModel files is often 1:1.
 Here are the notable ViewModel files to start exploring with:
 
-* [ApplicationViewModel.h][ApplicationViewModel.h]: The ViewModel for [MainPage.xaml][MainPage.xaml]. This ViewModel
+* [ApplicationViewModel.cs][ApplicationViewModel.cs]: The ViewModel for [MainPage.xaml][MainPage.xaml]. This ViewModel
   is the root of the other mode-specific ViewModels. The application changes between modes by updating the `Mode` property
   of the `ApplicationViewModel`. The ViewModel will make sure the appropriate ViewModel for the new mode is initialized.
-* [StandardCalculatorViewModel.h][StandardCalculatorViewModel.h]: The ViewModel for [Calculator.xaml][Calculator.xaml].
+* [StandardCalculatorViewModel.cs][StandardCalculatorViewModel.cs]: The ViewModel for [Calculator.xaml][Calculator.xaml].
   This ViewModel exposes functionality for the main three Calculator modes: Standard, Scientific, and Programmer.
-* [DateCalculatorViewModel.h][DateCalculatorViewModel.h]: The ViewModel for [DateCalculator.xaml][DateCalculator.xaml].
-* [UnitConverterViewModel.h][UnitConverterViewModel.h]: The ViewModel for [UnitConverter.xaml][UnitConverter.xaml].
+* [DateCalculatorViewModel.cs][DateCalculatorViewModel.cs]: The ViewModel for [DateCalculator.xaml][DateCalculator.xaml].
+* [UnitConverterViewModel.cs][UnitConverterViewModel.cs]: The ViewModel for [UnitConverter.xaml][UnitConverter.xaml].
   This ViewModel implements the logic to support every converter mode, including Currency Converter.
 
 ### PropertyChanged Events
 
-In order for [data binding](#data-binding) to work, ViewModels need a way to inform the XAML framework about
-updates to their member properties. Most ViewModels in the project do so by implementing the
-[INotifyPropertyChanged][INotifyPropertyChanged] interface. The interface requires that the class provides a
-[PropertyChanged event][PropertyChanged]. Clients of the ViewModel (such as the UI), can register for the
-`PropertyChanged` event from the ViewModel, then re-evaluate bindings or handle the event in code-behind when the
-ViewModel decides to raise the event. ViewModels in the Calculator codebase generally uses a macro, defined in the
-[Utils.h][Utils.h] utility file, to implement the `INotifyPropertyChanged` interface. Here is a standard
-implementation, taken from [ApplicationViewModel.h][ApplicationViewModel.h].
+For [data binding](#data-binding) to work, ViewModels notify the XAML framework when a property changes.
+Calculator ViewModels derive from [ViewModelBase.cs][ViewModelBase.cs], which uses CommunityToolkit.Mvvm's
+`ObservableObject` implementation of [INotifyPropertyChanged][INotifyPropertyChanged].
 
-```C++
-[Windows::UI::Xaml::Data::Bindable]
-public ref class ApplicationViewModel sealed : public Windows::UI::Xaml::Data::INotifyPropertyChanged
-{
-public:
-    ApplicationViewModel();
+Bindable properties generally use the toolkit's source generator. For example,
+[ApplicationViewModel.cs][ApplicationViewModel.cs] declares:
 
-    OBSERVABLE_OBJECT();
+```C#
+[ObservableProperty]
+private string _categoryName = string.Empty;
 ```
 
-The `OBSERVABLE_OBJECT()` macro defines the required `PropertyChanged` event. It also defines a private
-`RaisePropertyChanged` helper function for the class. The function takes a property name and raises a
-`PropertyChanged` event for that property.
-
-Properties that are intended to be the source for a data binding are also typically implemented with a macro. Here is
-one such property from `ApplicationViewModel`:
-
-```C++
-OBSERVABLE_PROPERTY_RW(Platform::String^, CategoryName);
-```
-
-The `OBSERVABLE_PROPERTY_RW` macro defines a Read/Write property that will raise a `PropertyChanged` event if its value
-changes. Read/Write means the property exposes both a public getter and setter. For efficiency and to avoid raising
-unnecessary `PropertyChanged` events, the setter for these types of properties will check if the new value is
-different from the previous value before raising the event.
-
-From this example, either `ApplicationViewModel` or clients of the class can simply assign to the `CategoryName`
-property and a `PropertyChanged` event will be raised, allowing the UI to respond to the new `CategoryName` value.
+The generator creates the public `CategoryName` property and raises `PropertyChanged` only when its value changes.
 
 --------
 ## Model
 
-The Model for the Calculator modes is contained in the [CalcManager][CalcManager folder] project. It consists of three layers: a `CalculatorManager`, which relies on a `CalcEngine`, which relies on the `Ratpack`.
+The Model for the Calculator modes is contained in the managed [CalcManagerPort project][CalcManager folder].
+It consists of three layers: a `CalculatorManager`, which relies on a `CalcEngine`, which relies on the `Ratpack`.
 
 ### CalculatorManager
 
-The CalculatorManager contains the logic for managing the overall Calculator app's data such as the History and Memory lists, as well as maintaining the instances of calculator engines used for the various modes. The interface to this layer is defined in [CalculatorManager.h][CalculatorManager.h].
+The CalculatorManager contains the logic for managing the overall Calculator app's data such as the History and Memory lists, as well as maintaining the instances of calculator engines used for the various modes. The implementation is defined in [CalculatorManager.cs][CalculatorManager.cs].
 
 ### CalcEngine
 
-The CalcEngine contains the logic for interpreting and performing operations according to the commands passed to it. It maintains the current state of calculations and relies on the RatPack for performing mathematical operations. The interface to this layer is defined in [CalcEngine.h][CalcEngine.h].
+The CalcEngine contains the logic for interpreting and performing operations according to the commands passed to it. It maintains the current state of calculations and relies on the RatPack for performing mathematical operations. The managed engine is defined in [CCalcEngine.cs][CCalcEngine.cs].
 
 ### RatPack
 
 The RatPack (short for Rational Pack) is the core of the Calculator model and contains the logic for
 performing its mathematical operations (using [infinite precision][Infinite Precision] arithmetic
-instead of regular floating point arithmetic). The interface to this layer is defined in [ratpak.h][ratpak.h].
+instead of regular floating point arithmetic). Its managed implementation is defined in [RatPak.cs][RatPak.cs].
 
 [References]:####################################################################################################
 
-[C++/CX]:                             https://docs.microsoft.com/en-us/cpp/cppcx/visual-c-language-reference-c-cx
-[What is UWP?]:                       https://docs.microsoft.com/en-us/windows/uwp/get-started/universal-application-platform-guide
-[XAML Overview]:                      https://docs.microsoft.com/en-us/windows/uwp/xaml-platform/xaml-overview
-[MVVM]:                               https://docs.microsoft.com/en-us/windows/uwp/data-binding/data-binding-and-mvvm
+[Avalonia]:                           https://docs.avaloniaui.net/
+[MVVM]:                               https://docs.avaloniaui.net/docs/concepts/the-mvvm-pattern/
 
 [Calculator folder]:                  ../src/Calculator
 [App.xaml]:                           ../src/Calculator/App.xaml
 [App.xaml.cs]:                       ../src/Calculator/App.xaml.cs
-[StaticResource]:                     https://docs.microsoft.com/en-us/windows/uwp/xaml-platform/staticresource-markup-extension
-[ThemeResource]:                      https://docs.microsoft.com/en-us/windows/uwp/xaml-platform/themeresource-markup-extension
-[Page]:                               https://docs.microsoft.com/en-us/uwp/api/Windows.UI.Xaml.Controls.Page
-[UserControl]:                        https://docs.microsoft.com/en-us/uwp/api/Windows.UI.Xaml.Controls.UserControl
+[UserControl]:                        https://docs.avaloniaui.net/docs/reference/controls/usercontrol
 [MainPage.xaml]:                      ../src/Calculator/Views/MainPage.xaml
 [Calculator.xaml]:                    ../src/Calculator/Views/Calculator.xaml
 [CalculatorStandardOperators.xaml]:   ../src/Calculator/Views/CalculatorStandardOperators.xaml
@@ -179,27 +139,22 @@ instead of regular floating point arithmetic). The interface to this layer is de
 [DateCalculator.xaml]:                ../src/Calculator/Views/DateCalculator.xaml
 [UnitConverter.xaml]:                 ../src/Calculator/Views/UnitConverter.xaml
 
-[VisualState]:                        https://docs.microsoft.com/en-us/windows/uwp/design/layout/layouts-with-xaml#adaptive-layouts-with-visual-states-and-state-triggers
-[Style]:                              https://docs.microsoft.com/en-us/windows/uwp/design/controls-and-patterns/xaml-styles
+[VisualState]:                        https://docs.avaloniaui.net/docs/basics/user-interface/styling/styles
+[Style]:                              https://docs.avaloniaui.net/docs/basics/user-interface/styling/styles
 
-[Data Binding]:                       https://docs.microsoft.com/en-us/windows/uwp/data-binding/data-binding-quickstart
-[Data binding in depth]:              https://docs.microsoft.com/en-us/windows/uwp/data-binding/data-binding-in-depth
-[x:Bind]:                             https://docs.microsoft.com/en-us/windows/uwp/xaml-platform/x-bind-markup-extension
-[Binding]:                            https://docs.microsoft.com/en-us/windows/uwp/xaml-platform/binding-markup-extension
-[BindingComparison]:                  https://docs.microsoft.com/en-us/windows/uwp/data-binding/data-binding-in-depth#xbind-and-binding-feature-comparison
+[Data Binding]:                       https://docs.avaloniaui.net/docs/basics/data/data-binding/
 
-[CalcViewModel folder]:               ../src/CalcViewModel
-[ApplicationViewModel.h]:             ../src/CalcViewModel/ApplicationViewModel.h
-[StandardCalculatorViewModel.h]:      ../src/CalcViewModel/StandardCalculatorViewModel.h
-[DateCalculatorViewModel.h]:          ../src/CalcViewModel/DateCalculatorViewModel.h
-[UnitConverterViewModel.h]:           ../src/CalcViewModel/UnitConverterViewModel.h
+[ViewModels folder]:                  ../src/Calculator/ViewModels
+[ApplicationViewModel.cs]:            ../src/Calculator/ViewModels/ApplicationViewModel.cs
+[StandardCalculatorViewModel.cs]:   ../src/Calculator/ViewModels/StandardCalculatorViewModel.cs
+[DateCalculatorViewModel.cs]:       ../src/Calculator/ViewModels/DateCalculatorViewModel.cs
+[UnitConverterViewModel.cs]:        ../src/Calculator/ViewModels/UnitConverterViewModel.cs
+[ViewModelBase.cs]:                   ../src/Calculator/ViewModels/Common/ViewModelBase.cs
 
-[INotifyPropertyChanged]:             https://docs.microsoft.com/en-us/uwp/api/windows.ui.xaml.data.inotifypropertychanged
-[PropertyChanged]:                    https://docs.microsoft.com/en-us/uwp/api/windows.ui.xaml.data.inotifypropertychanged.propertychanged
-[Utils.h]:                            ../src/CalcViewModel/Common/Utils.h
+[INotifyPropertyChanged]:             https://learn.microsoft.com/dotnet/api/system.componentmodel.inotifypropertychanged
 
-[CalcManager folder]:                 ../src/CalcManager
-[CalculatorManager.h]:                ../src/CalcManager/CalculatorManager.h
-[CalcEngine.h]:                       ../src/CalcManager/Header&#32;Files/CalcEngine.h
+[CalcManager folder]:                 ../src/CalcManagerManaged/CalcManagerPort
+[CalculatorManager.cs]:               ../src/CalcManagerManaged/CalcManagerPort/CalculatorManager.cs
+[CCalcEngine.cs]:                     ../src/CalcManagerManaged/CalcManagerPort/CEngine/CCalcEngine.cs
 [Infinite Precision]:                 https://en.wikipedia.org/wiki/Arbitrary-precision_arithmetic
-[ratpak.h]:                           ../src/CalcManager/Ratpack/ratpak.h
+[RatPak.cs]:                          ../src/CalcManagerManaged/CalcManagerPort/Ratpack/RatPak.cs

@@ -5,7 +5,7 @@ using System.Text;
 
 namespace MathComposer.Core;
 
-internal sealed class UnicodeMathParserState
+internal sealed class UnicodeMathParserState(string source, CultureInfo culture)
 {
     private static readonly HashSet<string> FunctionNames = new(StringComparer.Ordinal)
         {
@@ -16,20 +16,12 @@ internal sealed class UnicodeMathParserState
             "asinh", "acosh", "atanh", "asech", "acsch", "acoth"
         };
 
-    private readonly string _source;
-    private readonly string _decimalSeparator;
-    private readonly string _listSeparator;
+    private readonly string _decimalSeparator = culture.NumberFormat.NumberDecimalSeparator;
+    private readonly string _listSeparator = culture.TextInfo.ListSeparator;
     private readonly List<MathDiagnostic> _diagnostics = [];
     private int _position;
     private int _depth;
     private int _nodeCount;
-
-    public UnicodeMathParserState(string source, CultureInfo culture)
-    {
-        _source = source;
-        _decimalSeparator = culture.NumberFormat.NumberDecimalSeparator;
-        _listSeparator = culture.TextInfo.ListSeparator;
-    }
 
     public MathParseResult Parse()
     {
@@ -68,7 +60,7 @@ internal sealed class UnicodeMathParserState
         while (true)
         {
             int slashPosition = PeekAfterAsciiSpaces();
-            if (slashPosition >= _source.Length || _source[slashPosition] != '/')
+            if (slashPosition >= source.Length || source[slashPosition] != '/')
             {
                 return left;
             }
@@ -115,13 +107,13 @@ internal sealed class UnicodeMathParserState
             MathRow operand;
             if (!TryReadUnicodeDigitScript(scriptPosition, out scriptKind, out operand))
             {
-                if (scriptPosition >= _source.Length ||
-                    (_source[scriptPosition] != '_' && _source[scriptPosition] != '^'))
+                if (scriptPosition >= source.Length ||
+                    (source[scriptPosition] != '_' && source[scriptPosition] != '^'))
                 {
                     return PromoteNaryLimits(result);
                 }
 
-                scriptKind = _source[scriptPosition];
+                scriptKind = source[scriptPosition];
                 int operandPosition = PeekAfterAsciiSpaces(scriptPosition + 1);
                 if (!CanStartOperand(operandPosition, stops))
                 {
@@ -207,8 +199,8 @@ internal sealed class UnicodeMathParserState
         out char scriptKind,
         out MathRow operand)
     {
-        if (scriptPosition >= _source.Length ||
-            !TryMapUnicodeScriptDigit(_source[scriptPosition], out scriptKind, out char digit))
+        if (scriptPosition >= source.Length ||
+            !TryMapUnicodeScriptDigit(source[scriptPosition], out scriptKind, out char digit))
         {
             scriptKind = default;
             operand = MathRow.Empty;
@@ -218,8 +210,8 @@ internal sealed class UnicodeMathParserState
         var digits = new StringBuilder();
         digits.Append(digit);
         _position = scriptPosition + 1;
-        while (_position < _source.Length &&
-               TryMapUnicodeScriptDigit(_source[_position], out char nextKind, out digit) &&
+        while (_position < source.Length &&
+               TryMapUnicodeScriptDigit(source[_position], out char nextKind, out digit) &&
                nextKind == scriptKind)
         {
             digits.Append(digit);
@@ -269,14 +261,16 @@ internal sealed class UnicodeMathParserState
             MathUnderOverKind.NaryLimits));
     }
 
-    private static bool IsNaryOperator(MathNode node) =>
-        node is MathText { Text: "∑" or "∏" or "∐" or "∫" or "∬" or "∭" };
+    private static bool IsNaryOperator(MathNode node)
+    {
+        return node is MathText { Text: "∑" or "∏" or "∐" or "∫" or "∬" or "∭" };
+    }
 
     private MathRow ParseScriptOperand(UnicodeMathParserStopKind stops)
     {
-        if (_source[_position] is '(' or '{')
+        if (source[_position] is '(' or '{')
         {
-            char opening = _source[_position++];
+            char opening = source[_position++];
             char closing = opening == '(' ? ')' : '}';
             int start = _position - 1;
             EnterDepth(start);
@@ -292,7 +286,7 @@ internal sealed class UnicodeMathParserState
                         start,
                         _position - start);
                     return CreateRow([CreateError(
-                            _source[start.._position],
+                            source[start.._position],
                             "MC1102",
                             $"Missing closing '{closing}'.")]);
                 }
@@ -316,7 +310,7 @@ internal sealed class UnicodeMathParserState
         }
 
         int start = _position;
-        char current = _source[_position];
+        char current = source[_position];
         if (current is '(' or '{')
         {
             return ParseGroup();
@@ -338,7 +332,7 @@ internal sealed class UnicodeMathParserState
             return ParseDirectDelimiter();
         }
 
-        if (current == '\u2009' || current == '\u205f' || current == '\u2003')
+        if (current is '\u2009' or '\u205f' or '\u2003')
         {
             _position++;
             MathSpacingWidth width = current switch
@@ -361,7 +355,7 @@ internal sealed class UnicodeMathParserState
                 start,
                 accentLength);
             return CreateError(
-                _source.Substring(start, accentLength),
+                source.Substring(start, accentLength),
                 "MC1101",
                 "Accent mark without a base.");
         }
@@ -386,7 +380,7 @@ internal sealed class UnicodeMathParserState
         }
 
         _position += runeLength;
-        string scalar = _source.Substring(start, runeLength);
+        string scalar = source.Substring(start, runeLength);
         if (scalar is ")" or "}" or "_" or "^" or "/")
         {
             AddDiagnostic(
@@ -404,7 +398,7 @@ internal sealed class UnicodeMathParserState
     private MathNode ParseGroup()
     {
         int start = _position;
-        char opening = _source[_position++];
+        char opening = source[_position++];
         char closing = opening == '(' ? ')' : '}';
         EnterDepth(start);
         try
@@ -419,7 +413,7 @@ internal sealed class UnicodeMathParserState
                     start,
                     _position - start);
                 return CreateError(
-                    _source[start.._position],
+                    source[start.._position],
                     "MC1102",
                     $"Missing closing '{closing}'.");
             }
@@ -435,7 +429,7 @@ internal sealed class UnicodeMathParserState
     private MathNode ParseDirectDelimiter()
     {
         int start = _position;
-        char opening = _source[_position++];
+        char opening = source[_position++];
         char closing = opening switch
         {
             '|' => '|',
@@ -464,7 +458,7 @@ internal sealed class UnicodeMathParserState
                     start,
                     _position - start);
                 return CreateError(
-                    _source[start.._position],
+                    source[start.._position],
                     "MC1102",
                     $"Missing closing '{closing}'.");
             }
@@ -493,10 +487,10 @@ internal sealed class UnicodeMathParserState
         }
 
         EnsureTokenWithinLimit(start, _position);
-        string name = _source[start.._position].Normalize(NormalizationForm.FormC);
+        string name = source[start.._position].Normalize(NormalizationForm.FormC);
         int afterName = _position;
         _position = PeekAfterAsciiSpaces();
-        if (_position < _source.Length && _source[_position] == '(' &&
+        if (_position < source.Length && source[_position] == '(' &&
             (name is "sqrt" or "cbrt" or "root" or "abs" or "floor" or "ceiling" ||
              FunctionNames.Contains(name)))
         {
@@ -531,7 +525,7 @@ internal sealed class UnicodeMathParserState
                         start,
                         _position - start);
                     return CreateError(
-                        _source[start.._position],
+                        source[start.._position],
                         "MC1102",
                         "Missing closing ')' for a function call.");
                 }
@@ -551,7 +545,7 @@ internal sealed class UnicodeMathParserState
                     start,
                     _position - start);
                 return CreateError(
-                    _source[start.._position],
+                    source[start.._position],
                     "MC1105",
                     $"Function '{name}' has an unsupported argument count.");
             }
@@ -599,10 +593,10 @@ internal sealed class UnicodeMathParserState
         }
 
         int exponentStart = _position;
-        if (_position < _source.Length && _source[_position] is 'e' or 'E')
+        if (_position < source.Length && source[_position] is 'e' or 'E')
         {
             int scan = _position + 1;
-            if (scan < _source.Length && _source[scan] is '+' or '-')
+            if (scan < source.Length && source[scan] is '+' or '-')
             {
                 scan++;
             }
@@ -622,7 +616,7 @@ internal sealed class UnicodeMathParserState
         }
 
         EnsureTokenWithinLimit(start, _position);
-        string text = _source[start.._position];
+        string text = source[start.._position];
         if (consumedDecimal is not null && consumedDecimal != ".")
         {
             int relativeSeparator = text.IndexOf(consumedDecimal, StringComparison.Ordinal);
@@ -639,7 +633,7 @@ internal sealed class UnicodeMathParserState
     {
         int start = _position++;
         int wordStart = _position;
-        while (_position < _source.Length && IsAsciiLetter(_source[_position]))
+        while (_position < source.Length && IsAsciiLetter(source[_position]))
         {
             _position++;
         }
@@ -656,7 +650,7 @@ internal sealed class UnicodeMathParserState
         }
 
         EnsureTokenWithinLimit(start, _position);
-        string word = _source[wordStart.._position];
+        string word = source[wordStart.._position];
         if (word == "frac")
         {
             return ParseFractionAlias(start);
@@ -688,9 +682,9 @@ internal sealed class UnicodeMathParserState
             {
                 int afterControl = _position;
                 _position = PeekAfterAsciiSpaces();
-                if (_position < _source.Length && _source[_position] == '(')
+                if (_position < source.Length && source[_position] == '(')
                 {
-                    return ParseRadicalTail(start, _source[start..afterControl]);
+                    return ParseRadicalTail(start, source[start..afterControl]);
                 }
 
                 _position = afterControl;
@@ -700,7 +694,7 @@ internal sealed class UnicodeMathParserState
             return CreateText(symbol, Classify(rune));
         }
 
-        string raw = _source[start.._position];
+        string raw = source[start.._position];
         AddDiagnostic(
             "MC1106",
             MathDiagnosticSeverity.Error,
@@ -754,18 +748,18 @@ internal sealed class UnicodeMathParserState
             return false;
         }
 
-        if (_source[_position] == '.')
+        if (source[_position] == '.')
         {
             _position++;
             return true;
         }
 
-        if (!TryReadRune(_position, out _, out int runeLength) || _source[_position] == '\\')
+        if (!TryReadRune(_position, out _, out int runeLength) || source[_position] == '\\')
         {
             return false;
         }
 
-        delimiter = _source.Substring(_position, runeLength);
+        delimiter = source.Substring(_position, runeLength);
         _position += runeLength;
         return true;
     }
@@ -911,7 +905,7 @@ internal sealed class UnicodeMathParserState
     {
         int length = Math.Max(1, _position - start);
         AddDiagnostic("MC1102", MathDiagnosticSeverity.Error, message, start, length);
-        return CreateError(_source.Substring(start, length), "MC1102", message);
+        return CreateError(source.Substring(start, length), "MC1102", message);
     }
 
     private static bool TryGetTableKind(string word, out MathTableKind kind)
@@ -980,7 +974,7 @@ internal sealed class UnicodeMathParserState
         out MathAccentPlacement placement)
     {
         int markPosition = _position;
-        if (markPosition < _source.Length && _source[markPosition] == '\u00a0')
+        if (markPosition < source.Length && source[markPosition] == '\u00a0')
         {
             markPosition++;
         }
@@ -1109,7 +1103,7 @@ internal sealed class UnicodeMathParserState
     private MathError RecoverExpectedFractionGroup(int start, string groupName)
     {
         int length = Math.Max(1, _position - start);
-        string raw = _source.Substring(start, length);
+        string raw = source.Substring(start, length);
         AddDiagnostic(
             "MC1102",
             MathDiagnosticSeverity.Error,
@@ -1151,7 +1145,7 @@ internal sealed class UnicodeMathParserState
                     start,
                     _position - start);
                 return CreateError(
-                    _source[start.._position],
+                    source[start.._position],
                     "MC1102",
                     "Missing closing ')' for a radical.");
             }
@@ -1171,7 +1165,7 @@ internal sealed class UnicodeMathParserState
             return true;
         }
 
-        char current = _source[_position];
+        char current = source[_position];
         return ((stops & UnicodeMathParserStopKind.CloseParenthesis) != 0 && current == ')') ||
                ((stops & UnicodeMathParserStopKind.CloseBrace) != 0 && current == '}') ||
                ((stops & UnicodeMathParserStopKind.Ampersand) != 0 && current == '&') ||
@@ -1183,8 +1177,10 @@ internal sealed class UnicodeMathParserState
                ((stops & UnicodeMathParserStopKind.ArgumentSeparator) != 0 && IsArgumentSeparator(_position));
     }
 
-    private bool IsArgumentSeparator(int position) =>
-        MatchesAt(position, ",") || MatchesAt(position, ";") || MatchesAt(position, _listSeparator);
+    private bool IsArgumentSeparator(int position)
+    {
+        return MatchesAt(position, ",") || MatchesAt(position, ";") || MatchesAt(position, _listSeparator);
+    }
 
     private bool TryConsumeArgumentSeparator()
     {
@@ -1223,7 +1219,7 @@ internal sealed class UnicodeMathParserState
 
     private bool CanStartOperand(int position, UnicodeMathParserStopKind stops)
     {
-        if (position >= _source.Length)
+        if (position >= source.Length)
         {
             return false;
         }
@@ -1237,14 +1233,17 @@ internal sealed class UnicodeMathParserState
             return false;
         }
 
-        return _source[position] is not '_' and not '^' and not '/';
+        return source[position] is not '_' and not '^' and not '/';
     }
 
-    private int PeekAfterAsciiSpaces() => PeekAfterAsciiSpaces(_position);
+    private int PeekAfterAsciiSpaces()
+    {
+        return PeekAfterAsciiSpaces(_position);
+    }
 
     private int PeekAfterAsciiSpaces(int position)
     {
-        while (position < _source.Length && _source[position] == ' ')
+        while (position < source.Length && source[position] == ' ')
         {
             position++;
         }
@@ -1252,11 +1251,14 @@ internal sealed class UnicodeMathParserState
         return position;
     }
 
-    private void SkipAsciiSpaces() => _position = PeekAfterAsciiSpaces();
+    private void SkipAsciiSpaces()
+    {
+        _position = PeekAfterAsciiSpaces();
+    }
 
     private bool TryConsume(char value)
     {
-        if (_position < _source.Length && _source[_position] == value)
+        if (_position < source.Length && source[_position] == value)
         {
             _position++;
             return true;
@@ -1285,13 +1287,15 @@ internal sealed class UnicodeMathParserState
         }
 
         int afterControl = position + control.Length;
-        return afterControl == _source.Length || !IsAsciiLetter(_source[afterControl]);
+        return afterControl == source.Length || !IsAsciiLetter(source[afterControl]);
     }
 
-    private bool MatchesAt(int position, string value) =>
-        !string.IsNullOrEmpty(value) &&
-        position <= _source.Length - value.Length &&
-        _source.AsSpan(position, value.Length).SequenceEqual(value.AsSpan());
+    private bool MatchesAt(int position, string value)
+    {
+        return !string.IsNullOrEmpty(value) &&
+               position <= source.Length - value.Length &&
+               source.AsSpan(position, value.Length).SequenceEqual(value.AsSpan());
+    }
 
     private static bool TryReadRune(int position, string source, out Rune rune, out int runeLength)
     {
@@ -1306,11 +1310,15 @@ internal sealed class UnicodeMathParserState
         return status == OperationStatus.Done;
     }
 
-    private bool TryReadRune(int position, out Rune rune, out int runeLength) =>
-        TryReadRune(position, _source, out rune, out runeLength);
+    private bool TryReadRune(int position, out Rune rune, out int runeLength)
+    {
+        return TryReadRune(position, source, out rune, out runeLength);
+    }
 
-    private static bool IsAsciiLetter(char value) =>
-        value is >= 'A' and <= 'Z' or >= 'a' and <= 'z';
+    private static bool IsAsciiLetter(char value)
+    {
+        return value is >= 'A' and <= 'Z' or >= 'a' and <= 'z';
+    }
 
     private static bool IsIdentifierRune(Rune rune)
     {
@@ -1327,28 +1335,40 @@ internal sealed class UnicodeMathParserState
             UnicodeCategory.ConnectorPunctuation;
     }
 
-    private static bool IsDecimalDigit(Rune rune) =>
-        Rune.GetUnicodeCategory(rune) == UnicodeCategory.DecimalDigitNumber;
+    private static bool IsDecimalDigit(Rune rune)
+    {
+        return Rune.GetUnicodeCategory(rune) == UnicodeCategory.DecimalDigitNumber;
+    }
 
-    private static MathAtomClass Classify(Rune rune) => MathAutoCorrect.Classify(rune);
+    private static MathAtomClass Classify(Rune rune)
+    {
+        return MathAutoCorrect.Classify(rune);
+    }
 
-    private MathText CreateText(string text, MathAtomClass atomClass) =>
-        CountNode(new MathText(text.Normalize(NormalizationForm.FormC), atomClass));
+    private MathText CreateText(string text, MathAtomClass atomClass)
+    {
+        return CountNode(new MathText(text.Normalize(NormalizationForm.FormC), atomClass));
+    }
 
-    private MathError CreateError(string raw, string code, string message) =>
-        CountNode(new MathError(MathTextFormat.UnicodeMath, raw, code, message));
+    private MathError CreateError(string raw, string code, string message)
+    {
+        return CountNode(new MathError(MathTextFormat.UnicodeMath, raw, code, message));
+    }
 
     private MathError CreateErrorForCurrentScalar(string code, string message)
     {
         int start = _position;
         int length = TryReadRune(_position, out _, out int runeLength) ? runeLength : 1;
-        _position = Math.Min(_source.Length, _position + length);
-        string raw = _source.Substring(start, _position - start);
+        _position = Math.Min(source.Length, _position + length);
+        string raw = source.Substring(start, _position - start);
         AddDiagnostic(code, MathDiagnosticSeverity.Error, message, start, _position - start);
         return CreateError(raw, code, message);
     }
 
-    private MathRow CreateRow(IEnumerable<MathNode> children) => CountNode(new MathRow(children));
+    private MathRow CreateRow(IEnumerable<MathNode> children)
+    {
+        return CountNode(new MathRow(children));
+    }
 
     private T CountNode<T>(T node)
         where T : MathNode
@@ -1367,7 +1387,7 @@ internal sealed class UnicodeMathParserState
 
     private void EnsureTokenWithinLimit(int start, int end)
     {
-        if (Encoding.UTF8.GetByteCount(_source.AsSpan(start, end - start)) >
+        if (Encoding.UTF8.GetByteCount(source.AsSpan(start, end - start)) >
             MathImportLimits.MaximumTokenUtf8Bytes)
         {
             throw new MathImportLimitExceededException(
@@ -1389,20 +1409,25 @@ internal sealed class UnicodeMathParserState
         }
     }
 
-    private void ExitDepth() => _depth--;
+    private void ExitDepth()
+    {
+        _depth--;
+    }
 
     private void AddDiagnostic(
         string code,
         MathDiagnosticSeverity severity,
         string message,
         int start,
-        int length) =>
+        int length)
+    {
         _diagnostics.Add(new MathDiagnostic(
             code,
             severity,
             message,
             MathTextFormat.UnicodeMath,
             new MathSourceSpan(start, length)));
+    }
 
-    private bool IsAtEnd => _position >= _source.Length;
+    private bool IsAtEnd => _position >= source.Length;
 }

@@ -99,6 +99,8 @@ internal static class MathClipboardService
         return null;
     }
 
-    private static bool IsPlatformClipboardFailure(Exception exception) =>
-        exception is not OutOfMemoryException;
+    private static bool IsPlatformClipboardFailure(Exception exception)
+    {
+        return exception is not OutOfMemoryException;
+    }
 }

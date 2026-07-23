@@ -8,7 +8,6 @@ using Avalonia;
 using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using FluentAvalonia.Core;
 using GraphControl;
 

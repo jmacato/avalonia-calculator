@@ -20,7 +20,6 @@
     <LangVersion>latest</LangVersion>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <EnableDefaultAvaloniaItems>false</EnableDefaultAvaloniaItems>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
@@ -38,47 +37,10 @@
     <DefineConstants>$(DefineConstants);CALCULATOR_THREADED_MANAGED_DEBUG</DefineConstants>
   </PropertyGroup>
 
-  <!-- These globs make every translated Calculator source part of compilation.
-       Legacy CalcManager sources and vendored libraries are owned by their own
-       managed projects and are gated there. -->
   <ItemGroup>
-    <Compile Include="App.xaml.cs" />
-    <Compile Include="Common\DispatcherExceptionRecoveryGate.cs" />
-    <Compile Include="Controls\*.cs" />
-    <Compile Include="MainWindow.xaml.cs"
-             Condition="'$(CalculatorBrowserBuild)' != 'true'" />
-    <Compile Include="Views\*.cs" />
-    <Compile Include="Views\GraphingCalculator\*.cs" />
-    <Compile Remove="Views\TitleBar.xaml.cs"
+    <Compile Remove="Vendor\**\*.cs" />
+    <Compile Remove="MainWindow.xaml.cs;Views\TitleBar.xaml.cs"
              Condition="'$(CalculatorBrowserBuild)' == 'true'" />
-    <Compile Include="Selectors\KeyGraphFeaturesTemplateSelector.cs" />
-    <Compile Include="Converters\ExpressionItemTemplateSelector.cs" />
-    <Compile Include="Utils\ResourceString.cs" />
-    <Compile Include="Services\Settings\*.cs" />
-    <Compile Include="ViewModels\*.cs" />
-    <Compile Include="ViewModels\Common\*AppResourceProvider*.cs" />
-    <Compile Include="ViewModels\Common\BitLength.h.cs" />
-    <Compile Include="ViewModels\Common\*CalculatorButtonCommandParameter*.cs" />
-    <Compile Include="ViewModels\Common\*CalculatorButtonUser*.cs" />
-    <Compile Include="ViewModels\Common\*CalculatorDisplay*.cs" />
-    <Compile Include="ViewModels\Common\*CopyPasteManager*.cs" />
-    <Compile Include="ViewModels\Common\CurrencyDisplayFormatter.cs" />
-    <Compile Include="ViewModels\Common\*DateCalculator*.cs" />
-    <Compile Include="ViewModels\Common\*DelegateCommand*.cs" />
-    <Compile Include="ViewModels\Common\*DisplayExpressionToken*.cs" />
-    <Compile Include="ViewModels\Common\*EngineResourceProvider*.cs" />
-    <Compile Include="ViewModels\Common\LocalizationSettings.h.cs" />
-    <Compile Include="ViewModels\Common\*LocalizationStringUtil*.cs" />
-    <Compile Include="ViewModels\Common\MyVirtualKey.h.cs" />
-    <Compile Include="ViewModels\Common\*NavCategory*.cs" />
-    <Compile Include="ViewModels\Common\*NetworkManager*.cs" />
-    <Compile Include="ViewModels\Common\NumberBase.h.cs" />
-    <Compile Include="ViewModels\Common\*TraceLogger*.cs" />
-    <Compile Include="ViewModels\Common\ViewModelBase.cs" />
-    <Compile Include="ViewModels\Common\Automation\*.cs" />
-    <Compile Include="ViewModels\DataLoaders\*.cs" />
-    <Compile Include="ViewModels\GraphingCalculator\*.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
     <AvaloniaXaml Remove="**\*.axaml" />
     <AvaloniaXaml Remove="**\*.xaml" />
     <AvaloniaXaml Include="App.xaml" />
@@ -125,7 +87,6 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
-    <PackageReference Include="Serilog" />
   </ItemGroup>
 
   <ItemGroup>

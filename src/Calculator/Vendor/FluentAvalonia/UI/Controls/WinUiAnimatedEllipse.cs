@@ -6,7 +6,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Media;
-using Avalonia.VisualTree;
 using FluentAvalonia.Core;
 
 namespace FluentAvalonia.UI.Controls;
@@ -224,9 +223,11 @@ public sealed class WinUiAnimatedEllipse : Ellipse
         _frameRequested = _isFillAnimating || _isStrokeAnimating ? _frameRequested : false;
     }
 
-    private static byte Interpolate(byte from, byte to, double progress) =>
-        (byte)Math.Clamp(
-            Math.Round(from + ((to - from) * progress), MidpointRounding.AwayFromZero),
+    private static byte Interpolate(byte from, byte to, double progress)
+    {
+        return (byte)Math.Clamp(
+            Math.Round(from + (to - from) * progress, MidpointRounding.AwayFromZero),
             byte.MinValue,
             byte.MaxValue);
+    }
 }

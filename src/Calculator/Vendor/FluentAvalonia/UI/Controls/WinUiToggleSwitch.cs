@@ -79,9 +79,11 @@ public sealed class WinUiToggleSwitch : ToggleSwitch
         CompositionVisualMotion.SetOpacity(_switchKnobOn, isOn ? 1 : 0);
     }
 
-    private bool HasVisualParts() =>
-        _outerBorder is not null
-        && _switchKnobBounds is not null
-        && _switchKnobOff is not null
-        && _switchKnobOn is not null;
+    private bool HasVisualParts()
+    {
+        return _outerBorder is not null
+               && _switchKnobBounds is not null
+               && _switchKnobOff is not null
+               && _switchKnobOn is not null;
+    }
 }

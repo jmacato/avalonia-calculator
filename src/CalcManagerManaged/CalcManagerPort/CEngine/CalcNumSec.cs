@@ -1,19 +1,11 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalcEngine;
-using CalculationManager;
-
 namespace CalcEngine;
 
 public class CalcNumSec
 {
     // public:
-    public CalcNumSec()
-    {
-        Value = "";
-        m_isNegative = (false);
-    }
 
     public bool IsEmpty()
     {
@@ -30,7 +22,7 @@ public class CalcNumSec
         m_isNegative = isNegative;
     }
 
-    public wstring Value { get; set; }
+    public wstring Value { get; set; } = "";
 
     bool m_isNegative;
 

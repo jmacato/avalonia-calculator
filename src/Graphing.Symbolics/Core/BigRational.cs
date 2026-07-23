@@ -181,7 +181,10 @@ internal readonly struct BigRational :
         return new BigRational(numeratorValue, denominatorValue);
     }
 
-    public BigRational Abs() => Sign < 0 ? -this : this;
+    public BigRational Abs()
+    {
+        return Sign < 0 ? -this : this;
+    }
 
     public BigRational Reciprocal()
     {
@@ -231,7 +234,10 @@ internal readonly struct BigRational :
         return Sign > 0 && !remainder.IsZero ? quotient + ExactInteger.One : quotient;
     }
 
-    internal ExactInteger Truncate() => Numerator / Denominator;
+    internal ExactInteger Truncate()
+    {
+        return Numerator / Denominator;
+    }
 
     public static bool TrySquareRoot(BigRational value, out BigRational result)
     {
@@ -271,16 +277,27 @@ internal readonly struct BigRational :
         return left.CompareTo(right);
     }
 
-    public bool Equals(BigRational other) =>
-        Numerator.Equals(other.Numerator) && Denominator.Equals(other.Denominator);
+    public bool Equals(BigRational other)
+    {
+        return Numerator.Equals(other.Numerator) && Denominator.Equals(other.Denominator);
+    }
 
-    public override bool Equals(object? obj) => obj is BigRational other && Equals(other);
+    public override bool Equals(object? obj)
+    {
+        return obj is BigRational other && Equals(other);
+    }
 
-    public override int GetHashCode() => HashCode.Combine(Numerator, Denominator);
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Numerator, Denominator);
+    }
 
-    public override string ToString() => Denominator.IsOne
-        ? Numerator.ToString(CultureInfo.InvariantCulture)
-        : string.Create(CultureInfo.InvariantCulture, $"{Numerator}/{Denominator}");
+    public override string ToString()
+    {
+        return Denominator.IsOne
+            ? Numerator.ToString(CultureInfo.InvariantCulture)
+            : string.Create(CultureInfo.InvariantCulture, $"{Numerator}/{Denominator}");
+    }
 
     public static BigRational operator +(BigRational left, BigRational right)
     {
@@ -309,7 +326,10 @@ internal readonly struct BigRational :
             left.Denominator * leftScale);
     }
 
-    public static BigRational operator -(BigRational left, BigRational right) => left + -right;
+    public static BigRational operator -(BigRational left, BigRational right)
+    {
+        return left + -right;
+    }
 
     public static BigRational operator *(BigRational left, BigRational right)
     {
@@ -400,23 +420,50 @@ internal readonly struct BigRational :
         return new BigRational(numerator, denominator, canonical: true);
     }
 
-    public static BigRational operator -(BigRational value) => value.IsZero
-        ? value
-        : new BigRational(-value.Numerator, value.Denominator, canonical: true);
+    public static BigRational operator -(BigRational value)
+    {
+        return value.IsZero
+            ? value
+            : new BigRational(-value.Numerator, value.Denominator, canonical: true);
+    }
 
-    public static implicit operator BigRational(int value) => new(value);
+    public static implicit operator BigRational(int value)
+    {
+        return new BigRational(value);
+    }
 
-    public static implicit operator BigRational(long value) => new(value);
+    public static implicit operator BigRational(long value)
+    {
+        return new BigRational(value);
+    }
 
-    public static bool operator ==(BigRational left, BigRational right) => left.Equals(right);
+    public static bool operator ==(BigRational left, BigRational right)
+    {
+        return left.Equals(right);
+    }
 
-    public static bool operator !=(BigRational left, BigRational right) => !left.Equals(right);
+    public static bool operator !=(BigRational left, BigRational right)
+    {
+        return !left.Equals(right);
+    }
 
-    public static bool operator <(BigRational left, BigRational right) => left.CompareTo(right) < 0;
+    public static bool operator <(BigRational left, BigRational right)
+    {
+        return left.CompareTo(right) < 0;
+    }
 
-    public static bool operator <=(BigRational left, BigRational right) => left.CompareTo(right) <= 0;
+    public static bool operator <=(BigRational left, BigRational right)
+    {
+        return left.CompareTo(right) <= 0;
+    }
 
-    public static bool operator >(BigRational left, BigRational right) => left.CompareTo(right) > 0;
+    public static bool operator >(BigRational left, BigRational right)
+    {
+        return left.CompareTo(right) > 0;
+    }
 
-    public static bool operator >=(BigRational left, BigRational right) => left.CompareTo(right) >= 0;
+    public static bool operator >=(BigRational left, BigRational right)
+    {
+        return left.CompareTo(right) >= 0;
+    }
 }

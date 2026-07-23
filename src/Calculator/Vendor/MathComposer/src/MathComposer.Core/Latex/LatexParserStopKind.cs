@@ -1,8 +1,3 @@
-using System.Buffers;
-using System.Collections.Immutable;
-using System.Globalization;
-using System.Text;
-
 namespace MathComposer.Core;
 
 [Flags]

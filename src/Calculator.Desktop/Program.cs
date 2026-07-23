@@ -25,6 +25,7 @@ internal static class Program
         }
         finally
         {
+            CalculatorLog.Configure(null);
             if (s_automationServer is not null)
             {
                 s_automationServer.DisposeAsync().AsTask().GetAwaiter().GetResult();
@@ -65,5 +66,22 @@ internal static class Program
                 rollOnFileSizeLimit: true,
                 shared: true)
             .CreateLogger();
+        CalculatorLog.Configure(WriteLog);
+    }
+
+    private static void WriteLog(
+        CalculatorLogLevel level,
+        Exception? exception,
+        string messageTemplate,
+        object?[] values)
+    {
+        LogEventLevel serilogLevel = level switch
+        {
+            CalculatorLogLevel.Information => LogEventLevel.Information,
+            CalculatorLogLevel.Warning => LogEventLevel.Warning,
+            CalculatorLogLevel.Error => LogEventLevel.Error,
+            _ => throw new ArgumentOutOfRangeException(nameof(level)),
+        };
+        Log.Write(serilogLevel, exception, messageTemplate, values);
     }
 }

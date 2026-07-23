@@ -4,7 +4,6 @@
 using CalcEngine;
 using System.Diagnostics;
 using System.Globalization;
-using UnitConversionManager;
 
 namespace UnitConversionManager;
 
@@ -28,7 +27,7 @@ public class UnitConverter : IUnitConverter
 
     UnitToUnitToConversionDataMap m_ratioMap = new();
 
-    readonly Dictionary<ConversionData, RationalConversionData> m_rationalConversions = new();
+    readonly Dictionary<ConversionData, RationalConversionData> m_rationalConversions = [];
 
     readonly RatPak m_ratPak;
 
@@ -70,9 +69,9 @@ public class UnitConverter : IUnitConverter
 
     const wchar_t RIGHTESCAPECHAR = '}';
 
-    Dictionary<wchar_t, wstring> quoteConversions = new();
+    Dictionary<wchar_t, wstring> quoteConversions = [];
 
-    Dictionary<wstring, wchar_t> unquoteConversions = new();
+    Dictionary<wstring, wchar_t> unquoteConversions = [];
 
     /// <summary>
     /// Constructor, sets up all the variables and requires a configLoader
@@ -182,7 +181,7 @@ public class UnitConverter : IUnitConverter
             m_currencyDataLoader.LoadData();
         }
 
-        IList<Unit> newUnitList = new List<Unit>();
+        IList<Unit> newUnitList = [];
         if (CheckLoad())
         {
             if (m_currentCategory.Id != input.Id)
@@ -191,8 +190,8 @@ public class UnitConverter : IUnitConverter
                 {
                     foreach (var unit in currentUnits)
                     {
-                        unit.IsConversionSource = (unit.Id == m_fromType.Id);
-                        unit.IsConversionTarget = (unit.Id == m_toType.Id);
+                        unit.IsConversionSource = unit.Id == m_fromType.Id;
+                        unit.IsConversionTarget = unit.Id == m_toType.Id;
                     }
                 }
 
@@ -271,7 +270,7 @@ public class UnitConverter : IUnitConverter
 
         m_returnDisplay = m_currentDisplay;
         m_currentDisplay = newValue;
-        m_currentHasDecimal = (m_currentDisplay.IndexOf('.') != -1);
+        m_currentHasDecimal = m_currentDisplay.IndexOf('.') != -1;
         m_switchedActive = true;
 
         if (m_currencyDataLoader != null && m_vmCurrencyCallback != null)
@@ -295,12 +294,12 @@ public class UnitConverter : IUnitConverter
             throw new ArgumentNullException(nameof(c));
         }
 
-        return Quote((c.Id.ToString(CultureInfo.InvariantCulture)))
-               + (delimiter)
-               + (Quote(c.SupportsNegative ? "1" : "0"))
-               + (delimiter)
-               + (Quote(c.Name))
-               + (delimiter);
+        return Quote(c.Id.ToString(CultureInfo.InvariantCulture))
+               + delimiter
+               + Quote(c.SupportsNegative ? "1" : "0")
+               + delimiter
+               + Quote(c.Name)
+               + delimiter;
     }
 
     public static IList<wstring> StringToVector(wstring_view w, wstring_view delimiter, bool addRemainder = false)
@@ -317,11 +316,11 @@ public class UnitConverter : IUnitConverter
 
         var delimiterIndex = w.IndexOf(delimiter, StringComparison.Ordinal);
         var startIndex = 0;
-        List<wstring> serializedTokens = new List<wstring>();
+        List<wstring> serializedTokens = [];
         while (delimiterIndex != -1)
         {
             serializedTokens.Add(w.Substring(startIndex, delimiterIndex - startIndex));
-            startIndex = delimiterIndex + (int)(delimiter.Length);
+            startIndex = delimiterIndex + (int)delimiter.Length;
             delimiterIndex = w.IndexOf(delimiter, startIndex, StringComparison.Ordinal);
         }
 
@@ -337,17 +336,17 @@ public class UnitConverter : IUnitConverter
     wstring UnitToString(Unit u, wstring_view delimiter)
     {
         return Quote(u.Id.ToString(CultureInfo.InvariantCulture))
-               + (delimiter)
-               + (Quote(u.Name))
-               + (delimiter)
-               + (Quote(u.Abbreviation))
-               + (delimiter)
+               + delimiter
+               + Quote(u.Name)
+               + delimiter
+               + Quote(u.Abbreviation)
+               + delimiter
                + (u.IsConversionSource ? "1" : "0")
-               + (delimiter)
+               + delimiter
                + (u.IsConversionTarget ? "1" : "0")
-               + (delimiter)
+               + delimiter
                + (u.IsWhimsical ? "1" : "0")
-               + (delimiter);
+               + delimiter;
     }
 
     Unit StringToUnit(wstring_view w)
@@ -424,11 +423,11 @@ public class UnitConverter : IUnitConverter
         var delimiter = ";";
         var pipe = "|";
         return UnitToString(m_fromType, delimiter)
-               + (pipe)
-               + (UnitToString(m_toType, delimiter))
-               + (pipe)
-               + (CategoryToString(m_currentCategory, delimiter))
-               + (pipe);
+               + pipe
+               + UnitToString(m_toType, delimiter)
+               + pipe
+               + CategoryToString(m_currentCategory, delimiter)
+               + pipe;
     }
 
     /// <summary>
@@ -626,10 +625,10 @@ public class UnitConverter : IUnitConverter
         }
         else
         {
-            clearFront = (m_currentDisplay == "0");
+            clearFront = m_currentDisplay == "0";
             clearBack =
-                ((m_currentHasDecimal && m_currentDisplay.Length - 1 >= MAXIMUMDIGITSALLOWED)
-                 || (!m_currentHasDecimal && m_currentDisplay.Length >= MAXIMUMDIGITSALLOWED));
+                (m_currentHasDecimal && m_currentDisplay.Length - 1 >= MAXIMUMDIGITSALLOWED)
+                || (!m_currentHasDecimal && m_currentDisplay.Length >= MAXIMUMDIGITSALLOWED);
         }
     }
 
@@ -731,7 +730,7 @@ public class UnitConverter : IUnitConverter
 
     ICurrencyConverterDataLoader? GetCurrencyConverterDataLoader()
     {
-        return (ICurrencyConverterDataLoader?)(m_currencyDataLoader);
+        return (ICurrencyConverterDataLoader?)m_currencyDataLoader;
     }
 
     /// <summary>
@@ -814,7 +813,7 @@ public class UnitConverter : IUnitConverter
         }
         else
         {
-            return (value * conversionData.Ratio) + conversionData.Offset;
+            return value * conversionData.Ratio + conversionData.Offset;
         }
     }
 
@@ -842,7 +841,7 @@ public class UnitConverter : IUnitConverter
     {
         if (m_currencyDataLoader != null && m_currencyDataLoader.SupportsCategory(m_currentCategory))
         {
-            return new();
+            return [];
         }
 
         List<(wstring, Unit)> returnVector = [];
@@ -1133,7 +1132,7 @@ public class UnitConverter : IUnitConverter
             Rational returnValue = Convert(currentValue, rationalConversion);
 
             var isCurrencyConverter = m_currencyDataLoader != null &&
-                                      m_currencyDataLoader.SupportsCategory(this.m_currentCategory);
+                                      m_currencyDataLoader.SupportsCategory(m_currentCategory);
             if (isCurrencyConverter)
             {
                 // We don't need to trim the value when it's a currency.
@@ -1176,7 +1175,7 @@ public class UnitConverter : IUnitConverter
                     NumberFormattingUtils.TrimTrailingZeros(ref m_returnDisplay);
                 }
 
-                m_returnHasDecimal = (m_returnDisplay.IndexOf('.') != -1);
+                m_returnHasDecimal = m_returnDisplay.IndexOf('.') != -1;
             }
         }
 

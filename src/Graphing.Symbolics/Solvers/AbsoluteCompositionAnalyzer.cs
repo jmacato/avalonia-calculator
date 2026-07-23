@@ -164,23 +164,27 @@ internal static class AbsoluteCompositionAnalyzer
         return !slope.IsZero;
     }
 
-    private static object ComputeAbsoluteOuter(AbsoluteCompositionPattern pattern, AngleUnit angleUnit, AnalysisFeatures feature) => feature switch
+    private static object ComputeAbsoluteOuter(AbsoluteCompositionPattern pattern, AngleUnit angleUnit, AnalysisFeatures feature)
     {
-        AnalysisFeatures.Domain => AllRealSet.Instance,
-        AnalysisFeatures.Range => AbsoluteOuterRange(pattern),
-        AnalysisFeatures.Parity => AbsoluteOuterParity(pattern, angleUnit),
-        AnalysisFeatures.Zeros => AbsoluteOuterZeros(pattern, angleUnit),
-        AnalysisFeatures.YIntercept => OptionalValue<ExactReal>.Some(AbsoluteOuterAtOrigin(pattern, angleUnit)),
-        AnalysisFeatures.Minima => AbsoluteOuterExtrema(pattern, angleUnit, minimum: true),
-        AnalysisFeatures.Maxima => AbsoluteOuterExtrema(pattern, angleUnit, minimum: false),
-        AnalysisFeatures.InflectionPoints => ImmutableArray<FeaturePoint>.Empty,
-        AnalysisFeatures.VerticalAsymptotes => ImmutableArray<Asymptote>.Empty,
-        AnalysisFeatures.HorizontalAsymptotes => AbsoluteHorizontalAsymptotes(pattern),
-        AnalysisFeatures.ObliqueAsymptotes => ImmutableArray<Asymptote>.Empty,
-        AnalysisFeatures.Monotonicity => AbsoluteOuterMonotonicity(pattern, angleUnit),
-        AnalysisFeatures.Period => AbsoluteOuterPeriod(pattern, angleUnit),
-        _ => null!
-    };
+        return feature switch
+        {
+            AnalysisFeatures.Domain => AllRealSet.Instance,
+            AnalysisFeatures.Range => AbsoluteOuterRange(pattern),
+            AnalysisFeatures.Parity => AbsoluteOuterParity(pattern, angleUnit),
+            AnalysisFeatures.Zeros => AbsoluteOuterZeros(pattern, angleUnit),
+            AnalysisFeatures.YIntercept => OptionalValue<ExactReal>.Some(AbsoluteOuterAtOrigin(pattern, angleUnit)),
+            AnalysisFeatures.Minima => AbsoluteOuterExtrema(pattern, angleUnit, minimum: true),
+            AnalysisFeatures.Maxima => AbsoluteOuterExtrema(pattern, angleUnit, minimum: false),
+            AnalysisFeatures.InflectionPoints => ImmutableArray<FeaturePoint>.Empty,
+            AnalysisFeatures.VerticalAsymptotes => ImmutableArray<Asymptote>.Empty,
+            AnalysisFeatures.HorizontalAsymptotes => AbsoluteHorizontalAsymptotes(pattern),
+            AnalysisFeatures.ObliqueAsymptotes => ImmutableArray<Asymptote>.Empty,
+            AnalysisFeatures.Monotonicity => AbsoluteOuterMonotonicity(pattern, angleUnit),
+            AnalysisFeatures.Period => AbsoluteOuterPeriod(pattern, angleUnit),
+            _ => null!
+        };
+    }
+
     private static object ComputeAbsoluteInner(AbsoluteCompositionPattern pattern, AngleUnit angleUnit, AnalysisFeatures feature)
     {
         if (pattern.Function == "sin")
@@ -207,22 +211,27 @@ internal static class AbsoluteCompositionAnalyzer
         };
     }
 
-    private static object ComputeSineAbsoluteInner(AbsoluteCompositionPattern pattern, AngleUnit angleUnit, AnalysisFeatures feature) => feature switch
+    private static object ComputeSineAbsoluteInner(AbsoluteCompositionPattern pattern, AngleUnit angleUnit, AnalysisFeatures feature)
     {
-        AnalysisFeatures.Domain => AllRealSet.Instance,
-        AnalysisFeatures.Range => ClosedInterval(BigRational.MinusOne, BigRational.One),
-        AnalysisFeatures.Parity => AbsoluteInnerParity(pattern, angleUnit),
-        AnalysisFeatures.Zeros => TrigPointSet(pattern, angleUnit, 0, 1),
-        AnalysisFeatures.YIntercept => OptionalValue<ExactReal>.Some(AbsoluteInnerAtOrigin(pattern, angleUnit)),
-        AnalysisFeatures.Minima => SineAbsoluteMinima(pattern, angleUnit),
-        AnalysisFeatures.Maxima => SineAbsoluteMaxima(pattern, angleUnit),
-        AnalysisFeatures.InflectionPoints => SineAbsoluteInflections(pattern, angleUnit),
-        AnalysisFeatures.VerticalAsymptotes or AnalysisFeatures.HorizontalAsymptotes or AnalysisFeatures.ObliqueAsymptotes => ImmutableArray<Asymptote>.Empty,
-        AnalysisFeatures.Monotonicity => SineAbsoluteMonotonicity(pattern, angleUnit),
-        AnalysisFeatures.Period => new Periodicity(PeriodicityKind.NotPeriodic, null),
-        _ => null!
-    };
-    private static Graphing.Symbolics.IntervalSet AbsoluteOuterRange(AbsoluteCompositionPattern pattern)
+        return feature switch
+        {
+            AnalysisFeatures.Domain => AllRealSet.Instance,
+            AnalysisFeatures.Range => ClosedInterval(BigRational.MinusOne, BigRational.One),
+            AnalysisFeatures.Parity => AbsoluteInnerParity(pattern, angleUnit),
+            AnalysisFeatures.Zeros => TrigPointSet(pattern, angleUnit, 0, 1),
+            AnalysisFeatures.YIntercept => OptionalValue<ExactReal>.Some(AbsoluteInnerAtOrigin(pattern, angleUnit)),
+            AnalysisFeatures.Minima => SineAbsoluteMinima(pattern, angleUnit),
+            AnalysisFeatures.Maxima => SineAbsoluteMaxima(pattern, angleUnit),
+            AnalysisFeatures.InflectionPoints => SineAbsoluteInflections(pattern, angleUnit),
+            AnalysisFeatures.VerticalAsymptotes or AnalysisFeatures.HorizontalAsymptotes
+                or AnalysisFeatures.ObliqueAsymptotes => ImmutableArray<Asymptote>.Empty,
+            AnalysisFeatures.Monotonicity => SineAbsoluteMonotonicity(pattern, angleUnit),
+            AnalysisFeatures.Period => new Periodicity(PeriodicityKind.NotPeriodic, null),
+            _ => null!
+        };
+    }
+
+    private static IntervalSet AbsoluteOuterRange(AbsoluteCompositionPattern pattern)
     {
         ExactReal zero = RationalReal(BigRational.Zero);
         ExactReal magnitude = pattern.Scale.Value;
@@ -235,14 +244,26 @@ internal static class AbsoluteCompositionAnalyzer
         };
     }
 
-    private static Graphing.Symbolics.IntervalSet AbsoluteInnerRange(AbsoluteCompositionPattern pattern) => pattern.Function switch
+    private static IntervalSet AbsoluteInnerRange(AbsoluteCompositionPattern pattern)
     {
-        "cos" => ClosedInterval(BigRational.MinusOne, BigRational.One),
-        "tanh" => new IntervalSet(RealBound.Finite(RationalReal(BigRational.Zero)), true, RealBound.Finite(RationalReal(BigRational.One)), false),
-        "cosh" => new IntervalSet(RealBound.Finite(RationalReal(BigRational.One)), true, RealBound.PositiveInfinity, false),
-        _ => new IntervalSet(RealBound.Finite(RationalReal(BigRational.Zero)), true, RealBound.PositiveInfinity, false)
-    };
-    private static Graphing.Symbolics.IntervalSet ClosedInterval(BigRational lower, BigRational upper) => new IntervalSet(RealBound.Finite(RationalReal(lower)), true, RealBound.Finite(RationalReal(upper)), true);
+        return pattern.Function switch
+        {
+            "cos" => ClosedInterval(BigRational.MinusOne, BigRational.One),
+            "tanh" => new IntervalSet(RealBound.Finite(RationalReal(BigRational.Zero)), true,
+                RealBound.Finite(RationalReal(BigRational.One)), false),
+            "cosh" => new IntervalSet(RealBound.Finite(RationalReal(BigRational.One)), true, RealBound.PositiveInfinity,
+                false),
+            _ => new IntervalSet(RealBound.Finite(RationalReal(BigRational.Zero)), true, RealBound.PositiveInfinity,
+                false)
+        };
+    }
+
+    private static IntervalSet ClosedInterval(BigRational lower, BigRational upper)
+    {
+        return new IntervalSet(RealBound.Finite(RationalReal(lower)), true, RealBound.Finite(RationalReal(upper)),
+            true);
+    }
+
     private static FunctionParity AbsoluteOuterParity(AbsoluteCompositionPattern pattern, AngleUnit angleUnit)
     {
         if (pattern.Function is "sin" or "cos" && TryQuarterTurnMultiple(pattern.Intercept, angleUnit, out _))
@@ -266,7 +287,11 @@ internal static class AbsoluteCompositionAnalyzer
         return CenteredParity(pattern);
     }
 
-    private static FunctionParity CenteredParity(AbsoluteCompositionPattern pattern) => pattern.Intercept.IsZero ? FunctionParity.Even : FunctionParity.Neither;
+    private static FunctionParity CenteredParity(AbsoluteCompositionPattern pattern)
+    {
+        return pattern.Intercept.IsZero ? FunctionParity.Even : FunctionParity.Neither;
+    }
+
     private static bool TryQuarterTurnMultiple(BigRational phase, AngleUnit angleUnit, out bool oddMultiple)
     {
         if (angleUnit == AngleUnit.Radians)
@@ -294,19 +319,27 @@ internal static class AbsoluteCompositionAnalyzer
         return true;
     }
 
-    private static RealSet AbsoluteOuterZeros(AbsoluteCompositionPattern pattern, AngleUnit angleUnit) => pattern.Function switch
+    private static RealSet AbsoluteOuterZeros(AbsoluteCompositionPattern pattern, AngleUnit angleUnit)
     {
-        "sin" => TrigPointSet(pattern, angleUnit, 0, 1),
-        "cos" => TrigPointSet(pattern, angleUnit, new BigRational(1, 2), 1),
-        "sinh" or "tanh" => RealSets.Points([Center(pattern)]),
-        _ => EmptySet.Instance
-    };
-    private static RealSet AbsoluteInnerZeros(AbsoluteCompositionPattern pattern, AngleUnit angleUnit) => pattern.Function switch
+        return pattern.Function switch
+        {
+            "sin" => TrigPointSet(pattern, angleUnit, 0, 1),
+            "cos" => TrigPointSet(pattern, angleUnit, new BigRational(1, 2), 1),
+            "sinh" or "tanh" => RealSets.Points([Center(pattern)]),
+            _ => EmptySet.Instance
+        };
+    }
+
+    private static RealSet AbsoluteInnerZeros(AbsoluteCompositionPattern pattern, AngleUnit angleUnit)
     {
-        "cos" => TrigPointSet(pattern, angleUnit, new BigRational(1, 2), 1),
-        "sinh" or "tanh" => RealSets.Points([Center(pattern)]),
-        _ => EmptySet.Instance
-    };
+        return pattern.Function switch
+        {
+            "cos" => TrigPointSet(pattern, angleUnit, new BigRational(1, 2), 1),
+            "sinh" or "tanh" => RealSets.Points([Center(pattern)]),
+            _ => EmptySet.Instance
+        };
+    }
+
     private static ExactReal AbsoluteOuterAtOrigin(AbsoluteCompositionPattern pattern, AngleUnit angleUnit)
     {
         ExactReal primitive = PrimitiveAtRational(pattern.Function, pattern.Intercept, angleUnit);
@@ -314,7 +347,11 @@ internal static class AbsoluteCompositionAnalyzer
         return ExactRealArithmetic.Multiply(pattern.Scale.Value, absolute);
     }
 
-    private static ExactReal AbsoluteInnerAtOrigin(AbsoluteCompositionPattern pattern, AngleUnit angleUnit) => PrimitiveAtRational(pattern.Function, pattern.Intercept.Abs(), angleUnit);
+    private static ExactReal AbsoluteInnerAtOrigin(AbsoluteCompositionPattern pattern, AngleUnit angleUnit)
+    {
+        return PrimitiveAtRational(pattern.Function, pattern.Intercept.Abs(), angleUnit);
+    }
+
     private static ExactReal PrimitiveAtRational(string function, BigRational argument, AngleUnit angleUnit)
     {
         if (argument.IsZero)
@@ -336,12 +373,16 @@ internal static class AbsoluteCompositionAnalyzer
         return new FunctionReal(function, [exactArgument]);
     }
 
-    private static ExactReal Absolute(ExactReal value) => value switch
+    private static ExactReal Absolute(ExactReal value)
     {
-        RationalReal rational => RationalReal(rational.Value.Abs()),
-        FunctionReal { Function: "abs", Arguments.Length: 1 } function => function,
-        _ => new FunctionReal("abs", [value])
-    };
+        return value switch
+        {
+            RationalReal rational => RationalReal(rational.Value.Abs()),
+            FunctionReal { Function: "abs", Arguments.Length: 1 } function => function,
+            _ => new FunctionReal("abs", [value])
+        };
+    }
+
     private static ImmutableArray<FeaturePoint> AbsoluteOuterExtrema(AbsoluteCompositionPattern pattern, AngleUnit angleUnit, bool minimum)
     {
         if (pattern.Function is "sin" or "cos")
@@ -384,7 +425,17 @@ internal static class AbsoluteCompositionAnalyzer
         return [];
     }
 
-    private static ImmutableArray<FeaturePoint> AbsoluteInnerInflections(AbsoluteCompositionPattern pattern, AngleUnit angleUnit) => pattern.Function == "cos" ? [PeriodicFeature(pattern, angleUnit, new BigRational(1, 2), 1, IntegerConstraint.All(Parameter), RationalReal(BigRational.Zero))] : [];
+    private static ImmutableArray<FeaturePoint> AbsoluteInnerInflections(AbsoluteCompositionPattern pattern, AngleUnit angleUnit)
+    {
+        return pattern.Function == "cos"
+            ?
+            [
+                PeriodicFeature(pattern, angleUnit, new BigRational(1, 2), 1, IntegerConstraint.All(Parameter),
+                    RationalReal(BigRational.Zero))
+            ]
+            : [];
+    }
+
     private static ImmutableArray<Asymptote> AbsoluteHorizontalAsymptotes(AbsoluteCompositionPattern pattern)
     {
         if (pattern.Function != "tanh")
@@ -427,8 +478,20 @@ internal static class AbsoluteCompositionAnalyzer
         return [new MonotoneRegion(new IntervalSet(RealBound.NegativeInfinity, false, RealBound.Finite(center), false), Monotonicity.Decreasing), new MonotoneRegion(new IntervalSet(RealBound.Finite(center), false, RealBound.PositiveInfinity, false), Monotonicity.Increasing)];
     }
 
-    private static Periodicity AbsoluteOuterPeriod(AbsoluteCompositionPattern pattern, AngleUnit angleUnit) => pattern.Function is "sin" or "cos" ? new Periodicity(PeriodicityKind.PeriodicWithFundamentalPeriod, TrigStep(pattern, angleUnit, 1)) : new Periodicity(PeriodicityKind.NotPeriodic, null);
-    private static Periodicity AbsoluteInnerPeriod(AbsoluteCompositionPattern pattern, AngleUnit angleUnit) => pattern.Function == "cos" ? new Periodicity(PeriodicityKind.PeriodicWithFundamentalPeriod, TrigStep(pattern, angleUnit, 2)) : new Periodicity(PeriodicityKind.NotPeriodic, null);
+    private static Periodicity AbsoluteOuterPeriod(AbsoluteCompositionPattern pattern, AngleUnit angleUnit)
+    {
+        return pattern.Function is "sin" or "cos"
+            ? new Periodicity(PeriodicityKind.PeriodicWithFundamentalPeriod, TrigStep(pattern, angleUnit, 1))
+            : new Periodicity(PeriodicityKind.NotPeriodic, null);
+    }
+
+    private static Periodicity AbsoluteInnerPeriod(AbsoluteCompositionPattern pattern, AngleUnit angleUnit)
+    {
+        return pattern.Function == "cos"
+            ? new Periodicity(PeriodicityKind.PeriodicWithFundamentalPeriod, TrigStep(pattern, angleUnit, 2))
+            : new Periodicity(PeriodicityKind.NotPeriodic, null);
+    }
+
     private static ImmutableArray<FeaturePoint> SineAbsoluteMinima(AbsoluteCompositionPattern pattern, AngleUnit angleUnit)
     {
         ExactReal zero = RationalReal(BigRational.Zero);
@@ -457,20 +520,67 @@ internal static class AbsoluteCompositionAnalyzer
         return [new MonotoneRegion(new IntervalSet(RealBound.Finite(negativeHalf), false, RealBound.Finite(center), false), Monotonicity.Decreasing), new MonotoneRegion(new IntervalSet(RealBound.Finite(center), false, RealBound.Finite(positiveHalf), false), Monotonicity.Increasing), new MonotoneRegion(PeriodicInterval(pattern, angleUnit, new BigRational(1, 2), new BigRational(3, 2), period, Constraint(Comparison.GreaterOrEqual)), Monotonicity.Decreasing), new MonotoneRegion(PeriodicInterval(pattern, angleUnit, new BigRational(3, 2), new BigRational(5, 2), period, Constraint(Comparison.GreaterOrEqual)), Monotonicity.Increasing), new MonotoneRegion(PeriodicInterval(pattern, angleUnit, new BigRational(-3, 2), new BigRational(-1, 2), period, Constraint(Comparison.LessOrEqual)), Monotonicity.Increasing), new MonotoneRegion(PeriodicInterval(pattern, angleUnit, new BigRational(-5, 2), new BigRational(-3, 2), period, Constraint(Comparison.LessOrEqual)), Monotonicity.Decreasing)];
     }
 
-    private static IntegerConstraint Constraint(Comparison comparison) => new(Parameter, comparison, 0);
-    private static ConstantYFeaturePoint SingletonFeature(ExactReal x, ExactReal y) => new(new SingletonReal(x), y);
-    private static ConstantYFeaturePoint PeriodicFeature(AbsoluteCompositionPattern pattern, AngleUnit angleUnit, BigRational fraction, BigRational periodFraction, IntegerConstraint constraint, ExactReal y) => new(new PeriodicReal(SolveAngle(pattern, Angle(angleUnit, fraction)), TrigStep(pattern, angleUnit, periodFraction), Parameter, constraint), y);
-    private static Graphing.Symbolics.PeriodicPointSet TrigPointSet(AbsoluteCompositionPattern pattern, AngleUnit angleUnit, BigRational fraction, BigRational periodFraction) => new PeriodicPointSet(SolveAngle(pattern, Angle(angleUnit, fraction)), TrigStep(pattern, angleUnit, periodFraction), Parameter, IntegerConstraint.All(Parameter));
-    private static Graphing.Symbolics.PeriodicIntervalSet PeriodicInterval(AbsoluteCompositionPattern pattern, AngleUnit angleUnit, BigRational lowerFraction, BigRational upperFraction, ExactReal period, IntegerConstraint constraint) => new PeriodicIntervalSet(period, Parameter, constraint, [new PeriodicInterval(SolveAngle(pattern, Angle(angleUnit, lowerFraction)), false, SolveAngle(pattern, Angle(angleUnit, upperFraction)), false)]);
-    private static Graphing.Symbolics.RationalReal Center(AbsoluteCompositionPattern pattern) => RationalReal(-pattern.Intercept / pattern.Slope);
-    private static ExactReal SolveAngle(AbsoluteCompositionPattern pattern, ExactReal angle) => ExactRealArithmetic.Scale(ExactRealArithmetic.Subtract(angle, RationalReal(pattern.Intercept)), pattern.Slope.Reciprocal());
-    private static ExactReal TrigStep(AbsoluteCompositionPattern pattern, AngleUnit angleUnit, BigRational fraction) => ExactRealArithmetic.Scale(Angle(angleUnit, fraction), pattern.Slope.Reciprocal());
-    private static ExactReal Angle(AngleUnit unit, BigRational piFraction) => unit switch
+    private static IntegerConstraint Constraint(Comparison comparison)
     {
-        AngleUnit.Radians => new AffinePiReal(piFraction, BigRational.Zero),
-        AngleUnit.Degrees => RationalReal(new BigRational(180) * piFraction),
-        AngleUnit.Grads => RationalReal(new BigRational(200) * piFraction),
-        _ => throw new ArgumentOutOfRangeException(nameof(unit))
-    };
-    private static RationalReal RationalReal(BigRational value) => new(value);
+        return new IntegerConstraint(Parameter, comparison, 0);
+    }
+
+    private static ConstantYFeaturePoint SingletonFeature(ExactReal x, ExactReal y)
+    {
+        return new ConstantYFeaturePoint(new SingletonReal(x), y);
+    }
+
+    private static ConstantYFeaturePoint PeriodicFeature(AbsoluteCompositionPattern pattern, AngleUnit angleUnit, BigRational fraction, BigRational periodFraction, IntegerConstraint constraint, ExactReal y)
+    {
+        return new ConstantYFeaturePoint(
+            new PeriodicReal(SolveAngle(pattern, Angle(angleUnit, fraction)),
+                TrigStep(pattern, angleUnit, periodFraction), Parameter, constraint), y);
+    }
+
+    private static PeriodicPointSet TrigPointSet(AbsoluteCompositionPattern pattern, AngleUnit angleUnit, BigRational fraction, BigRational periodFraction)
+    {
+        return new PeriodicPointSet(SolveAngle(pattern, Angle(angleUnit, fraction)),
+            TrigStep(pattern, angleUnit, periodFraction), Parameter, IntegerConstraint.All(Parameter));
+    }
+
+    private static PeriodicIntervalSet PeriodicInterval(AbsoluteCompositionPattern pattern, AngleUnit angleUnit, BigRational lowerFraction, BigRational upperFraction, ExactReal period, IntegerConstraint constraint)
+    {
+        return new PeriodicIntervalSet(period, Parameter, constraint,
+        [
+            new PeriodicInterval(SolveAngle(pattern, Angle(angleUnit, lowerFraction)), false,
+                SolveAngle(pattern, Angle(angleUnit, upperFraction)), false)
+        ]);
+    }
+
+    private static RationalReal Center(AbsoluteCompositionPattern pattern)
+    {
+        return RationalReal(-pattern.Intercept / pattern.Slope);
+    }
+
+    private static ExactReal SolveAngle(AbsoluteCompositionPattern pattern, ExactReal angle)
+    {
+        return ExactRealArithmetic.Scale(ExactRealArithmetic.Subtract(angle, RationalReal(pattern.Intercept)),
+            pattern.Slope.Reciprocal());
+    }
+
+    private static ExactReal TrigStep(AbsoluteCompositionPattern pattern, AngleUnit angleUnit, BigRational fraction)
+    {
+        return ExactRealArithmetic.Scale(Angle(angleUnit, fraction), pattern.Slope.Reciprocal());
+    }
+
+    private static ExactReal Angle(AngleUnit unit, BigRational piFraction)
+    {
+        return unit switch
+        {
+            AngleUnit.Radians => new AffinePiReal(piFraction, BigRational.Zero),
+            AngleUnit.Degrees => RationalReal(new BigRational(180) * piFraction),
+            AngleUnit.Grads => RationalReal(new BigRational(200) * piFraction),
+            _ => throw new ArgumentOutOfRangeException(nameof(unit))
+        };
+    }
+
+    private static RationalReal RationalReal(BigRational value)
+    {
+        return new RationalReal(value);
+    }
 }

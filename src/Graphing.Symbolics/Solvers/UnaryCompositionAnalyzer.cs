@@ -210,8 +210,17 @@ internal static class UnaryCompositionAnalyzer
         return string.Equals(expression.DefinedWhen.Canonical, expected.Canonical, StringComparison.Ordinal);
     }
 
-    private static ValueTerm ConstantTerm(BigRational value, int id) => new(id, ValueKind.Constant, value, string.Empty, [], "q:" + value);
-    private static ValueTerm FunctionTerm(string function, ValueTerm argument, int id) => new(id, ValueKind.Function, default, function, [argument], $"{(int)ValueKind.Function}:{function}({argument.Canonical})");
+    private static ValueTerm ConstantTerm(BigRational value, int id)
+    {
+        return new ValueTerm(id, ValueKind.Constant, value, string.Empty, [], "q:" + value);
+    }
+
+    private static ValueTerm FunctionTerm(string function, ValueTerm argument, int id)
+    {
+        return new ValueTerm(id, ValueKind.Function, default, function, [argument],
+            $"{(int)ValueKind.Function}:{function}({argument.Canonical})");
+    }
+
     private static RealSet Domain(UnaryCompositionPattern pattern, AngleUnit angleUnit)
     {
         if (pattern.Kind == UnaryCompositionKind.GuardedInverseIdentity)
@@ -224,7 +233,7 @@ internal static class UnaryCompositionAnalyzer
             return new DifferenceSet(AllRealSet.Instance, RealSets.Points([Center(pattern)]));
         }
 
-        if (pattern.OuterFunction == "sqrt" || pattern.OuterFunction == "ln")
+        if (pattern.OuterFunction is "sqrt" or "ln")
         {
             bool closed = pattern.OuterFunction == "sqrt";
             BigRational lowerFraction = pattern.InnerSign > 0 ? BigRational.Zero : BigRational.One;
@@ -438,7 +447,7 @@ internal static class UnaryCompositionAnalyzer
         }
     }
 
-    private static Graphing.Symbolics.IntervalSet PeriodicRange(UnaryCompositionPattern pattern, AngleUnit angleUnit)
+    private static IntervalSet PeriodicRange(UnaryCompositionPattern pattern, AngleUnit angleUnit)
     {
         ExactReal minusOne = Rational(BigRational.MinusOne);
         ExactReal zero = Rational(BigRational.Zero);
@@ -488,13 +497,18 @@ internal static class UnaryCompositionAnalyzer
         };
     }
 
-    private static RealSet PeriodicZeros(UnaryCompositionPattern pattern, AngleUnit angleUnit) => pattern.OuterFunction switch
+    private static RealSet PeriodicZeros(UnaryCompositionPattern pattern, AngleUnit angleUnit)
     {
-        "exp" or "cos" => EmptySet.Instance,
-        "acos" => PeriodicPoints(pattern, angleUnit, 0, 2),
-        "ln" => PeriodicPoints(pattern, angleUnit, pattern.InnerSign > 0 ? new BigRational(1, 2) : new BigRational(3, 2), 2),
-        _ => PeriodicPoints(pattern, angleUnit, 0, 1)
-    };
+        return pattern.OuterFunction switch
+        {
+            "exp" or "cos" => EmptySet.Instance,
+            "acos" => PeriodicPoints(pattern, angleUnit, 0, 2),
+            "ln" => PeriodicPoints(pattern, angleUnit,
+                pattern.InnerSign > 0 ? new BigRational(1, 2) : new BigRational(3, 2), 2),
+            _ => PeriodicPoints(pattern, angleUnit, 0, 1)
+        };
+    }
+
     private static bool TryPeriodicYIntercept(UnaryCompositionPattern pattern, AngleUnit angleUnit, out object value)
     {
         if (pattern.Phase.IsZero)
@@ -689,20 +703,60 @@ internal static class UnaryCompositionAnalyzer
         return desiredRaw > 0 ? new BigRational(1, 2) : new BigRational(3, 2);
     }
 
-    private static ConstantYFeaturePoint SingletonFeature(ExactReal x, ExactReal y) => new(new SingletonReal(x), y);
-    private static ConstantYFeaturePoint PeriodicFeature(UnaryCompositionPattern pattern, AngleUnit angleUnit, BigRational angleFraction, BigRational periodFraction, ExactReal y) => PeriodicFeature(pattern, Angle(angleUnit, angleFraction), TrigStep(pattern, angleUnit, periodFraction), y);
-    private static ConstantYFeaturePoint PeriodicFeature(UnaryCompositionPattern pattern, ExactReal angle, ExactReal period, ExactReal y) => new(new PeriodicReal(SolveAngle(pattern, angle), period, Parameter, IntegerConstraint.All(Parameter)), y);
-    private static Graphing.Symbolics.PeriodicPointSet PeriodicPoints(UnaryCompositionPattern pattern, AngleUnit angleUnit, BigRational angleFraction, BigRational periodFraction) => new PeriodicPointSet(SolveAngle(pattern, Angle(angleUnit, angleFraction)), TrigStep(pattern, angleUnit, periodFraction), Parameter, IntegerConstraint.All(Parameter));
-    private static PeriodicIntervalSet PeriodicIntervals(UnaryCompositionPattern pattern, AngleUnit angleUnit, BigRational lowerFraction, bool includesLower, BigRational upperFraction, bool includesUpper, BigRational periodFraction) => new(TrigStep(pattern, angleUnit, periodFraction), Parameter, IntegerConstraint.All(Parameter), [new PeriodicInterval(SolveAngle(pattern, Angle(angleUnit, lowerFraction)), includesLower, SolveAngle(pattern, Angle(angleUnit, upperFraction)), includesUpper)]);
-    private static ExactReal SolveAngle(UnaryCompositionPattern pattern, ExactReal angle) => ExactRealArithmetic.Scale(ExactRealArithmetic.AddRational(angle, -pattern.Phase), pattern.Frequency.Reciprocal());
-    private static ExactReal TrigStep(UnaryCompositionPattern pattern, AngleUnit angleUnit, BigRational fraction) => ExactRealArithmetic.Scale(Angle(angleUnit, fraction), pattern.Frequency.Reciprocal());
-    private static Graphing.Symbolics.RationalReal SolveAffineValue(UnaryCompositionPattern pattern, BigRational target)
+    private static ConstantYFeaturePoint SingletonFeature(ExactReal x, ExactReal y)
+    {
+        return new ConstantYFeaturePoint(new SingletonReal(x), y);
+    }
+
+    private static ConstantYFeaturePoint PeriodicFeature(UnaryCompositionPattern pattern, AngleUnit angleUnit, BigRational angleFraction, BigRational periodFraction, ExactReal y)
+    {
+        return PeriodicFeature(pattern, Angle(angleUnit, angleFraction), TrigStep(pattern, angleUnit, periodFraction),
+            y);
+    }
+
+    private static ConstantYFeaturePoint PeriodicFeature(UnaryCompositionPattern pattern, ExactReal angle, ExactReal period, ExactReal y)
+    {
+        return new ConstantYFeaturePoint(new PeriodicReal(SolveAngle(pattern, angle), period, Parameter, IntegerConstraint.All(Parameter)),
+            y);
+    }
+
+    private static PeriodicPointSet PeriodicPoints(UnaryCompositionPattern pattern, AngleUnit angleUnit, BigRational angleFraction, BigRational periodFraction)
+    {
+        return new PeriodicPointSet(SolveAngle(pattern, Angle(angleUnit, angleFraction)),
+            TrigStep(pattern, angleUnit, periodFraction), Parameter, IntegerConstraint.All(Parameter));
+    }
+
+    private static PeriodicIntervalSet PeriodicIntervals(UnaryCompositionPattern pattern, AngleUnit angleUnit, BigRational lowerFraction, bool includesLower, BigRational upperFraction, bool includesUpper, BigRational periodFraction)
+    {
+        return new PeriodicIntervalSet(TrigStep(pattern, angleUnit, periodFraction), Parameter, IntegerConstraint.All(Parameter),
+        [
+            new PeriodicInterval(SolveAngle(pattern, Angle(angleUnit, lowerFraction)), includesLower,
+                SolveAngle(pattern, Angle(angleUnit, upperFraction)), includesUpper)
+        ]);
+    }
+
+    private static ExactReal SolveAngle(UnaryCompositionPattern pattern, ExactReal angle)
+    {
+        return ExactRealArithmetic.Scale(ExactRealArithmetic.AddRational(angle, -pattern.Phase),
+            pattern.Frequency.Reciprocal());
+    }
+
+    private static ExactReal TrigStep(UnaryCompositionPattern pattern, AngleUnit angleUnit, BigRational fraction)
+    {
+        return ExactRealArithmetic.Scale(Angle(angleUnit, fraction), pattern.Frequency.Reciprocal());
+    }
+
+    private static RationalReal SolveAffineValue(UnaryCompositionPattern pattern, BigRational target)
     {
         BigRational rawTarget = pattern.InnerSign * target;
         return Rational((rawTarget - pattern.Phase) / pattern.Frequency);
     }
 
-    private static Graphing.Symbolics.RationalReal Center(UnaryCompositionPattern pattern) => Rational(-pattern.Phase / pattern.Frequency);
+    private static RationalReal Center(UnaryCompositionPattern pattern)
+    {
+        return Rational(-pattern.Phase / pattern.Frequency);
+    }
+
     private static IntervalSet OrderedInterval(ExactReal first, bool includesFirst, ExactReal second, bool includesSecond)
     {
         if (first is RationalReal left && second is RationalReal right && left.Value > right.Value)
@@ -713,17 +767,42 @@ internal static class UnaryCompositionAnalyzer
         return new IntervalSet(RealBound.Finite(first), includesFirst, RealBound.Finite(second), includesSecond);
     }
 
-    private static IntervalSet ClosedInterval(ExactReal lower, ExactReal upper) => new(RealBound.Finite(lower), true, RealBound.Finite(upper), true);
-    private static Graphing.Symbolics.FunctionReal ExpMinusOne() => new FunctionReal("divide", [Rational(BigRational.One), new NamedReal("e")]);
-    private static ExactReal FunctionAtOne(string function, AngleUnit angleUnit) => ApplyOuterAtValue(function, Rational(BigRational.One), angleUnit);
-    private static ExactReal ApplyOuterAtValue(string function, ExactReal value, AngleUnit angleUnit) => function switch
+    private static IntervalSet ClosedInterval(ExactReal lower, ExactReal upper)
     {
-        "asin" or "acos" or "atan" => ExactAngleArithmetic.FromRadians(new FunctionReal(function, [value]), angleUnit),
-        "sin" or "cos" or "tan" => new FunctionReal(function, [ExactAngleArithmetic.ToRadians(value, angleUnit)]),
-        _ => new FunctionReal(function, [value])
-    };
-    private static RationalReal Rational(BigRational value) => new(value);
-    private static ExactReal Angle(AngleUnit unit, BigRational piFraction) => ExactAngleArithmetic.PiFraction(unit, piFraction);
+        return new IntervalSet(RealBound.Finite(lower), true, RealBound.Finite(upper), true);
+    }
+
+    private static FunctionReal ExpMinusOne()
+    {
+        return new FunctionReal("divide", [Rational(BigRational.One), new NamedReal("e")]);
+    }
+
+    private static ExactReal FunctionAtOne(string function, AngleUnit angleUnit)
+    {
+        return ApplyOuterAtValue(function, Rational(BigRational.One), angleUnit);
+    }
+
+    private static ExactReal ApplyOuterAtValue(string function, ExactReal value, AngleUnit angleUnit)
+    {
+        return function switch
+        {
+            "asin" or "acos" or "atan" => ExactAngleArithmetic.FromRadians(new FunctionReal(function, [value]),
+                angleUnit),
+            "sin" or "cos" or "tan" => new FunctionReal(function, [ExactAngleArithmetic.ToRadians(value, angleUnit)]),
+            _ => new FunctionReal(function, [value])
+        };
+    }
+
+    private static RationalReal Rational(BigRational value)
+    {
+        return new RationalReal(value);
+    }
+
+    private static ExactReal Angle(AngleUnit unit, BigRational piFraction)
+    {
+        return ExactAngleArithmetic.PiFraction(unit, piFraction);
+    }
+
     private static bool TryQuarterTurnMultiple(BigRational phase, AngleUnit angleUnit, out bool oddMultiple)
     {
         if (angleUnit == AngleUnit.Radians)

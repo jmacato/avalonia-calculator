@@ -1,27 +1,15 @@
-using System.Buffers;
 using System.Collections.Immutable;
-using System.Globalization;
-using System.Text;
 using Avalonia;
-using MathComposer.Avalonia.OpenType;
-using MathComposer.Core;
 
 namespace MathComposer.Avalonia.Layout;
 
-internal sealed class MathLayoutBox
+internal sealed class MathLayoutBox(double width, double ascent, double descent)
 {
-    public MathLayoutBox(double width, double ascent, double descent)
-    {
-        Width = width;
-        Ascent = Math.Max(0, ascent);
-        Descent = Math.Max(0, descent);
-    }
+    public double Width { get; set; } = width;
 
-    public double Width { get; set; }
+    public double Ascent { get; set; } = Math.Max(0, ascent);
 
-    public double Ascent { get; set; }
-
-    public double Descent { get; set; }
+    public double Descent { get; set; } = Math.Max(0, descent);
 
     public List<MathDrawCommand> Commands { get; } = [];
 

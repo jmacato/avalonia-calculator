@@ -116,7 +116,25 @@ internal static class AffineMinMaxCertificateReplay
         return selectFirst ? first : second;
     }
 
-    private static bool MatchesCertificate(SemanticExpression expression, AffineMinMaxCertificateReplayReplayEnvelope envelope, AffineMinMaxProofCertificate certificate) => string.Equals(certificate.Function, envelope.Function, StringComparison.Ordinal) && string.Equals(certificate.FirstOperandCanonical, envelope.FirstOperand.Value.Canonical, StringComparison.Ordinal) && string.Equals(certificate.SecondOperandCanonical, envelope.SecondOperand.Value.Canonical, StringComparison.Ordinal) && string.Equals(certificate.FirstDefinednessCanonical, envelope.FirstOperand.DefinedWhen.Canonical, StringComparison.Ordinal) && string.Equals(certificate.SecondDefinednessCanonical, envelope.SecondOperand.DefinedWhen.Canonical, StringComparison.Ordinal) && string.Equals(certificate.PatternCanonical, envelope.PatternCanonical, StringComparison.Ordinal) && certificate.FirstSlope == envelope.FirstLine.Slope && certificate.FirstIntercept == envelope.FirstLine.Intercept && certificate.SecondSlope == envelope.SecondLine.Slope && certificate.SecondIntercept == envelope.SecondLine.Intercept && string.Equals(certificate.DefinednessCanonical, expression.DefinedWhen.Canonical, StringComparison.Ordinal);
+    private static bool MatchesCertificate(SemanticExpression expression, AffineMinMaxCertificateReplayReplayEnvelope envelope, AffineMinMaxProofCertificate certificate)
+    {
+        return string.Equals(certificate.Function, envelope.Function, StringComparison.Ordinal) &&
+               string.Equals(certificate.FirstOperandCanonical, envelope.FirstOperand.Value.Canonical,
+                   StringComparison.Ordinal) &&
+               string.Equals(certificate.SecondOperandCanonical, envelope.SecondOperand.Value.Canonical,
+                   StringComparison.Ordinal) &&
+               string.Equals(certificate.FirstDefinednessCanonical, envelope.FirstOperand.DefinedWhen.Canonical,
+                   StringComparison.Ordinal) &&
+               string.Equals(certificate.SecondDefinednessCanonical, envelope.SecondOperand.DefinedWhen.Canonical,
+                   StringComparison.Ordinal) &&
+               string.Equals(certificate.PatternCanonical, envelope.PatternCanonical, StringComparison.Ordinal) &&
+               certificate.FirstSlope == envelope.FirstLine.Slope &&
+               certificate.FirstIntercept == envelope.FirstLine.Intercept &&
+               certificate.SecondSlope == envelope.SecondLine.Slope &&
+               certificate.SecondIntercept == envelope.SecondLine.Intercept && string.Equals(
+                   certificate.DefinednessCanonical, expression.DefinedWhen.Canonical, StringComparison.Ordinal);
+    }
+
     private static bool TryReconstruct(AffineMinMaxCertificateReplayReplayEnvelope envelope, AnalysisFeatures feature, ResourceBudget budget, out object value)
     {
         budget.Charge();
@@ -290,7 +308,7 @@ internal static class AffineMinMaxCertificateReplay
         foreach (AffineMinMaxCertificateReplayReplayLine tail in tails)
         {
             bool horizontal = tail.Slope.IsZero;
-            if ((orientation == AsymptoteOrientation.Horizontal) != horizontal || !seen.Add(tail.Canonical))
+            if (orientation == AsymptoteOrientation.Horizontal != horizontal || !seen.Add(tail.Canonical))
             {
                 continue;
             }
@@ -372,20 +390,39 @@ internal static class AffineMinMaxCertificateReplay
         return false;
     }
 
-    private static Monotonicity Direction(BigRational slope) => slope.Sign switch
+    private static Monotonicity Direction(BigRational slope)
     {
-        > 0 => Monotonicity.Increasing,
-        < 0 => Monotonicity.Decreasing,
-        _ => Monotonicity.Constant
-    };
+        return slope.Sign switch
+        {
+            > 0 => Monotonicity.Increasing,
+            < 0 => Monotonicity.Decreasing,
+            _ => Monotonicity.Constant
+        };
+    }
+
     private static bool IsSingleFeature(AnalysisFeatures feature)
     {
         uint value = (uint)feature;
         return value != 0 && (value & (value - 1)) == 0 && (feature & AnalysisFeatures.All) == feature;
     }
 
-    private static BigRational Min(BigRational first, BigRational second) => first <= second ? first : second;
-    private static BigRational Max(BigRational first, BigRational second) => first >= second ? first : second;
-    private static bool SameFormula(Formula actual, Formula expected) => string.Equals(actual.Canonical, expected.Canonical, StringComparison.Ordinal);
-    private static RationalReal Rational(BigRational value) => new(value);
+    private static BigRational Min(BigRational first, BigRational second)
+    {
+        return first <= second ? first : second;
+    }
+
+    private static BigRational Max(BigRational first, BigRational second)
+    {
+        return first >= second ? first : second;
+    }
+
+    private static bool SameFormula(Formula actual, Formula expected)
+    {
+        return string.Equals(actual.Canonical, expected.Canonical, StringComparison.Ordinal);
+    }
+
+    private static RationalReal Rational(BigRational value)
+    {
+        return new RationalReal(value);
+    }
 }

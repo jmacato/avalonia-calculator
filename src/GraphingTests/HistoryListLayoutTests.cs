@@ -1,4 +1,3 @@
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
@@ -14,8 +13,10 @@ public sealed class HistoryListLayoutTests
     [AvaloniaFact(Timeout = 5_000)]
     public void RecycledSwipeRowsAreNotRootedBySharedSwipeItems()
     {
-        var sharedItems = new SwipeItems();
-        sharedItems.Add(new SwipeItem());
+        var sharedItems = new SwipeItems
+        {
+            new SwipeItem()
+        };
         WeakReference<SwipeControl> recycledRow = LoadThenUnloadSwipeRow(sharedItems);
 
         CollectGarbage();

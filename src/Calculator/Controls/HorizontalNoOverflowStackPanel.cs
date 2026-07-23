@@ -70,5 +70,8 @@ public class HorizontalNoOverflowStackPanel : Panel
         return finalSize;
     }
 
-    protected virtual bool ShouldPrioritizeLastItem() => false;
+    protected virtual bool ShouldPrioritizeLastItem()
+    {
+        return false;
+    }
 }

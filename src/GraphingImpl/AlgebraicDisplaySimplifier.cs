@@ -74,9 +74,9 @@ internal static class AlgebraicDisplaySimplifier
         BigRational b = polynomial[2];
         BigRational c = polynomial[1];
         BigRational d = polynomial[0];
-        BigRational p = ((new BigRational(3) * a * c) - (b * b)) / (new BigRational(3) * a * a);
-        BigRational q = ((new BigRational(2) * b * b * b) - (new BigRational(9) * a * b * c) + (new BigRational(27) * a * a * d)) / (new BigRational(27) * a * a * a);
-        BigRational discriminant = (q * q / 4) + (p * p * p / 27);
+        BigRational p = (new BigRational(3) * a * c - b * b) / (new BigRational(3) * a * a);
+        BigRational q = (new BigRational(2) * b * b * b - new BigRational(9) * a * b * c + new BigRational(27) * a * a * d) / (new BigRational(27) * a * a * a);
+        BigRational discriminant = q * q / 4 + p * p * p / 27;
         if (discriminant.Sign < 0 || !TrySquareRoot(discriminant, out AlgebraicDisplaySimplifierQuadraticValue discriminantRoot))
         {
             display = string.Empty;
@@ -109,7 +109,7 @@ internal static class AlgebraicDisplaySimplifier
         BigRational result = BigRational.Zero;
         for (int degree = polynomial.Degree; degree >= 0; degree--)
         {
-            result = (result * argument) + polynomial[degree];
+            result = result * argument + polynomial[degree];
         }
 
         return result;
@@ -345,10 +345,14 @@ internal static class AlgebraicDisplaySimplifier
         }
     }
 
-    private static bool TryQuadraticRoots(UnivariatePolynomial polynomial, out AlgebraicDisplaySimplifierQuadraticValue first, out AlgebraicDisplaySimplifierQuadraticValue second) => TryQuadraticRoots(polynomial[2], polynomial[1], polynomial[0], out first, out second);
+    private static bool TryQuadraticRoots(UnivariatePolynomial polynomial, out AlgebraicDisplaySimplifierQuadraticValue first, out AlgebraicDisplaySimplifierQuadraticValue second)
+    {
+        return TryQuadraticRoots(polynomial[2], polynomial[1], polynomial[0], out first, out second);
+    }
+
     private static bool TryQuadraticRoots(BigRational a, BigRational b, BigRational c, out AlgebraicDisplaySimplifierQuadraticValue first, out AlgebraicDisplaySimplifierQuadraticValue second)
     {
-        BigRational discriminant = (b * b) - (new BigRational(4) * a * c);
+        BigRational discriminant = b * b - new BigRational(4) * a * c;
         if (a.IsZero || discriminant.Sign < 0 || !TrySquareRoot(discriminant, out AlgebraicDisplaySimplifierQuadraticValue squareRoot))
         {
             first = default;
@@ -469,7 +473,7 @@ internal static class AlgebraicDisplaySimplifier
         ExactInteger candidate = ExactInteger.One << checked((int)((value.GetBitLength() + 1) / 2));
         while (true)
         {
-            ExactInteger next = (candidate + (value / candidate)) >> 1;
+            ExactInteger next = (candidate + value / candidate) >> 1;
             if (next >= candidate)
             {
                 root = candidate;
@@ -515,7 +519,12 @@ internal static class AlgebraicDisplaySimplifier
         return low * low * low == value;
     }
 
-    private static bool IsInside(AlgebraicDisplaySimplifierQuadraticValue value, RationalInterval interval) => value.Subtract(AlgebraicDisplaySimplifierQuadraticValue.Rational(interval.Lower)).Sign > 0 && value.Subtract(AlgebraicDisplaySimplifierQuadraticValue.Rational(interval.Upper)).Sign < 0;
+    private static bool IsInside(AlgebraicDisplaySimplifierQuadraticValue value, RationalInterval interval)
+    {
+        return value.Subtract(AlgebraicDisplaySimplifierQuadraticValue.Rational(interval.Lower)).Sign > 0 &&
+               value.Subtract(AlgebraicDisplaySimplifierQuadraticValue.Rational(interval.Upper)).Sign < 0;
+    }
+
     private static bool IsSignedSquareRootInside(AlgebraicDisplaySimplifierQuadraticValue square, int sign, RationalInterval interval)
     {
         BigRational lower = sign > 0 ? interval.Lower : -interval.Upper;
@@ -553,7 +562,11 @@ internal static class AlgebraicDisplaySimplifier
         return result;
     }
 
-    private static string FormatRoot(AlgebraicDisplaySimplifierRootForm form) => form.IsDirect ? FormatQuadratic(form.DirectValue) : FormatSignedSquareRoot(form.Square, form.RootSign);
+    private static string FormatRoot(AlgebraicDisplaySimplifierRootForm form)
+    {
+        return form.IsDirect ? FormatQuadratic(form.DirectValue) : FormatSignedSquareRoot(form.Square, form.RootSign);
+    }
+
     private static string FormatExtension(AlgebraicDisplaySimplifierExtensionValue value, AlgebraicDisplaySimplifierQuadraticValue square, int rootSign)
     {
         if (value.Odd.IsZero)
@@ -599,7 +612,7 @@ internal static class AlgebraicDisplaySimplifier
             return TrySquareRoot(value.RationalPart, out result);
         }
 
-        BigRational norm = (value.RationalPart * value.RationalPart) - (value.RadicalCoefficient * value.RadicalCoefficient * new BigRational(value.Radicand));
+        BigRational norm = value.RationalPart * value.RationalPart - value.RadicalCoefficient * value.RadicalCoefficient * new BigRational(value.Radicand);
         if (norm.Sign < 0 || !BigRational.TrySquareRoot(norm, out BigRational normRoot))
         {
             result = default;
@@ -658,7 +671,11 @@ internal static class AlgebraicDisplaySimplifier
         return FormatScaledRadical(coefficient, inner);
     }
 
-    private static ExactInteger LeastCommonMultiple(ExactInteger left, ExactInteger right) => left / ExactInteger.GreatestCommonDivisor(left, right) * right;
+    private static ExactInteger LeastCommonMultiple(ExactInteger left, ExactInteger right)
+    {
+        return left / ExactInteger.GreatestCommonDivisor(left, right) * right;
+    }
+
     private static string FormatIntegerQuadratic(ExactInteger rational, ExactInteger radicalCoefficient, ExactInteger radicand)
     {
         string radical = FormatIntegerRadicalMagnitude(ExactInteger.Abs(radicalCoefficient), radicand);
@@ -692,7 +709,11 @@ internal static class AlgebraicDisplaySimplifier
         return value.RationalPart.Sign < 0 ? $"{radical} − {Rational(value.RationalPart.Abs())}" : $"{radical} + {Rational(value.RationalPart)}";
     }
 
-    private static string FormatRadicalMagnitude(BigRational coefficient, ExactInteger radicand) => FormatScaledRadical(coefficient, radicand.ToString(CultureInfo.InvariantCulture));
+    private static string FormatRadicalMagnitude(BigRational coefficient, ExactInteger radicand)
+    {
+        return FormatScaledRadical(coefficient, radicand.ToString(CultureInfo.InvariantCulture));
+    }
+
     private static string FormatIntegerRadicalMagnitude(ExactInteger coefficient, ExactInteger radicand)
     {
         string root = $"sqrt({radicand.ToString(CultureInfo.InvariantCulture)})";
@@ -706,6 +727,13 @@ internal static class AlgebraicDisplaySimplifier
         return coefficient.Denominator.IsOne ? numerator : numerator + "/" + coefficient.Denominator.ToString(CultureInfo.InvariantCulture);
     }
 
-    private static string Rational(BigRational value) => value.ToString().Replace("-", "−", StringComparison.Ordinal);
-    private static string Integer(ExactInteger value) => value.ToString(CultureInfo.InvariantCulture).Replace("-", "−", StringComparison.Ordinal);
+    private static string Rational(BigRational value)
+    {
+        return value.ToString().Replace("-", "−", StringComparison.Ordinal);
+    }
+
+    private static string Integer(ExactInteger value)
+    {
+        return value.ToString(CultureInfo.InvariantCulture).Replace("-", "−", StringComparison.Ordinal);
+    }
 }

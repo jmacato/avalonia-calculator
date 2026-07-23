@@ -136,12 +136,20 @@ public sealed class EquationTextBox : TemplatedControl
 
     public event EventHandler? EditorFocused;
 
-    public void SetEquationText(string equationText) => MathEquation = equationText;
+    public void SetEquationText(string equationText)
+    {
+        MathEquation = equationText;
+    }
 
-    public void FocusTextBox() => _richEditBox?.FocusEditor();
+    public void FocusTextBox()
+    {
+        _richEditBox?.FocusEditor();
+    }
 
-    public void InsertText(string text, int cursorOffset, int selectionLength) =>
+    public void InsertText(string text, int cursorOffset, int selectionLength)
+    {
         _richEditBox?.InsertText(text, cursorOffset, selectionLength);
+    }
 
     protected override void OnGotFocus(FocusChangedEventArgs e)
     {
@@ -170,7 +178,7 @@ public sealed class EquationTextBox : TemplatedControl
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
-        System.ArgumentNullException.ThrowIfNull(e);
+        ArgumentNullException.ThrowIfNull(e);
         DetachTemplateParts();
         base.OnApplyTemplate(e);
 
@@ -265,7 +273,10 @@ public sealed class EquationTextBox : TemplatedControl
         UpdateVisualState();
     }
 
-    private void OnEditorErrorStateChanged(object? sender, EventArgs e) => UpdateVisualState();
+    private void OnEditorErrorStateChanged(object? sender, EventArgs e)
+    {
+        UpdateVisualState();
+    }
 
     private void OnEquationSubmitted(object? sender, MathRichEditBoxSubmissionEventArgs e)
     {
@@ -292,8 +303,10 @@ public sealed class EquationTextBox : TemplatedControl
         }
     }
 
-    private void OnFunctionButtonClicked(object? sender, RoutedEventArgs e) =>
+    private void OnFunctionButtonClicked(object? sender, RoutedEventArgs e)
+    {
         KeyGraphFeaturesButtonClicked?.Invoke(this, e);
+    }
 
     private void OnColorChooserButtonClicked(object? sender, RoutedEventArgs e)
     {

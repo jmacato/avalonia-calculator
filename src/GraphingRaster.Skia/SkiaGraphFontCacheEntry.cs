@@ -30,8 +30,10 @@ internal sealed class SkiaGraphFontCacheEntry
     public SKTypeface Typeface { get; }
     public SKFont Font { get; }
 
-    public bool Matches(string family, GraphFontStyle style, int sizeBits) =>
-        Style == style && SizeBits == sizeBits && string.Equals(Family, family, StringComparison.Ordinal);
+    public bool Matches(string family, GraphFontStyle style, int sizeBits)
+    {
+        return Style == style && SizeBits == sizeBits && string.Equals(Family, family, StringComparison.Ordinal);
+    }
 
     public void Dispose()
     {

@@ -46,7 +46,10 @@ public sealed class WinUiVisualSnapshot : Control
         }
     }
 
-    protected override Size MeasureOverride(Size availableSize) => _sourceSize.Constrain(availableSize);
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        return _sourceSize.Constrain(availableSize);
+    }
 
     private void AddPrimitive(Visual root, Visual visual)
     {

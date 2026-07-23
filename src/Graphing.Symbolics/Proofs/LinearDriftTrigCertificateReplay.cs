@@ -272,36 +272,52 @@ internal static class LinearDriftTrigCertificateReplay
         return [new IntegerAffineFeaturePoint(xOffset, xStep, yOffset, yStep, "m", IntegerConstraint.All("m"))];
     }
 
-    private static ExactReal InverseCosine(BigRational value) => value switch
+    private static ExactReal InverseCosine(BigRational value)
     {
-        _ when value == BigRational.MinusOne => new AffinePiReal(BigRational.One, BigRational.Zero),
-        _ when value == new BigRational(-1, 2) => new AffinePiReal(new BigRational(2, 3), BigRational.Zero),
-        _ when value.IsZero => new AffinePiReal(new BigRational(1, 2), BigRational.Zero),
-        _ when value == new BigRational(1, 2) => new AffinePiReal(new BigRational(1, 3), BigRational.Zero),
-        _ when value == BigRational.One => new RationalReal(BigRational.Zero),
-        _ => new FunctionReal("acos", [new RationalReal(value)])
-    };
-    private static ExactReal InverseSine(BigRational value) => value switch
+        return value switch
+        {
+            _ when value == BigRational.MinusOne => new AffinePiReal(BigRational.One, BigRational.Zero),
+            _ when value == new BigRational(-1, 2) => new AffinePiReal(new BigRational(2, 3), BigRational.Zero),
+            _ when value.IsZero => new AffinePiReal(new BigRational(1, 2), BigRational.Zero),
+            _ when value == new BigRational(1, 2) => new AffinePiReal(new BigRational(1, 3), BigRational.Zero),
+            _ when value == BigRational.One => new RationalReal(BigRational.Zero),
+            _ => new FunctionReal("acos", [new RationalReal(value)])
+        };
+    }
+
+    private static ExactReal InverseSine(BigRational value)
     {
-        _ when value == BigRational.MinusOne => new AffinePiReal(new BigRational(-1, 2), BigRational.Zero),
-        _ when value == new BigRational(-1, 2) => new AffinePiReal(new BigRational(-1, 6), BigRational.Zero),
-        _ when value.IsZero => new RationalReal(BigRational.Zero),
-        _ when value == new BigRational(1, 2) => new AffinePiReal(new BigRational(1, 6), BigRational.Zero),
-        _ when value == BigRational.One => new AffinePiReal(new BigRational(1, 2), BigRational.Zero),
-        _ => new FunctionReal("asin", [new RationalReal(value)])
-    };
-    private static ExactReal SubtractFromPi(ExactReal value) => value switch
+        return value switch
+        {
+            _ when value == BigRational.MinusOne => new AffinePiReal(new BigRational(-1, 2), BigRational.Zero),
+            _ when value == new BigRational(-1, 2) => new AffinePiReal(new BigRational(-1, 6), BigRational.Zero),
+            _ when value.IsZero => new RationalReal(BigRational.Zero),
+            _ when value == new BigRational(1, 2) => new AffinePiReal(new BigRational(1, 6), BigRational.Zero),
+            _ when value == BigRational.One => new AffinePiReal(new BigRational(1, 2), BigRational.Zero),
+            _ => new FunctionReal("asin", [new RationalReal(value)])
+        };
+    }
+
+    private static ExactReal SubtractFromPi(ExactReal value)
     {
-        RationalReal rational => new AffinePiReal(BigRational.One, -rational.Value),
-        AffinePiReal affine => new AffinePiReal(BigRational.One - affine.PiCoefficient, -affine.Constant),
-        _ => new FunctionReal("pi-minus", [value])
-    };
-    private static ExactReal SubtractFromTwoPi(ExactReal value) => value switch
+        return value switch
+        {
+            RationalReal rational => new AffinePiReal(BigRational.One, -rational.Value),
+            AffinePiReal affine => new AffinePiReal(BigRational.One - affine.PiCoefficient, -affine.Constant),
+            _ => new FunctionReal("pi-minus", [value])
+        };
+    }
+
+    private static ExactReal SubtractFromTwoPi(ExactReal value)
     {
-        RationalReal rational => new AffinePiReal(new BigRational(2), -rational.Value),
-        AffinePiReal affine => new AffinePiReal(new BigRational(2) - affine.PiCoefficient, -affine.Constant),
-        _ => ExactRealArithmetic.Subtract(new AffinePiReal(new BigRational(2), BigRational.Zero), value)
-    };
+        return value switch
+        {
+            RationalReal rational => new AffinePiReal(new BigRational(2), -rational.Value),
+            AffinePiReal affine => new AffinePiReal(new BigRational(2) - affine.PiCoefficient, -affine.Constant),
+            _ => ExactRealArithmetic.Subtract(new AffinePiReal(new BigRational(2), BigRational.Zero), value)
+        };
+    }
+
     private static ExactReal SquareRoot(BigRational value)
     {
         if (BigRational.TrySquareRoot(value, out BigRational rational))

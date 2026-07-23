@@ -937,10 +937,12 @@ public static class MathEditorOperations
 
     private static (MathPosition Start, MathPosition End) Order(
         MathDocument document,
-        MathSelection selection) =>
-        MathSelectionServices.Compare(document, selection.Anchor, selection.Active) <= 0
+        MathSelection selection)
+    {
+        return MathSelectionServices.Compare(document, selection.Anchor, selection.Active) <= 0
             ? (selection.Anchor, selection.Active)
             : (selection.Active, selection.Anchor);
+    }
 
     private static bool TryFindTextSpan(
         MathDocument document,
@@ -1107,7 +1109,9 @@ public static class MathEditorOperations
     }
 
     private static MathAtomClass Classify(Rune rune)
-        => MathAutoCorrect.Classify(rune);
+    {
+        return MathAutoCorrect.Classify(rune);
+    }
 
     private static MathEditResult ValidateLimits(
         MathDocument edited,

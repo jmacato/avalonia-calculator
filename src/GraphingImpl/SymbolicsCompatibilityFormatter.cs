@@ -86,19 +86,27 @@ internal static class SymbolicsCompatibilityFormatter
         };
     }
 
-    public static string FeaturePoint(FeaturePoint point) => point switch
+    public static string FeaturePoint(FeaturePoint point)
     {
-        ConstantYFeaturePoint constant => constant.X switch
+        return point switch
         {
-            SingletonReal singleton => $"({Real(singleton.Value)}, {Real(constant.Y)})",
-            PeriodicReal periodic => $"({CanonicalPeriodicExpression(periodic.Offset, periodic.Period)}, {Real(constant.Y)}), {IntegerParameter} ∈ ℤ",
-            LatticeReal lattice => $"({lattice.Expression}, {Real(constant.Y)}), {string.Join(", ", lattice.Predicates)}",
-            PolynomialPhasePreimageReal phase => FormatPhasePreimagePoint(phase.Preimage, constant.Y),
+            ConstantYFeaturePoint constant => constant.X switch
+            {
+                SingletonReal singleton => $"({Real(singleton.Value)}, {Real(constant.Y)})",
+                PeriodicReal periodic =>
+                    $"({CanonicalPeriodicExpression(periodic.Offset, periodic.Period)}, {Real(constant.Y)}), {IntegerParameter} ∈ ℤ",
+                LatticeReal lattice =>
+                    $"({lattice.Expression}, {Real(constant.Y)}), {string.Join(", ", lattice.Predicates)}",
+                PolynomialPhasePreimageReal phase => FormatPhasePreimagePoint(phase.Preimage, constant.Y),
+                _ => throw new ArgumentOutOfRangeException(nameof(point))
+            },
+            IntegerAffineFeaturePoint affine => $"({PeriodicExpression(affine.XOffset, affine.XStep)}, " +
+                                                $"{PeriodicExpression(affine.YOffset, affine.YStep)}), " +
+                                                FormatConstraint(affine.Constraint),
             _ => throw new ArgumentOutOfRangeException(nameof(point))
-        },
-        IntegerAffineFeaturePoint affine => $"({PeriodicExpression(affine.XOffset, affine.XStep)}, " + $"{PeriodicExpression(affine.YOffset, affine.YStep)}), " + FormatConstraint(affine.Constraint),
-        _ => throw new ArgumentOutOfRangeException(nameof(point))
-    };
+        };
+    }
+
     public static bool TryShiftedDoubleSineEndpointMinima(ImmutableArray<FeaturePoint> points, out ImmutableArray<string> projected)
     {
         if (points is not [ConstantYFeaturePoint { X: PeriodicReal first, Y: RationalReal { Value.IsZero: true } } firstPoint, ConstantYFeaturePoint { X: PeriodicReal second, Y: RationalReal { Value.IsZero: true } } secondPoint] || !string.Equals(ExactRealCanonical.Format(first.Offset), "pi:-1/4:0", StringComparison.Ordinal) || !string.Equals(ExactRealCanonical.Format(second.Offset), "pi:1/4:0", StringComparison.Ordinal) || !string.Equals(ExactRealCanonical.Format(first.Period), "pi:1:0", StringComparison.Ordinal) || !string.Equals(ExactRealCanonical.Format(second.Period), "pi:1:0", StringComparison.Ordinal) || !string.Equals(first.Constraint.Canonical, second.Constraint.Canonical, StringComparison.Ordinal))
@@ -124,13 +132,17 @@ internal static class SymbolicsCompatibilityFormatter
         return true;
     }
 
-    public static string MonotoneRegion(MonotoneRegion region) => region.Region switch
+    public static string MonotoneRegion(MonotoneRegion region)
     {
-        IntervalSet interval => IntervalNotation(interval, forceOpen: true),
-        AllRealSet => "(−∞, ∞)",
-        PeriodicIntervalSet periodic => FormatPeriodicIntervals(periodic, "x", includeVariable: false),
-        _ => Set(region.Region, "x")
-    };
+        return region.Region switch
+        {
+            IntervalSet interval => IntervalNotation(interval, forceOpen: true),
+            AllRealSet => "(−∞, ∞)",
+            PeriodicIntervalSet periodic => FormatPeriodicIntervals(periodic, "x", includeVariable: false),
+            _ => Set(region.Region, "x")
+        };
+    }
+
     public static bool TryConstantPunctureHalfLines(ImmutableArray<MonotoneRegion> regions, out ImmutableArray<string> projected)
     {
         if (regions is not [{ Direction: Monotonicity.Constant, Region: PeriodicIntervalSet { Constraint.Bound.IsUnbounded: true, Intervals: [{ IncludesLower: false, IncludesUpper: false }] } periodic }])
@@ -144,15 +156,31 @@ internal static class SymbolicsCompatibilityFormatter
         return true;
     }
 
-    public static string Asymptote(Asymptote asymptote) => asymptote.Orientation switch
+    public static string Asymptote(Asymptote asymptote)
     {
-        AsymptoteOrientation.Vertical => Coordinate("x", asymptote.Coordinate),
-        AsymptoteOrientation.Horizontal => $"y = {Real(asymptote.Intercept!)}",
-        AsymptoteOrientation.Oblique => Oblique(asymptote),
-        _ => throw new ArgumentOutOfRangeException(nameof(asymptote))
-    };
-    private static string FormatPoints(PointSet points, string variable, bool range) => range ? $"{variable} ∈ {{{string.Join(", ", DisplayOrderedPoints(points).Select(Real))}}}" : string.Join(" ∨ ", DisplayOrderedPoints(points).Select(point => $"{variable} = {Real(point)}"));
-    private static IEnumerable<ExactReal> DisplayOrderedPoints(PointSet points) => points.Points.All(static point => point is RationalReal) ? points.Points.OrderBy(static point => ((RationalReal)point).Value) : points.Points;
+        return asymptote.Orientation switch
+        {
+            AsymptoteOrientation.Vertical => Coordinate("x", asymptote.Coordinate),
+            AsymptoteOrientation.Horizontal => $"y = {Real(asymptote.Intercept!)}",
+            AsymptoteOrientation.Oblique => Oblique(asymptote),
+            _ => throw new ArgumentOutOfRangeException(nameof(asymptote))
+        };
+    }
+
+    private static string FormatPoints(PointSet points, string variable, bool range)
+    {
+        return range
+            ? $"{variable} ∈ {{{string.Join(", ", DisplayOrderedPoints(points).Select(Real))}}}"
+            : string.Join(" ∨ ", DisplayOrderedPoints(points).Select(point => $"{variable} = {Real(point)}"));
+    }
+
+    private static IEnumerable<ExactReal> DisplayOrderedPoints(PointSet points)
+    {
+        return points.Points.All(static point => point is RationalReal)
+            ? points.Points.OrderBy(static point => ((RationalReal)point).Value)
+            : points.Points;
+    }
+
     private static bool TryFlattenFinitePointUnion(UnionSet union, out PointSet points)
     {
         if (union.Operands.Any(static operand => operand is not PointSet))
@@ -338,7 +366,12 @@ internal static class SymbolicsCompatibilityFormatter
         return true;
     }
 
-    private static string FormatPeriodicPoints(PeriodicPointSet set, string variable) => $"{variable} = {CanonicalPeriodicExpression(set.Offset, set.Period)}, {FormatConstraint(set.Constraint)}";
+    private static string FormatPeriodicPoints(PeriodicPointSet set, string variable)
+    {
+        return
+            $"{variable} = {CanonicalPeriodicExpression(set.Offset, set.Period)}, {FormatConstraint(set.Constraint)}";
+    }
+
     private static bool TryFormatPeriodicExclusion(PeriodicIntervalSet set, string variable, out string value)
     {
         if (!set.Constraint.Bound.IsUnbounded || set.Intervals is not [{ IncludesLower: false, IncludesUpper: false } interval] || !string.Equals(ExactRealCanonical.Format(ExactRealArithmetic.Subtract(interval.UpperOffset, interval.LowerOffset)), ExactRealCanonical.Format(set.Period), StringComparison.Ordinal))
@@ -400,7 +433,11 @@ internal static class SymbolicsCompatibilityFormatter
         return $"{{ {variable} ∈ ℝ | {domain}{preimage.PhaseDisplay} = {target} }}, {constraint}";
     }
 
-    private static string FormatPhasePreimagePoint(PolynomialPhasePreimage preimage, ExactReal y) => FormatPhasePreimagePoint(preimage, Real(y));
+    private static string FormatPhasePreimagePoint(PolynomialPhasePreimage preimage, ExactReal y)
+    {
+        return FormatPhasePreimagePoint(preimage, Real(y));
+    }
+
     private static string FormatPhasePreimagePoint(PolynomialPhasePreimage preimage, string y)
     {
         string target = PeriodicExpression(preimage.TargetOffset, preimage.TargetPeriod);
@@ -607,7 +644,13 @@ internal static class SymbolicsCompatibilityFormatter
         return true;
     }
 
-    private static string FormatUnionOperand(RealSet set, string variable, bool range) => set is IntervalSet interval && !range ? $"{variable} ∈ {IntervalNotation(interval)}" : Set(set, variable, range);
+    private static string FormatUnionOperand(RealSet set, string variable, bool range)
+    {
+        return set is IntervalSet interval && !range
+            ? $"{variable} ∈ {IntervalNotation(interval)}"
+            : Set(set, variable, range);
+    }
+
     private static string RangeUnionOperand(RealSet set, string variable)
     {
         string membership = $"{variable} ∈ ";
@@ -615,13 +658,18 @@ internal static class SymbolicsCompatibilityFormatter
         return formatted.StartsWith(membership, StringComparison.Ordinal) ? formatted[membership.Length..] : formatted;
     }
 
-    private static string Coordinate(string variable, RealFamily family) => family switch
+    private static string Coordinate(string variable, RealFamily family)
     {
-        SingletonReal singleton => $"{variable} = {Real(singleton.Value)}",
-        PeriodicReal periodic => $"{variable} = {CanonicalPeriodicExpression(periodic.Offset, periodic.Period)}, {FormatConstraint(periodic.Constraint)}",
-        LatticeReal lattice => $"{variable} = {lattice.Expression}, {string.Join(", ", lattice.Predicates)}",
-        _ => throw new ArgumentOutOfRangeException(nameof(family))
-    };
+        return family switch
+        {
+            SingletonReal singleton => $"{variable} = {Real(singleton.Value)}",
+            PeriodicReal periodic =>
+                $"{variable} = {CanonicalPeriodicExpression(periodic.Offset, periodic.Period)}, {FormatConstraint(periodic.Constraint)}",
+            LatticeReal lattice => $"{variable} = {lattice.Expression}, {string.Join(", ", lattice.Predicates)}",
+            _ => throw new ArgumentOutOfRangeException(nameof(family))
+        };
+    }
+
     private static string Oblique(Asymptote asymptote)
     {
         if (asymptote.Slope is RationalReal rationalSlope && asymptote.Intercept is RationalReal rationalIntercept)
@@ -724,12 +772,19 @@ internal static class SymbolicsCompatibilityFormatter
         return lower is RationalReal ? CanonicalPeriodicOffset(lower, period) : lower;
     }
 
-    private static bool CanCanonicalizePeriodicOffset(ExactReal offset, ExactReal period) => (offset, period) switch
+    private static bool CanCanonicalizePeriodicOffset(ExactReal offset, ExactReal period)
     {
-        (RationalReal, RationalReal { Value.Sign: > 0 }) => true,
-        (AffinePiReal { Constant.IsZero: true }, AffinePiReal { PiCoefficient.Sign: > 0, Constant.IsZero: true }) => true,
-        _ => false
-    };
+        return (offset, period) switch
+        {
+            (RationalReal, RationalReal { Value.Sign: > 0 }) => true,
+            (AffinePiReal { Constant.IsZero: true }, AffinePiReal
+            {
+                PiCoefficient.Sign: > 0, Constant.IsZero: true
+            }) => true,
+            _ => false
+        };
+    }
+
     private static ExactReal CanonicalPeriodicOffset(ExactReal offset, ExactReal period)
     {
         offset = ExactAngleDisplayNormalizer.Normalize(offset);
@@ -854,7 +909,11 @@ internal static class SymbolicsCompatibilityFormatter
         return $"{IntegerParameter} ∈ ℤ, {IntegerParameter} {comparison} {bound}";
     }
 
-    private static string Rational(BigRational value) => value.ToString().Replace("-", "−", StringComparison.Ordinal);
+    private static string Rational(BigRational value)
+    {
+        return value.ToString().Replace("-", "−", StringComparison.Ordinal);
+    }
+
     private static string AffinePi(AffinePiReal value)
     {
         if (value.PiCoefficient.IsZero)
@@ -881,8 +940,21 @@ internal static class SymbolicsCompatibilityFormatter
         return negative ? "−" + value : value;
     }
 
-    private static string Algebraic(AlgebraicReal value) => AlgebraicDisplaySimplifier.TryFormat(value, out string display) ? display : $"root({Polynomial(value.Polynomial)}, {value.RootIndex.ToString(CultureInfo.InvariantCulture)})";
-    private static string AlgebraicImage(AlgebraicImageReal value) => AlgebraicDisplaySimplifier.TryFormat(value, out string display) ? display : $"({Polynomial(value.Function.Numerator)})/({Polynomial(value.Function.Denominator)}) at " + $"{Algebraic(value.Argument)}";
+    private static string Algebraic(AlgebraicReal value)
+    {
+        return AlgebraicDisplaySimplifier.TryFormat(value, out string display)
+            ? display
+            : $"root({Polynomial(value.Polynomial)}, {value.RootIndex.ToString(CultureInfo.InvariantCulture)})";
+    }
+
+    private static string AlgebraicImage(AlgebraicImageReal value)
+    {
+        return AlgebraicDisplaySimplifier.TryFormat(value, out string display)
+            ? display
+            : $"({Polynomial(value.Function.Numerator)})/({Polynomial(value.Function.Denominator)}) at " +
+              $"{Algebraic(value.Argument)}";
+    }
+
     private static string Polynomial(UnivariatePolynomial polynomial)
     {
         if (polynomial.IsZero)
@@ -991,24 +1063,32 @@ internal static class SymbolicsCompatibilityFormatter
         return AddendRank(right) < AddendRank(left);
     }
 
-    private static int AddendRank(ExactReal value) => value switch
+    private static int AddendRank(ExactReal value)
     {
-        NamedReal => 0,
-        AffinePiReal => 1,
-        AlgebraicReal or AlgebraicImageReal => 2,
-        FunctionReal => 3,
-        RationalReal => 4,
-        _ => 5
-    };
-    private static bool IsExplicitlyNonnegative(ExactReal value) => value switch
+        return value switch
+        {
+            NamedReal => 0,
+            AffinePiReal => 1,
+            AlgebraicReal or AlgebraicImageReal => 2,
+            FunctionReal => 3,
+            RationalReal => 4,
+            _ => 5
+        };
+    }
+
+    private static bool IsExplicitlyNonnegative(ExactReal value)
     {
-        RationalReal rational => rational.Value.Sign >= 0,
-        AffinePiReal affine => affine.PiCoefficient.Sign >= 0 && affine.Constant.Sign >= 0,
-        NamedReal { Name: "e" or "pi" } => true,
-        FunctionReal { Function: "sqrt", Arguments: [RationalReal { Value.Sign: >= 0 }] } => true,
-        AlgebraicReal algebraic => algebraic.IsolatingInterval.Lower.Sign >= 0,
-        _ => false
-    };
+        return value switch
+        {
+            RationalReal rational => rational.Value.Sign >= 0,
+            AffinePiReal affine => affine.PiCoefficient.Sign >= 0 && affine.Constant.Sign >= 0,
+            NamedReal { Name: "e" or "pi" } => true,
+            FunctionReal { Function: "sqrt", Arguments: [RationalReal { Value.Sign: >= 0 }] } => true,
+            AlgebraicReal algebraic => algebraic.IsolatingInterval.Lower.Sign >= 0,
+            _ => false
+        };
+    }
+
     private static string Negation(ExactReal value)
     {
         if (value is FunctionReal { Function: "pi-minus", Arguments: [var subtrahend] })
@@ -1118,12 +1198,16 @@ internal static class SymbolicsCompatibilityFormatter
         return $"{DivisionNumerator(numerator)}/{DivisionDenominator(denominator)}";
     }
 
-    private static bool IsExactDisplayZero(ExactReal value) => value switch
+    private static bool IsExactDisplayZero(ExactReal value)
     {
-        RationalReal { Value.IsZero: true } => true,
-        AffinePiReal { PiCoefficient.IsZero: true, Constant.IsZero: true } => true,
-        _ => false
-    };
+        return value switch
+        {
+            RationalReal { Value.IsZero: true } => true,
+            AffinePiReal { PiCoefficient.IsZero: true, Constant.IsZero: true } => true,
+            _ => false
+        };
+    }
+
     private static bool TryExtractNegative(ExactReal value, out ExactReal positive)
     {
         switch (value)
@@ -1134,7 +1218,7 @@ internal static class SymbolicsCompatibilityFormatter
             case AffinePiReal affine when affine.PiCoefficient.Sign <= 0 && affine.Constant.Sign <= 0 && (!affine.PiCoefficient.IsZero || !affine.Constant.IsZero):
                 positive = new AffinePiReal(-affine.PiCoefficient, -affine.Constant);
                 return true;
-            case FunctionReal { Function: "negate", Arguments: [var operand] } when operand is not FunctionReal { Function: "pi-minus" or "add" }:
+            case FunctionReal { Function: "negate", Arguments: [var operand and not FunctionReal { Function: "pi-minus" or "add" }] }:
                 positive = operand;
                 return true;
             default:
@@ -1143,10 +1227,30 @@ internal static class SymbolicsCompatibilityFormatter
         }
     }
 
-    private static string DivisionNumerator(ExactReal value) => value is FunctionReal { Function: "add" or "pi-minus" or "affine" or "negate" } ? $"({Real(value)})" : Real(value);
-    private static string UnaryOperand(ExactReal value) => value is FunctionReal { Function: "add" or "pi-minus" or "affine" } ? $"({Real(value)})" : Real(value);
-    private static string MultiplicativeOperand(ExactReal value) => value is FunctionReal { Function: "add" or "pi-minus" or "affine" } ? $"({Real(value)})" : Real(value);
-    private static string DivisionDenominator(ExactReal value) => value is FunctionReal { Function: "add" or "pi-minus" or "affine" or "multiply" or "divide" } ? $"({Real(value)})" : Real(value);
+    private static string DivisionNumerator(ExactReal value)
+    {
+        return value is FunctionReal { Function: "add" or "pi-minus" or "affine" or "negate" }
+            ? $"({Real(value)})"
+            : Real(value);
+    }
+
+    private static string UnaryOperand(ExactReal value)
+    {
+        return value is FunctionReal { Function: "add" or "pi-minus" or "affine" } ? $"({Real(value)})" : Real(value);
+    }
+
+    private static string MultiplicativeOperand(ExactReal value)
+    {
+        return value is FunctionReal { Function: "add" or "pi-minus" or "affine" } ? $"({Real(value)})" : Real(value);
+    }
+
+    private static string DivisionDenominator(ExactReal value)
+    {
+        return value is FunctionReal { Function: "add" or "pi-minus" or "affine" or "multiply" or "divide" }
+            ? $"({Real(value)})"
+            : Real(value);
+    }
+
     private static bool TryFormatPowerLatticeDomain(RealSet set, out string value)
     {
         if (set is UnionSet union && union.Operands.OfType<PeriodicIntervalSet>().Any(periodic => periodic.Intervals.Length == 2) && union.Operands.OfType<IntegerLatticeSet>().Count() == 2)

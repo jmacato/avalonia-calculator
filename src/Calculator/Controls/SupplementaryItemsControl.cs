@@ -1,9 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 using Avalonia.Automation;
-using Avalonia.Automation.Peers;
 using Avalonia.Controls;
-using Avalonia.Controls.Presenters;
 using CalculatorApp.ViewModel;
 
 namespace CalculatorApp.Controls;
@@ -21,7 +19,11 @@ public sealed class SupplementaryItemsControl : ItemsControl
         return needsContainer;
     }
 
-    protected override Control CreateContainerForItemOverride(object? item, int index, object? recycleKey) => new SupplementaryContentPresenter();
+    protected override Control CreateContainerForItemOverride(object? item, int index, object? recycleKey)
+    {
+        return new SupplementaryContentPresenter();
+    }
+
     protected override void PrepareContainerForItemOverride(Control container, object? item, int index)
     {
         base.PrepareContainerForItemOverride(container, item, index);

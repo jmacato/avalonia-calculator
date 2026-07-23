@@ -186,13 +186,23 @@ public sealed class AffineTangentWindowsCompatibilityMatrixTests
         }
     }
 
-    private static string Pattern(ProofCertificate certificate) => certificate switch
+    private static string Pattern(ProofCertificate certificate)
     {
-        ExactCoefficientProofCertificate exact => exact.PatternCanonical,
-        TheoremProofCertificate theorem => theorem.Parameters[0],
-        _ => throw new InvalidOperationException("Unexpected affine-tangent certificate.")
-    };
-    private static bool PublishesPoles(AffineTangentWindowsCompatibilityMatrixTestsFrequencyCase frequency, AffineTangentWindowsCompatibilityMatrixTestsPhaseCase phase) => frequency.IsPi ? phase.Id is "zero" or "halfpi" or "quarterpi" : phase.Id == (frequency.IsNegative ? "p1" : "n1");
+        return certificate switch
+        {
+            ExactCoefficientProofCertificate exact => exact.PatternCanonical,
+            TheoremProofCertificate theorem => theorem.Parameters[0],
+            _ => throw new InvalidOperationException("Unexpected affine-tangent certificate.")
+        };
+    }
+
+    private static bool PublishesPoles(AffineTangentWindowsCompatibilityMatrixTestsFrequencyCase frequency, AffineTangentWindowsCompatibilityMatrixTestsPhaseCase phase)
+    {
+        return frequency.IsPi
+            ? phase.Id is "zero" or "halfpi" or "quarterpi"
+            : phase.Id == (frequency.IsNegative ? "p1" : "n1");
+    }
+
     private static string Formula(AffineTangentWindowsCompatibilityMatrixTestsFrequencyCase frequency, AffineTangentWindowsCompatibilityMatrixTestsPhaseCase phase, AffineTangentWindowsCompatibilityMatrixTestsAmplitudeCase amplitude, bool quotient)
     {
         string argument = frequency.Argument + phase.Suffix;
@@ -258,36 +268,100 @@ public sealed class AffineTangentWindowsCompatibilityMatrixTests
         return solver.Analyze(analyzer);
     }
 
-    private static AnalysisRequest Request(InputExpression expression, AnalysisFeatures features) => new(expression, features, AngleUnit.Radians, "x", static () => true);
-    private static int Bits(params AnalysisType?[] features) => features.Where(static feature => feature.HasValue).Aggregate(0, static (bits, feature) => bits | FeatureBit(feature!.Value));
-    private static int FeatureBit(AnalysisType type) => type switch
+    private static AnalysisRequest Request(InputExpression expression, AnalysisFeatures features)
     {
-        AnalysisType.Domain => 1,
-        AnalysisType.Range => 2,
-        AnalysisType.Parity => 4,
-        AnalysisType.Period => 8,
-        AnalysisType.Zeros => 16,
-        AnalysisType.YIntercept => 32,
-        AnalysisType.Minima => 64,
-        AnalysisType.Maxima => 128,
-        AnalysisType.InflectionPoints => 256,
-        AnalysisType.VerticalAsymptotes => 512,
-        AnalysisType.HorizontalAsymptotes => 1024,
-        AnalysisType.ObliqueAsymptotes => 2048,
-        AnalysisType.Monotonicity => 4096,
-        _ => throw new ArgumentOutOfRangeException(nameof(type))
-    };
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
-    private static InputExpression Number(int value) => Number(new BigRational(value));
-    private static InputExpression Number(BigRational value) => InputExpression.Number(value, Source);
-    private static InputExpression Symbol(string name) => InputExpression.Variable(name, Source);
-    private static InputExpression Negate(InputExpression value) => InputExpression.Unary(InputExpressionKind.Negate, value, Source);
-    private static InputExpression Add(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
-    private static InputExpression Subtract(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
-    private static InputExpression Multiply(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
-    private static InputExpression Divide(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
-    private static InputExpression Sin(InputExpression argument) => Function("sin", argument);
-    private static InputExpression Cos(InputExpression argument) => Function("cos", argument);
-    private static InputExpression Tan(InputExpression argument) => Function("tan", argument);
-    private static InputExpression Function(string name, params InputExpression[] arguments) => InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+        return new AnalysisRequest(expression, features, AngleUnit.Radians, "x", static () => true);
+    }
+
+    private static int Bits(params AnalysisType?[] features)
+    {
+        return features.Where(static feature => feature.HasValue)
+            .Aggregate(0, static (bits, feature) => bits | FeatureBit(feature!.Value));
+    }
+
+    private static int FeatureBit(AnalysisType type)
+    {
+        return type switch
+        {
+            AnalysisType.Domain => 1,
+            AnalysisType.Range => 2,
+            AnalysisType.Parity => 4,
+            AnalysisType.Period => 8,
+            AnalysisType.Zeros => 16,
+            AnalysisType.YIntercept => 32,
+            AnalysisType.Minima => 64,
+            AnalysisType.Maxima => 128,
+            AnalysisType.InflectionPoints => 256,
+            AnalysisType.VerticalAsymptotes => 512,
+            AnalysisType.HorizontalAsymptotes => 1024,
+            AnalysisType.ObliqueAsymptotes => 2048,
+            AnalysisType.Monotonicity => 4096,
+            _ => throw new ArgumentOutOfRangeException(nameof(type))
+        };
+    }
+
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
+
+    private static InputExpression Number(int value)
+    {
+        return Number(new BigRational(value));
+    }
+
+    private static InputExpression Number(BigRational value)
+    {
+        return InputExpression.Number(value, Source);
+    }
+
+    private static InputExpression Symbol(string name)
+    {
+        return InputExpression.Variable(name, Source);
+    }
+
+    private static InputExpression Negate(InputExpression value)
+    {
+        return InputExpression.Unary(InputExpressionKind.Negate, value, Source);
+    }
+
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
+
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
+
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
+
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
+
+    private static InputExpression Sin(InputExpression argument)
+    {
+        return Function("sin", argument);
+    }
+
+    private static InputExpression Cos(InputExpression argument)
+    {
+        return Function("cos", argument);
+    }
+
+    private static InputExpression Tan(InputExpression argument)
+    {
+        return Function("tan", argument);
+    }
+
+    private static InputExpression Function(string name, params InputExpression[] arguments)
+    {
+        return InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    }
 }

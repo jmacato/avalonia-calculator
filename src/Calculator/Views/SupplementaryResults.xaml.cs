@@ -1,16 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-using System.Collections.Generic;
-using System.Globalization;
+
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Presenters;
-using Avalonia.Controls.Templates;
-using Avalonia.Data.Converters;
-using Avalonia.Media;
-using CalculatorApp.Controls;
 using CalculatorApp.ViewModel;
-using UnitConversionManager;
 
 namespace CalculatorApp;
 

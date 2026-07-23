@@ -28,8 +28,8 @@ public sealed class ExactConstantAnalysisTests
         { "pi*sqrt(2)", "πsqrt(2)" }
     };
 
-    public static TheoryData<string> ExactTranscendentalExpressions => new()
-    {
+    public static TheoryData<string> ExactTranscendentalExpressions =>
+    [
         "pi",
         "-pi",
         "e",
@@ -41,7 +41,7 @@ public sealed class ExactConstantAnalysisTests
         "2*pi",
         "pi/2",
         "pi*sqrt(2)"
-    };
+    ];
 
     [Theory]
     [MemberData(nameof(ExactTranscendentalExpressions))]
@@ -276,8 +276,10 @@ public sealed class ExactConstantAnalysisTests
 
     private static AnalysisRequest Request(
         InputExpression expression,
-        AnalysisFeatures features) =>
-        new(expression, features, AngleUnit.Radians, "x", static () => true);
+        AnalysisFeatures features)
+    {
+        return new AnalysisRequest(expression, features, AngleUnit.Radians, "x", static () => true);
+    }
 
     private static IEnumerable<string> ExactFormulae()
     {
@@ -294,46 +296,69 @@ public sealed class ExactConstantAnalysisTests
         yield return "pi*sqrt(2)";
     }
 
-    private static InputExpression ExactExpression(string formula) => formula switch
+    private static InputExpression ExactExpression(string formula)
     {
-        "pi" => Symbol("pi"),
-        "-pi" => Negate(Symbol("pi")),
-        "e" => Symbol("e"),
-        "-e" => Negate(Symbol("e")),
-        "sqrt(2)" => Function("sqrt", Number(2)),
-        "-sqrt(2)" => Negate(Function("sqrt", Number(2))),
-        "pi+e" => Add(Symbol("pi"), Symbol("e")),
-        "pi-e" => Subtract(Symbol("pi"), Symbol("e")),
-        "2*pi" => Multiply(Number(2), Symbol("pi")),
-        "pi/2" => Divide(Symbol("pi"), Number(2)),
-        "pi*sqrt(2)" => Multiply(Symbol("pi"), Function("sqrt", Number(2))),
-        _ => throw new ArgumentOutOfRangeException(nameof(formula))
-    };
+        return formula switch
+        {
+            "pi" => Symbol("pi"),
+            "-pi" => Negate(Symbol("pi")),
+            "e" => Symbol("e"),
+            "-e" => Negate(Symbol("e")),
+            "sqrt(2)" => Function("sqrt", Number(2)),
+            "-sqrt(2)" => Negate(Function("sqrt", Number(2))),
+            "pi+e" => Add(Symbol("pi"), Symbol("e")),
+            "pi-e" => Subtract(Symbol("pi"), Symbol("e")),
+            "2*pi" => Multiply(Number(2), Symbol("pi")),
+            "pi/2" => Divide(Symbol("pi"), Number(2)),
+            "pi*sqrt(2)" => Multiply(Symbol("pi"), Function("sqrt", Number(2))),
+            _ => throw new ArgumentOutOfRangeException(nameof(formula))
+        };
+    }
 
-    private static InputExpression Number(int value) =>
-        InputExpression.Number(new BigRational(value), Source);
+    private static InputExpression Number(int value)
+    {
+        return InputExpression.Number(new BigRational(value), Source);
+    }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Symbol(string name) => InputExpression.Variable(name, Source);
+    private static InputExpression Symbol(string name)
+    {
+        return InputExpression.Variable(name, Source);
+    }
 
-    private static InputExpression Negate(InputExpression operand) =>
-        InputExpression.Unary(InputExpressionKind.Negate, operand, Source);
+    private static InputExpression Negate(InputExpression operand)
+    {
+        return InputExpression.Unary(InputExpressionKind.Negate, operand, Source);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Subtract(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
 
-    private static InputExpression Function(string name, params InputExpression[] operands) =>
-        InputExpression.Function(name, operands.ToImmutableArray(), Source);
+    private static InputExpression Function(string name, params InputExpression[] operands)
+    {
+        return InputExpression.Function(name, operands.ToImmutableArray(), Source);
+    }
 
     private static T AssertProved<T>(ProofOutcome<T> outcome)
     {

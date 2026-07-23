@@ -3,12 +3,9 @@ using Avalonia.Input.TextInput;
 
 namespace MathComposer.Avalonia.Controls;
 
-internal sealed class MathTextInputClient : TextInputMethodClient
+internal sealed class MathTextInputClient(MathEditor owner) : TextInputMethodClient
 {
-    private readonly MathEditor _owner;
-
-    public MathTextInputClient(MathEditor owner) =>
-        _owner = owner ?? throw new ArgumentNullException(nameof(owner));
+    private readonly MathEditor _owner = owner ?? throw new ArgumentNullException(nameof(owner));
 
     public override Visual TextViewVisual => _owner;
 
@@ -26,13 +23,20 @@ internal sealed class MathTextInputClient : TextInputMethodClient
         set { }
     }
 
-    public override void SetPreeditText(string? preeditText) =>
+    public override void SetPreeditText(string? preeditText)
+    {
         _owner.SetPreeditText(preeditText ?? string.Empty);
+    }
 
-    public override void SetPreeditText(string? preeditText, int? cursorPos) =>
+    public override void SetPreeditText(string? preeditText, int? cursorPos)
+    {
         _owner.SetPreeditText(preeditText ?? string.Empty);
+    }
 
-    public void NotifyCursorRectangleChanged() => RaiseCursorRectangleChanged();
+    public void NotifyCursorRectangleChanged()
+    {
+        RaiseCursorRectangleChanged();
+    }
 
     public void NotifySelectionChanged()
     {

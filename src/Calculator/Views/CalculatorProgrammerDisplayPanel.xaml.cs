@@ -82,7 +82,10 @@ public sealed partial class CalculatorProgrammerDisplayPanel : UserControl
         UpdateInputMode(model.IsBitFlipChecked);
     }
 
-    private void OnUnloaded(object? sender, RoutedEventArgs e) => SetSubscribedModel(null);
+    private void OnUnloaded(object? sender, RoutedEventArgs e)
+    {
+        SetSubscribedModel(null);
+    }
 
     private void SetSubscribedModel(StandardCalculatorViewModel? model)
     {

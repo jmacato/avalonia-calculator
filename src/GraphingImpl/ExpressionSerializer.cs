@@ -83,9 +83,11 @@ internal static class ExpressionSerializer
         ManagedExpression expression,
         LocalizationType localization,
         string operation,
-        int precedence) =>
-        Linear(node.Children[0], expression, localization, precedence) + operation +
-        Linear(node.Children[1], expression, localization, precedence + (operation is "-" or "/" ? 1 : 0));
+        int precedence)
+    {
+        return Linear(node.Children[0], expression, localization, precedence) + operation +
+               Linear(node.Children[1], expression, localization, precedence + (operation is "-" or "/" ? 1 : 0));
+    }
 
     private static string FunctionLinear(AstNode node, ManagedExpression expression, LocalizationType localization)
     {
@@ -113,8 +115,11 @@ internal static class ExpressionSerializer
         };
     }
 
-    private static string FormulaBinary(string operation, AstNode node, ManagedExpression expression, bool invariant) =>
-        $"{operation}[{Formula(node.Children[0], expression, invariant)},{Formula(node.Children[1], expression, invariant)}]";
+    private static string FormulaBinary(string operation, AstNode node, ManagedExpression expression, bool invariant)
+    {
+        return
+            $"{operation}[{Formula(node.Children[0], expression, invariant)},{Formula(node.Children[1], expression, invariant)}]";
+    }
 
     private static string InvariantVariable(string name, ManagedExpression expression)
     {
@@ -171,51 +176,54 @@ internal static class ExpressionSerializer
         return serialized.ToString();
     }
 
-    private static XElement MathMlElement(AstNode node, XNamespace mathMl) => node.Kind switch
+    private static XElement MathMlElement(AstNode node, XNamespace mathMl)
     {
-        AstKind.Number => new XElement(mathMl + "mn", node.Number.ToString()),
-        AstKind.Variable => new XElement(
-            mathMl + "mi",
-            node.Name.Equals("pi", StringComparison.OrdinalIgnoreCase) ? "π" : node.Name),
-        AstKind.Negate => new XElement(
-            mathMl + "mrow",
-            new XElement(mathMl + "mo", "−"),
-            MathMlElement(node.Children[0], mathMl)),
-        AstKind.Divide => new XElement(
-            mathMl + "mfrac",
-            MathMlElement(node.Children[0], mathMl),
-            MathMlElement(node.Children[1], mathMl)),
-        AstKind.Power => new XElement(
-            mathMl + "msup",
-            MathMlElement(node.Children[0], mathMl),
-            MathMlElement(node.Children[1], mathMl)),
-        AstKind.Add or AstKind.Subtract or AstKind.Multiply => new XElement(
-            mathMl + "mrow",
-            MathMlElement(node.Children[0], mathMl),
-            new XElement(mathMl + "mo", node.Kind switch
-            {
-                AstKind.Add => "+",
-                AstKind.Subtract => "−",
-                _ => "×"
-            }),
-            MathMlElement(node.Children[1], mathMl)),
-        AstKind.Function when node is { Name: "sqrt", Children.Length: 1 } =>
-            new XElement(mathMl + "msqrt", MathMlElement(node.Children[0], mathMl)),
-        AstKind.Function when node is { Name: "root", Children.Length: 2 } =>
-            new XElement(
-                mathMl + "mroot",
+        return node.Kind switch
+        {
+            AstKind.Number => new XElement(mathMl + "mn", node.Number.ToString()),
+            AstKind.Variable => new XElement(
+                mathMl + "mi",
+                node.Name.Equals("pi", StringComparison.OrdinalIgnoreCase) ? "π" : node.Name),
+            AstKind.Negate => new XElement(
+                mathMl + "mrow",
+                new XElement(mathMl + "mo", "−"),
+                MathMlElement(node.Children[0], mathMl)),
+            AstKind.Divide => new XElement(
+                mathMl + "mfrac",
                 MathMlElement(node.Children[0], mathMl),
                 MathMlElement(node.Children[1], mathMl)),
-        AstKind.Function => new XElement(
-            mathMl + "mrow",
-            new XElement(mathMl + "mi", node.Name),
-            new XElement(mathMl + "mo", "\u2061"),
-            new XElement(
-                mathMl + "mfenced",
-                new XAttribute("separators", ","),
-                node.Children.Select(child => MathMlElement(child, mathMl)))),
-        _ => throw new InvalidOperationException()
-    };
+            AstKind.Power => new XElement(
+                mathMl + "msup",
+                MathMlElement(node.Children[0], mathMl),
+                MathMlElement(node.Children[1], mathMl)),
+            AstKind.Add or AstKind.Subtract or AstKind.Multiply => new XElement(
+                mathMl + "mrow",
+                MathMlElement(node.Children[0], mathMl),
+                new XElement(mathMl + "mo", node.Kind switch
+                {
+                    AstKind.Add => "+",
+                    AstKind.Subtract => "−",
+                    _ => "×"
+                }),
+                MathMlElement(node.Children[1], mathMl)),
+            AstKind.Function when node is { Name: "sqrt", Children.Length: 1 } =>
+                new XElement(mathMl + "msqrt", MathMlElement(node.Children[0], mathMl)),
+            AstKind.Function when node is { Name: "root", Children.Length: 2 } =>
+                new XElement(
+                    mathMl + "mroot",
+                    MathMlElement(node.Children[0], mathMl),
+                    MathMlElement(node.Children[1], mathMl)),
+            AstKind.Function => new XElement(
+                mathMl + "mrow",
+                new XElement(mathMl + "mi", node.Name),
+                new XElement(mathMl + "mo", "\u2061"),
+                new XElement(
+                    mathMl + "mfenced",
+                    new XAttribute("separators", ","),
+                    node.Children.Select(child => MathMlElement(child, mathMl)))),
+            _ => throw new InvalidOperationException()
+        };
+    }
 
     private static string Latex(AstNode node, ManagedExpression expression, int parentPrecedence)
     {
@@ -239,28 +247,36 @@ internal static class ExpressionSerializer
         return precedence < parentPrecedence ? $"({text})" : text;
     }
 
-    private static string LatexBinary(AstNode node, ManagedExpression expression, string operation, int precedence) =>
-        Latex(node.Children[0], expression, precedence) + operation +
-        Latex(node.Children[1], expression, precedence);
-
-    private static int Precedence(AstKind kind) => kind switch
+    private static string LatexBinary(AstNode node, ManagedExpression expression, string operation, int precedence)
     {
-        AstKind.Add or AstKind.Subtract => 1,
-        AstKind.Multiply or AstKind.Divide => 2,
-        AstKind.Negate => 3,
-        AstKind.Power => 4,
-        _ => 5
-    };
+        return Latex(node.Children[0], expression, precedence) + operation +
+               Latex(node.Children[1], expression, precedence);
+    }
 
-    private static string RelationText(RelationKind relation) => relation switch
+    private static int Precedence(AstKind kind)
     {
-        RelationKind.Equal => "=",
-        RelationKind.Less => "<",
-        RelationKind.LessOrEqual => "≤",
-        RelationKind.Greater => ">",
-        RelationKind.GreaterOrEqual => "≥",
-        _ => string.Empty
-    };
+        return kind switch
+        {
+            AstKind.Add or AstKind.Subtract => 1,
+            AstKind.Multiply or AstKind.Divide => 2,
+            AstKind.Negate => 3,
+            AstKind.Power => 4,
+            _ => 5
+        };
+    }
+
+    private static string RelationText(RelationKind relation)
+    {
+        return relation switch
+        {
+            RelationKind.Equal => "=",
+            RelationKind.Less => "<",
+            RelationKind.LessOrEqual => "≤",
+            RelationKind.Greater => ">",
+            RelationKind.GreaterOrEqual => "≥",
+            _ => string.Empty
+        };
+    }
 
     private static string FormatNumber(ExactRational value, LocalizationType localization)
     {

@@ -8,9 +8,13 @@ namespace CalculatorApp.Controls;
 public sealed class OverflowTextBlockAutomationPeer(OverflowTextBlock owner)
     : ControlAutomationPeer(owner)
 {
-    protected override AutomationControlType GetAutomationControlTypeCore() =>
-        AutomationControlType.Text;
+    protected override AutomationControlType GetAutomationControlTypeCore()
+    {
+        return AutomationControlType.Text;
+    }
 
-    protected override IReadOnlyList<AutomationPeer> GetChildrenCore() =>
-        Array.Empty<AutomationPeer>();
+    protected override IReadOnlyList<AutomationPeer> GetChildrenCore()
+    {
+        return Array.Empty<AutomationPeer>();
+    }
 }

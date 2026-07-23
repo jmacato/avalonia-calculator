@@ -120,7 +120,7 @@ public sealed class WinUiSplitView : SplitView
             0,
             1);
         double eased = OverlayEasing.Ease(progress);
-        _currentTranslation = _animationStart + ((_animationTarget - _animationStart) * eased);
+        _currentTranslation = _animationStart + (_animationTarget - _animationStart) * eased;
         _isAnimating = progress < 1;
     }
 

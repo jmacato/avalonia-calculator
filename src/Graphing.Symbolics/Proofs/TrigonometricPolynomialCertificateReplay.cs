@@ -151,13 +151,17 @@ internal static class TrigonometricPolynomialCertificateReplay
 
     private static RationalReal ConstantValue(
         TrigonometricPolynomialModel model,
-        ResourceBudget budget) =>
-        new(model.HalfAngleFunction.Evaluate(BigRational.Zero, budget));
+        ResourceBudget budget)
+    {
+        return new RationalReal(model.HalfAngleFunction.Evaluate(BigRational.Zero, budget));
+    }
 
     private static RationalReal ConstantAtZero(
         TrigonometricPolynomialModel model,
-        ResourceBudget budget) =>
-        new(model.HalfAngleFunction.Evaluate(BigRational.Zero, budget));
+        ResourceBudget budget)
+    {
+        return new RationalReal(model.HalfAngleFunction.Evaluate(BigRational.Zero, budget));
+    }
 
     private static FunctionParity BuildParity(
         TrigonometricPolynomialModel model,
@@ -457,13 +461,16 @@ internal static class TrigonometricPolynomialCertificateReplay
     private static ExactReal EvaluateAt(
         RationalFunction function,
         ExactReal parameter,
-        ResourceBudget budget) => parameter switch
+        ResourceBudget budget)
+    {
+        return parameter switch
         {
             RationalReal rational => new RationalReal(
                 function.Evaluate(rational.Value, budget)),
             AlgebraicReal algebraic => new AlgebraicImageReal(function, algebraic),
             _ => throw new ArgumentOutOfRangeException(nameof(parameter))
         };
+    }
 
     private static bool TryLimitAtInfinity(
         RationalFunction function,
@@ -519,11 +526,15 @@ internal static class TrigonometricPolynomialCertificateReplay
             angleUnit);
     }
 
-    private static ExactReal FullTurn(AngleUnit angleUnit) =>
-        ExactAngleArithmetic.PiFraction(angleUnit, new BigRational(2));
+    private static ExactReal FullTurn(AngleUnit angleUnit)
+    {
+        return ExactAngleArithmetic.PiFraction(angleUnit, new BigRational(2));
+    }
 
-    private static ExactReal HalfTurn(AngleUnit angleUnit) =>
-        ExactAngleArithmetic.PiFraction(angleUnit, BigRational.One);
+    private static ExactReal HalfTurn(AngleUnit angleUnit)
+    {
+        return ExactAngleArithmetic.PiFraction(angleUnit, BigRational.One);
+    }
 
     private static bool TryReplayMixedDomain(
         AnalysisRequest request,
@@ -867,12 +878,14 @@ internal static class TrigonometricPolynomialCertificateReplay
     private static ExactReal SolveAffine(
         AffineTrigPattern pattern,
         AngleUnit angleUnit,
-        BigRational fraction) =>
-        ExactRealArithmetic.Scale(
+        BigRational fraction)
+    {
+        return ExactRealArithmetic.Scale(
             ExactRealArithmetic.AddRational(
                 ExactAngleArithmetic.PiFraction(angleUnit, fraction),
                 -pattern.Phase),
             pattern.Frequency.Reciprocal());
+    }
 
     private static void FlattenProduct(ValueTerm term, ICollection<ValueTerm> factors)
     {
@@ -886,12 +899,16 @@ internal static class TrigonometricPolynomialCertificateReplay
         factors.Add(term);
     }
 
-    private static bool MatchesAngle(string parameter, AngleUnit angleUnit) =>
-        string.Equals(parameter, angleUnit.ToString(), StringComparison.Ordinal);
+    private static bool MatchesAngle(string parameter, AngleUnit angleUnit)
+    {
+        return string.Equals(parameter, angleUnit.ToString(), StringComparison.Ordinal);
+    }
 
-    private static bool ClaimMatches(object value, string claim) =>
-        string.Equals(
+    private static bool ClaimMatches(object value, string claim)
+    {
+        return string.Equals(
             ClaimCanonical.ForObject(value),
             claim,
             StringComparison.Ordinal);
+    }
 }

@@ -159,8 +159,6 @@
               <TextBlock TextWrapping="Wrap"
                          Text="FluentAvalonia · MIT · a03fd9e02645c16ef0ebe7bb0266480eeb97871f" />
               <TextBlock TextWrapping="Wrap"
-                         Text="Avalonia.Labs.Lottie · MIT · 7d86b80d576b9c0052fda104303c1ec1acb74f53" />
-              <TextBlock TextWrapping="Wrap"
                          Text="Hind2 · 55039da6ad7acecadf9eb962a2bf2e689e649368" />
               <TextBlock TextWrapping="Wrap"
                          Text="Frankfurter v2 · Unicode CLDR 48.2" />

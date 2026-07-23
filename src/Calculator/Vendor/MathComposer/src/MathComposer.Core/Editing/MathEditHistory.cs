@@ -75,7 +75,10 @@ public sealed class MathEditHistory
     }
 
     /// <summary>Ends any active text or IME coalescing group.</summary>
-    public void BreakCoalescing() => _lastMergeKind = MathHistoryMergeKind.None;
+    public void BreakCoalescing()
+    {
+        _lastMergeKind = MathHistoryMergeKind.None;
+    }
 
     /// <summary>Clears undo, redo, and coalescing state.</summary>
     public void Clear()

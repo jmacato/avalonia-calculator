@@ -34,7 +34,11 @@ internal static class TrigonometricPolynomialAnalyzer
         return value is not null;
     }
 
-    private static RationalReal ConstantValue(TrigonometricPolynomialModel model, ResourceBudget budget) => new(model.HalfAngleFunction.Evaluate(BigRational.Zero, budget));
+    private static RationalReal ConstantValue(TrigonometricPolynomialModel model, ResourceBudget budget)
+    {
+        return new RationalReal(model.HalfAngleFunction.Evaluate(BigRational.Zero, budget));
+    }
+
     private static ImmutableArray<Asymptote> ConstantHorizontalAsymptote(TrigonometricPolynomialModel model, ResourceBudget budget)
     {
         ExactReal value = ConstantValue(model, budget);
@@ -156,7 +160,7 @@ internal static class TrigonometricPolynomialAnalyzer
         RationalFunction derivative = DifferentiateByAngle(model.HalfAngleFunction, budget);
         if (derivative.Numerator.IsZero)
         {
-            return [new MonotoneRegion(AllRealSet.Instance, Graphing.Symbolics.Monotonicity.Constant)];
+            return [new MonotoneRegion(AllRealSet.Instance, Monotonicity.Constant)];
         }
 
         CircularSignChart chart = CircularSignChart.Create(derivative, budget);
@@ -196,7 +200,7 @@ internal static class TrigonometricPolynomialAnalyzer
             return;
         }
 
-        result.Add(new MonotoneRegion(new PeriodicIntervalSet(period, "m", IntegerConstraint.All("m"), [new PeriodicInterval(lower, false, upper, false)]), sign > 0 ? Graphing.Symbolics.Monotonicity.Increasing : Graphing.Symbolics.Monotonicity.Decreasing));
+        result.Add(new MonotoneRegion(new PeriodicIntervalSet(period, "m", IntegerConstraint.All("m"), [new PeriodicInterval(lower, false, upper, false)]), sign > 0 ? Monotonicity.Increasing : Monotonicity.Decreasing));
     }
 
     private static Periodicity ComputePeriod(TrigonometricPolynomialModel model, AngleUnit angleUnit)
@@ -229,12 +233,16 @@ internal static class TrigonometricPolynomialAnalyzer
         return derivativeInT.Multiply(new RationalFunction(onePlusSquare, UnivariatePolynomial.Create([new BigRational(2)], budget)), budget);
     }
 
-    private static ExactReal EvaluateAtParameter(RationalFunction function, ExactReal parameter, ResourceBudget budget) => parameter switch
+    private static ExactReal EvaluateAtParameter(RationalFunction function, ExactReal parameter, ResourceBudget budget)
     {
-        RationalReal rational => new RationalReal(function.Evaluate(rational.Value, budget)),
-        AlgebraicReal algebraic => new AlgebraicImageReal(function, algebraic),
-        _ => throw new ArgumentOutOfRangeException(nameof(parameter))
-    };
+        return parameter switch
+        {
+            RationalReal rational => new RationalReal(function.Evaluate(rational.Value, budget)),
+            AlgebraicReal algebraic => new AlgebraicImageReal(function, algebraic),
+            _ => throw new ArgumentOutOfRangeException(nameof(parameter))
+        };
+    }
+
     private static bool TryLimitAtInfinity(RationalFunction function, out BigRational value)
     {
         int difference = function.Numerator.Degree - function.Denominator.Degree;
@@ -277,24 +285,44 @@ internal static class TrigonometricPolynomialAnalyzer
         return ExactAngleArithmetic.FromRadians(new FunctionReal("twice-atan", [parameter]), angleUnit);
     }
 
-    private static ExactReal FullTurn(AngleUnit angleUnit) => ExactAngleArithmetic.PiFraction(angleUnit, new BigRational(2));
-    private static ExactReal HalfTurn(AngleUnit angleUnit) => ExactAngleArithmetic.PiFraction(angleUnit, BigRational.One);
-    private static ExactReal Scale(ExactReal value, BigRational factor) => value switch
+    private static ExactReal FullTurn(AngleUnit angleUnit)
     {
-        RationalReal rational => new RationalReal(rational.Value * factor),
-        AffinePiReal affine => new AffinePiReal(affine.PiCoefficient * factor, affine.Constant * factor),
-        _ => new FunctionReal("scale", [value, new RationalReal(factor)])
-    };
-    private static ExactReal Add(ExactReal left, ExactReal right) => (left, right) switch
+        return ExactAngleArithmetic.PiFraction(angleUnit, new BigRational(2));
+    }
+
+    private static ExactReal HalfTurn(AngleUnit angleUnit)
     {
-        (RationalReal a, RationalReal b) => new RationalReal(a.Value + b.Value),
-        (AffinePiReal a, AffinePiReal b) => new AffinePiReal(a.PiCoefficient + b.PiCoefficient, a.Constant + b.Constant),
-        _ => new FunctionReal("add", [left, right])
-    };
-    private static ExactReal Negate(ExactReal value) => value switch
+        return ExactAngleArithmetic.PiFraction(angleUnit, BigRational.One);
+    }
+
+    private static ExactReal Scale(ExactReal value, BigRational factor)
     {
-        RationalReal rational => new RationalReal(-rational.Value),
-        AffinePiReal affine => new AffinePiReal(-affine.PiCoefficient, -affine.Constant),
-        _ => new FunctionReal("negate", [value])
-    };
+        return value switch
+        {
+            RationalReal rational => new RationalReal(rational.Value * factor),
+            AffinePiReal affine => new AffinePiReal(affine.PiCoefficient * factor, affine.Constant * factor),
+            _ => new FunctionReal("scale", [value, new RationalReal(factor)])
+        };
+    }
+
+    private static ExactReal Add(ExactReal left, ExactReal right)
+    {
+        return (left, right) switch
+        {
+            (RationalReal a, RationalReal b) => new RationalReal(a.Value + b.Value),
+            (AffinePiReal a, AffinePiReal b) => new AffinePiReal(a.PiCoefficient + b.PiCoefficient,
+                a.Constant + b.Constant),
+            _ => new FunctionReal("add", [left, right])
+        };
+    }
+
+    private static ExactReal Negate(ExactReal value)
+    {
+        return value switch
+        {
+            RationalReal rational => new RationalReal(-rational.Value),
+            AffinePiReal affine => new AffinePiReal(-affine.PiCoefficient, -affine.Constant),
+            _ => new FunctionReal("negate", [value])
+        };
+    }
 }

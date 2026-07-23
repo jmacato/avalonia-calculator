@@ -27,8 +27,10 @@ public static class ConverterPipelineDiagnostics
         Volatile.Write(ref s_stage, stage);
     }
 
-    public static void RecordUiThread(int threadId) =>
+    public static void RecordUiThread(int threadId)
+    {
         Volatile.Write(ref s_uiThreadId, threadId);
+    }
 
     public static void RecordRequest()
     {
@@ -50,22 +52,30 @@ public static class ConverterPipelineDiagnostics
         Record(-1);
     }
 
-    public static int[] Capture() =>
-    [
-        Volatile.Read(ref s_stage),
-        Volatile.Read(ref s_stageTick),
-        Volatile.Read(ref s_stageThreadId),
-        Volatile.Read(ref s_uiThreadId),
-        Volatile.Read(ref s_requestCount),
-        Volatile.Read(ref s_completionCount),
-        Volatile.Read(ref s_failureCount),
-        Volatile.Read(ref s_failureKind)
-    ];
+    public static int[] Capture()
+    {
+        return
+        [
+            Volatile.Read(ref s_stage),
+            Volatile.Read(ref s_stageTick),
+            Volatile.Read(ref s_stageThreadId),
+            Volatile.Read(ref s_uiThreadId),
+            Volatile.Read(ref s_requestCount),
+            Volatile.Read(ref s_completionCount),
+            Volatile.Read(ref s_failureCount),
+            Volatile.Read(ref s_failureKind)
+        ];
+    }
 
-    public static int RecordPageCreated() => Interlocked.Increment(ref s_pageCount);
+    public static int RecordPageCreated()
+    {
+        return Interlocked.Increment(ref s_pageCount);
+    }
 
-    public static void RecordRootPage(int pageId) =>
+    public static void RecordRootPage(int pageId)
+    {
         Volatile.Write(ref s_rootPageId, pageId);
+    }
 
     public static void RecordNavigation(int pageId, int mode)
     {
@@ -73,31 +83,39 @@ public static class ConverterPipelineDiagnostics
         Volatile.Write(ref s_lastNavigatedMode, mode);
     }
 
-    public static int[] CapturePageState() =>
-    [
-        Volatile.Read(ref s_pageCount),
-        Volatile.Read(ref s_rootPageId),
-        Volatile.Read(ref s_lastNavigatedPageId),
-        Volatile.Read(ref s_lastNavigatedMode)
-    ];
-
-    internal static bool CanReport(Exception exception) =>
-        exception is not OutOfMemoryException and
-        not AccessViolationException and
-        not StackOverflowException;
-
-    private static int GetFailureKind(Exception exception) => exception switch
+    public static int[] CapturePageState()
     {
-        ArgumentException => 1,
-        FormatException => 2,
-        InvalidDataException => 3,
-        ObjectDisposedException => 7,
-        InvalidOperationException => 4,
-        KeyNotFoundException => 5,
-        NotSupportedException => 6,
-        OperationCanceledException => 8,
-        OverflowException => 9,
-        System.Resources.MissingManifestResourceException => 10,
-        _ => 255
-    };
+        return
+        [
+            Volatile.Read(ref s_pageCount),
+            Volatile.Read(ref s_rootPageId),
+            Volatile.Read(ref s_lastNavigatedPageId),
+            Volatile.Read(ref s_lastNavigatedMode)
+        ];
+    }
+
+    internal static bool CanReport(Exception exception)
+    {
+        return exception is not OutOfMemoryException and
+            not AccessViolationException and
+            not StackOverflowException;
+    }
+
+    private static int GetFailureKind(Exception exception)
+    {
+        return exception switch
+        {
+            ArgumentException => 1,
+            FormatException => 2,
+            InvalidDataException => 3,
+            ObjectDisposedException => 7,
+            InvalidOperationException => 4,
+            KeyNotFoundException => 5,
+            NotSupportedException => 6,
+            OperationCanceledException => 8,
+            OverflowException => 9,
+            System.Resources.MissingManifestResourceException => 10,
+            _ => 255
+        };
+    }
 }

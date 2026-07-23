@@ -149,7 +149,10 @@ public sealed class OpenTypeMathFont
     public ImmutableArray<string> Diagnostics { get; }
 
     /// <summary>Loads and validates one standalone OpenType font.</summary>
-    public static OpenTypeMathFont Load(ReadOnlySpan<byte> data) => new(data);
+    public static OpenTypeMathFont Load(ReadOnlySpan<byte> data)
+    {
+        return new OpenTypeMathFont(data);
+    }
 
     /// <summary>Loads and validates one standalone OpenType font stream.</summary>
     public static OpenTypeMathFont Load(Stream stream)
@@ -161,7 +164,10 @@ public sealed class OpenTypeMathFont
     }
 
     /// <summary>Maps one Unicode scalar to a glyph ID, or zero when missing.</summary>
-    public ushort GetGlyphId(Rune scalar) => _cmap.GetGlyphId((uint)scalar.Value, this);
+    public ushort GetGlyphId(Rune scalar)
+    {
+        return _cmap.GetGlyphId((uint)scalar.Value, this);
+    }
 
     /// <summary>Gets the horizontal metrics for a validated glyph ID.</summary>
     public OpenTypeGlyphMetrics GetGlyphMetrics(ushort glyphId)
@@ -258,7 +264,7 @@ public sealed class OpenTypeMathFont
     private ImmutableDictionary<string, OpenTypeTableRecord> ReadTableDirectory()
     {
         ushort tableCount = ReadUInt16(4);
-        if (tableCount == 0 || tableCount > 4096)
+        if (tableCount is 0 or > 4096)
         {
             throw Invalid("The sfnt table count is invalid.");
         }
@@ -522,7 +528,7 @@ public sealed class OpenTypeMathFont
         while (offset < end)
         {
             byte value = ReadByte(offset++);
-            if (value >= 32 || value is 28 or 29 or 30)
+            if (value is >= 32 or 28 or 29 or 30)
             {
                 operands.Add(ReadCffDictionaryNumber(value, ref offset, end));
                 continue;
@@ -604,7 +610,7 @@ public sealed class OpenTypeMathFont
         while (offset < end && !finished)
         {
             byte pair = ReadByte(offset++);
-            finished = (pair >> 4) == 15 || (pair & 15) == 15;
+            finished = pair >> 4 == 15 || (pair & 15) == 15;
         }
 
         if (!finished)
@@ -1157,8 +1163,10 @@ public sealed class OpenTypeMathFont
         }
     }
 
-    private void EnsureMathAbsolute(int absolute, int length) =>
+    private void EnsureMathAbsolute(int absolute, int length)
+    {
         EnsureTableAbsolute(_mathTable, absolute, length);
+    }
 
     private void EnsureGlyph(ushort glyphId)
     {
@@ -1228,5 +1236,8 @@ public sealed class OpenTypeMathFont
         EnsureTableRange(table, relative, length);
     }
 
-    internal static InvalidDataException Invalid(string message) => new(message);
+    internal static InvalidDataException Invalid(string message)
+    {
+        return new InvalidDataException(message);
+    }
 }

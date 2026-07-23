@@ -43,7 +43,10 @@ public static class GraphPipelineDiagnostics
         Interlocked.Increment(ref s_workerCompletionCount);
     }
 
-    public static void RecordPublication(long generation) => Volatile.Write(ref s_publishedGeneration, generation);
+    public static void RecordPublication(long generation)
+    {
+        Volatile.Write(ref s_publishedGeneration, generation);
+    }
 
     public static void RecordCommit(long generation, GraphStatus status)
     {
@@ -52,10 +55,25 @@ public static class GraphPipelineDiagnostics
         Interlocked.Increment(ref s_commitCount);
     }
 
-    public static void RecordCommitMiss() => Interlocked.Increment(ref s_commitMissCount);
-    public static void RecordSettlementTimer() => Interlocked.Increment(ref s_settlementTimerCount);
-    public static void RecordSettlementRequest() => Interlocked.Increment(ref s_settlementRequestCount);
-    public static void RecordRender() => Interlocked.Increment(ref s_renderCount);
+    public static void RecordCommitMiss()
+    {
+        Interlocked.Increment(ref s_commitMissCount);
+    }
+
+    public static void RecordSettlementTimer()
+    {
+        Interlocked.Increment(ref s_settlementTimerCount);
+    }
+
+    public static void RecordSettlementRequest()
+    {
+        Interlocked.Increment(ref s_settlementRequestCount);
+    }
+
+    public static void RecordRender()
+    {
+        Interlocked.Increment(ref s_renderCount);
+    }
 
     public static void RecordRendererCreated()
     {
@@ -69,28 +87,34 @@ public static class GraphPipelineDiagnostics
         Interlocked.Increment(ref s_rendererDisposedCount);
     }
 
-    public static int[] Capture() =>
-    [
-        ToInt32(Volatile.Read(ref s_requestedGeneration)),
-        ToInt32(Volatile.Read(ref s_workerGeneration)),
-        ToInt32(Volatile.Read(ref s_completedGeneration)),
-        ToInt32(Volatile.Read(ref s_publishedGeneration)),
-        ToInt32(Volatile.Read(ref s_committedGeneration)),
-        Volatile.Read(ref s_workerActive),
-        Volatile.Read(ref s_completedStatus),
-        Volatile.Read(ref s_commitStatus),
-        ToInt32(Volatile.Read(ref s_requestCount)),
-        ToInt32(Volatile.Read(ref s_workerStartCount)),
-        ToInt32(Volatile.Read(ref s_workerCompletionCount)),
-        ToInt32(Volatile.Read(ref s_commitCount)),
-        ToInt32(Volatile.Read(ref s_commitMissCount)),
-        ToInt32(Volatile.Read(ref s_settlementTimerCount)),
-        ToInt32(Volatile.Read(ref s_settlementRequestCount)),
-        ToInt32(Volatile.Read(ref s_renderCount)),
-        Volatile.Read(ref s_rendererActiveCount),
-        ToInt32(Volatile.Read(ref s_rendererCreatedCount)),
-        ToInt32(Volatile.Read(ref s_rendererDisposedCount))
-    ];
+    public static int[] Capture()
+    {
+        return
+        [
+            ToInt32(Volatile.Read(ref s_requestedGeneration)),
+            ToInt32(Volatile.Read(ref s_workerGeneration)),
+            ToInt32(Volatile.Read(ref s_completedGeneration)),
+            ToInt32(Volatile.Read(ref s_publishedGeneration)),
+            ToInt32(Volatile.Read(ref s_committedGeneration)),
+            Volatile.Read(ref s_workerActive),
+            Volatile.Read(ref s_completedStatus),
+            Volatile.Read(ref s_commitStatus),
+            ToInt32(Volatile.Read(ref s_requestCount)),
+            ToInt32(Volatile.Read(ref s_workerStartCount)),
+            ToInt32(Volatile.Read(ref s_workerCompletionCount)),
+            ToInt32(Volatile.Read(ref s_commitCount)),
+            ToInt32(Volatile.Read(ref s_commitMissCount)),
+            ToInt32(Volatile.Read(ref s_settlementTimerCount)),
+            ToInt32(Volatile.Read(ref s_settlementRequestCount)),
+            ToInt32(Volatile.Read(ref s_renderCount)),
+            Volatile.Read(ref s_rendererActiveCount),
+            ToInt32(Volatile.Read(ref s_rendererCreatedCount)),
+            ToInt32(Volatile.Read(ref s_rendererDisposedCount))
+        ];
+    }
 
-    private static int ToInt32(long value) => unchecked((int)value);
+    private static int ToInt32(long value)
+    {
+        return unchecked((int)value);
+    }
 }

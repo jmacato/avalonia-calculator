@@ -275,7 +275,7 @@ internal static class AffinePhaseSineCompositionCertificateReplay
         return value is not null;
     }
 
-    private static Graphing.Symbolics.PeriodicIntervalSet Domain(
+    private static PeriodicIntervalSet Domain(
         AffinePhaseSineCompositionPattern pattern,
         AngleUnit angleUnit)
     {
@@ -292,7 +292,7 @@ internal static class AffinePhaseSineCompositionCertificateReplay
             new BigRational(2));
     }
 
-    private static Graphing.Symbolics.IntervalSet Range(AffinePhaseSineCompositionPattern pattern)
+    private static IntervalSet Range(AffinePhaseSineCompositionPattern pattern)
     {
         ExactReal zero = Rational(BigRational.Zero);
         return pattern.IsSquareRoot
@@ -310,13 +310,15 @@ internal static class AffinePhaseSineCompositionCertificateReplay
 
     private static FunctionParity Parity(
         AffinePhaseSineCompositionPattern pattern,
-        AngleUnit angleUnit) =>
-        TryPhaseFraction(pattern, angleUnit, out BigRational fraction) &&
-        (fraction - new BigRational(1, 2)).IsInteger
+        AngleUnit angleUnit)
+    {
+        return TryPhaseFraction(pattern, angleUnit, out BigRational fraction) &&
+               (fraction - new BigRational(1, 2)).IsInteger
             ? FunctionParity.Even
             : FunctionParity.Neither;
+    }
 
-    private static Graphing.Symbolics.PeriodicPointSet Zeros(
+    private static PeriodicPointSet Zeros(
         AffinePhaseSineCompositionPattern pattern,
         AngleUnit angleUnit)
     {
@@ -510,24 +512,28 @@ internal static class AffinePhaseSineCompositionCertificateReplay
 
     private static Periodicity Period(
         AffinePhaseSineCompositionPattern pattern,
-        AngleUnit angleUnit) =>
-        new(
+        AngleUnit angleUnit)
+    {
+        return new Periodicity(
             PeriodicityKind.PeriodicWithFundamentalPeriod,
             Step(pattern, angleUnit, new BigRational(2)));
+    }
 
     private static ConstantYFeaturePoint PeriodicFeature(
         AffinePhaseSineCompositionPattern pattern,
         AngleUnit angleUnit,
         BigRational angle,
         ExactReal period,
-        ExactReal y) =>
-        new(
+        ExactReal y)
+    {
+        return new ConstantYFeaturePoint(
             new PeriodicReal(
                 SolveAngle(pattern, Angle(angleUnit, angle)),
                 period,
                 Parameter,
                 IntegerConstraint.All(Parameter)),
             y);
+    }
 
     private static PeriodicIntervalSet PeriodicIntervals(
         AffinePhaseSineCompositionPattern pattern,
@@ -536,8 +542,9 @@ internal static class AffinePhaseSineCompositionCertificateReplay
         bool includesLower,
         BigRational upper,
         bool includesUpper,
-        BigRational period) =>
-        new(
+        BigRational period)
+    {
+        return new PeriodicIntervalSet(
             Step(pattern, angleUnit, period),
             Parameter,
             IntegerConstraint.All(Parameter),
@@ -548,21 +555,26 @@ internal static class AffinePhaseSineCompositionCertificateReplay
                     SolveAngle(pattern, Angle(angleUnit, upper)),
                     includesUpper)
             ]);
+    }
 
     private static ExactReal SolveAngle(
         AffinePhaseSineCompositionPattern pattern,
-        ExactReal angle) =>
-        ExactRealArithmetic.Scale(
+        ExactReal angle)
+    {
+        return ExactRealArithmetic.Scale(
             ExactRealArithmetic.Subtract(angle, pattern.Phase),
             pattern.Frequency.Reciprocal());
+    }
 
     private static ExactReal Step(
         AffinePhaseSineCompositionPattern pattern,
         AngleUnit angleUnit,
-        BigRational fraction) =>
-        ExactRealArithmetic.Scale(
+        BigRational fraction)
+    {
+        return ExactRealArithmetic.Scale(
             Angle(angleUnit, fraction),
             pattern.Frequency.Reciprocal());
+    }
 
     private static bool TryPhaseFraction(
         AffinePhaseSineCompositionPattern pattern,
@@ -594,8 +606,13 @@ internal static class AffinePhaseSineCompositionCertificateReplay
         return remainder.Sign < 0 ? remainder + modulus : remainder;
     }
 
-    private static ExactReal Angle(AngleUnit unit, BigRational piFraction) =>
-        ExactAngleArithmetic.PiFraction(unit, piFraction);
+    private static ExactReal Angle(AngleUnit unit, BigRational piFraction)
+    {
+        return ExactAngleArithmetic.PiFraction(unit, piFraction);
+    }
 
-    private static RationalReal Rational(BigRational value) => new(value);
+    private static RationalReal Rational(BigRational value)
+    {
+        return new RationalReal(value);
+    }
 }

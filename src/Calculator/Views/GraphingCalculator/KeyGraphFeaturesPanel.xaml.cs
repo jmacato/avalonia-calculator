@@ -10,12 +10,17 @@ public sealed partial class KeyGraphFeaturesPanel : UserControl, IDisposable
 {
     private bool _disposed;
 
-    public KeyGraphFeaturesPanel() => InitializeComponent();
+    public KeyGraphFeaturesPanel()
+    {
+        InitializeComponent();
+    }
 
     public event EventHandler<RoutedEventArgs>? KeyGraphFeaturesClosed;
 
-    private void OnCloseClicked(object? sender, RoutedEventArgs e) =>
+    private void OnCloseClicked(object? sender, RoutedEventArgs e)
+    {
         KeyGraphFeaturesClosed?.Invoke(this, e);
+    }
 
     public void Dispose()
     {

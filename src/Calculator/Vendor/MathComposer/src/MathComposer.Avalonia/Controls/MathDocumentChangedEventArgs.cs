@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using MathComposer.Core;
 
 namespace MathComposer.Avalonia.Controls;

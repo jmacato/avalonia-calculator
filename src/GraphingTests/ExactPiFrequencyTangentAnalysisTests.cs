@@ -225,7 +225,11 @@ public sealed class ExactPiFrequencyTangentAnalysisTests
         yield return new ExactPiFrequencyTangentAnalysisTestsAmplitudeCase(Symbol("pi"), static phase => phase > 0 ? "fn:multiply(pi:1:0,fn:tan(q:1))" : "fn:multiply(pi:-1:0,fn:tan(q:1))");
     }
 
-    private static InputExpression Tangent(InputExpression amplitude, int phase, bool quotient) => Tangent(amplitude, new BigRational(phase), quotient);
+    private static InputExpression Tangent(InputExpression amplitude, int phase, bool quotient)
+    {
+        return Tangent(amplitude, new BigRational(phase), quotient);
+    }
+
     private static InputExpression Tangent(InputExpression amplitude, BigRational phase, bool quotient)
     {
         InputExpression argument = Add(Multiply(Symbol("pi"), Variable()), Number(phase));
@@ -260,14 +264,53 @@ public sealed class ExactPiFrequencyTangentAnalysisTests
         Assert.Null(outcome.Certificate);
     }
 
-    private static AnalysisRequest Request(InputExpression expression, AnalysisFeatures features) => new(expression, features, AngleUnit.Radians, "x", static () => true);
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
-    private static InputExpression Symbol(string name) => InputExpression.Variable(name, Source);
-    private static InputExpression Number(int value) => Number(new BigRational(value));
-    private static InputExpression Number(BigRational value) => InputExpression.Number(value, Source);
-    private static InputExpression Add(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
-    private static InputExpression Subtract(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
-    private static InputExpression Multiply(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
-    private static InputExpression Divide(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
-    private static InputExpression Function(string name, params InputExpression[] arguments) => InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    private static AnalysisRequest Request(InputExpression expression, AnalysisFeatures features)
+    {
+        return new AnalysisRequest(expression, features, AngleUnit.Radians, "x", static () => true);
+    }
+
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
+
+    private static InputExpression Symbol(string name)
+    {
+        return InputExpression.Variable(name, Source);
+    }
+
+    private static InputExpression Number(int value)
+    {
+        return Number(new BigRational(value));
+    }
+
+    private static InputExpression Number(BigRational value)
+    {
+        return InputExpression.Number(value, Source);
+    }
+
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
+
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
+
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
+
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
+
+    private static InputExpression Function(string name, params InputExpression[] arguments)
+    {
+        return InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    }
 }

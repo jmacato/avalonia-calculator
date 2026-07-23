@@ -48,10 +48,12 @@ public sealed class ThemeTransitionBehavior
         panel.SetValue(ChildrenTransitionsProperty, transitions);
     }
 
-    internal static TimeSpan GetStaggerDelay(int index) =>
-        TimeSpan.FromMilliseconds(Math.Min(
+    internal static TimeSpan GetStaggerDelay(int index)
+    {
+        return TimeSpan.FromMilliseconds(Math.Min(
             EntranceStaggerDelay.TotalMilliseconds * index,
             EntranceStaggerCap.TotalMilliseconds));
+    }
 
     private static void PrepareRoot(
         Control control,
@@ -164,8 +166,10 @@ public sealed class ThemeTransitionBehavior
 
     private static bool IsCurrentEntrance(
         ThemeTransitionHost control,
-        int version) =>
-        control.IsCurrentOpen(version);
+        int version)
+    {
+        return control.IsCurrentOpen(version);
+    }
 
     internal static void Reset(Control control)
     {

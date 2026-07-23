@@ -132,16 +132,15 @@ public sealed class MathDisplay : Control
     {
         ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
-        if (change.Property == MathMlProperty)
+        if (change.Property == MathMlProperty && change.GetNewValue<string>() is { } newMl)
         {
-            LoadMathMl(change.GetNewValue<string>() ?? string.Empty);
+            LoadMathMl(newMl);
         }
-        else if (change.Property == DocumentProperty)
+        else if (change.Property == DocumentProperty && change.GetNewValue<MathDocument>() is { } document)
         {
-            _document = change.GetNewValue<MathDocument>();
             AutomationProperties.SetName(
                 this,
-                MathInterchange.Serialize(_document, MathTextFormat.UnicodeMath));
+                MathInterchange.Serialize(document, MathTextFormat.UnicodeMath));
             InvalidateMathLayout();
         }
         else if (change.Property == MathFontSizeProperty || change.Property == PaddingProperty)

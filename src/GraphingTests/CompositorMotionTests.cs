@@ -143,8 +143,7 @@ public sealed class CompositorMotionTests
         };
         ThemeTransitionBehavior.SetChildrenTransitions(
             panel,
-            new ThemeTransitionCollection
-            {
+            [
                 new EntranceThemeTransition
                 {
                     FromVerticalOffset = 50,
@@ -154,7 +153,7 @@ public sealed class CompositorMotionTests
                 {
                     IsStaggeringEnabled = false
                 }
-            });
+            ]);
         var window = new Window
         {
             Width = 240,

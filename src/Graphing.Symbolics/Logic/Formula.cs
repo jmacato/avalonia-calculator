@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Text;
 
 namespace Graphing.Symbolics;
 
@@ -9,20 +8,38 @@ internal abstract record Formula
     public static Formula True { get; } = new BooleanFormula(true);
     public static Formula False { get; } = new BooleanFormula(false);
 
-    public static Formula Compare(ValueTerm left, Comparison comparison, ValueTerm right) => left == right ? comparison switch
+    public static Formula Compare(ValueTerm left, Comparison comparison, ValueTerm right)
     {
-        Comparison.Equal or Comparison.LessOrEqual or Comparison.GreaterOrEqual => True,
-        Comparison.NotEqual or Comparison.Less or Comparison.Greater => False,
-        _ => throw new ArgumentOutOfRangeException(nameof(comparison))
-    } : new ComparisonFormula(left, comparison, right);
-    public static Formula Predicate(ExactPredicate predicate, params ValueTerm[] terms) => new PredicateFormula(predicate, terms.ToImmutableArray());
-    public static Formula Not(Formula operand) => operand switch
+        return left == right
+            ? comparison switch
+            {
+                Comparison.Equal or Comparison.LessOrEqual or Comparison.GreaterOrEqual => True,
+                Comparison.NotEqual or Comparison.Less or Comparison.Greater => False,
+                _ => throw new ArgumentOutOfRangeException(nameof(comparison))
+            }
+            : new ComparisonFormula(left, comparison, right);
+    }
+
+    public static Formula Predicate(ExactPredicate predicate, params ValueTerm[] terms)
     {
-        BooleanFormula boolean => boolean.Value ? False : True,
-        NotFormula nested => nested.Operand,
-        _ => new NotFormula(operand)
-    };
-    public static Formula And(params Formula[] operands) => And(operands.AsEnumerable());
+        return new PredicateFormula(predicate, terms.ToImmutableArray());
+    }
+
+    public static Formula Not(Formula operand)
+    {
+        return operand switch
+        {
+            BooleanFormula boolean => boolean.Value ? False : True,
+            NotFormula nested => nested.Operand,
+            _ => new NotFormula(operand)
+        };
+    }
+
+    public static Formula And(params Formula[] operands)
+    {
+        return And(operands.AsEnumerable());
+    }
+
     public static Formula And(IEnumerable<Formula> operands)
     {
         var flattened = new SortedDictionary<string, Formula>(StringComparer.Ordinal);
@@ -59,7 +76,11 @@ internal abstract record Formula
         };
     }
 
-    public static Formula Or(params Formula[] operands) => Or(operands.AsEnumerable());
+    public static Formula Or(params Formula[] operands)
+    {
+        return Or(operands.AsEnumerable());
+    }
+
     public static Formula Or(IEnumerable<Formula> operands)
     {
         var flattened = new SortedDictionary<string, Formula>(StringComparer.Ordinal);

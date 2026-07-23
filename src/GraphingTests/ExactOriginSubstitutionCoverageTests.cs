@@ -168,7 +168,7 @@ public sealed class ExactOriginSubstitutionCoverageTests
             arguments.Add(expression);
             for (int index = 1; index < arity; index++)
             {
-                int value = checked((layer * (arity - 1)) + index);
+                int value = checked(layer * (arity - 1) + index);
                 expected += value;
                 arguments.Add(Number(value));
             }
@@ -250,17 +250,61 @@ public sealed class ExactOriginSubstitutionCoverageTests
         return new ExactOriginSubstitutionCoverageTestsProducedOrigin(request, semantic, outcome);
     }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
-    private static InputExpression Symbol(string name) => InputExpression.Variable(name, Source);
-    private static InputExpression Number(int value) => InputExpression.Number(new BigRational(value), Source);
-    private static InputExpression Number(long value) => InputExpression.Number(new BigRational(value), Source);
-    private static InputExpression Number(int numerator, int denominator) => InputExpression.Number(new BigRational(numerator, denominator), Source);
-    private static InputExpression Add(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
-    private static InputExpression Subtract(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
-    private static InputExpression Divide(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
-    private static InputExpression Power(InputExpression basis, InputExpression exponent) => InputExpression.Binary(InputExpressionKind.Power, basis, exponent, Source);
-    private static InputExpression Function(string name, params InputExpression[] arguments) => InputExpression.Function(name, arguments.ToImmutableArray(), Source);
-    private static InputExpression Sum(InputExpression first, params InputExpression[] remaining) => remaining.Aggregate(first, Add);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
+
+    private static InputExpression Symbol(string name)
+    {
+        return InputExpression.Variable(name, Source);
+    }
+
+    private static InputExpression Number(int value)
+    {
+        return InputExpression.Number(new BigRational(value), Source);
+    }
+
+    private static InputExpression Number(long value)
+    {
+        return InputExpression.Number(new BigRational(value), Source);
+    }
+
+    private static InputExpression Number(int numerator, int denominator)
+    {
+        return InputExpression.Number(new BigRational(numerator, denominator), Source);
+    }
+
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
+
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
+
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
+
+    private static InputExpression Power(InputExpression basis, InputExpression exponent)
+    {
+        return InputExpression.Binary(InputExpressionKind.Power, basis, exponent, Source);
+    }
+
+    private static InputExpression Function(string name, params InputExpression[] arguments)
+    {
+        return InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    }
+
+    private static InputExpression Sum(InputExpression first, params InputExpression[] remaining)
+    {
+        return remaining.Aggregate(first, Add);
+    }
+
     private static int MaximumValueDepth(ValueTerm root)
     {
         var pending = new Stack<(ValueTerm Term, int Depth)>();

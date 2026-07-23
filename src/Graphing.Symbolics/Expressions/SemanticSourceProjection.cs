@@ -201,10 +201,30 @@ internal static class SemanticSourceProjection
         return expected == result.Constant;
     }
 
-    private static bool MatchesBinaryPropagation(SemanticExpression expression, SemanticExpression left, SemanticExpression right) => SameFormula(expression.DefinedWhen, Formula.And(left.DefinedWhen, right.DefinedWhen)) && SameFormula(expression.ContinuousWhen, Formula.And(left.ContinuousWhen, right.ContinuousWhen)) && SameFormula(expression.DifferentiableWhen, Formula.And(left.DifferentiableWhen, right.DifferentiableWhen));
-    private static bool AreBothConstants(ValueTerm left, ValueTerm right) => left.Kind == ValueKind.Constant && right.Kind == ValueKind.Constant;
-    private static bool IsConstant(ValueTerm value, BigRational expected) => value.Kind == ValueKind.Constant && value.Constant == expected;
-    private static bool MatchesBefore(RewriteStep rewrite, ValueKind kind, ValueTerm left, ValueTerm right) => string.Equals(rewrite.Before, $"{(int)kind}:({left.Canonical},{right.Canonical})", StringComparison.Ordinal);
+    private static bool MatchesBinaryPropagation(SemanticExpression expression, SemanticExpression left, SemanticExpression right)
+    {
+        return SameFormula(expression.DefinedWhen, Formula.And(left.DefinedWhen, right.DefinedWhen)) &&
+               SameFormula(expression.ContinuousWhen, Formula.And(left.ContinuousWhen, right.ContinuousWhen)) &&
+               SameFormula(expression.DifferentiableWhen,
+                   Formula.And(left.DifferentiableWhen, right.DifferentiableWhen));
+    }
+
+    private static bool AreBothConstants(ValueTerm left, ValueTerm right)
+    {
+        return left.Kind == ValueKind.Constant && right.Kind == ValueKind.Constant;
+    }
+
+    private static bool IsConstant(ValueTerm value, BigRational expected)
+    {
+        return value.Kind == ValueKind.Constant && value.Constant == expected;
+    }
+
+    private static bool MatchesBefore(RewriteStep rewrite, ValueKind kind, ValueTerm left, ValueTerm right)
+    {
+        return string.Equals(rewrite.Before, $"{(int)kind}:({left.Canonical},{right.Canonical})",
+            StringComparison.Ordinal);
+    }
+
     private static bool TryMatchOneOf(RewriteStep rewrite, ValueTerm left, ValueTerm right, out ValueKind operation, params ValueKind[] candidates)
     {
         foreach (ValueKind candidate in candidates)
@@ -220,7 +240,11 @@ internal static class SemanticSourceProjection
         return false;
     }
 
-    private static bool SameFormula(Formula left, Formula right) => string.Equals(left.Canonical, right.Canonical, StringComparison.Ordinal);
+    private static bool SameFormula(Formula left, Formula right)
+    {
+        return string.Equals(left.Canonical, right.Canonical, StringComparison.Ordinal);
+    }
+
     private static int IndexOfReference(ImmutableArray<SemanticExpression> operands, SemanticExpression selected)
     {
         for (int index = 0; index < operands.Length; index++)

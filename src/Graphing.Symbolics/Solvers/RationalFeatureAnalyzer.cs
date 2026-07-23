@@ -238,7 +238,7 @@ internal static class RationalFeatureAnalyzer
         BigRational denominator = new BigRational(4) * leading;
         budget.CheckCoefficient(square);
         budget.CheckCoefficient(denominator);
-        endpoint = constant - (square / denominator);
+        endpoint = constant - square / denominator;
         budget.CheckCoefficient(endpoint);
         return true;
     }
@@ -331,7 +331,7 @@ internal static class RationalFeatureAnalyzer
         if (derivative.Numerator.IsZero)
         {
             roots = [context.DomainCells.RootIsolation];
-            return OneDimensionalComponents(context.Domain).Select(static component => new MonotoneRegion(component, Graphing.Symbolics.Monotonicity.Constant)).ToImmutableArray();
+            return OneDimensionalComponents(context.Domain).Select(static component => new MonotoneRegion(component, Symbolics.Monotonicity.Constant)).ToImmutableArray();
         }
 
         SignChart chart = BuildSignChart(context, [derivative.Numerator, derivative.Denominator], budget);
@@ -365,7 +365,7 @@ internal static class RationalFeatureAnalyzer
             RealBound lower = startGap == 0 ? RealBound.NegativeInfinity : RealBound.Finite(chart.Roots.Roots[startGap - 1]);
             RealBound upper = endGap == rootCount ? RealBound.PositiveInfinity : RealBound.Finite(chart.Roots.Roots[endGap]);
             RealSet region = startGap == 0 && endGap == rootCount ? AllRealSet.Instance : new IntervalSet(lower, false, upper, false);
-            result.Add(new MonotoneRegion(region, sign > 0 ? Graphing.Symbolics.Monotonicity.Increasing : Graphing.Symbolics.Monotonicity.Decreasing));
+            result.Add(new MonotoneRegion(region, sign > 0 ? Symbolics.Monotonicity.Increasing : Symbolics.Monotonicity.Decreasing));
             gap = endGap + 1;
         }
 
@@ -418,7 +418,14 @@ internal static class RationalFeatureAnalyzer
         return [new Asymptote(AsymptoteOrientation.Oblique, new SingletonReal(intercept), slope, intercept)];
     }
 
-    internal static Periodicity ComputePeriod(RationalAnalysisContext context) => context.Function.Numerator.Degree <= 0 && context.Function.Denominator.Degree <= 0 && context.Domain is AllRealSet or EmptySet ? new Periodicity(PeriodicityKind.PeriodicWithoutFundamentalPeriod, null) : new Periodicity(PeriodicityKind.NotPeriodic, null);
+    internal static Periodicity ComputePeriod(RationalAnalysisContext context)
+    {
+        return context.Function.Numerator.Degree <= 0 && context.Function.Denominator.Degree <= 0 &&
+               context.Domain is AllRealSet or EmptySet
+            ? new Periodicity(PeriodicityKind.PeriodicWithoutFundamentalPeriod, null)
+            : new Periodicity(PeriodicityKind.NotPeriodic, null);
+    }
+
     private static ProofOutcome<T> Proved<T>(RationalAnalysisContext context, AnalysisFeatures feature, T value, ImmutableArray<RootIsolationCertificate> roots, string rule)
     {
         var certificate = new RationalFunctionProofCertificate(feature, context.Expression.Value.Canonical, ClaimCanonical.For(value), context.Function.Numerator, context.Function.Denominator, context.Extraction.DomainExclusions, roots, rule);
@@ -463,8 +470,16 @@ internal static class RationalFeatureAnalyzer
         return new SignChart(polynomials, roots, gapSamples.MoveToImmutable(), gapSigns.MoveToImmutable(), pointSigns.MoveToImmutable(), gapDomain.MoveToImmutable(), pointDomain.MoveToImmutable());
     }
 
-    private static int RationalSignInGap(SignChart chart, RationalFunction function, int gap) => chart.SignInGap(function.Numerator, gap) * chart.SignInGap(function.Denominator, gap);
-    private static int RationalSignAtPoint(SignChart chart, RationalFunction function, int point) => chart.SignAtPoint(function.Numerator, point) * chart.SignAtPoint(function.Denominator, point);
+    private static int RationalSignInGap(SignChart chart, RationalFunction function, int gap)
+    {
+        return chart.SignInGap(function.Numerator, gap) * chart.SignInGap(function.Denominator, gap);
+    }
+
+    private static int RationalSignAtPoint(SignChart chart, RationalFunction function, int point)
+    {
+        return chart.SignAtPoint(function.Numerator, point) * chart.SignAtPoint(function.Denominator, point);
+    }
+
     private static bool EvaluateFormulaAt(PolynomialFormula formula, BigRational value, ResourceBudget budget)
     {
         ImmutableArray<UnivariatePolynomial> atoms = PolynomialFormulaConverter.Atoms(formula);
@@ -488,14 +503,19 @@ internal static class RationalFeatureAnalyzer
         return PolynomialFormulaConverter.Evaluate(formula, map);
     }
 
-    private static PolynomialFormula SubstituteNegative(PolynomialFormula formula, ResourceBudget budget) => formula switch
+    private static PolynomialFormula SubstituteNegative(PolynomialFormula formula, ResourceBudget budget)
     {
-        PolynomialBoolean boolean => boolean,
-        PolynomialAtom atom => NormalizeReflectedAtom(atom, budget),
-        PolynomialNot not => new PolynomialNot(SubstituteNegative(not.Operand, budget)),
-        PolynomialJunction junction => new PolynomialJunction(junction.IsConjunction, junction.Operands.Select(operand => SubstituteNegative(operand, budget)).ToImmutableArray()),
-        _ => throw new ArgumentOutOfRangeException(nameof(formula))
-    };
+        return formula switch
+        {
+            PolynomialBoolean boolean => boolean,
+            PolynomialAtom atom => NormalizeReflectedAtom(atom, budget),
+            PolynomialNot not => new PolynomialNot(SubstituteNegative(not.Operand, budget)),
+            PolynomialJunction junction => new PolynomialJunction(junction.IsConjunction,
+                junction.Operands.Select(operand => SubstituteNegative(operand, budget)).ToImmutableArray()),
+            _ => throw new ArgumentOutOfRangeException(nameof(formula))
+        };
+    }
+
     private static PolynomialAtom NormalizeReflectedAtom(PolynomialAtom atom, ResourceBudget budget)
     {
         UnivariatePolynomial reflected = atom.Polynomial.SubstituteNegativeVariable(budget);
@@ -503,14 +523,18 @@ internal static class RationalFeatureAnalyzer
         return new PolynomialAtom(reflected.PrimitivePositive(budget), comparison);
     }
 
-    private static Comparison Reverse(Comparison comparison) => comparison switch
+    private static Comparison Reverse(Comparison comparison)
     {
-        Comparison.Less => Comparison.Greater,
-        Comparison.LessOrEqual => Comparison.GreaterOrEqual,
-        Comparison.Greater => Comparison.Less,
-        Comparison.GreaterOrEqual => Comparison.LessOrEqual,
-        _ => comparison
-    };
+        return comparison switch
+        {
+            Comparison.Less => Comparison.Greater,
+            Comparison.LessOrEqual => Comparison.GreaterOrEqual,
+            Comparison.Greater => Comparison.Less,
+            Comparison.GreaterOrEqual => Comparison.LessOrEqual,
+            _ => comparison
+        };
+    }
+
     private static bool DomainIsExactlyReducedDenominator(RationalAnalysisContext context, ResourceBudget budget)
     {
         PolynomialAtom nonzero = new(context.Function.Denominator.PrimitivePositive(budget), Comparison.NotEqual);
@@ -518,26 +542,39 @@ internal static class RationalFeatureAnalyzer
         return string.Equals(expected.Result.Canonical, context.Domain.Canonical, StringComparison.Ordinal);
     }
 
-    private static IEnumerable<RealSet> OneDimensionalComponents(RealSet set) => set switch
+    private static IEnumerable<RealSet> OneDimensionalComponents(RealSet set)
     {
-        AllRealSet => [AllRealSet.Instance],
-        IntervalSet interval => [interval],
-        UnionSet union => union.Operands.SelectMany(OneDimensionalComponents),
-        _ => []
-    };
-    private static bool HasUnboundedComponent(RealSet set) => set switch
+        return set switch
+        {
+            AllRealSet => [AllRealSet.Instance],
+            IntervalSet interval => [interval],
+            UnionSet union => union.Operands.SelectMany(OneDimensionalComponents),
+            _ => []
+        };
+    }
+
+    private static bool HasUnboundedComponent(RealSet set)
     {
-        AllRealSet => true,
-        IntervalSet interval => interval.Lower.Kind == BoundKind.NegativeInfinity || interval.Upper.Kind == BoundKind.PositiveInfinity,
-        UnionSet union => union.Operands.Any(HasUnboundedComponent),
-        _ => false
-    };
-    private static ExactReal EvaluateExact(RationalFunction function, ExactReal value, ResourceBudget budget) => value switch
+        return set switch
+        {
+            AllRealSet => true,
+            IntervalSet interval => interval.Lower.Kind == BoundKind.NegativeInfinity ||
+                                    interval.Upper.Kind == BoundKind.PositiveInfinity,
+            UnionSet union => union.Operands.Any(HasUnboundedComponent),
+            _ => false
+        };
+    }
+
+    private static ExactReal EvaluateExact(RationalFunction function, ExactReal value, ResourceBudget budget)
     {
-        RationalReal rational => new RationalReal(function.Evaluate(rational.Value, budget)),
-        AlgebraicReal algebraic => new AlgebraicImageReal(function, algebraic),
-        _ => throw new ArgumentOutOfRangeException(nameof(value))
-    };
+        return value switch
+        {
+            RationalReal rational => new RationalReal(function.Evaluate(rational.Value, budget)),
+            AlgebraicReal algebraic => new AlgebraicImageReal(function, algebraic),
+            _ => throw new ArgumentOutOfRangeException(nameof(value))
+        };
+    }
+
     private static BigRational SampleGap(ImmutableArray<ExactReal> roots, int gap)
     {
         if (roots.IsEmpty)
@@ -558,24 +595,37 @@ internal static class RationalFeatureAnalyzer
         return (Upper(roots[gap - 1]) + Lower(roots[gap])) / 2;
     }
 
-    private static BigRational Lower(ExactReal root) => root switch
+    private static BigRational Lower(ExactReal root)
     {
-        RationalReal rational => rational.Value,
-        AlgebraicReal algebraic => algebraic.IsolatingInterval.Lower,
-        _ => throw new ArgumentOutOfRangeException(nameof(root))
-    };
-    private static BigRational Upper(ExactReal root) => root switch
+        return root switch
+        {
+            RationalReal rational => rational.Value,
+            AlgebraicReal algebraic => algebraic.IsolatingInterval.Lower,
+            _ => throw new ArgumentOutOfRangeException(nameof(root))
+        };
+    }
+
+    private static BigRational Upper(ExactReal root)
     {
-        RationalReal rational => rational.Value,
-        AlgebraicReal algebraic => algebraic.IsolatingInterval.Upper,
-        _ => throw new ArgumentOutOfRangeException(nameof(root))
-    };
-    private static int SignAt(UnivariatePolynomial polynomial, ExactReal root, ResourceBudget budget) => root switch
+        return root switch
+        {
+            RationalReal rational => rational.Value,
+            AlgebraicReal algebraic => algebraic.IsolatingInterval.Upper,
+            _ => throw new ArgumentOutOfRangeException(nameof(root))
+        };
+    }
+
+    private static int SignAt(UnivariatePolynomial polynomial, ExactReal root, ResourceBudget budget)
     {
-        RationalReal rational => polynomial.Evaluate(rational.Value, budget).Sign,
-        AlgebraicReal algebraic => SturmRootIsolator.SignAtIsolatedRoot(algebraic.Polynomial, polynomial, algebraic.IsolatingInterval, budget),
-        _ => throw new ArgumentOutOfRangeException(nameof(root))
-    };
+        return root switch
+        {
+            RationalReal rational => polynomial.Evaluate(rational.Value, budget).Sign,
+            AlgebraicReal algebraic => SturmRootIsolator.SignAtIsolatedRoot(algebraic.Polynomial, polynomial,
+                algebraic.IsolatingInterval, budget),
+            _ => throw new ArgumentOutOfRangeException(nameof(root))
+        };
+    }
+
     private static RationalFeatureAnalyzerExtremumKind ClassifyExtremum(bool leftDomain, bool rightDomain, int leftSign, int rightSign)
     {
         if (leftDomain && rightDomain)

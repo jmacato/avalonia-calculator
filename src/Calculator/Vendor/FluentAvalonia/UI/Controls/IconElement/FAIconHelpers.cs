@@ -49,17 +49,20 @@ internal static class FAIconHelpers
         return icon;
     }
 
-    internal static Control? CreateFromUnknown(FAIconSource? source) => source switch
+    internal static Control? CreateFromUnknown(FAIconSource? source)
     {
-        FAFontIconSource font => CreateFontIconFromFontIconSource(font),
-        FAPathIconSource path => CreatePathIconFromPathIconSource(path),
-        FASymbolIconSource symbol => CreateSymbolIconFromSymbolIconSource(symbol),
-        _ => null
-    };
+        return source switch
+        {
+            FAFontIconSource font => CreateFontIconFromFontIconSource(font),
+            FAPathIconSource path => CreatePathIconFromPathIconSource(path),
+            FASymbolIconSource symbol => CreateSymbolIconFromSymbolIconSource(symbol),
+            _ => null
+        };
+    }
 
     private static void BindForeground(Control icon, FAIconSource source)
     {
-        IObservable<Avalonia.Data.BindingValue<Avalonia.Media.IBrush?>> foreground =
+        IObservable<BindingValue<Avalonia.Media.IBrush?>> foreground =
             source.GetBindingObservable(FAIconSource.ForegroundProperty);
         icon.Bind(
             TextElement.ForegroundProperty,

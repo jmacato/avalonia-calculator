@@ -34,23 +34,55 @@ public sealed class SwipeItems : AvaloniaObject, IList<SwipeItem>, IReadOnlyList
         _items.Add(item);
     }
 
-    public void Clear() => _items.Clear();
-    public bool Contains(SwipeItem item) => _items.Contains(item);
-    public void CopyTo(SwipeItem[] array, int arrayIndex) => _items.CopyTo(array, arrayIndex);
-    public IEnumerator<SwipeItem> GetEnumerator() => _items.GetEnumerator();
-    public int IndexOf(SwipeItem item) => _items.IndexOf(item);
+    public void Clear()
+    {
+        _items.Clear();
+    }
+
+    public bool Contains(SwipeItem item)
+    {
+        return _items.Contains(item);
+    }
+
+    public void CopyTo(SwipeItem[] array, int arrayIndex)
+    {
+        _items.CopyTo(array, arrayIndex);
+    }
+
+    public IEnumerator<SwipeItem> GetEnumerator()
+    {
+        return _items.GetEnumerator();
+    }
+
+    public int IndexOf(SwipeItem item)
+    {
+        return _items.IndexOf(item);
+    }
+
     public void Insert(int index, SwipeItem item)
     {
         ThrowIfExecuteAlreadyHasItem();
         _items.Insert(index, item);
     }
 
-    public bool Remove(SwipeItem item) => _items.Remove(item);
-    public void RemoveAt(int index) => _items.RemoveAt(index);
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    public bool Remove(SwipeItem item)
+    {
+        return _items.Remove(item);
+    }
+
+    public void RemoveAt(int index)
+    {
+        _items.RemoveAt(index);
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
-        System.ArgumentNullException.ThrowIfNull(change);
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
         if (change.Property == ModeProperty && change.NewValue is SwipeMode.Execute && Count > 1)
         {

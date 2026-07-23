@@ -21,35 +21,40 @@ public static class MathMlSerializer
         return root.ToString(SaveOptions.DisableFormatting);
     }
 
-    private static XElement WriteNode(MathNode node) => node switch
+    private static XElement WriteNode(MathNode node)
     {
-        MathRow row => WriteRow(row),
-        MathText text => new XElement(MathMl + TokenName(text.AtomClass), text.Text),
-        MathFraction fraction =>
-            new(MathMl + "mfrac", WriteRow(fraction.Numerator), WriteRow(fraction.Denominator)),
-        MathRadical { Degree: null } radical =>
-            new(MathMl + "msqrt", radical.Radicand.Children.Select(WriteNode)),
-        MathRadical radical =>
-            new(MathMl + "mroot", WriteRow(radical.Radicand), WriteRow(radical.Degree!)),
-        MathFunction function => WriteFunction(function),
-        MathScript script => WriteScript(script),
-        MathUnderOver underOver => WriteUnderOver(underOver),
-        MathAccent accent => WriteAccent(accent),
-        MathDelimiter delimiter => WriteDelimiter(delimiter),
-        MathTable table => WriteTable(table),
-        MathSpacing spacing => new XElement(
-            MathMl + "mspace",
-            new XAttribute("width", SpacingWidth(spacing.Width))),
-        MathError error => new XElement(
-            MathMl + "merror",
-            new XElement(MathMl + "mtext", error.RawFragment)),
-        _ => throw new ArgumentException(
-            $"Unsupported node type {node.GetType().FullName}.",
-            nameof(node))
-    };
+        return node switch
+        {
+            MathRow row => WriteRow(row),
+            MathText text => new XElement(MathMl + TokenName(text.AtomClass), text.Text),
+            MathFraction fraction =>
+                new(MathMl + "mfrac", WriteRow(fraction.Numerator), WriteRow(fraction.Denominator)),
+            MathRadical { Degree: null } radical =>
+                new(MathMl + "msqrt", radical.Radicand.Children.Select(WriteNode)),
+            MathRadical radical =>
+                new(MathMl + "mroot", WriteRow(radical.Radicand), WriteRow(radical.Degree!)),
+            MathFunction function => WriteFunction(function),
+            MathScript script => WriteScript(script),
+            MathUnderOver underOver => WriteUnderOver(underOver),
+            MathAccent accent => WriteAccent(accent),
+            MathDelimiter delimiter => WriteDelimiter(delimiter),
+            MathTable table => WriteTable(table),
+            MathSpacing spacing => new XElement(
+                MathMl + "mspace",
+                new XAttribute("width", SpacingWidth(spacing.Width))),
+            MathError error => new XElement(
+                MathMl + "merror",
+                new XElement(MathMl + "mtext", error.RawFragment)),
+            _ => throw new ArgumentException(
+                $"Unsupported node type {node.GetType().FullName}.",
+                nameof(node))
+        };
+    }
 
-    private static XElement WriteRow(MathRow row) =>
-        new(MathMl + "mrow", row.Children.Select(WriteNode));
+    private static XElement WriteRow(MathRow row)
+    {
+        return new XElement(MathMl + "mrow", row.Children.Select(WriteNode));
+    }
 
     private static XElement WriteFunction(MathFunction function)
     {
@@ -127,7 +132,9 @@ public static class MathMlSerializer
     private static XElement WriteUnderOverElement(
         XElement @base,
         MathRow? below,
-        MathRow? above) => (below, above) switch
+        MathRow? above)
+    {
+        return (below, above) switch
         {
             (not null, not null) => new XElement(
                 MathMl + "munderover",
@@ -138,6 +145,7 @@ public static class MathMlSerializer
             (null, not null) => new XElement(MathMl + "mover", @base, WriteRow(above)),
             _ => @base
         };
+    }
 
     private static XElement WriteAccent(MathAccent accent)
     {
@@ -150,12 +158,14 @@ public static class MathMlSerializer
             new XElement(MathMl + "mo", AccentMarker(accent.Kind)));
     }
 
-    private static XElement WriteDelimiter(MathDelimiter delimiter) =>
-        new(
+    private static XElement WriteDelimiter(MathDelimiter delimiter)
+    {
+        return new XElement(
             MathMl + "mrow",
             WriteDelimiterOperator(delimiter.Opening, delimiter.Scalable),
             WriteRow(delimiter.Body),
             WriteDelimiterOperator(delimiter.Closing, delimiter.Scalable));
+    }
 
     private static XElement WriteDelimiterOperator(string? value, bool scalable)
     {
@@ -173,8 +183,9 @@ public static class MathMlSerializer
         return element;
     }
 
-    private static XElement WriteTable(MathTable table) =>
-        new(
+    private static XElement WriteTable(MathTable table)
+    {
+        return new XElement(
             MathMl + "mtable",
             new XAttribute(
                 "data-math-composer-layout",
@@ -190,46 +201,59 @@ public static class MathMlSerializer
                 new XElement(
                     MathMl + "mtr",
                     row.Select(cell => new XElement(MathMl + "mtd", WriteRow(cell))))));
+    }
 
-    private static string TokenName(MathAtomClass atomClass) => atomClass switch
+    private static string TokenName(MathAtomClass atomClass)
     {
-        MathAtomClass.Identifier => "mi",
-        MathAtomClass.Number => "mn",
-        MathAtomClass.OrdinaryText => "mtext",
-        MathAtomClass.Operator or MathAtomClass.Relation or MathAtomClass.Punctuation => "mo",
-        _ => throw new ArgumentOutOfRangeException(nameof(atomClass))
-    };
+        return atomClass switch
+        {
+            MathAtomClass.Identifier => "mi",
+            MathAtomClass.Number => "mn",
+            MathAtomClass.OrdinaryText => "mtext",
+            MathAtomClass.Operator or MathAtomClass.Relation or MathAtomClass.Punctuation => "mo",
+            _ => throw new ArgumentOutOfRangeException(nameof(atomClass))
+        };
+    }
 
-    private static string SpacingWidth(MathSpacingWidth width) => width switch
+    private static string SpacingWidth(MathSpacingWidth width)
     {
-        MathSpacingWidth.Thin => (3d / 18d).ToString("0.######", CultureInfo.InvariantCulture) + "em",
-        MathSpacingWidth.Medium => (4d / 18d).ToString("0.######", CultureInfo.InvariantCulture) + "em",
-        MathSpacingWidth.Em => "1em",
-        _ => throw new ArgumentOutOfRangeException(nameof(width))
-    };
+        return width switch
+        {
+            MathSpacingWidth.Thin => (3d / 18d).ToString("0.######", CultureInfo.InvariantCulture) + "em",
+            MathSpacingWidth.Medium => (4d / 18d).ToString("0.######", CultureInfo.InvariantCulture) + "em",
+            MathSpacingWidth.Em => "1em",
+            _ => throw new ArgumentOutOfRangeException(nameof(width))
+        };
+    }
 
-    private static string ConstructionMarker(MathUnderOverKind kind) => kind switch
+    private static string ConstructionMarker(MathUnderOverKind kind)
     {
-        MathUnderOverKind.Overbar => "¯",
-        MathUnderOverKind.Underbar => "_",
-        MathUnderOverKind.Overbrace => "⏞",
-        MathUnderOverKind.Underbrace => "⏟",
-        _ => throw new ArgumentOutOfRangeException(nameof(kind))
-    };
+        return kind switch
+        {
+            MathUnderOverKind.Overbar => "¯",
+            MathUnderOverKind.Underbar => "_",
+            MathUnderOverKind.Overbrace => "⏞",
+            MathUnderOverKind.Underbrace => "⏟",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        };
+    }
 
-    private static string AccentMarker(MathAccentKind kind) => kind switch
+    private static string AccentMarker(MathAccentKind kind)
     {
-        MathAccentKind.Acute => "́",
-        MathAccentKind.Grave => "̀",
-        MathAccentKind.Hat => "̂",
-        MathAccentKind.Check => "̌",
-        MathAccentKind.Breve => "̆",
-        MathAccentKind.Tilde => "̃",
-        MathAccentKind.Bar => "̄",
-        MathAccentKind.Dot => "̇",
-        MathAccentKind.DoubleDot => "̈",
-        MathAccentKind.TripleDot => "⃛",
-        MathAccentKind.Vector => "⃗",
-        _ => throw new ArgumentOutOfRangeException(nameof(kind))
-    };
+        return kind switch
+        {
+            MathAccentKind.Acute => "́",
+            MathAccentKind.Grave => "̀",
+            MathAccentKind.Hat => "̂",
+            MathAccentKind.Check => "̌",
+            MathAccentKind.Breve => "̆",
+            MathAccentKind.Tilde => "̃",
+            MathAccentKind.Bar => "̄",
+            MathAccentKind.Dot => "̇",
+            MathAccentKind.DoubleDot => "̈",
+            MathAccentKind.TripleDot => "⃛",
+            MathAccentKind.Vector => "⃗",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        };
+    }
 }

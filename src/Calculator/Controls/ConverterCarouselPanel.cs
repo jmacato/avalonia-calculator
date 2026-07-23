@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation and the Avalonia contributors.
 // Licensed under the MIT License.
-using System.Collections;
+
 using System.Collections.Specialized;
 using System.Diagnostics;
 using Avalonia;
@@ -29,7 +29,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
     /// item across WinUI's inflated extent as an indexed, allocation-free list
     /// and deliberately omit each separator slot.
     /// </summary>
-    private readonly Dictionary<int, ConverterCarouselPanelRealizedItem> _realized = new();
+    private readonly Dictionary<int, ConverterCarouselPanelRealizedItem> _realized = [];
     private Dictionary<object, Stack<Control>>? _recyclePool;
     private Size _extent;
     private Vector _offset;
@@ -283,7 +283,13 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         return -1;
     }
 
-    protected override IEnumerable<Control>? GetRealizedContainers() => _realized.Count == 0 ? null : _realized.Values.OrderBy(item => item.LogicalIndex).Select(item => item.Control);
+    protected override IEnumerable<Control>? GetRealizedContainers()
+    {
+        return _realized.Count == 0
+            ? null
+            : _realized.Values.OrderBy(item => item.LogicalIndex).Select(item => item.Control);
+    }
+
     protected override Control? ScrollIntoView(int index)
     {
         if (index < 0 || index >= Items.Count)
@@ -340,8 +346,16 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         return previous != _offset;
     }
 
-    Control? ILogicalScrollable.GetControlInDirection(NavigationDirection direction, Control? from) => GetControl(direction, from, true) as Control;
-    void ILogicalScrollable.RaiseScrollInvalidated(EventArgs e) => ScrollInvalidated?.Invoke(this, e);
+    Control? ILogicalScrollable.GetControlInDirection(NavigationDirection direction, Control? from)
+    {
+        return GetControl(direction, from, true) as Control;
+    }
+
+    void ILogicalScrollable.RaiseScrollInvalidated(EventArgs e)
+    {
+        ScrollInvalidated?.Invoke(this, e);
+    }
+
     public IReadOnlyList<double> GetIrregularSnapPoints(Orientation orientation, SnapPointsAlignment snapPointsAlignment)
     {
         if (orientation != Orientation.Vertical || !_shouldCarousel || Items.Count == 0)
@@ -373,7 +387,11 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         return 0;
     }
 
-    private int GetCycleLength() => _shouldCarousel && Items.Count > 0 ? Items.Count + 1 : 0;
+    private int GetCycleLength()
+    {
+        return _shouldCarousel && Items.Count > 0 ? Items.Count + 1 : 0;
+    }
+
     private double ResolveViewportHeight(Size availableSize, int logicalItemCount)
     {
         double contentHeight = logicalItemCount * _itemHeight;
@@ -529,7 +547,7 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         }
 
         ItemContainerGenerator!.ClearItemContainer(element);
-        _recyclePool ??= new Dictionary<object, Stack<Control>>();
+        _recyclePool ??= [];
         if (!_recyclePool.TryGetValue(recycleKey!, out var pool))
         {
             pool = new Stack<Control>();
@@ -617,5 +635,8 @@ public sealed class ConverterCarouselPanel : VirtualizingPanel, ILogicalScrollab
         }
     }
 
-    private static bool AreClose(double left, double right) => Math.Abs(left - right) < 0.000001;
+    private static bool AreClose(double left, double right)
+    {
+        return Math.Abs(left - right) < 0.000001;
+    }
 }

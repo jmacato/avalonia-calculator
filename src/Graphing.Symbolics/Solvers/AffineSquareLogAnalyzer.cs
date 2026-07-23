@@ -86,7 +86,7 @@ internal static class AffineSquareLogAnalyzer
         return value is not null;
     }
 
-    private static Graphing.Symbolics.PointSet Zeros(AffineSquareLogPattern pattern, ResourceBudget budget)
+    private static PointSet Zeros(AffineSquareLogPattern pattern, ResourceBudget budget)
     {
         BigRational first = (-pattern.Intercept - BigRational.One) / pattern.Slope;
         BigRational second = (-pattern.Intercept + BigRational.One) / pattern.Slope;
@@ -142,5 +142,8 @@ internal static class AffineSquareLogAnalyzer
         return true;
     }
 
-    private static RationalReal Rational(BigRational value) => new(value);
+    private static RationalReal Rational(BigRational value)
+    {
+        return new RationalReal(value);
+    }
 }

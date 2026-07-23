@@ -7,14 +7,16 @@ namespace Graphing.Symbolics;
 /// </summary>
 internal static class ExactAngleArithmetic
 {
-    public static ExactReal PiFraction(AngleUnit angleUnit, BigRational piFraction) =>
-        angleUnit switch
+    public static ExactReal PiFraction(AngleUnit angleUnit, BigRational piFraction)
+    {
+        return angleUnit switch
         {
             AngleUnit.Radians => new AffinePiReal(piFraction, BigRational.Zero),
             AngleUnit.Degrees => new RationalReal(new BigRational(180) * piFraction),
             AngleUnit.Grads => new RationalReal(new BigRational(200) * piFraction),
             _ => throw new ArgumentOutOfRangeException(nameof(angleUnit))
         };
+    }
 
     public static ExactReal FromRadians(ExactReal radians, AngleUnit angleUnit)
     {
@@ -40,10 +42,13 @@ internal static class ExactAngleArithmetic
             new AffinePiReal(HalfTurn(angleUnit).Reciprocal(), BigRational.Zero));
     }
 
-    public static BigRational HalfTurn(AngleUnit angleUnit) => angleUnit switch
+    public static BigRational HalfTurn(AngleUnit angleUnit)
     {
-        AngleUnit.Degrees => new BigRational(180),
-        AngleUnit.Grads => new BigRational(200),
-        _ => throw new ArgumentOutOfRangeException(nameof(angleUnit))
-    };
+        return angleUnit switch
+        {
+            AngleUnit.Degrees => new BigRational(180),
+            AngleUnit.Grads => new BigRational(200),
+            _ => throw new ArgumentOutOfRangeException(nameof(angleUnit))
+        };
+    }
 }

@@ -9,8 +9,13 @@ namespace CalculatorApp.Controls;
 public sealed class CalculationResultAutomationPeer(CalculationResult owner)
     : ControlAutomationPeer(owner), IInvokeProvider
 {
-    protected override AutomationControlType GetAutomationControlTypeCore() =>
-        AutomationControlType.Text;
+    protected override AutomationControlType GetAutomationControlTypeCore()
+    {
+        return AutomationControlType.Text;
+    }
 
-    void IInvokeProvider.Invoke() => ((CalculationResult)Owner).ProgrammaticSelect();
+    void IInvokeProvider.Invoke()
+    {
+        ((CalculationResult)Owner).ProgrammaticSelect();
+    }
 }

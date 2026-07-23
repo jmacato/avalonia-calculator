@@ -111,7 +111,7 @@ internal sealed class CurrencyDisplayFormatter
             return whole;
         }
 
-        List<string> groups = new();
+        List<string> groups = [];
         int remaining = whole.Length;
         int groupIndex = 0;
         int groupSize = groupSizes[groupIndex];
@@ -175,11 +175,13 @@ internal sealed class CurrencyDisplayFormatter
 
     private static string LocalizeDecimalSeparator(
         string invariantValue,
-        NumberFormatInfo numberFormat) =>
-        numberFormat.CurrencyDecimalSeparator == "."
+        NumberFormatInfo numberFormat)
+    {
+        return numberFormat.CurrencyDecimalSeparator == "."
             ? invariantValue
             : invariantValue.Replace(
                 ".",
                 numberFormat.CurrencyDecimalSeparator,
                 StringComparison.Ordinal);
+    }
 }

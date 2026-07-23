@@ -5,11 +5,5 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Include="GenerateCurrencyData.cs" />
-    <Compile Include="*.GenerateCurrencyData.cs" />
-  </ItemGroup>
 </Project>

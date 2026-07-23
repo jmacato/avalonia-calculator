@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Graphing;
 using Graphing.Analyzer;
 using Graphing.Symbolics;
@@ -111,8 +110,9 @@ public sealed class NegativeIntegralPowerAnalysisTests
         return solver.Analyze(analyzer);
     }
 
-    private static InputExpression Power(int exponent) =>
-        InputExpression.Binary(
+    private static InputExpression Power(int exponent)
+    {
+        return InputExpression.Binary(
             InputExpressionKind.Power,
             InputExpression.Variable("x", Source),
             InputExpression.Unary(
@@ -120,4 +120,5 @@ public sealed class NegativeIntegralPowerAnalysisTests
                 InputExpression.Number(new BigRational(-exponent), Source),
                 Source),
             Source);
+    }
 }

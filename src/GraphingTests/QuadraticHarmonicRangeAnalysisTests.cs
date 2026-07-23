@@ -246,35 +246,58 @@ public sealed class QuadraticHarmonicRangeAnalysisTests
         return Add(Sin(Multiply(Number(2), x)), Cos(Multiply(Number(4), x)));
     }
 
-    private static AnalysisRequest Request(InputExpression input) =>
-        new(input, AnalysisFeatures.Range, AngleUnit.Radians, "x", static () => true);
+    private static AnalysisRequest Request(InputExpression input)
+    {
+        return new AnalysisRequest(input, AnalysisFeatures.Range, AngleUnit.Radians, "x", static () => true);
+    }
 
-    private static SemanticExpression Build(InputExpression input) =>
-        new SemanticGraphBuilder(new ResourceBudget()).Build(input);
+    private static SemanticExpression Build(InputExpression input)
+    {
+        return new SemanticGraphBuilder(new ResourceBudget()).Build(input);
+    }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Number(int value) =>
-        InputExpression.Number(new BigRational(value), Source);
+    private static InputExpression Number(int value)
+    {
+        return InputExpression.Number(new BigRational(value), Source);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Subtract(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
 
-    private static InputExpression Power(InputExpression basis, int exponent) =>
-        InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    private static InputExpression Power(InputExpression basis, int exponent)
+    {
+        return InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    }
 
-    private static InputExpression Sin(InputExpression argument) =>
-        InputExpression.Function("sin", [argument], Source);
+    private static InputExpression Sin(InputExpression argument)
+    {
+        return InputExpression.Function("sin", [argument], Source);
+    }
 
-    private static InputExpression Cos(InputExpression argument) =>
-        InputExpression.Function("cos", [argument], Source);
+    private static InputExpression Cos(InputExpression argument)
+    {
+        return InputExpression.Function("cos", [argument], Source);
+    }
 }

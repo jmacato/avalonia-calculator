@@ -71,8 +71,17 @@ internal static class ElementaryCompositionAnalyzer
         return false;
     }
 
-    private static bool IsVariable(ValueTerm term, string variable) => term.Kind == ValueKind.Variable && string.Equals(term.Name, variable, StringComparison.Ordinal);
-    private static bool IsExponentialOfVariable(ValueTerm term, string variable) => term is { Kind: ValueKind.Function, Name: "exp", Operands: [var argument] } && IsVariable(argument, variable);
+    private static bool IsVariable(ValueTerm term, string variable)
+    {
+        return term.Kind == ValueKind.Variable && string.Equals(term.Name, variable, StringComparison.Ordinal);
+    }
+
+    private static bool IsExponentialOfVariable(ValueTerm term, string variable)
+    {
+        return term is { Kind: ValueKind.Function, Name: "exp", Operands: [var argument] } &&
+               IsVariable(argument, variable);
+    }
+
     private static bool DefinednessMatches(SemanticExpression expression, ElementaryCompositionPattern pattern)
     {
         ValueTerm variable = VariableTerm(expression.Value, pattern.Kind);
@@ -97,8 +106,17 @@ internal static class ElementaryCompositionAnalyzer
         return term.Operands[0].Operands[0];
     }
 
-    private static ValueTerm ConstantTerm(BigRational value, int id) => new(id, ValueKind.Constant, value, string.Empty, [], "q:" + value);
-    private static ValueTerm FunctionTerm(string function, ValueTerm argument, int id) => new(id, ValueKind.Function, default, function, [argument], $"{(int)ValueKind.Function}:{function}({argument.Canonical})");
+    private static ValueTerm ConstantTerm(BigRational value, int id)
+    {
+        return new ValueTerm(id, ValueKind.Constant, value, string.Empty, [], "q:" + value);
+    }
+
+    private static ValueTerm FunctionTerm(string function, ValueTerm argument, int id)
+    {
+        return new ValueTerm(id, ValueKind.Function, default, function, [argument],
+            $"{(int)ValueKind.Function}:{function}({argument.Canonical})");
+    }
+
     private static bool TrySquareRootSine(AnalysisFeatures feature, out object value)
     {
         value = feature switch
@@ -230,21 +248,91 @@ internal static class ElementaryCompositionAnalyzer
         return value is not null;
     }
 
-    private static ImmutableArray<MonotoneRegion> SinePullbackMonotonicity(string increasingPredicate, string decreasingPredicate) => [new MonotoneRegion(new ComprehensionSet("x", increasingPredicate), Monotonicity.Increasing), new MonotoneRegion(new ComprehensionSet("x", decreasingPredicate), Monotonicity.Decreasing)];
-    private static Graphing.Symbolics.IntervalSet NonnegativeReals() => new IntervalSet(RealBound.Finite(Rational(BigRational.Zero)), true, RealBound.PositiveInfinity, false);
-    private static Graphing.Symbolics.IntervalSet PositiveReals() => new IntervalSet(RealBound.Finite(Rational(BigRational.Zero)), false, RealBound.PositiveInfinity, false);
-    private static Graphing.Symbolics.IntervalSet UnitRange() => new IntervalSet(RealBound.Finite(Rational(BigRational.MinusOne)), true, RealBound.Finite(Rational(BigRational.One)), true);
-    private static Graphing.Symbolics.PeriodicIntervalSet TangentDomain() => new PeriodicIntervalSet(new AffinePiReal(BigRational.One, BigRational.Zero), "m", IntegerConstraint.All("m"), [new PeriodicInterval(new AffinePiReal(new BigRational(-1, 2), BigRational.Zero), false, new AffinePiReal(new BigRational(1, 2), BigRational.Zero), false)]);
-    private static IntegerLatticeSet LatticeSet(string expression, ImmutableArray<string> parameters, ImmutableArray<string> predicates) => new(expression, parameters, predicates);
-    private static ConstantYFeaturePoint SingletonPoint(BigRational x, BigRational y) => new(new SingletonReal(Rational(x)), Rational(y));
-    private static ConstantYFeaturePoint LatticePoint(string expression, BigRational y, ImmutableArray<string> parameters, ImmutableArray<string> predicates) => LatticePoint(expression, Rational(y), parameters, predicates);
-    private static ConstantYFeaturePoint LatticePoint(string expression, ExactReal y, ImmutableArray<string> parameters, ImmutableArray<string> predicates) => new(new LatticeReal(expression, parameters, predicates), y);
-    private static string Integer(string parameter) => $"{parameter} ∈ ℤ";
-    private static string LowerBound(string parameter, int bound) => $"{parameter} ≥ {bound}";
-    private static Asymptote Horizontal(BigRational value) => new(AsymptoteOrientation.Horizontal, new SingletonReal(Rational(value)), null, Rational(value));
-    private static Periodicity NotPeriodic() => new(PeriodicityKind.NotPeriodic, null);
-    private static Periodicity PeriodPi() => new(PeriodicityKind.PeriodicWithFundamentalPeriod, new AffinePiReal(BigRational.One, BigRational.Zero));
-    private static RationalReal Rational(BigRational value) => new(value);
+    private static ImmutableArray<MonotoneRegion> SinePullbackMonotonicity(string increasingPredicate, string decreasingPredicate)
+    {
+        return
+        [
+            new MonotoneRegion(new ComprehensionSet("x", increasingPredicate), Monotonicity.Increasing),
+            new MonotoneRegion(new ComprehensionSet("x", decreasingPredicate), Monotonicity.Decreasing)
+        ];
+    }
+
+    private static IntervalSet NonnegativeReals()
+    {
+        return new IntervalSet(RealBound.Finite(Rational(BigRational.Zero)), true, RealBound.PositiveInfinity, false);
+    }
+
+    private static IntervalSet PositiveReals()
+    {
+        return new IntervalSet(RealBound.Finite(Rational(BigRational.Zero)), false, RealBound.PositiveInfinity, false);
+    }
+
+    private static IntervalSet UnitRange()
+    {
+        return new IntervalSet(RealBound.Finite(Rational(BigRational.MinusOne)), true,
+            RealBound.Finite(Rational(BigRational.One)), true);
+    }
+
+    private static PeriodicIntervalSet TangentDomain()
+    {
+        return new PeriodicIntervalSet(new AffinePiReal(BigRational.One, BigRational.Zero), "m",
+            IntegerConstraint.All("m"),
+            [
+                new PeriodicInterval(new AffinePiReal(new BigRational(-1, 2), BigRational.Zero), false,
+                    new AffinePiReal(new BigRational(1, 2), BigRational.Zero), false)
+            ]);
+    }
+
+    private static IntegerLatticeSet LatticeSet(string expression, ImmutableArray<string> parameters, ImmutableArray<string> predicates)
+    {
+        return new IntegerLatticeSet(expression, parameters, predicates);
+    }
+
+    private static ConstantYFeaturePoint SingletonPoint(BigRational x, BigRational y)
+    {
+        return new ConstantYFeaturePoint(new SingletonReal(Rational(x)), Rational(y));
+    }
+
+    private static ConstantYFeaturePoint LatticePoint(string expression, BigRational y, ImmutableArray<string> parameters, ImmutableArray<string> predicates)
+    {
+        return LatticePoint(expression, Rational(y), parameters, predicates);
+    }
+
+    private static ConstantYFeaturePoint LatticePoint(string expression, ExactReal y, ImmutableArray<string> parameters, ImmutableArray<string> predicates)
+    {
+        return new ConstantYFeaturePoint(new LatticeReal(expression, parameters, predicates), y);
+    }
+
+    private static string Integer(string parameter)
+    {
+        return $"{parameter} ∈ ℤ";
+    }
+
+    private static string LowerBound(string parameter, int bound)
+    {
+        return $"{parameter} ≥ {bound}";
+    }
+
+    private static Asymptote Horizontal(BigRational value)
+    {
+        return new Asymptote(AsymptoteOrientation.Horizontal, new SingletonReal(Rational(value)), null, Rational(value));
+    }
+
+    private static Periodicity NotPeriodic()
+    {
+        return new Periodicity(PeriodicityKind.NotPeriodic, null);
+    }
+
+    private static Periodicity PeriodPi()
+    {
+        return new Periodicity(PeriodicityKind.PeriodicWithFundamentalPeriod, new AffinePiReal(BigRational.One, BigRational.Zero));
+    }
+
+    private static RationalReal Rational(BigRational value)
+    {
+        return new RationalReal(value);
+    }
+
     private static bool Fail(out object value)
     {
         value = null!;

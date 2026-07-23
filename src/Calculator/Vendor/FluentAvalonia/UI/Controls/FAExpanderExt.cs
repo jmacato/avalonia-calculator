@@ -1,10 +1,5 @@
 using Avalonia;
-using Avalonia.Animation;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
-using Avalonia.Media;
-using Avalonia.Rendering.Composition;
-using Avalonia.Styling;
 using FluentAvalonia.Core;
 
 namespace FluentAvalonia.UI.Controls;

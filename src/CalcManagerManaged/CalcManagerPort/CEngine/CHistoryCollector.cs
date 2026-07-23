@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalcEngine;
-
 namespace CalcEngine;
 
 public class CHistoryCollector
@@ -10,21 +8,24 @@ public class CHistoryCollector
     const ulong MAXPRECDEPTH = 25;
 
     // private:
-    IHistoryDisplay m_pHistoryDisplay;
+    IHistoryDisplay? m_pHistoryDisplay;
 
-    ICalcDisplay m_pCalcDisplay;
+    ICalcDisplay? m_pCalcDisplay;
 
     // a sort of state, set to the index before 2 after 2 in the expression 2 + 3 say. Useful for auto correct portion of history and for
     // attaching the unary op around the last operand
-    int m_lastOpStartIndex;    // index of the beginning of the last operand added to the history
+    int m_lastOpStartIndex; // index of the beginning of the last operand added to the history
 
     int m_lastBinOpStartIndex; // index of the beginning of the last binary operator added to the history
 
-    int[] m_operandIndices = new int[MAXPRECDEPTH];  // Stack of index of opnd's beginning for each '('. A parallel array to m_hnoParNum, but abstracted independently of that
+    int[]
+        m_operandIndices =
+            new int[MAXPRECDEPTH]; // Stack of index of opnd's beginning for each '('. A parallel array to m_hnoParNum, but abstracted independently of that
 
     int m_curOperandIndex; // Stack index for the above stack
 
-    bool m_bLastOpndBrace; // iff the last opnd in history is already braced so we can avoid putting another one for unary operator
+    bool
+        m_bLastOpndBrace; // iff the last opnd in history is already braced so we can avoid putting another one for unary operator
 
     wchar_t m_decimalSymbol;
 
@@ -71,9 +72,9 @@ public class CHistoryCollector
 
     {
         m_cCalcEngine = cCalcEngine;
-        m_pHistoryDisplay = (pHistoryDisplay);
-        m_pCalcDisplay = (pCalcDisplay);
-        m_decimalSymbol = (decimalSymbol);
+        m_pHistoryDisplay = pHistoryDisplay;
+        m_pCalcDisplay = pCalcDisplay;
+        m_decimalSymbol = decimalSymbol;
         ReinitHistory();
     }
 
@@ -139,9 +140,9 @@ public class CHistoryCollector
 
     public void PushLastOpndStart(int ichOpndStart = -1)
     {
-        int ich = (ichOpndStart == -1) ? m_lastOpStartIndex : ichOpndStart;
+        int ich = ichOpndStart == -1 ? m_lastOpStartIndex : ichOpndStart;
 
-        if (m_curOperandIndex < (int)(m_operandIndices.Length))
+        if (m_curOperandIndex < (int)m_operandIndices.Length)
         {
             m_operandIndices[m_curOperandIndex++] = ich;
         }
@@ -179,7 +180,7 @@ public class CHistoryCollector
     public void EnclosePrecInversionBrackets()
     {
         // Top of the Opnd starts index or 0 is nothing is in top
-        int ichStart = (m_curOperandIndex > 0) ? m_operandIndices[m_curOperandIndex - 1] : 0;
+        int ichStart = m_curOperandIndex > 0 ? m_operandIndices[m_curOperandIndex - 1] : 0;
 
         InsertSzInEquationSz(m_cCalcEngine.OpCodeToString(CCommand.IdcOpenp), -1, ichStart);
         IchAddSzToEquationSz(m_cCalcEngine.OpCodeToString(CCommand.IdcClosep), -1);
@@ -187,7 +188,7 @@ public class CHistoryCollector
 
     public bool FOpndAddedToHistory()
     {
-        return (-1 != m_lastOpStartIndex);
+        return -1 != m_lastOpStartIndex;
     }
 
     // AddUnaryOpToHistory
@@ -225,7 +226,7 @@ public class CHistoryCollector
             ;
             if (!m_bLastOpndBrace) // The opnd is already covered in braces. No need for additional braces around it
             {
-                operandStr += (m_cCalcEngine.OpCodeToString(CCommand.IdcOpenp));
+                operandStr += m_cCalcEngine.OpCodeToString(CCommand.IdcOpenp);
             }
 
             InsertSzInEquationSz(operandStr, iCommandEnd, m_lastOpStartIndex);
@@ -244,18 +245,18 @@ public class CHistoryCollector
 
     private static IOperatorCommand CreateUnaryCommand(int nOpCode, bool fInv, AngleType angletype)
     {
-        CalculationManager.Command angleOpCode;
+        Command angleOpCode;
         if (angletype == AngleType.Degrees)
         {
-            angleOpCode = CalculationManager.Command.Deg;
+            angleOpCode = Command.Deg;
         }
         else if (angletype == AngleType.Radians)
         {
-            angleOpCode = CalculationManager.Command.Rad;
+            angleOpCode = Command.Rad;
         }
         else // (angletype == AngleType.Gradians)
         {
-            angleOpCode = CalculationManager.Command.Grad;
+            angleOpCode = Command.Grad;
         }
 
         IOperatorCommand spExpressionCommand;
@@ -263,27 +264,27 @@ public class CHistoryCollector
         switch (nOpCode)
         {
             case CCommand.IdcSin:
-                command = fInv ? (int)(CalculationManager.Command.Asin) : CCommand.IdcSin;
-                spExpressionCommand = new CUnaryCommand((int)(angleOpCode), command);
+                command = fInv ? (int)Command.Asin : CCommand.IdcSin;
+                spExpressionCommand = new CUnaryCommand((int)angleOpCode, command);
                 break;
             case CCommand.IdcCos:
-                command = fInv ? (int)(CalculationManager.Command.Acos) : CCommand.IdcCos;
-                spExpressionCommand = new CUnaryCommand((int)(angleOpCode), command);
+                command = fInv ? (int)Command.Acos : CCommand.IdcCos;
+                spExpressionCommand = new CUnaryCommand((int)angleOpCode, command);
                 break;
             case CCommand.IdcTan:
-                command = fInv ? (int)(CalculationManager.Command.Atan) : CCommand.IdcTan;
-                spExpressionCommand = new CUnaryCommand((int)(angleOpCode), command);
+                command = fInv ? (int)Command.Atan : CCommand.IdcTan;
+                spExpressionCommand = new CUnaryCommand((int)angleOpCode, command);
                 break;
             case CCommand.IdcSinh:
-                command = fInv ? (int)(CalculationManager.Command.Asinh) : CCommand.IdcSinh;
+                command = fInv ? (int)Command.Asinh : CCommand.IdcSinh;
                 spExpressionCommand = new CUnaryCommand(command);
                 break;
             case CCommand.IdcCosh:
-                command = fInv ? (int)(CalculationManager.Command.Acosh) : CCommand.IdcCosh;
+                command = fInv ? (int)Command.Acosh : CCommand.IdcCosh;
                 spExpressionCommand = new CUnaryCommand(command);
                 break;
             case CCommand.IdcTanh:
-                command = fInv ? (int)(CalculationManager.Command.Atanh) : CCommand.IdcTanh;
+                command = fInv ? (int)Command.Atanh : CCommand.IdcTanh;
                 spExpressionCommand = new CUnaryCommand(command);
                 break;
             default:
@@ -294,38 +295,38 @@ public class CHistoryCollector
         return spExpressionCommand;
     }
 
-    private static IOperatorCommand CreateExtendedUnaryCommand(int nOpCode, bool fInv, CalculationManager.Command angleOpCode)
+    private static IOperatorCommand CreateExtendedUnaryCommand(int nOpCode, bool fInv, Command angleOpCode)
     {
         IOperatorCommand spExpressionCommand;
         int command = nOpCode;
         switch (nOpCode)
         {
             case CCommand.IdcSec:
-                command = fInv ? (int)(CalculationManager.Command.Asec) : CCommand.IdcSec;
-                spExpressionCommand = new CUnaryCommand((int)(angleOpCode), command);
+                command = fInv ? (int)Command.Asec : CCommand.IdcSec;
+                spExpressionCommand = new CUnaryCommand((int)angleOpCode, command);
                 break;
             case CCommand.IdcCsc:
-                command = fInv ? (int)(CalculationManager.Command.Acsc) : CCommand.IdcCsc;
-                spExpressionCommand = new CUnaryCommand((int)(angleOpCode), command);
+                command = fInv ? (int)Command.Acsc : CCommand.IdcCsc;
+                spExpressionCommand = new CUnaryCommand((int)angleOpCode, command);
                 break;
             case CCommand.IdcCot:
-                command = fInv ? (int)(CalculationManager.Command.Acot) : CCommand.IdcCot;
-                spExpressionCommand = new CUnaryCommand((int)(angleOpCode), command);
+                command = fInv ? (int)Command.Acot : CCommand.IdcCot;
+                spExpressionCommand = new CUnaryCommand((int)angleOpCode, command);
                 break;
             case CCommand.IdcSech:
-                command = fInv ? (int)(CalculationManager.Command.Asech) : CCommand.IdcSech;
+                command = fInv ? (int)Command.Asech : CCommand.IdcSech;
                 spExpressionCommand = new CUnaryCommand(command);
                 break;
             case CCommand.IdcCsch:
-                command = fInv ? (int)(CalculationManager.Command.Acsch) : CCommand.IdcCsch;
+                command = fInv ? (int)Command.Acsch : CCommand.IdcCsch;
                 spExpressionCommand = new CUnaryCommand(command);
                 break;
             case CCommand.IdcCoth:
-                command = fInv ? (int)(CalculationManager.Command.Acoth) : CCommand.IdcCoth;
+                command = fInv ? (int)Command.Acoth : CCommand.IdcCoth;
                 spExpressionCommand = new CUnaryCommand(command);
                 break;
             case CCommand.IdcLn:
-                command = fInv ? (int)(CalculationManager.Command.PowE) : CCommand.IdcLn;
+                command = fInv ? (int)Command.PowE : CCommand.IdcLn;
                 spExpressionCommand = new CUnaryCommand(command);
                 break;
             default:
@@ -341,7 +342,7 @@ public class CHistoryCollector
     // history of equations
     public void CompleteHistoryLine(wstring_view numStr)
     {
-        if (null != m_pHistoryDisplay)
+        if (null != m_pHistoryDisplay && m_pCalcDisplay != null)
         {
             uint addedItemIndex = m_pHistoryDisplay.AddToHistory(m_spTokens!, m_spCommands!, numStr);
             m_pCalcDisplay.OnHistoryItemAdded(addedItemIndex);
@@ -366,11 +367,7 @@ public class CHistoryCollector
     {
         if (string.IsNullOrEmpty(errStr)) // in case of error let the display stay as it is
         {
-            if (null != m_pCalcDisplay)
-            {
-                m_pCalcDisplay.SetExpressionDisplay(new List<(string, int)>(), new List<IExpressionCommand>());
-            }
-
+            m_pCalcDisplay?.SetExpressionDisplay([], []);
             ReinitHistory();
         }
     }
@@ -381,7 +378,7 @@ public class CHistoryCollector
     {
         if (m_spTokens == null)
         {
-            m_spTokens = new List<(wstring, int)>();
+            m_spTokens = [];
         }
 
         m_spTokens.Add(((str), icommandIndex));
@@ -403,11 +400,11 @@ public class CHistoryCollector
 
         for (int i = ich; i < nTokens; i++)
         {
-            var currentPair = (m_spTokens)[i];
+            var currentPair = m_spTokens[i];
             int curTokenId = currentPair.Item2;
             if (curTokenId != -1)
             {
-                if ((minIdx != -1) || (curTokenId < minIdx))
+                if (minIdx != -1 || curTokenId < minIdx)
                 {
                     minIdx = curTokenId;
                     Truncate(m_spCommands!, minIdx);
@@ -431,7 +428,7 @@ public class CHistoryCollector
     {
         if (m_spCommands == null)
         {
-            m_spCommands = new List<IExpressionCommand>();
+            m_spCommands = [];
         }
 
         m_spCommands.Add(spCommand);
@@ -446,9 +443,7 @@ public class CHistoryCollector
             return;
         }
 
-        for (int token_i = 0; token_i < m_spTokens.Count; token_i++)
-
-        // for (var token in m_spTokens)
+        for (int token_i = 0; token_i < m_spTokens.Count; token_i++) // for (var token in m_spTokens)
         {
             int commandPosition = m_spTokens[token_i].Item2;
             if (commandPosition != -1)
@@ -458,7 +453,7 @@ public class CHistoryCollector
                 if (expCommand != null &&
                     CalculationManager.CommandType.OperandCommand == expCommand.GetCommandType())
                 {
-                    var opndCommand = (COpndCommand)(expCommand);
+                    var opndCommand = (COpndCommand)expCommand;
                     m_spTokens[token_i] = (opndCommand.GetString(radix, precision), m_spTokens[token_i].Item2);
                     opndCommand.SetCommands(GetOperandCommandsFromString(m_spTokens[token_i].Item1));
                 }
@@ -481,11 +476,11 @@ public class CHistoryCollector
             throw new ArgumentNullException(nameof(numStr));
         }
 
-        List<int> commands = new List<int>();
+        List<int> commands = [];
         // Check for negate
-        bool fNegative = (numStr[0] == '-');
+        bool fNegative = numStr[0] == '-';
 
-        for (int i = (fNegative ? 1 : 0); i < numStr.Length; i++)
+        for (int i = fNegative ? 1 : 0; i < numStr.Length; i++)
         {
             if (numStr[i] == m_decimalSymbol)
             {
@@ -506,7 +501,7 @@ public class CHistoryCollector
             // Number
             else
             {
-                int num = (int)(numStr[i]) - ASCII_0;
+                int num = (int)numStr[i] - ASCII_0;
                 num += CCommand.Idc0;
                 commands.Add(num);
             }
@@ -528,13 +523,13 @@ public class CHistoryCollector
             throw new ArgumentNullException(nameof(numStr));
         }
 
-        List<int> commands = new List<int>();
+        List<int> commands = [];
         // Check for negate
-        bool fNegative = (numStr[0] == '-');
+        bool fNegative = numStr[0] == '-';
         bool fSciFmt = false;
         bool fDecimal = false;
 
-        for (int i = (fNegative ? 1 : 0); i < numStr.Length; i++)
+        for (int i = fNegative ? 1 : 0; i < numStr.Length; i++)
         {
             if (numStr[i] == m_decimalSymbol)
             {
@@ -560,7 +555,7 @@ public class CHistoryCollector
             // Number
             else
             {
-                int num = (int)(numStr[i]) - ASCII_0;
+                int num = (int)numStr[i] - ASCII_0;
                 num += CCommand.Idc0;
                 commands.Add(num);
             }
@@ -571,11 +566,5 @@ public class CHistoryCollector
         return operandCommand;
     }
 
-    public IList<IExpressionCommand>? Commands
-    {
-        get
-        {
-            return m_spCommands;
-        }
-    }
+    public IList<IExpressionCommand>? Commands => m_spCommands;
 }

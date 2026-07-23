@@ -49,11 +49,13 @@ internal static class OddDegreeDenominatorRangeAnalyzer
         return true;
     }
 
-    private static bool HasTheoremShape(RationalFunction function) =>
-        function.Numerator.IsConstant &&
-        !function.Numerator.ConstantCoefficient.IsZero &&
-        function.Denominator.Degree > 0 &&
-        (function.Denominator.Degree & 1) != 0;
+    private static bool HasTheoremShape(RationalFunction function)
+    {
+        return function.Numerator.IsConstant &&
+               !function.Numerator.ConstantCoefficient.IsZero &&
+               function.Denominator.Degree > 0 &&
+               (function.Denominator.Degree & 1) != 0;
+    }
 
     private static CellDecompositionCertificate DecomposeDenominatorDomain(
         UnivariatePolynomial denominator,
@@ -65,7 +67,10 @@ internal static class OddDegreeDenominatorRangeAnalyzer
         return CellDecomposer.Decompose(nonzero, budget);
     }
 
-    private static Graphing.Symbolics.DifferenceSet NonzeroReals() => new DifferenceSet(
-        AllRealSet.Instance,
-        RealSets.Points([new RationalReal(BigRational.Zero)]));
+    private static DifferenceSet NonzeroReals()
+    {
+        return new DifferenceSet(
+            AllRealSet.Instance,
+            RealSets.Points([new RationalReal(BigRational.Zero)]));
+    }
 }

@@ -25,7 +25,7 @@ public sealed class OperatorPanelListView : ItemsControl
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
-        System.ArgumentNullException.ThrowIfNull(e);
+        ArgumentNullException.ThrowIfNull(e);
         DetachTemplateParts();
         base.OnApplyTemplate(e);
 
@@ -53,7 +53,7 @@ public sealed class OperatorPanelListView : ItemsControl
 
     protected override void OnPointerEntered(PointerEventArgs e)
     {
-        System.ArgumentNullException.ThrowIfNull(e);
+        ArgumentNullException.ThrowIfNull(e);
         base.OnPointerEntered(e);
         if (e.Pointer.Type == PointerType.Mouse)
         {
@@ -104,14 +104,17 @@ public sealed class OperatorPanelListView : ItemsControl
         double direction = ReferenceEquals(sender, _scrollLeft) ? -1 : 1;
         double maximum = Math.Max(0, _scrollViewer.Extent.Width - _scrollViewer.Viewport.Width);
         double offset = Math.Clamp(
-            _scrollViewer.Offset.X + (direction * ScrollRatio * _scrollViewer.Viewport.Width),
+            _scrollViewer.Offset.X + direction * ScrollRatio * _scrollViewer.Viewport.Width,
             0,
             maximum);
         _scrollViewer.Offset = new Vector(offset, _scrollViewer.Offset.Y);
         UpdateScrollButtons();
     }
 
-    private void OnScrollChanged(object? sender, ScrollChangedEventArgs e) => UpdateScrollButtons();
+    private void OnScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        UpdateScrollButtons();
+    }
 
     private void UpdateScrollButtons()
     {

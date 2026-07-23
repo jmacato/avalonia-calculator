@@ -1,30 +1,23 @@
-using System.Globalization;
 using System.Text;
 using Graphing;
 
 namespace GraphingImpl;
 
-internal sealed class LinearLexer : ITokenSource
+internal sealed class LinearLexer(string source, LocalizationType localization) : ITokenSource
 {
-    private readonly string _source;
-    private readonly char _decimalSeparator;
+    private readonly char _decimalSeparator = localization == LocalizationType.DecimalCommaAndListSemicolon ? ',' : '.';
     private int _position;
-    public LinearLexer(string source, LocalizationType localization)
-    {
-        _source = source;
-        _decimalSeparator = localization == LocalizationType.DecimalCommaAndListSemicolon ? ',' : '.';
-    }
 
     public Token Next()
     {
         SkipWhiteSpace();
-        if (_position >= _source.Length)
+        if (_position >= source.Length)
         {
             return new Token(TokenKind.End, new SourceSpan(_position, 0), string.Empty);
         }
 
         int start = _position;
-        char current = _source[_position++];
+        char current = source[_position++];
         return current switch
         {
             '+' => Single(TokenKind.Plus, start),
@@ -56,12 +49,12 @@ internal sealed class LinearLexer : ITokenSource
 
     private Token ReadNumber(int start)
     {
-        bool sawDecimal = _source[start] == _decimalSeparator;
-        bool sawDigit = char.IsDigit(_source[start]);
+        bool sawDecimal = source[start] == _decimalSeparator;
+        bool sawDigit = char.IsDigit(source[start]);
         int digitCount = sawDigit ? 1 : 0;
-        while (_position < _source.Length)
+        while (_position < source.Length)
         {
-            char value = _source[_position];
+            char value = source[_position];
             if (char.IsDigit(value))
             {
                 sawDigit = true;
@@ -97,16 +90,16 @@ internal sealed class LinearLexer : ITokenSource
             throw new GraphParseException(SyntaxErrorCode.GeneralError, new SourceSpan(start, _position - start), $"Exact values are limited to {GraphLimits.MaximumExactValueBits} bits.");
         }
 
-        if (_position < _source.Length && (_source[_position] is 'e' or 'E'))
+        if (_position < source.Length && source[_position] is 'e' or 'E')
         {
             int exponentStart = _position++;
-            if (_position < _source.Length && (_source[_position] is '+' or '-'))
+            if (_position < source.Length && source[_position] is '+' or '-')
             {
                 _position++;
             }
 
             int exponentDigits = _position;
-            while (_position < _source.Length && char.IsDigit(_source[_position]))
+            while (_position < source.Length && char.IsDigit(source[_position]))
             {
                 _position++;
             }
@@ -117,7 +110,7 @@ internal sealed class LinearLexer : ITokenSource
             }
         }
 
-        string text = _source[start.._position];
+        string text = source[start.._position];
         string invariant = _decimalSeparator == '.' ? text : text.Replace(',', '.');
         ExactRational number;
         try
@@ -138,12 +131,12 @@ internal sealed class LinearLexer : ITokenSource
 
     private Token ReadIdentifier(int start)
     {
-        while (_position < _source.Length && IsIdentifierPart(_source[_position]))
+        while (_position < source.Length && IsIdentifierPart(source[_position]))
         {
             _position++;
         }
 
-        string value = _source[start.._position].Normalize(NormalizationForm.FormC);
+        string value = source[start.._position].Normalize(NormalizationForm.FormC);
         if (string.Equals(value, "π", StringComparison.Ordinal))
         {
             value = "pi";
@@ -152,11 +145,19 @@ internal sealed class LinearLexer : ITokenSource
         return new Token(TokenKind.Identifier, new SourceSpan(start, _position - start), value);
     }
 
-    private Token Single(TokenKind kind, int start) => new(kind, new SourceSpan(start, 1), _source.Substring(start, 1));
-    private Token TokenFrom(TokenKind kind, int start) => new(kind, new SourceSpan(start, _position - start), _source[start.._position]);
+    private Token Single(TokenKind kind, int start)
+    {
+        return new Token(kind, new SourceSpan(start, 1), source.Substring(start, 1));
+    }
+
+    private Token TokenFrom(TokenKind kind, int start)
+    {
+        return new Token(kind, new SourceSpan(start, _position - start), source[start.._position]);
+    }
+
     private bool Match(char expected)
     {
-        if (_position >= _source.Length || _source[_position] != expected)
+        if (_position >= source.Length || source[_position] != expected)
         {
             return false;
         }
@@ -167,12 +168,19 @@ internal sealed class LinearLexer : ITokenSource
 
     private void SkipWhiteSpace()
     {
-        while (_position < _source.Length && char.IsWhiteSpace(_source[_position]))
+        while (_position < source.Length && char.IsWhiteSpace(source[_position]))
         {
             _position++;
         }
     }
 
-    private static bool IsIdentifierStart(char value) => char.IsLetter(value) || value is '_' or '\u03C0' or '\u03A0';
-    private static bool IsIdentifierPart(char value) => char.IsLetterOrDigit(value) || value is '_' or '\u2032' or '\u2033';
+    private static bool IsIdentifierStart(char value)
+    {
+        return char.IsLetter(value) || value is '_' or '\u03C0' or '\u03A0';
+    }
+
+    private static bool IsIdentifierPart(char value)
+    {
+        return char.IsLetterOrDigit(value) || value is '_' or '\u2032' or '\u2033';
+    }
 }

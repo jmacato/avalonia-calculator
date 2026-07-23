@@ -1,19 +1,13 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-using System;
+
 using System.Windows.Input;
 
 namespace CalculatorApp.ViewModel.Common
 {
     // Equivalent to the C++ DelegateCommand class
-    public sealed class DelegateCommand : ICommand
+    public sealed class DelegateCommand(DelegateCommandHandler handler) : ICommand
     {
-        private readonly DelegateCommandHandler _handler;
-        public DelegateCommand(DelegateCommandHandler handler)
-        {
-            _handler = handler;
-        }
-
         // ICommand implementation
         bool ICommand.CanExecute(object? parameter)
         {
@@ -22,7 +16,7 @@ namespace CalculatorApp.ViewModel.Common
 
         void ICommand.Execute(object? parameter)
         {
-            _handler(parameter);
+            handler(parameter);
         }
 
         event EventHandler? ICommand.CanExecuteChanged

@@ -46,8 +46,10 @@ public sealed class CompositionMotionBehavior
         control.SetValue(ProfileProperty, value);
     }
 
-    internal static CompositionMotionState? GetState(Control control) =>
-        control.GetValue(StateProperty);
+    internal static CompositionMotionState? GetState(Control control)
+    {
+        return control.GetValue(StateProperty);
+    }
 
     private static void OnProfileChanged(
         Control control,

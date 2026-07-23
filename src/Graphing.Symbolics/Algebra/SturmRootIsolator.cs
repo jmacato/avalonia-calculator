@@ -194,7 +194,7 @@ internal static class SturmRootIsolator
             {
                 budget.Charge();
                 int numerator = denominator / 2;
-                midpoint = lower + (width * new BigRational(numerator, denominator));
+                midpoint = lower + width * new BigRational(numerator, denominator);
                 denominator++;
             }
             while (chain.Polynomial.Evaluate(midpoint, budget).IsZero);
@@ -358,18 +358,26 @@ internal static class SturmRootIsolator
         return chain.CountRoots(interval.Lower, midpoint, budget) == 1 ? new RationalInterval(interval.Lower, midpoint) : new RationalInterval(midpoint, interval.Upper);
     }
 
-    private static BigRational LowerBound(ExactReal value) => value switch
+    private static BigRational LowerBound(ExactReal value)
     {
-        RationalReal rational => rational.Value,
-        AlgebraicReal algebraic => algebraic.IsolatingInterval.Lower,
-        _ => throw new ArgumentOutOfRangeException(nameof(value))
-    };
-    private static BigRational UpperBound(ExactReal value) => value switch
+        return value switch
+        {
+            RationalReal rational => rational.Value,
+            AlgebraicReal algebraic => algebraic.IsolatingInterval.Lower,
+            _ => throw new ArgumentOutOfRangeException(nameof(value))
+        };
+    }
+
+    private static BigRational UpperBound(ExactReal value)
     {
-        RationalReal rational => rational.Value,
-        AlgebraicReal algebraic => algebraic.IsolatingInterval.Upper,
-        _ => throw new ArgumentOutOfRangeException(nameof(value))
-    };
+        return value switch
+        {
+            RationalReal rational => rational.Value,
+            AlgebraicReal algebraic => algebraic.IsolatingInterval.Upper,
+            _ => throw new ArgumentOutOfRangeException(nameof(value))
+        };
+    }
+
     private static bool Divides(UnivariatePolynomial source, UnivariatePolynomial divisor, ResourceBudget budget)
     {
         if (divisor.IsZero)

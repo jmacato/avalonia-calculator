@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace Graphing.Symbolics;
 
 internal static class AffineSignAnalyzer

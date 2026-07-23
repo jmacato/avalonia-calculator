@@ -1,7 +1,3 @@
-using System.Buffers;
-using System.Collections.Immutable;
-using System.Text;
-
 namespace MathComposer.Core;
 
 /// <summary>A non-empty, well-formed Unicode text or symbol atom.</summary>

@@ -7,8 +7,10 @@ namespace Graphing.Symbolics;
 /// </summary>
 internal static class ExactFormulaVerifier
 {
-    public static bool IsAlwaysTrue(Formula formula, ResourceBudget budget) =>
-        TryEvaluateConstant(formula, budget, out bool value) && value;
+    public static bool IsAlwaysTrue(Formula formula, ResourceBudget budget)
+    {
+        return TryEvaluateConstant(formula, budget, out bool value) && value;
+    }
 
     public static bool MatchesSingleGuard(
         Formula formula,
@@ -140,14 +142,17 @@ internal static class ExactFormulaVerifier
         return false;
     }
 
-    private static bool CompareSign(int sign, Comparison comparison) => comparison switch
+    private static bool CompareSign(int sign, Comparison comparison)
     {
-        Comparison.Equal => sign == 0,
-        Comparison.NotEqual => sign != 0,
-        Comparison.Less => sign < 0,
-        Comparison.LessOrEqual => sign <= 0,
-        Comparison.Greater => sign > 0,
-        Comparison.GreaterOrEqual => sign >= 0,
-        _ => throw new ArgumentOutOfRangeException(nameof(comparison))
-    };
+        return comparison switch
+        {
+            Comparison.Equal => sign == 0,
+            Comparison.NotEqual => sign != 0,
+            Comparison.Less => sign < 0,
+            Comparison.LessOrEqual => sign <= 0,
+            Comparison.Greater => sign > 0,
+            Comparison.GreaterOrEqual => sign >= 0,
+            _ => throw new ArgumentOutOfRangeException(nameof(comparison))
+        };
+    }
 }

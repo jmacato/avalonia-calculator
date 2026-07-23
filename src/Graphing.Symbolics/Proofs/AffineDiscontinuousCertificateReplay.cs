@@ -61,9 +61,11 @@ internal static class AffineDiscontinuousCertificateReplay
     private static bool MatchesPropagation(
         Formula formula,
         Formula argumentCondition,
-        Formula locallyConstant) =>
-        string.Equals(
+        Formula locallyConstant)
+    {
+        return string.Equals(
             formula.Canonical,
             Formula.And(argumentCondition, locallyConstant).Canonical,
             StringComparison.Ordinal);
+    }
 }

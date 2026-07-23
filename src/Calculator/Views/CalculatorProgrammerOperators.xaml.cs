@@ -39,7 +39,10 @@ public sealed partial class CalculatorProgrammerOperators : UserControl
         SetRadixButton(model.CurrentRadixType);
     }
 
-    private void OnUnloaded(object? sender, RoutedEventArgs e) => SetSubscribedModel(null);
+    private void OnUnloaded(object? sender, RoutedEventArgs e)
+    {
+        SetSubscribedModel(null);
+    }
 
     private void SetSubscribedModel(StandardCalculatorViewModel? model)
     {
@@ -68,17 +71,25 @@ public sealed partial class CalculatorProgrammerOperators : UserControl
         }
     }
 
-    private void DecButtonChecked(object? sender, RoutedEventArgs e) =>
+    private void DecButtonChecked(object? sender, RoutedEventArgs e)
+    {
         SwitchBase(NumberBase.DecBase, CalculatorButtonId.DecButton);
+    }
 
-    private void HexButtonChecked(object? sender, RoutedEventArgs e) =>
+    private void HexButtonChecked(object? sender, RoutedEventArgs e)
+    {
         SwitchBase(NumberBase.HexBase, CalculatorButtonId.HexButton);
+    }
 
-    private void BinButtonChecked(object? sender, RoutedEventArgs e) =>
+    private void BinButtonChecked(object? sender, RoutedEventArgs e)
+    {
         SwitchBase(NumberBase.BinBase, CalculatorButtonId.BinButton);
+    }
 
-    private void OctButtonChecked(object? sender, RoutedEventArgs e) =>
+    private void OctButtonChecked(object? sender, RoutedEventArgs e)
+    {
         SwitchBase(NumberBase.OctBase, CalculatorButtonId.OctButton);
+    }
 
     private void SwitchBase(NumberBase numberBase, CalculatorButtonId operation)
     {

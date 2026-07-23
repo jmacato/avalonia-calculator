@@ -53,7 +53,11 @@ internal static class ExactRealSubstitutionArithmetic
         return value;
     }
 
-    public static ExactReal Negate(ExactReal value, ResourceBudget budget) => Scale(value, BigRational.MinusOne, budget);
+    public static ExactReal Negate(ExactReal value, ResourceBudget budget)
+    {
+        return Scale(value, BigRational.MinusOne, budget);
+    }
+
     public static ExactReal Add(ExactReal left, ExactReal right, ResourceBudget budget)
     {
         budget.Charge();
@@ -90,7 +94,11 @@ internal static class ExactRealSubstitutionArithmetic
         return sum ?? new RationalReal(BigRational.Zero);
     }
 
-    public static ExactReal Subtract(ExactReal left, ExactReal right, ResourceBudget budget) => Add(left, Negate(right, budget), budget);
+    public static ExactReal Subtract(ExactReal left, ExactReal right, ResourceBudget budget)
+    {
+        return Add(left, Negate(right, budget), budget);
+    }
+
     public static ExactReal Multiply(ExactReal left, ExactReal right, ResourceBudget budget)
     {
         budget.Charge();
@@ -476,7 +484,11 @@ internal static class ExactRealSubstitutionArithmetic
         };
     }
 
-    private static FunctionReal Binary(string operation, ExactReal left, ExactReal right) => new(operation, ImmutableArray.Create(left, right));
+    private static FunctionReal Binary(string operation, ExactReal left, ExactReal right)
+    {
+        return new FunctionReal(operation, ImmutableArray.Create(left, right));
+    }
+
     private static BigRational Checked(BigRational value, ResourceBudget budget)
     {
         budget.CheckCoefficient(value);

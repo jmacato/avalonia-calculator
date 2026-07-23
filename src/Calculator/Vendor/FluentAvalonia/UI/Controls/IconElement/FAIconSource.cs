@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Media;
 using System.ComponentModel;
-using System.Globalization;
 
 namespace FluentAvalonia.UI.Controls;
 /// <summary>

@@ -709,8 +709,10 @@ public sealed class ReciprocalTrigonometricAnalysisTests
         Assert.Equal(0, result.TooComplexFeatures & 16);
     }
 
-    private static AnalysisReport AnalyzeInternal(string function) =>
-        AnalysisEngine.Analyze(Request(Function(function, Variable()), AnalysisFeatures.All));
+    private static AnalysisReport AnalyzeInternal(string function)
+    {
+        return AnalysisEngine.Analyze(Request(Function(function, Variable()), AnalysisFeatures.All));
+    }
 
     private static GraphFunctionAnalysisData AnalyzePublic(string formula)
     {
@@ -849,48 +851,79 @@ public sealed class ReciprocalTrigonometricAnalysisTests
     private static AnalysisRequest Request(
         InputExpression expression,
         AnalysisFeatures features,
-        AngleUnit angleUnit = AngleUnit.Radians) =>
-        new(expression, features, angleUnit, "x", static () => true);
+        AngleUnit angleUnit = AngleUnit.Radians)
+    {
+        return new AnalysisRequest(expression, features, angleUnit, "x", static () => true);
+    }
 
-    private static SemanticExpression Build(InputExpression expression) =>
-        new SemanticGraphBuilder(new ResourceBudget()).Build(expression);
+    private static SemanticExpression Build(InputExpression expression)
+    {
+        return new SemanticGraphBuilder(new ResourceBudget()).Build(expression);
+    }
 
-    private static InputExpression ExplicitRatio(string function, InputExpression argument) =>
-        function switch
+    private static InputExpression ExplicitRatio(string function, InputExpression argument)
+    {
+        return function switch
         {
             "cot" => Divide(Function("cos", argument), Function("sin", argument)),
             "sec" => Divide(Number(1), Function("cos", argument)),
             "csc" => Divide(Number(1), Function("sin", argument)),
             _ => throw new ArgumentOutOfRangeException(nameof(function))
         };
+    }
 
-    private static InputExpression Affine(int slope, int intercept) =>
-        Add(Multiply(Number(slope), Variable()), Number(intercept));
+    private static InputExpression Affine(int slope, int intercept)
+    {
+        return Add(Multiply(Number(slope), Variable()), Number(intercept));
+    }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Symbol(string name) => InputExpression.Variable(name, Source);
+    private static InputExpression Symbol(string name)
+    {
+        return InputExpression.Variable(name, Source);
+    }
 
-    private static InputExpression Number(int value) => Number(new BigRational(value));
+    private static InputExpression Number(int value)
+    {
+        return Number(new BigRational(value));
+    }
 
-    private static InputExpression Number(BigRational value) =>
-        InputExpression.Number(value, Source);
+    private static InputExpression Number(BigRational value)
+    {
+        return InputExpression.Number(value, Source);
+    }
 
-    private static InputExpression Negate(InputExpression value) =>
-        InputExpression.Unary(InputExpressionKind.Negate, value, Source);
+    private static InputExpression Negate(InputExpression value)
+    {
+        return InputExpression.Unary(InputExpressionKind.Negate, value, Source);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Subtract(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
 
-    private static InputExpression Function(string name, params InputExpression[] arguments) =>
-        InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    private static InputExpression Function(string name, params InputExpression[] arguments)
+    {
+        return InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    }
 }

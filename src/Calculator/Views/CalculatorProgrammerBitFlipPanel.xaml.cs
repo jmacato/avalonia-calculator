@@ -37,7 +37,10 @@ public sealed partial class CalculatorProgrammerBitFlipPanel : UserControl
         UpdateCheckedStates(true);
     }
 
-    private void OnUnloaded(object? sender, RoutedEventArgs e) => SetSubscribedModel(null);
+    private void OnUnloaded(object? sender, RoutedEventArgs e)
+    {
+        SetSubscribedModel(null);
+    }
 
     private void SetSubscribedModel(StandardCalculatorViewModel? model)
     {
@@ -155,12 +158,15 @@ public sealed partial class CalculatorProgrammerBitFlipPanel : UserControl
             value ? "1" : "0");
     }
 
-    private static int GetIndexOfLastBit(BitLength length) => length switch
+    private static int GetIndexOfLastBit(BitLength length)
     {
-        BitLength.SixtyFourBits => 63,
-        BitLength.ThirtyTwoBits => 31,
-        BitLength.SixteenBits => 15,
-        BitLength.EightBits => 7,
-        _ => -1
-    };
+        return length switch
+        {
+            BitLength.SixtyFourBits => 63,
+            BitLength.ThirtyTwoBits => 31,
+            BitLength.SixteenBits => 15,
+            BitLength.EightBits => 7,
+            _ => -1
+        };
+    }
 }

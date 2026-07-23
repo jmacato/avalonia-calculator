@@ -7,8 +7,10 @@ namespace MathComposer.Avalonia.Controls;
 public sealed class MathDiagnosticsEventArgs : EventArgs
 {
     /// <summary>Initializes the event payload.</summary>
-    public MathDiagnosticsEventArgs(ImmutableArray<MathDiagnostic> diagnostics) =>
+    public MathDiagnosticsEventArgs(ImmutableArray<MathDiagnostic> diagnostics)
+    {
         Diagnostics = diagnostics.IsDefault ? [] : diagnostics;
+    }
 
     /// <summary>Gets the current diagnostics.</summary>
     public ImmutableArray<MathDiagnostic> Diagnostics { get; }

@@ -10,7 +10,6 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Styling;
 using CalculatorApp.ViewModel.Common;
 
 namespace CalculatorApp.Controls;
@@ -68,8 +67,16 @@ public sealed class CalculationResult : TemplatedControl
     public VerticalAlignment VerticalContentAlignment { get => GetValue(VerticalContentAlignmentProperty); set => SetValue(VerticalContentAlignmentProperty, value); }
 
     public event EventHandler? Selected;
-    public void ProgrammaticSelect() => RaiseSelectedEvent();
-    public string GetRawDisplayValue() => LocalizationSettings.Instance.RemoveGroupSeparators(DisplayValue);
+    public void ProgrammaticSelect()
+    {
+        RaiseSelectedEvent();
+    }
+
+    public string GetRawDisplayValue()
+    {
+        return LocalizationSettings.Instance.RemoveGroupSeparators(DisplayValue);
+    }
+
     internal void UpdateTextState()
     {
         if (_textContainer is null || _textBlock is null)
@@ -142,7 +149,7 @@ public sealed class CalculationResult : TemplatedControl
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
-        System.ArgumentNullException.ThrowIfNull(e);
+        ArgumentNullException.ThrowIfNull(e);
         UnregisterEventHandlers();
         base.OnApplyTemplate(e);
         _textContainer = e.NameScope.Find<ScrollViewer>("TextContainer");
@@ -177,7 +184,7 @@ public sealed class CalculationResult : TemplatedControl
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
-        System.ArgumentNullException.ThrowIfNull(e);
+        ArgumentNullException.ThrowIfNull(e);
         switch (e.Key)
         {
             case Key.Left:
@@ -200,7 +207,7 @@ public sealed class CalculationResult : TemplatedControl
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
-        System.ArgumentNullException.ThrowIfNull(e);
+        ArgumentNullException.ThrowIfNull(e);
         if (e.GetCurrentPoint(this).Properties.PointerUpdateKind == PointerUpdateKind.RightButtonPressed)
         {
             Focus();
@@ -216,10 +223,14 @@ public sealed class CalculationResult : TemplatedControl
         base.OnTapped(e);
     }
 
-    protected override AutomationPeer OnCreateAutomationPeer() => new CalculationResultAutomationPeer(this);
+    protected override AutomationPeer OnCreateAutomationPeer()
+    {
+        return new CalculationResultAutomationPeer(this);
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
-        System.ArgumentNullException.ThrowIfNull(change);
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
         if (change.Property == DisplayValueProperty || change.Property == MinFontSizeProperty || change.Property == MaxFontSizeProperty || change.Property == FontSizeProperty)
         {
@@ -270,15 +281,31 @@ public sealed class CalculationResult : TemplatedControl
         }
     }
 
-    private void OnTextBlockSizeChanged(object? sender, SizeChangedEventArgs e) => UpdateScrollButtons();
+    private void OnTextBlockSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        UpdateScrollButtons();
+    }
+
     private void OnTextContainerLayoutUpdated(object? sender, EventArgs e)
     {
         ContinueTextScaling();
     }
 
-    private void OnTextContainerScrollChanged(object? sender, ScrollChangedEventArgs e) => UpdateScrollButtons();
-    private void OnScrollLeftClick(object? sender, RoutedEventArgs e) => ScrollLeft();
-    private void OnScrollRightClick(object? sender, RoutedEventArgs e) => ScrollRight();
+    private void OnTextContainerScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        UpdateScrollButtons();
+    }
+
+    private void OnScrollLeftClick(object? sender, RoutedEventArgs e)
+    {
+        ScrollLeft();
+    }
+
+    private void OnScrollRightClick(object? sender, RoutedEventArgs e)
+    {
+        ScrollRight();
+    }
+
     private void UpdateVisualState()
     {
         PseudoClasses.Set(ActivePseudoClass, IsActive);
@@ -358,5 +385,8 @@ public sealed class CalculationResult : TemplatedControl
         }
     }
 
-    private void RaiseSelectedEvent() => Selected?.Invoke(this, EventArgs.Empty);
+    private void RaiseSelectedEvent()
+    {
+        Selected?.Invoke(this, EventArgs.Empty);
+    }
 }

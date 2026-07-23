@@ -125,8 +125,10 @@ public sealed class GuardedInverseCompositionTests
         Assert.Equal(Formula.True.Canonical, expression.DifferentiableWhen.Canonical);
     }
 
-    private static AnalysisRequest Request(InputExpression expression, AnalysisFeatures features) =>
-        new(expression, features, AngleUnit.Radians, "x", static () => true);
+    private static AnalysisRequest Request(InputExpression expression, AnalysisFeatures features)
+    {
+        return new AnalysisRequest(expression, features, AngleUnit.Radians, "x", static () => true);
+    }
 
     private static T AssertProved<T>(ProofOutcome<T> outcome)
     {
@@ -136,8 +138,13 @@ public sealed class GuardedInverseCompositionTests
         return outcome.Value;
     }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Function(string name, params InputExpression[] operands) =>
-        InputExpression.Function(name, operands.ToImmutableArray(), Source);
+    private static InputExpression Function(string name, params InputExpression[] operands)
+    {
+        return InputExpression.Function(name, operands.ToImmutableArray(), Source);
+    }
 }

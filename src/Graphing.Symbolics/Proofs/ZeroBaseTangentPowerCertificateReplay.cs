@@ -205,7 +205,13 @@ internal static class ZeroBaseTangentPowerCertificateReplay
         return false;
     }
 
-    private static bool IsTotalAndRegular(SemanticExpression expression, ResourceBudget budget) => ExactFormulaVerifier.IsAlwaysTrue(expression.DefinedWhen, budget) && ExactFormulaVerifier.IsAlwaysTrue(expression.ContinuousWhen, budget) && ExactFormulaVerifier.IsAlwaysTrue(expression.DifferentiableWhen, budget);
+    private static bool IsTotalAndRegular(SemanticExpression expression, ResourceBudget budget)
+    {
+        return ExactFormulaVerifier.IsAlwaysTrue(expression.DefinedWhen, budget) &&
+               ExactFormulaVerifier.IsAlwaysTrue(expression.ContinuousWhen, budget) &&
+               ExactFormulaVerifier.IsAlwaysTrue(expression.DifferentiableWhen, budget);
+    }
+
     private static ExactReal ScaleAngle(ExactReal angle, BigRational scale, ResourceBudget budget)
     {
         budget.CheckCoefficient(scale);
@@ -225,7 +231,19 @@ internal static class ZeroBaseTangentPowerCertificateReplay
         return value != 0 && (value & (value - 1)) == 0 && (feature & AnalysisFeatures.All) == feature;
     }
 
-    private static ValueTerm Function(string name, ValueTerm argument) => new(-1, ValueKind.Function, default, name, [argument], $"{(int)ValueKind.Function}:{name}({argument.Canonical})");
-    private static ValueTerm Constant(BigRational value) => new(-1, ValueKind.Constant, value, string.Empty, [], $"q:{value}");
-    private static bool SameFormula(Formula actual, Formula expected) => string.Equals(actual.Canonical, expected.Canonical, StringComparison.Ordinal);
+    private static ValueTerm Function(string name, ValueTerm argument)
+    {
+        return new ValueTerm(-1, ValueKind.Function, default, name, [argument],
+            $"{(int)ValueKind.Function}:{name}({argument.Canonical})");
+    }
+
+    private static ValueTerm Constant(BigRational value)
+    {
+        return new ValueTerm(-1, ValueKind.Constant, value, string.Empty, [], $"q:{value}");
+    }
+
+    private static bool SameFormula(Formula actual, Formula expected)
+    {
+        return string.Equals(actual.Canonical, expected.Canonical, StringComparison.Ordinal);
+    }
 }

@@ -1,7 +1,3 @@
-using System.Buffers;
-using System.Collections.Immutable;
-using System.Text;
-
 namespace MathComposer.Core;
 
 /// <summary>An accent placed over or under a base row.</summary>

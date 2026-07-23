@@ -8,7 +8,6 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using Graphing;
 using Graphing.Analyzer;
 using Graphing.Renderer;
@@ -387,17 +386,21 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         GraphPlotted?.Invoke(this, EventArgs.Empty);
     }
 
-    public KeyGraphFeaturesInfo? AnalyzeEquation(Equation equation) =>
-        FunctionAnalysisWorker.AnalyzeCore(
+    public KeyGraphFeaturesInfo? AnalyzeEquation(Equation equation)
+    {
+        return FunctionAnalysisWorker.AnalyzeCore(
             CaptureFunctionAnalysisRequest(equation),
             CancellationToken.None);
+    }
 
     public Task<KeyGraphFeaturesInfo> AnalyzeEquationAsync(
         Equation equation,
-        CancellationToken cancellationToken = default) =>
-        _analysisWorker.AnalyzeAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return _analysisWorker.AnalyzeAsync(
             CaptureFunctionAnalysisRequest(equation),
             cancellationToken);
+    }
 
     private FunctionAnalysisRequest CaptureFunctionAnalysisRequest(Equation equation)
     {
@@ -1268,7 +1271,11 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         topLevel.RequestAnimationFrame(_interactionFrameCallback);
     }
 
-    private void OnInteractionFrame(TimeSpan _) => ProcessInteractionFrame();
+    private void OnInteractionFrame(TimeSpan _)
+    {
+        ProcessInteractionFrame();
+    }
+
     private void ProcessInteractionFrame()
     {
         Dispatcher.UIThread.VerifyAccess();
@@ -1842,9 +1849,20 @@ public sealed class Grapher : Control, INotifyPropertyChanged, IDisposable
         return Math.Sqrt(x * x + y * y);
     }
 
-    private static Point Midpoint(Point left, Point right) => new((left.X + right.X) * 0.5, (left.Y + right.Y) * 0.5);
-    private static bool IsAllowedRangeLength(double length) => double.IsFinite(length) && length >= MinimumRangeLength && length <= MaximumRangeLength;
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    private static Point Midpoint(Point left, Point right)
+    {
+        return new Point((left.X + right.X) * 0.5, (left.Y + right.Y) * 0.5);
+    }
+
+    private static bool IsAllowedRangeLength(double length)
+    {
+        return double.IsFinite(length) && length >= MinimumRangeLength && length <= MaximumRangeLength;
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 
     public void Dispose()
     {

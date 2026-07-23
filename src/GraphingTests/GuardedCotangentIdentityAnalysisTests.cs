@@ -275,44 +275,78 @@ public sealed class GuardedCotangentIdentityAnalysisTests
 
     private static AnalysisRequest Request(
         InputExpression expression,
-        AnalysisFeatures features) =>
-        new(expression, features, AngleUnit.Radians, "x", static () => true);
+        AnalysisFeatures features)
+    {
+        return new AnalysisRequest(expression, features, AngleUnit.Radians, "x", static () => true);
+    }
 
-    private static SemanticExpression Build(InputExpression input) =>
-        new SemanticGraphBuilder(new ResourceBudget()).Build(input);
+    private static SemanticExpression Build(InputExpression input)
+    {
+        return new SemanticGraphBuilder(new ResourceBudget()).Build(input);
+    }
 
-    private static InputExpression Pythagorean(InputExpression argument) =>
-        Add(Power(Sin(argument), 2), Power(Cos(argument), 2));
+    private static InputExpression Pythagorean(InputExpression argument)
+    {
+        return Add(Power(Sin(argument), 2), Power(Cos(argument), 2));
+    }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Number(int value) =>
-        InputExpression.Number(new BigRational(value), Source);
+    private static InputExpression Number(int value)
+    {
+        return InputExpression.Number(new BigRational(value), Source);
+    }
 
-    private static InputExpression Negate(InputExpression value) =>
-        InputExpression.Unary(InputExpressionKind.Negate, value, Source);
+    private static InputExpression Negate(InputExpression value)
+    {
+        return InputExpression.Unary(InputExpressionKind.Negate, value, Source);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Subtract(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
 
-    private static InputExpression Power(InputExpression basis, int exponent) =>
-        InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    private static InputExpression Power(InputExpression basis, int exponent)
+    {
+        return InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    }
 
-    private static InputExpression Sin(InputExpression argument) => Function("sin", argument);
+    private static InputExpression Sin(InputExpression argument)
+    {
+        return Function("sin", argument);
+    }
 
-    private static InputExpression Cos(InputExpression argument) => Function("cos", argument);
+    private static InputExpression Cos(InputExpression argument)
+    {
+        return Function("cos", argument);
+    }
 
-    private static InputExpression Tan(InputExpression argument) => Function("tan", argument);
+    private static InputExpression Tan(InputExpression argument)
+    {
+        return Function("tan", argument);
+    }
 
-    private static InputExpression Function(string name, params InputExpression[] arguments) =>
-        InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    private static InputExpression Function(string name, params InputExpression[] arguments)
+    {
+        return InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    }
 }

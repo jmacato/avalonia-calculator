@@ -25,7 +25,7 @@ public sealed class GraphingVariableTextBox : TextBox
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
-        System.ArgumentNullException.ThrowIfNull(e);
+        ArgumentNullException.ThrowIfNull(e);
         if (e.Key == Key.Enter)
         {
             SubmitValue();

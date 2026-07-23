@@ -2,14 +2,12 @@
 // Licensed under the MIT License.
 
 using System.ComponentModel;
-using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using CalculatorApp.ViewModel;
 using CalculatorApp.ViewModel.Common;
-using GraphControl;
 
 namespace CalculatorApp;
 

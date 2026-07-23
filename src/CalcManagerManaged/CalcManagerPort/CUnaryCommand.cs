@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Runtime.InteropServices;
-
 namespace CalcEngine;
 
 public class CUnaryCommand : IUnaryCommand
@@ -11,15 +9,12 @@ public class CUnaryCommand : IUnaryCommand
 
     public CUnaryCommand(int command)
     {
-        m_command = new List<int>();
-        m_command.Add(command);
+        m_command = [command];
     }
 
     public CUnaryCommand(int command1, int command2)
     {
-        m_command = new List<int>();
-        m_command.Add(command1);
-        m_command.Add(command2);
+        m_command = [command1, command2];
     }
 
     public IList<int> GetCommands()

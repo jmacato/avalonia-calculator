@@ -104,7 +104,7 @@ public static class RatPakDecimal
             throw new ArgumentNullException(nameof(value));
         }
 
-        if (fractionDigits < 0 || fractionDigits >= Precision)
+        if (fractionDigits is < 0 or >= Precision)
         {
             throw new ArgumentOutOfRangeException(nameof(fractionDigits));
         }
@@ -121,20 +121,13 @@ public static class RatPakDecimal
         bool increment = remainder > half;
         if (remainder == half)
         {
-            switch (midpointRounding)
+            increment = midpointRounding switch
             {
-                case RatPakRoundingMode.AwayFromZero:
-                    increment = true;
-                    break;
-                case RatPakRoundingMode.ToEven:
-                    increment = RationalMath.Abs(ratPak, integral) % two != zero;
-                    break;
-                case RatPakRoundingMode.HalfDown:
-                    increment = false;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(midpointRounding));
-            }
+                RatPakRoundingMode.AwayFromZero => true,
+                RatPakRoundingMode.ToEven => RationalMath.Abs(ratPak, integral) % two != zero,
+                RatPakRoundingMode.HalfDown => false,
+                _ => throw new ArgumentOutOfRangeException(nameof(midpointRounding))
+            };
         }
 
         if (increment)
@@ -244,8 +237,10 @@ public static class RatPakDecimal
         return exponent;
     }
 
-    private static Rational Pow10(RatPak ratPak, int exponent) =>
-        Parse(ratPak, "1" + new string('0', exponent));
+    private static Rational Pow10(RatPak ratPak, int exponent)
+    {
+        return Parse(ratPak, "1" + new string('0', exponent));
+    }
 
     private static string ExpandScientific(string value)
     {

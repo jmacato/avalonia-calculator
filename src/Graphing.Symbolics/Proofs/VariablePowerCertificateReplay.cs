@@ -271,6 +271,8 @@ internal static class VariablePowerCertificateReplay
             secondNegativeLattice);
     }
 
-    private static bool SameFormula(Formula actual, Formula expected) =>
-        string.Equals(actual.Canonical, expected.Canonical, StringComparison.Ordinal);
+    private static bool SameFormula(Formula actual, Formula expected)
+    {
+        return string.Equals(actual.Canonical, expected.Canonical, StringComparison.Ordinal);
+    }
 }

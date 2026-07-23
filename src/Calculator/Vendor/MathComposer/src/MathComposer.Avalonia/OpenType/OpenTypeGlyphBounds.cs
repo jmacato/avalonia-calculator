@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace MathComposer.Avalonia.OpenType;
 
 /// <summary>A conservative glyph rectangle in font design units.</summary>

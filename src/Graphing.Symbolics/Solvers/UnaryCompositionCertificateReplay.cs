@@ -479,10 +479,12 @@ internal static class UnaryCompositionCertificateReplay
         return false;
     }
 
-    private static bool HasEverywhereRegularity(SemanticExpression expression) =>
-        CanonicalEquals(expression.DefinedWhen, Formula.True) &&
-        CanonicalEquals(expression.ContinuousWhen, Formula.True) &&
-        CanonicalEquals(expression.DifferentiableWhen, Formula.True);
+    private static bool HasEverywhereRegularity(SemanticExpression expression)
+    {
+        return CanonicalEquals(expression.DefinedWhen, Formula.True) &&
+               CanonicalEquals(expression.ContinuousWhen, Formula.True) &&
+               CanonicalEquals(expression.DifferentiableWhen, Formula.True);
+    }
 
     private static bool TryBuildGuardedInnerRegularity(
         string innerFunction,
@@ -545,8 +547,9 @@ internal static class UnaryCompositionCertificateReplay
         UnaryCompositionPattern pattern,
         ValueTerm expectedBefore,
         ValueTerm expectedAfter,
-        Formula expectedGuard) =>
-        string.Equals(
+        Formula expectedGuard)
+    {
+        return string.Equals(
                    rewrite.Rule,
                    pattern.IdentityRule,
                    StringComparison.Ordinal) &&
@@ -559,14 +562,16 @@ internal static class UnaryCompositionCertificateReplay
                    expectedAfter.Canonical,
                    StringComparison.Ordinal) &&
                CanonicalEquals(rewrite.Guard, expectedGuard);
+    }
 
     private static bool GuardedRegularityMatches(
         SemanticExpression expression,
         SemanticExpression innerExpression,
         Formula expectedDefined,
         Formula expectedContinuous,
-        Formula expectedDifferentiable) =>
-        CanonicalEquals(innerExpression.DefinedWhen, expectedDefined) &&
+        Formula expectedDifferentiable)
+    {
+        return CanonicalEquals(innerExpression.DefinedWhen, expectedDefined) &&
                CanonicalEquals(
                    innerExpression.ContinuousWhen,
                    expectedContinuous) &&
@@ -578,30 +583,37 @@ internal static class UnaryCompositionCertificateReplay
                CanonicalEquals(
                    expression.DifferentiableWhen,
                    expectedDifferentiable);
+    }
 
-    private static bool CanonicalEquals(Formula left, Formula right) =>
-        string.Equals(left.Canonical, right.Canonical, StringComparison.Ordinal);
+    private static bool CanonicalEquals(Formula left, Formula right)
+    {
+        return string.Equals(left.Canonical, right.Canonical, StringComparison.Ordinal);
+    }
 
-    private static ValueTerm ConstantTerm(BigRational value, int id) =>
-        new(
+    private static ValueTerm ConstantTerm(BigRational value, int id)
+    {
+        return new ValueTerm(
             id,
             ValueKind.Constant,
             value,
             string.Empty,
             [],
             "q:" + value);
+    }
 
     private static ValueTerm FunctionTerm(
         string function,
         ValueTerm argument,
-        int id) =>
-        new(
+        int id)
+    {
+        return new ValueTerm(
             id,
             ValueKind.Function,
             default,
             function,
             [argument],
             $"{(int)ValueKind.Function}:{function}({argument.Canonical})");
+    }
 
     private static RealSet BuildDomain(
         UnaryCompositionPattern pattern,
@@ -988,7 +1000,7 @@ internal static class UnaryCompositionCertificateReplay
         }
     }
 
-    private static Graphing.Symbolics.IntervalSet BuildPeriodicRange(
+    private static IntervalSet BuildPeriodicRange(
         UnaryCompositionPattern pattern,
         AngleUnit angleUnit)
     {
@@ -1070,7 +1082,9 @@ internal static class UnaryCompositionCertificateReplay
 
     private static RealSet BuildPeriodicZeros(
         UnaryCompositionPattern pattern,
-        AngleUnit angleUnit) => pattern.OuterFunction switch
+        AngleUnit angleUnit)
+    {
+        return pattern.OuterFunction switch
         {
             "exp" or "cos" => EmptySet.Instance,
             "acos" => BuildPeriodicPoints(pattern, angleUnit, 0, 2),
@@ -1083,6 +1097,7 @@ internal static class UnaryCompositionCertificateReplay
                 2),
             _ => BuildPeriodicPoints(pattern, angleUnit, 0, 1)
         };
+    }
 
     private static bool TryBuildPeriodicIntercept(
         UnaryCompositionPattern pattern,
@@ -1530,46 +1545,54 @@ internal static class UnaryCompositionCertificateReplay
 
     private static ConstantYFeaturePoint SingletonFeature(
         ExactReal abscissa,
-        ExactReal ordinate) =>
-        new(new SingletonReal(abscissa), ordinate);
+        ExactReal ordinate)
+    {
+        return new ConstantYFeaturePoint(new SingletonReal(abscissa), ordinate);
+    }
 
     private static ConstantYFeaturePoint BuildPeriodicFeature(
         UnaryCompositionPattern pattern,
         AngleUnit angleUnit,
         BigRational angleFraction,
         BigRational periodFraction,
-        ExactReal ordinate) =>
-        BuildPeriodicFeature(
+        ExactReal ordinate)
+    {
+        return BuildPeriodicFeature(
             pattern,
             UnitAngle(angleUnit, angleFraction),
             BuildTrigStep(pattern, angleUnit, periodFraction),
             ordinate);
+    }
 
     private static ConstantYFeaturePoint BuildPeriodicFeature(
         UnaryCompositionPattern pattern,
         ExactReal angle,
         ExactReal period,
-        ExactReal ordinate) =>
-        new(
+        ExactReal ordinate)
+    {
+        return new ConstantYFeaturePoint(
             new PeriodicReal(
                 SolveAngleCoordinate(pattern, angle),
                 period,
                 Parameter,
                 IntegerConstraint.All(Parameter)),
             ordinate);
+    }
 
-    private static Graphing.Symbolics.PeriodicPointSet BuildPeriodicPoints(
+    private static PeriodicPointSet BuildPeriodicPoints(
         UnaryCompositionPattern pattern,
         AngleUnit angleUnit,
         BigRational angleFraction,
-        BigRational periodFraction) =>
-        new PeriodicPointSet(
+        BigRational periodFraction)
+    {
+        return new PeriodicPointSet(
             SolveAngleCoordinate(
                 pattern,
                 UnitAngle(angleUnit, angleFraction)),
             BuildTrigStep(pattern, angleUnit, periodFraction),
             Parameter,
             IntegerConstraint.All(Parameter));
+    }
 
     private static PeriodicIntervalSet BuildPeriodicIntervals(
         UnaryCompositionPattern pattern,
@@ -1578,8 +1601,9 @@ internal static class UnaryCompositionCertificateReplay
         bool includeLower,
         BigRational upperFraction,
         bool includeUpper,
-        BigRational periodFraction) =>
-        new(
+        BigRational periodFraction)
+    {
+        return new PeriodicIntervalSet(
             BuildTrigStep(pattern, angleUnit, periodFraction),
             Parameter,
             IntegerConstraint.All(Parameter),
@@ -1594,23 +1618,28 @@ internal static class UnaryCompositionCertificateReplay
                         UnitAngle(angleUnit, upperFraction)),
                     includeUpper)
             ]);
+    }
 
     private static ExactReal SolveAngleCoordinate(
         UnaryCompositionPattern pattern,
-        ExactReal angle) =>
-        ExactRealArithmetic.Scale(
+        ExactReal angle)
+    {
+        return ExactRealArithmetic.Scale(
             ExactRealArithmetic.AddRational(angle, -pattern.Phase),
             pattern.Frequency.Reciprocal());
+    }
 
     private static ExactReal BuildTrigStep(
         UnaryCompositionPattern pattern,
         AngleUnit angleUnit,
-        BigRational fraction) =>
-        ExactRealArithmetic.Scale(
+        BigRational fraction)
+    {
+        return ExactRealArithmetic.Scale(
             UnitAngle(angleUnit, fraction),
             pattern.Frequency.Reciprocal());
+    }
 
-    private static Graphing.Symbolics.RationalReal SolveAffineOutput(
+    private static RationalReal SolveAffineOutput(
         UnaryCompositionPattern pattern,
         BigRational target)
     {
@@ -1618,8 +1647,10 @@ internal static class UnaryCompositionCertificateReplay
         return Rational((rawTarget - pattern.Phase) / pattern.Frequency);
     }
 
-    private static Graphing.Symbolics.RationalReal AffineCenter(UnaryCompositionPattern pattern) =>
-        Rational(-pattern.Phase / pattern.Frequency);
+    private static RationalReal AffineCenter(UnaryCompositionPattern pattern)
+    {
+        return Rational(-pattern.Phase / pattern.Frequency);
+    }
 
     private static IntervalSet OrderedInterval(
         ExactReal first,
@@ -1647,23 +1678,31 @@ internal static class UnaryCompositionCertificateReplay
 
     private static IntervalSet ClosedInterval(
         ExactReal lower,
-        ExactReal upper) =>
-        new(RealBound.Finite(lower), true, RealBound.Finite(upper), true);
+        ExactReal upper)
+    {
+        return new IntervalSet(RealBound.Finite(lower), true, RealBound.Finite(upper), true);
+    }
 
-    private static Graphing.Symbolics.FunctionReal ReciprocalE() =>
-        new FunctionReal(
+    private static FunctionReal ReciprocalE()
+    {
+        return new FunctionReal(
             "divide",
             [Rational(BigRational.One), new NamedReal("e")]);
+    }
 
     private static ExactReal EvaluateUnitInput(
         string function,
-        AngleUnit angleUnit) =>
-        EvaluateOuter(function, Rational(BigRational.One), angleUnit);
+        AngleUnit angleUnit)
+    {
+        return EvaluateOuter(function, Rational(BigRational.One), angleUnit);
+    }
 
     private static ExactReal EvaluateOuter(
         string function,
         ExactReal value,
-        AngleUnit angleUnit) => function switch
+        AngleUnit angleUnit)
+    {
+        return function switch
         {
             "asin" or "acos" or "atan" => ExactAngleArithmetic.FromRadians(
                 new FunctionReal(function, [value]),
@@ -1673,11 +1712,14 @@ internal static class UnaryCompositionCertificateReplay
                 [ExactAngleArithmetic.ToRadians(value, angleUnit)]),
             _ => new FunctionReal(function, [value])
         };
+    }
 
     private static ExactReal UnitAngle(
         AngleUnit angleUnit,
-        BigRational piFraction) =>
-        ExactAngleArithmetic.PiFraction(angleUnit, piFraction);
+        BigRational piFraction)
+    {
+        return ExactAngleArithmetic.PiFraction(angleUnit, piFraction);
+    }
 
     private static bool TryClassifyQuarterTurn(
         BigRational phase,
@@ -1704,7 +1746,10 @@ internal static class UnaryCompositionCertificateReplay
         return true;
     }
 
-    private static RationalReal Rational(BigRational value) => new(value);
+    private static RationalReal Rational(BigRational value)
+    {
+        return new RationalReal(value);
+    }
 
     private static bool Fail(out object value)
     {

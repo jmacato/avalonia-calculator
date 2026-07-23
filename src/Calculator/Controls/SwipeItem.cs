@@ -7,7 +7,6 @@
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Automation;
-using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
 using FluentAvalonia.UI.Controls;
@@ -37,7 +36,7 @@ public sealed class SwipeItem : StyledElement
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
-        System.ArgumentNullException.ThrowIfNull(change);
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
         if (change.Property == CommandProperty)
         {

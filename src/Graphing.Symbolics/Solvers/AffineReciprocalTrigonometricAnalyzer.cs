@@ -343,7 +343,7 @@ internal static class AffineReciprocalTrigonometricAnalyzer
             return [];
         }
 
-        bool choosePositiveCore = minimum == (pattern.Amplitude.Sign > 0);
+        bool choosePositiveCore = minimum == pattern.Amplitude.Sign > 0;
         BigRational angleFraction = pattern.Function switch
         {
             "sec" when choosePositiveCore => BigRational.Zero,
@@ -376,7 +376,7 @@ internal static class AffineReciprocalTrigonometricAnalyzer
     {
         if (pattern.Function == "cot")
         {
-            return [Region(pattern, angleUnit, BigRational.Zero, BigRational.One, BigRational.One, pattern.Amplitude.Sign > 0 ? Graphing.Symbolics.Monotonicity.Decreasing : Graphing.Symbolics.Monotonicity.Increasing, budget)];
+            return [Region(pattern, angleUnit, BigRational.Zero, BigRational.One, BigRational.One, pattern.Amplitude.Sign > 0 ? Monotonicity.Decreasing : Monotonicity.Increasing, budget)];
         }
 
         (BigRational Lower, BigRational Upper, bool Increasing)[] cells = pattern.Function == "sec" ? [(new BigRational(1, 2), BigRational.One, true), (new BigRational(3, 2), new BigRational(2), false), (BigRational.One, new BigRational(3, 2), false), (new BigRational(2), new BigRational(5, 2), true)] : [(BigRational.Zero, new BigRational(1, 2), false), (new BigRational(1, 2), BigRational.One, true), (BigRational.One, new BigRational(3, 2), true), (new BigRational(3, 2), new BigRational(2), false)];
@@ -384,13 +384,25 @@ internal static class AffineReciprocalTrigonometricAnalyzer
         foreach ((BigRational lower, BigRational upper, bool coreIncreasing) in cells)
         {
             bool increasing = pattern.Amplitude.Sign > 0 ? coreIncreasing : !coreIncreasing;
-            regions.Add(Region(pattern, angleUnit, lower, upper, new BigRational(2), increasing ? Graphing.Symbolics.Monotonicity.Increasing : Graphing.Symbolics.Monotonicity.Decreasing, budget));
+            regions.Add(Region(pattern, angleUnit, lower, upper, new BigRational(2), increasing ? Monotonicity.Increasing : Monotonicity.Decreasing, budget));
         }
 
         return regions.MoveToImmutable();
     }
 
-    private static MonotoneRegion Region(AffineReciprocalTrigPattern pattern, AngleUnit angleUnit, BigRational lowerFraction, BigRational upperFraction, BigRational periodFraction, Monotonicity direction, ResourceBudget budget) => new(new PeriodicIntervalSet(ScaleAngle(Angle(angleUnit, periodFraction), pattern.Frequency.Reciprocal(), budget), "m", IntegerConstraint.All("m"), [new PeriodicInterval(SolveAngle(pattern.Frequency, pattern.Phase, Angle(angleUnit, lowerFraction), budget), false, SolveAngle(pattern.Frequency, pattern.Phase, Angle(angleUnit, upperFraction), budget), false)]), direction);
+    private static MonotoneRegion Region(AffineReciprocalTrigPattern pattern, AngleUnit angleUnit, BigRational lowerFraction, BigRational upperFraction, BigRational periodFraction, Monotonicity direction, ResourceBudget budget)
+    {
+        return new MonotoneRegion(
+            new PeriodicIntervalSet(
+                ScaleAngle(Angle(angleUnit, periodFraction), pattern.Frequency.Reciprocal(), budget), "m",
+                IntegerConstraint.All("m"),
+                [
+                    new PeriodicInterval(
+                        SolveAngle(pattern.Frequency, pattern.Phase, Angle(angleUnit, lowerFraction), budget), false,
+                        SolveAngle(pattern.Frequency, pattern.Phase, Angle(angleUnit, upperFraction), budget), false)
+                ]), direction);
+    }
+
     private static Periodicity Period(AffineReciprocalTrigPattern pattern, AngleUnit angleUnit, ResourceBudget budget)
     {
         BigRational fraction = pattern.Function == "cot" ? BigRational.One : new BigRational(2);
@@ -466,7 +478,11 @@ internal static class AffineReciprocalTrigonometricAnalyzer
         return result;
     }
 
-    private static ExactReal Angle(AngleUnit unit, BigRational piFraction) => ExactAngleArithmetic.PiFraction(unit, piFraction);
+    private static ExactReal Angle(AngleUnit unit, BigRational piFraction)
+    {
+        return ExactAngleArithmetic.PiFraction(unit, piFraction);
+    }
+
     private static bool TryRationalConstant(ValueTerm term, out BigRational value)
     {
         if (term.Kind == ValueKind.Constant)

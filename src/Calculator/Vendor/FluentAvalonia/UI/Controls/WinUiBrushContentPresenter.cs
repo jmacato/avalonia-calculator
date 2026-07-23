@@ -6,7 +6,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Media;
-using Avalonia.VisualTree;
 using FluentAvalonia.Core;
 
 namespace FluentAvalonia.UI.Controls;
@@ -171,16 +170,20 @@ public sealed class WinUiBrushContentPresenter : ContentPresenter
         Background = brush;
     }
 
-    private static TimeSpan ClampDuration(TimeSpan duration) =>
-        duration < MinimumDuration
+    private static TimeSpan ClampDuration(TimeSpan duration)
+    {
+        return duration < MinimumDuration
             ? MinimumDuration
             : duration > MaximumDuration
                 ? MaximumDuration
                 : duration;
+    }
 
-    private static byte Interpolate(byte from, byte to, double progress) =>
-        (byte)Math.Clamp(
-            Math.Round(from + ((to - from) * progress), MidpointRounding.AwayFromZero),
+    private static byte Interpolate(byte from, byte to, double progress)
+    {
+        return (byte)Math.Clamp(
+            Math.Round(from + (to - from) * progress, MidpointRounding.AwayFromZero),
             byte.MinValue,
             byte.MaxValue);
+    }
 }

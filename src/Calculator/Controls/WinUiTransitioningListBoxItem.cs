@@ -6,7 +6,6 @@ using Avalonia;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Media;
-using Avalonia.VisualTree;
 using GraphControl;
 
 namespace CalculatorApp.Controls;
@@ -286,6 +285,6 @@ public sealed class WinUiTransitioningListBoxItem : ListBoxItem
 
     private static double Lerp(double start, double end, double progress)
     {
-        return start + ((end - start) * progress);
+        return start + (end - start) * progress;
     }
 }

@@ -19,7 +19,13 @@ internal static class AffinePrimitiveCertificateReplay
         return string.Equals(ClaimCanonical.ForObject(expected), claim, StringComparison.Ordinal);
     }
 
-    private static bool TheoremMatches(AffinePrimitiveCertificateReplayPrimitiveReplayPattern pattern, TheoremRule theorem) => pattern.Function == "root" ? theorem == TheoremRule.OddRootPrimitive : theorem == TheoremRule.ElementaryPrimitive;
+    private static bool TheoremMatches(AffinePrimitiveCertificateReplayPrimitiveReplayPattern pattern, TheoremRule theorem)
+    {
+        return pattern.Function == "root"
+            ? theorem == TheoremRule.OddRootPrimitive
+            : theorem == TheoremRule.ElementaryPrimitive;
+    }
+
     private static bool TryExtractPattern(ValueTerm root, string variable, ResourceBudget budget, out AffinePrimitiveCertificateReplayPrimitiveReplayPattern pattern)
     {
         ImmutableArray<(ValueTerm Term, BigRational Coefficient)> terms = CollectLinearCombination(root, budget);
@@ -112,7 +118,7 @@ internal static class AffinePrimitiveCertificateReplay
         return atoms.Values.Where(static atom => !atom.Coefficient.IsZero).ToImmutableArray();
     }
 
-    private static void AddPending(ValueTerm term, BigRational coefficient, System.Collections.Generic.SortedDictionary<string, (Graphing.Symbolics.ValueTerm Term, Graphing.Symbolics.BigRational Coefficient)> pending, ResourceBudget budget)
+    private static void AddPending(ValueTerm term, BigRational coefficient, SortedDictionary<string, (ValueTerm Term, BigRational Coefficient)> pending, ResourceBudget budget)
     {
         budget.CheckCoefficient(coefficient);
         if (pending.TryGetValue(term.Canonical, out var existing))
@@ -133,7 +139,7 @@ internal static class AffinePrimitiveCertificateReplay
         }
     }
 
-    private static void AddAtom(ValueTerm term, BigRational coefficient, System.Collections.Generic.SortedDictionary<string, (Graphing.Symbolics.ValueTerm Term, Graphing.Symbolics.BigRational Coefficient)> atoms, ResourceBudget budget)
+    private static void AddAtom(ValueTerm term, BigRational coefficient, SortedDictionary<string, (ValueTerm Term, BigRational Coefficient)> atoms, ResourceBudget budget)
     {
         budget.CheckCoefficient(coefficient);
         if (atoms.TryGetValue(term.Canonical, out var existing))
@@ -383,7 +389,12 @@ internal static class AffinePrimitiveCertificateReplay
         return true;
     }
 
-    private static bool VerifyTotalSource(SemanticExpression expression, AffinePrimitiveCertificateReplayPrimitiveReplayPattern pattern, AffinePrimitiveCertificateReplayPrimitiveRegularity regularity, string variable, ResourceBudget budget, IDictionary<SemanticExpression, bool> verified, ISet<SemanticExpression> active) => VerifySourceNode(expression, pattern, regularity, variable, budget, verified, active, out bool containsCore) && !containsCore;
+    private static bool VerifyTotalSource(SemanticExpression expression, AffinePrimitiveCertificateReplayPrimitiveReplayPattern pattern, AffinePrimitiveCertificateReplayPrimitiveRegularity regularity, string variable, ResourceBudget budget, IDictionary<SemanticExpression, bool> verified, ISet<SemanticExpression> active)
+    {
+        return VerifySourceNode(expression, pattern, regularity, variable, budget, verified, active,
+            out bool containsCore) && !containsCore;
+    }
+
     private static bool TryMatchArithmeticSource(SemanticExpression expression, ResourceBudget budget, out ValueKind operation)
     {
         budget.Charge();
@@ -436,9 +447,23 @@ internal static class AffinePrimitiveCertificateReplay
         return (ValueKind)(-1);
     }
 
-    private static string TermCanonical(ValueKind kind, ImmutableArray<ValueTerm> operands) => $"{(int)kind}:({string.Join(',', operands.Select(static value => value.Canonical))})";
-    private static bool RegularityMatches(SemanticExpression expression, AffinePrimitiveCertificateReplayPrimitiveRegularity regularity) => CanonicalEquals(expression.DefinedWhen, regularity.Defined) && CanonicalEquals(expression.ContinuousWhen, regularity.Continuous) && CanonicalEquals(expression.DifferentiableWhen, regularity.Differentiable);
-    private static bool CanonicalEquals(Formula left, Formula right) => string.Equals(left.Canonical, right.Canonical, StringComparison.Ordinal);
+    private static string TermCanonical(ValueKind kind, ImmutableArray<ValueTerm> operands)
+    {
+        return $"{(int)kind}:({string.Join(',', operands.Select(static value => value.Canonical))})";
+    }
+
+    private static bool RegularityMatches(SemanticExpression expression, AffinePrimitiveCertificateReplayPrimitiveRegularity regularity)
+    {
+        return CanonicalEquals(expression.DefinedWhen, regularity.Defined) &&
+               CanonicalEquals(expression.ContinuousWhen, regularity.Continuous) &&
+               CanonicalEquals(expression.DifferentiableWhen, regularity.Differentiable);
+    }
+
+    private static bool CanonicalEquals(Formula left, Formula right)
+    {
+        return string.Equals(left.Canonical, right.Canonical, StringComparison.Ordinal);
+    }
+
     private static bool TryReconstructClaim(AffinePrimitiveCertificateReplayPrimitiveReplayPattern pattern, AnalysisFeatures feature, ResourceBudget budget, out object value)
     {
         budget.Charge(4);
@@ -608,7 +633,7 @@ internal static class AffinePrimitiveCertificateReplay
 
     private static ImmutableArray<FeaturePoint> PrimitiveExtrema(AffinePrimitiveCertificateReplayPrimitiveReplayPattern pattern, bool minimum, ResourceBudget budget)
     {
-        if (pattern.Function == "cosh" && minimum == (pattern.OuterScale.Sign > 0))
+        if (pattern.Function == "cosh" && minimum == pattern.OuterScale.Sign > 0)
         {
             ExactReal x = new RationalReal(SolveInnerRational(pattern, BigRational.Zero, budget));
             ExactReal y = TransformOutput(pattern, new RationalReal(BigRational.One), budget);
@@ -651,7 +676,11 @@ internal static class AffinePrimitiveCertificateReplay
         };
     }
 
-    private static Asymptote HorizontalAsymptote(ExactReal y) => new(AsymptoteOrientation.Horizontal, new SingletonReal(y), null, y);
+    private static Asymptote HorizontalAsymptote(ExactReal y)
+    {
+        return new Asymptote(AsymptoteOrientation.Horizontal, new SingletonReal(y), null, y);
+    }
+
     private static ImmutableArray<MonotoneRegion> PrimitiveMonotonicity(AffinePrimitiveCertificateReplayPrimitiveReplayPattern pattern, RealSet domain, ResourceBudget budget)
     {
         if (pattern.Function == "cosh")
@@ -687,7 +716,11 @@ internal static class AffinePrimitiveCertificateReplay
         };
     }
 
-    private static RealSet PointAtInnerValue(AffinePrimitiveCertificateReplayPrimitiveReplayPattern pattern, ExactReal innerValue, ResourceBudget budget) => RealSets.Points([SolveInnerExact(pattern, innerValue, budget)]);
+    private static RealSet PointAtInnerValue(AffinePrimitiveCertificateReplayPrimitiveReplayPattern pattern, ExactReal innerValue, ResourceBudget budget)
+    {
+        return RealSets.Points([SolveInnerExact(pattern, innerValue, budget)]);
+    }
+
     private static ExactReal SolveInnerExact(AffinePrimitiveCertificateReplayPrimitiveReplayPattern pattern, ExactReal innerValue, ResourceBudget budget)
     {
         budget.CheckCoefficient(pattern.InnerIntercept);
@@ -695,7 +728,11 @@ internal static class AffinePrimitiveCertificateReplay
         return Checked(ExactRealArithmetic.Scale(ExactRealArithmetic.AddRational(innerValue, -pattern.InnerIntercept), pattern.InnerSlope.Reciprocal()), budget);
     }
 
-    private static BigRational SolveInnerRational(AffinePrimitiveCertificateReplayPrimitiveReplayPattern pattern, BigRational innerValue, ResourceBudget budget) => Checked((innerValue - pattern.InnerIntercept) / pattern.InnerSlope, budget);
+    private static BigRational SolveInnerRational(AffinePrimitiveCertificateReplayPrimitiveReplayPattern pattern, BigRational innerValue, ResourceBudget budget)
+    {
+        return Checked((innerValue - pattern.InnerIntercept) / pattern.InnerSlope, budget);
+    }
+
     private static ExactReal TransformOutput(AffinePrimitiveCertificateReplayPrimitiveReplayPattern pattern, ExactReal primitiveValue, ResourceBudget budget)
     {
         budget.CheckCoefficient(pattern.OuterScale);
@@ -703,7 +740,13 @@ internal static class AffinePrimitiveCertificateReplay
         return Checked(ExactRealArithmetic.AddRational(ExactRealArithmetic.Scale(primitiveValue, pattern.OuterScale), pattern.OuterShift), budget);
     }
 
-    private static ExactReal NaturalLogOfPositiveRational(BigRational value) => value == BigRational.One ? new RationalReal(BigRational.Zero) : new FunctionReal("ln", [new RationalReal(value)]);
+    private static ExactReal NaturalLogOfPositiveRational(BigRational value)
+    {
+        return value == BigRational.One
+            ? new RationalReal(BigRational.Zero)
+            : new FunctionReal("ln", [new RationalReal(value)]);
+    }
+
     private static ExactReal InverseSinh(BigRational value, ResourceBudget budget)
     {
         BigRational radicand = Checked(value * value + BigRational.One, budget);
@@ -752,8 +795,20 @@ internal static class AffinePrimitiveCertificateReplay
         return new FunctionReal("power", [new RationalReal(new BigRational(10)), new RationalReal(exponent)]);
     }
 
-    private static ExactReal SquareRoot(BigRational value) => BigRational.TrySquareRoot(value, out BigRational root) ? new RationalReal(root) : new FunctionReal("sqrt", [new RationalReal(value)]);
-    private static ExactReal NaturalLog(ExactReal value) => value is RationalReal { Value.IsOne: true } ? new RationalReal(BigRational.Zero) : new FunctionReal("ln", [value]);
+    private static ExactReal SquareRoot(BigRational value)
+    {
+        return BigRational.TrySquareRoot(value, out BigRational root)
+            ? new RationalReal(root)
+            : new FunctionReal("sqrt", [new RationalReal(value)]);
+    }
+
+    private static ExactReal NaturalLog(ExactReal value)
+    {
+        return value is RationalReal { Value.IsOne: true }
+            ? new RationalReal(BigRational.Zero)
+            : new FunctionReal("ln", [value]);
+    }
+
     private static BigRational Checked(BigRational value, ResourceBudget budget)
     {
         budget.CheckCoefficient(value);
@@ -784,6 +839,10 @@ internal static class AffinePrimitiveCertificateReplay
         return value;
     }
 
-    private static ValueTerm ConstantTerm(BigRational value, int id) => new(id, ValueKind.Constant, value, string.Empty, [], "q:" + value);
+    private static ValueTerm ConstantTerm(BigRational value, int id)
+    {
+        return new ValueTerm(id, ValueKind.Constant, value, string.Empty, [], "q:" + value);
+    }
+
     private static AffinePrimitiveCertificateReplayPrimitiveRegularity TotalRegularity => new(Formula.True, Formula.True, Formula.True);
 }

@@ -30,11 +30,16 @@ public sealed class MathEditorAutomationPeer : ControlAutomationPeer, IValueProv
     }
 
     /// <inheritdoc />
-    protected override AutomationControlType GetAutomationControlTypeCore() =>
-        AutomationControlType.Edit;
+    protected override AutomationControlType GetAutomationControlTypeCore()
+    {
+        return AutomationControlType.Edit;
+    }
 
     /// <inheritdoc />
-    protected override string GetClassNameCore() => nameof(MathEditor);
+    protected override string GetClassNameCore()
+    {
+        return nameof(MathEditor);
+    }
 
     /// <inheritdoc />
     protected override string GetNameCore()

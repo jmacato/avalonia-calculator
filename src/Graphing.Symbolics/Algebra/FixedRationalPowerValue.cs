@@ -189,13 +189,13 @@ internal static class FixedRationalPowerValue
         }
 
         int bitLength = checked((int)value.GetBitLength());
-        int rootBits = checked(((bitLength - 1) / degree) + 1);
+        int rootBits = checked((bitLength - 1) / degree + 1);
         ExactInteger candidate = ExactInteger.One << rootBits;
         while (true)
         {
             budget.Charge();
             ExactInteger divisor = ExactInteger.Pow(candidate, degree - 1);
-            ExactInteger next = (((degree - 1) * candidate) + (value / divisor)) / degree;
+            ExactInteger next = ((degree - 1) * candidate + value / divisor) / degree;
             if (next >= candidate)
             {
                 root = candidate;

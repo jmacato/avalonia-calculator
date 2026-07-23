@@ -1,25 +1,14 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalcEngine;
-using CalculationManager;
-
 namespace CalcEngine;
 
-public class CalcInput
+public class CalcInput(wchar_t decSymbol)
 {
     // public:
     public CalcInput()
         : this('.')
     {
-    }
-
-    public CalcInput(wchar_t decSymbol)
-
-    {
-        m_base = new CalcNumSec();
-        m_exponent = new CalcNumSec();
-        m_decSymbol = (decSymbol);
     }
 
     // private:
@@ -29,11 +18,11 @@ public class CalcInput
 
     int m_decPtIndex;
 
-    wchar_t m_decSymbol;
+    wchar_t m_decSymbol = decSymbol;
 
-    CalcNumSec m_base;
+    CalcNumSec m_base = new();
 
-    CalcNumSec m_exponent;
+    CalcNumSec m_exponent = new();
 
     const int MAX_STRLEN = 84;
 
@@ -97,7 +86,7 @@ public class CalcInput
 
         // Convert from an integer into a character
         // This includes both normal digits and alpha 'digits' for radixes > 10
-        var chDigit = (wchar_t)((value < 10) ? ('0' + value) : ('A' + value - 10));
+        var chDigit = (wchar_t)(value < 10 ? '0' + value : 'A' + value - 10);
 
         CalcNumSec pNumSec;
         int maxCount;
@@ -127,7 +116,7 @@ public class CalcInput
         }
 
         // Ignore leading zeros
-        if (pNumSec.IsEmpty() && (value == 0))
+        if (pNumSec.IsEmpty() && value == 0)
         {
             return true;
         }
@@ -150,12 +139,12 @@ public class CalcInput
                 {
                     case 1:
                         // in 16 or 64bit word size, if the first digit is a 1 we can enter 6 (16bit) or 22 (64bit) digits
-                        allowExtraDigit = (pNumSec.Value.First() == '1');
+                        allowExtraDigit = pNumSec.Value.First() == '1';
                         break;
 
                     case 2:
                         // in 8 or 32bit word size, if the first digit is a 3 or less we can enter 3 (8bit) or 11 (32bit) digits
-                        allowExtraDigit = (pNumSec.Value.First() <= '3');
+                        allowExtraDigit = pNumSec.Value.First() <= '3';
                         break;
                 }
             }
@@ -317,7 +306,7 @@ public class CalcInput
         ;
 
         // In theory both the base and exponent could be C_NUM_MAX_DIGITS long.
-        if ((m_base.Value.Length > MAX_STRLEN) || (m_hasExponent && m_exponent.Value.Length > MAX_STRLEN))
+        if (m_base.Value.Length > MAX_STRLEN || (m_hasExponent && m_exponent.Value.Length > MAX_STRLEN))
         {
             return result;
         }
@@ -344,8 +333,8 @@ public class CalcInput
                 result += m_decSymbol;
             }
 
-            result += ((radix == 10) ? 'e' : '^');
-            result += (m_exponent.IsNegative() ? '-' : '+');
+            result += radix == 10 ? 'e' : '^';
+            result += m_exponent.IsNegative() ? '-' : '+';
 
             if (m_exponent.IsEmpty())
             {

@@ -3,12 +3,6 @@ using Graphing;
 namespace JsMath.Port;
 
 /// <summary>A bounded point quadtree used for loop and nearest-point queries.</summary>
-[PortedFrom(
-    "JSXGraph",
-    "src/math/qdt.js",
-    "d4f153470e249a698a46d6e8078c1d68f0cbe2cd",
-    "MIT",
-    "sha256:a3ffb479a7c2ceb332b8332396d75cc40f3b30fe62864a8a29fb253b1223a454")]
 public sealed class PointQuadtree<T>
 {
     private readonly PointQuadtreeNode<T> _root;
@@ -48,7 +42,10 @@ public sealed class PointQuadtree<T>
         Query(_root, area, results);
     }
 
-    public bool Any(GraphRect area) => Any(_root, area);
+    public bool Any(GraphRect area)
+    {
+        return Any(_root, area);
+    }
 
     private void Insert(PointQuadtreeNode<T> node, PointQuadtreeEntry<T> entry, int depth)
     {
@@ -145,18 +142,21 @@ public sealed class PointQuadtree<T>
     private static PointQuadtreeNode<T> FindChild(PointQuadtreeNode<T> node, GraphPoint point)
     {
         PointQuadtreeNode<T>[] children = node.Children!;
-        double centerX = node.Bounds.X + (node.Bounds.Width * 0.5);
-        double centerY = node.Bounds.Y + (node.Bounds.Height * 0.5);
+        double centerX = node.Bounds.X + node.Bounds.Width * 0.5;
+        double centerY = node.Bounds.Y + node.Bounds.Height * 0.5;
         int index = (point.X >= centerX ? 1 : 0) + (point.Y >= centerY ? 2 : 0);
         return children[index];
     }
 
-    private static bool Contains(GraphRect bounds, GraphPoint point) =>
-        point.X >= bounds.X && point.X <= bounds.Right &&
-        point.Y >= bounds.Y && point.Y <= bounds.Bottom;
+    private static bool Contains(GraphRect bounds, GraphPoint point)
+    {
+        return point.X >= bounds.X && point.X <= bounds.Right &&
+               point.Y >= bounds.Y && point.Y <= bounds.Bottom;
+    }
 
-    private static bool Intersects(GraphRect left, GraphRect right) =>
-        left.X <= right.Right && left.Right >= right.X &&
-        left.Y <= right.Bottom && left.Bottom >= right.Y;
-
+    private static bool Intersects(GraphRect left, GraphRect right)
+    {
+        return left.X <= right.Right && left.Right >= right.X &&
+               left.Y <= right.Bottom && left.Bottom >= right.Y;
+    }
 }

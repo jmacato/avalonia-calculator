@@ -443,15 +443,20 @@ internal static class ExactTrigCertificateReplay
         AngleUnit angleUnit,
         ExactReal period,
         BigRational lower,
-        BigRational upper) => new(
-        period,
-        "m",
-        IntegerConstraint.All("m"),
-        [new PeriodicInterval(
-            SolveCoordinate(pattern, UnitPiFraction(angleUnit, lower)),
-            false,
-            SolveCoordinate(pattern, UnitPiFraction(angleUnit, upper)),
-            false)]);
+        BigRational upper)
+    {
+        return new PeriodicIntervalSet(
+            period,
+            "m",
+            IntegerConstraint.All("m"),
+            [
+                new PeriodicInterval(
+                    SolveCoordinate(pattern, UnitPiFraction(angleUnit, lower)),
+                    false,
+                    SolveCoordinate(pattern, UnitPiFraction(angleUnit, upper)),
+                    false)
+            ]);
+    }
 
     private static bool TryPrimitiveAtPhase(
         ExactTrigPattern pattern,
@@ -627,9 +632,12 @@ internal static class ExactTrigCertificateReplay
 
     private static ExactReal SolveCoordinate(
         ExactTrigPattern pattern,
-        ExactReal angle) => DivideCoordinate(
-        ExactRealArithmetic.Subtract(angle, pattern.Phase.Value),
-        pattern.Frequency);
+        ExactReal angle)
+    {
+        return DivideCoordinate(
+            ExactRealArithmetic.Subtract(angle, pattern.Phase.Value),
+            pattern.Frequency);
+    }
 
     private static ExactReal DivideCoordinate(
         ExactReal coordinate,
@@ -657,13 +665,16 @@ internal static class ExactTrigCertificateReplay
 
     private static ExactReal UnitPiFraction(
         AngleUnit angleUnit,
-        BigRational fraction) => angleUnit switch
+        BigRational fraction)
+    {
+        return angleUnit switch
         {
             AngleUnit.Radians => new AffinePiReal(fraction, BigRational.Zero),
             AngleUnit.Degrees => new RationalReal(new BigRational(180) * fraction),
             AngleUnit.Grads => new RationalReal(new BigRational(200) * fraction),
             _ => throw new ArgumentOutOfRangeException(nameof(angleUnit))
         };
+    }
 
     private static ExactReal UnitAngleToRadians(
         ExactReal angle,

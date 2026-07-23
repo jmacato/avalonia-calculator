@@ -33,7 +33,10 @@ public sealed partial class PreferencesPage : UserControl
 
     public event EventHandler<RoutedEventArgs>? BackButtonClick;
 
-    public void SetDefaultFocus() => AppThemeExpander.Focus();
+    public void SetDefaultFocus()
+    {
+        AppThemeExpander.Focus();
+    }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
@@ -142,8 +145,10 @@ public sealed partial class PreferencesPage : UserControl
         };
     }
 
-    private static FluentAvaloniaTheme? GetFluentTheme() =>
-        Application.Current?.Styles.OfType<FluentAvaloniaTheme>().FirstOrDefault();
+    private static FluentAvaloniaTheme? GetFluentTheme()
+    {
+        return Application.Current?.Styles.OfType<FluentAvaloniaTheme>().FirstOrDefault();
+    }
 
     private void OpenLink_Click(object? sender, RoutedEventArgs e)
     {
@@ -160,6 +165,8 @@ public sealed partial class PreferencesPage : UserControl
         Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true });
     }
 
-    private void BackButton_Click(object? sender, RoutedEventArgs e) =>
+    private void BackButton_Click(object? sender, RoutedEventArgs e)
+    {
         BackButtonClick?.Invoke(this, e);
+    }
 }

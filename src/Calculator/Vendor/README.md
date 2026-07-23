@@ -20,16 +20,6 @@ Local patches:
    IL2070/IL3050 from its reflection-based `TypeHelper`; Calculator does not use
    DataGrid and the NativeAOT release gate forbids suppressing those warnings.
 
-## Avalonia.Labs.Lottie
-
-- Upstream: <https://github.com/AvaloniaUI/Avalonia.Labs>
-- Commit: `7d86b80d576b9c0052fda104303c1ec1acb74f53`
-- License: `Avalonia.Labs.Lottie/LICENSE` (MIT)
-- Imported scope: `src/Avalonia.Labs.Lottie`
-
-Local patches retarget the project to `net10.0`, Avalonia `12.1.0`, and stable
-SkiaSharp/Skottie `4.150.1`.
-
 ## Updating a snapshot
 
 1. Clone upstream and check out the exact proposed commit.

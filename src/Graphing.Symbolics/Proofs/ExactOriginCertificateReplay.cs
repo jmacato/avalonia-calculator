@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace Graphing.Symbolics;
 /// <summary>
 /// Checker-owned replay for exact origin substitution. This traversal is kept

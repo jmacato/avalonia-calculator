@@ -216,11 +216,13 @@ public sealed class SemanticSourceProjectionTests
         Assert.Equal(source.DefinedWhen.Canonical, projected.DefinedWhen.Canonical);
     }
 
-    private static void AssertInvalid(SemanticExpression expression) =>
+    private static void AssertInvalid(SemanticExpression expression)
+    {
         Assert.False(SemanticSourceProjection.TryCreate(
             expression,
             new ResourceBudget(),
             out _));
+    }
 
     private static void AssertSame<T>(
         ProofOutcome<T> expected,
@@ -362,41 +364,61 @@ public sealed class SemanticSourceProjectionTests
         yield return Box(report.Period);
     }
 
-    private static ProofOutcome<object> Box<T>(ProofOutcome<T> outcome) =>
-        outcome.State == ProofState.Unknown
+    private static ProofOutcome<object> Box<T>(ProofOutcome<T> outcome)
+    {
+        return outcome.State == ProofState.Unknown
             ? ProofOutcome<object>.Unknown(outcome.UnknownReason!.Value)
             : ProofOutcome<object>.Proved(outcome.Value!, outcome.Certificate!);
+    }
 
-    private static AnalysisRequest Request(InputExpression input) =>
-        new(input, AnalysisFeatures.All, AngleUnit.Radians, "x", static () => true);
+    private static AnalysisRequest Request(InputExpression input)
+    {
+        return new AnalysisRequest(input, AnalysisFeatures.All, AngleUnit.Radians, "x", static () => true);
+    }
 
-    private static SemanticExpression Build(InputExpression input) =>
-        new SemanticGraphBuilder(new ResourceBudget()).Build(input);
+    private static SemanticExpression Build(InputExpression input)
+    {
+        return new SemanticGraphBuilder(new ResourceBudget()).Build(input);
+    }
 
-    private static InputExpression Variable() =>
-        InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Number(int value) =>
-        InputExpression.Number(new BigRational(value), Source);
+    private static InputExpression Number(int value)
+    {
+        return InputExpression.Number(new BigRational(value), Source);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
 
-    private static InputExpression Power(InputExpression basis, int exponent) =>
-        InputExpression.Binary(
+    private static InputExpression Power(InputExpression basis, int exponent)
+    {
+        return InputExpression.Binary(
             InputExpressionKind.Power,
             basis,
             Number(exponent),
             Source);
+    }
 
     private static InputExpression Function(
         string name,
-        params InputExpression[] arguments) =>
-        InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+        params InputExpression[] arguments)
+    {
+        return InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    }
 }

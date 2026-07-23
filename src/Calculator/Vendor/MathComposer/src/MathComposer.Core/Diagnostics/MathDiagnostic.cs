@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace MathComposer.Core;
 
 /// <summary>A stable diagnostic produced by import, editing, or layout.</summary>

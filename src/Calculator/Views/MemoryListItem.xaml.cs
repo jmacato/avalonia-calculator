@@ -25,15 +25,33 @@ public sealed partial class MemoryListItem : UserControl
         set => SetValue(ModelProperty, value);
     }
 
-    private void OnMemoryAddButtonClicked(object? sender, RoutedEventArgs e) => Model?.MemoryAdd();
+    private void OnMemoryAddButtonClicked(object? sender, RoutedEventArgs e)
+    {
+        Model?.MemoryAdd();
+    }
 
-    private void OnClearButtonClicked(object? sender, RoutedEventArgs e) => Model?.Clear();
+    private void OnClearButtonClicked(object? sender, RoutedEventArgs e)
+    {
+        Model?.Clear();
+    }
 
-    private void OnMemorySubtractButtonClicked(object? sender, RoutedEventArgs e) => Model?.MemorySubtract();
+    private void OnMemorySubtractButtonClicked(object? sender, RoutedEventArgs e)
+    {
+        Model?.MemorySubtract();
+    }
 
-    private void OnClearSwipeInvoked(object? sender, SwipeItemInvokedEventArgs e) => Model?.Clear();
+    private void OnClearSwipeInvoked(object? sender, SwipeItemInvokedEventArgs e)
+    {
+        Model?.Clear();
+    }
 
-    private void OnMemoryAddSwipeInvoked(object? sender, SwipeItemInvokedEventArgs e) => Model?.MemoryAdd();
+    private void OnMemoryAddSwipeInvoked(object? sender, SwipeItemInvokedEventArgs e)
+    {
+        Model?.MemoryAdd();
+    }
 
-    private void OnMemorySubtractSwipeInvoked(object? sender, SwipeItemInvokedEventArgs e) => Model?.MemorySubtract();
+    private void OnMemorySubtractSwipeInvoked(object? sender, SwipeItemInvokedEventArgs e)
+    {
+        Model?.MemorySubtract();
+    }
 }

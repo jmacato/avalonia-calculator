@@ -167,6 +167,6 @@ public sealed class GraphModeToggleButton : ToggleButton
 
     private static double Lerp(double start, double end, double progress)
     {
-        return start + ((end - start) * progress);
+        return start + (end - start) * progress;
     }
 }

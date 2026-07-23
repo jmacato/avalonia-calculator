@@ -106,7 +106,7 @@ internal static class SemialgebraicUnaryCertificateReplay
 
     public static bool VerifyRangeProof(SemialgebraicUnaryContext context, UnarySignChartCertificate chart, ImmutableArray<BigRational> boundaries, ImmutableArray<UnaryRangeFiberWitness> fibers, ResourceBudget budget, out RealSet range)
     {
-        if (!TryDeriveRangeBoundaries(context, chart, budget, out ImmutableArray<BigRational> expectedBoundaries) || !expectedBoundaries.SequenceEqual(boundaries) || fibers.Length != checked((boundaries.Length * 2) + 1))
+        if (!TryDeriveRangeBoundaries(context, chart, budget, out ImmutableArray<BigRational> expectedBoundaries) || !expectedBoundaries.SequenceEqual(boundaries) || fibers.Length != checked(boundaries.Length * 2 + 1))
         {
             range = null!;
             return false;
@@ -397,7 +397,11 @@ internal static class SemialgebraicUnaryCertificateReplay
         return true;
     }
 
-    private static Asymptote Oblique(ExactReal slope, ExactReal intercept) => new(AsymptoteOrientation.Oblique, new SingletonReal(intercept), slope, intercept);
+    private static Asymptote Oblique(ExactReal slope, ExactReal intercept)
+    {
+        return new Asymptote(AsymptoteOrientation.Oblique, new SingletonReal(intercept), slope, intercept);
+    }
+
     private static bool TryDeriveRangeBoundaries(SemialgebraicUnaryContext context, UnarySignChartCertificate chart, ResourceBudget budget, out ImmutableArray<BigRational> boundaries)
     {
         if (context.DomainCells.Result.IsEmpty)
@@ -464,7 +468,7 @@ internal static class SemialgebraicUnaryCertificateReplay
 
     private static ImmutableArray<UnaryRangeFiberWitness> BuildRangeFibers(SemialgebraicUnaryContext context, ImmutableArray<BigRational> boundaries, ResourceBudget budget)
     {
-        var result = ImmutableArray.CreateBuilder<UnaryRangeFiberWitness>(checked((boundaries.Length * 2) + 1));
+        var result = ImmutableArray.CreateBuilder<UnaryRangeFiberWitness>(checked(boundaries.Length * 2 + 1));
         for (int gap = 0; gap <= boundaries.Length; gap++)
         {
             result.Add(CreateRangeFiber(context, RationalRangeCellKind.OpenInterval, gap, RangeGapSample(boundaries, gap), budget));
@@ -495,7 +499,7 @@ internal static class SemialgebraicUnaryCertificateReplay
         return string.Equals(expected.Canonical, witness.Fiber.Formula.Canonical, StringComparison.Ordinal) && CellDecomposer.Verify(witness.Fiber, budget) && witness.HasPreimage == !witness.Fiber.Result.IsEmpty;
     }
 
-    private static Graphing.Symbolics.PolynomialJunction RangeFiberFormula(SemialgebraicUnaryContext context, BigRational y, ResourceBudget budget)
+    private static PolynomialJunction RangeFiberFormula(SemialgebraicUnaryContext context, BigRational y, ResourceBudget budget)
     {
         if (y.Sign < 0)
         {
@@ -513,7 +517,13 @@ internal static class SemialgebraicUnaryCertificateReplay
         return new PolynomialJunction(true, [context.DomainFormula, equation]);
     }
 
-    private static PolynomialFormula Equality(UnivariatePolynomial polynomial, ResourceBudget budget) => polynomial.IsZero ? new PolynomialBoolean(true) : new PolynomialAtom(polynomial.PrimitivePositive(budget), Comparison.Equal);
+    private static PolynomialFormula Equality(UnivariatePolynomial polynomial, ResourceBudget budget)
+    {
+        return polynomial.IsZero
+            ? new PolynomialBoolean(true)
+            : new PolynomialAtom(polynomial.PrimitivePositive(budget), Comparison.Equal);
+    }
+
     private static RealSet BuildRange(ImmutableArray<BigRational> boundaries, ImmutableArray<UnaryRangeFiberWitness> fibers)
     {
         if (fibers.All(static fiber => fiber.HasPreimage))
@@ -587,10 +597,28 @@ internal static class SemialgebraicUnaryCertificateReplay
         return context.Kind == SemialgebraicUnaryKind.AbsoluteValue ? InnerSignInGap(context, chart, gap) * curvature : curvature;
     }
 
-    private static int InnerSignInGap(SemialgebraicUnaryContext context, UnarySignChartCertificate chart, int gap) => RationalSignInGap(chart, context.Inner, gap);
-    private static int InnerSignAtPoint(SemialgebraicUnaryContext context, UnarySignChartCertificate chart, int point) => RationalSignAtPoint(chart, context.Inner, point);
-    private static int RationalSignInGap(UnarySignChartCertificate chart, RationalFunction function, int gap) => PolynomialSignInGap(chart, function.Numerator, gap) * PolynomialSignInGap(chart, function.Denominator, gap);
-    private static int RationalSignAtPoint(UnarySignChartCertificate chart, RationalFunction function, int point) => PolynomialSignAtPoint(chart, function.Numerator, point) * PolynomialSignAtPoint(chart, function.Denominator, point);
+    private static int InnerSignInGap(SemialgebraicUnaryContext context, UnarySignChartCertificate chart, int gap)
+    {
+        return RationalSignInGap(chart, context.Inner, gap);
+    }
+
+    private static int InnerSignAtPoint(SemialgebraicUnaryContext context, UnarySignChartCertificate chart, int point)
+    {
+        return RationalSignAtPoint(chart, context.Inner, point);
+    }
+
+    private static int RationalSignInGap(UnarySignChartCertificate chart, RationalFunction function, int gap)
+    {
+        return PolynomialSignInGap(chart, function.Numerator, gap) *
+               PolynomialSignInGap(chart, function.Denominator, gap);
+    }
+
+    private static int RationalSignAtPoint(UnarySignChartCertificate chart, RationalFunction function, int point)
+    {
+        return PolynomialSignAtPoint(chart, function.Numerator, point) *
+               PolynomialSignAtPoint(chart, function.Denominator, point);
+    }
+
     private static int PolynomialSignInGap(UnarySignChartCertificate chart, UnivariatePolynomial polynomial, int gap)
     {
         if (polynomial.IsZero)
@@ -692,7 +720,11 @@ internal static class SemialgebraicUnaryCertificateReplay
         return false;
     }
 
-    private static bool TouchesDomain(UnarySignChartCertificate chart, int point) => chart.PointDomain[point] || chart.GapDomain[point] || chart.GapDomain[point + 1];
+    private static bool TouchesDomain(UnarySignChartCertificate chart, int point)
+    {
+        return chart.PointDomain[point] || chart.GapDomain[point] || chart.GapDomain[point + 1];
+    }
+
     private static SemialgebraicUnaryCertificateReplayExtremumKind ClassifyExtremum(bool leftDomain, bool rightDomain, int leftSign, int rightSign)
     {
         if (leftDomain && rightDomain)
@@ -730,13 +762,13 @@ internal static class SemialgebraicUnaryCertificateReplay
 
     private static RealSet BuildSet(ImmutableArray<ExactReal> roots, bool[] gaps, bool[] points)
     {
-        var included = new bool[checked((roots.Length * 2) + 1)];
+        var included = new bool[checked(roots.Length * 2 + 1)];
         for (int gap = 0; gap <= roots.Length; gap++)
         {
             included[gap * 2] = gaps[gap];
             if (gap < roots.Length)
             {
-                included[(gap * 2) + 1] = points[gap];
+                included[gap * 2 + 1] = points[gap];
             }
         }
 
@@ -849,14 +881,19 @@ internal static class SemialgebraicUnaryCertificateReplay
         return PolynomialFormulaConverter.Evaluate(formula, signs);
     }
 
-    private static PolynomialFormula ReflectFormula(PolynomialFormula formula, ResourceBudget budget) => formula switch
+    private static PolynomialFormula ReflectFormula(PolynomialFormula formula, ResourceBudget budget)
     {
-        PolynomialBoolean boolean => boolean,
-        PolynomialAtom atom => ReflectAtom(atom, budget),
-        PolynomialNot not => new PolynomialNot(ReflectFormula(not.Operand, budget)),
-        PolynomialJunction junction => new PolynomialJunction(junction.IsConjunction, junction.Operands.Select(operand => ReflectFormula(operand, budget)).ToImmutableArray()),
-        _ => throw new ArgumentOutOfRangeException(nameof(formula))
-    };
+        return formula switch
+        {
+            PolynomialBoolean boolean => boolean,
+            PolynomialAtom atom => ReflectAtom(atom, budget),
+            PolynomialNot not => new PolynomialNot(ReflectFormula(not.Operand, budget)),
+            PolynomialJunction junction => new PolynomialJunction(junction.IsConjunction,
+                junction.Operands.Select(operand => ReflectFormula(operand, budget)).ToImmutableArray()),
+            _ => throw new ArgumentOutOfRangeException(nameof(formula))
+        };
+    }
+
     private static PolynomialAtom ReflectAtom(PolynomialAtom atom, ResourceBudget budget)
     {
         UnivariatePolynomial reflected = atom.Polynomial.SubstituteNegativeVariable(budget);
@@ -864,22 +901,39 @@ internal static class SemialgebraicUnaryCertificateReplay
         return new PolynomialAtom(reflected.PrimitivePositive(budget), comparison);
     }
 
-    private static Comparison Reverse(Comparison comparison) => comparison switch
+    private static Comparison Reverse(Comparison comparison)
     {
-        Comparison.Less => Comparison.Greater,
-        Comparison.LessOrEqual => Comparison.GreaterOrEqual,
-        Comparison.Greater => Comparison.Less,
-        Comparison.GreaterOrEqual => Comparison.LessOrEqual,
-        _ => comparison
-    };
-    private static bool SamePolynomials(ImmutableArray<UnivariatePolynomial> left, ImmutableArray<UnivariatePolynomial> right) => left.Length == right.Length && left.Zip(right).All(static pair => pair.First.Equals(pair.Second));
-    private static bool NestedEqual(ImmutableArray<ImmutableArray<int>> left, ImmutableArray<ImmutableArray<int>> right) => left.Length == right.Length && left.Zip(right).All(static pair => pair.First.SequenceEqual(pair.Second));
-    private static int SignAt(UnivariatePolynomial polynomial, ExactReal root, ResourceBudget budget) => root switch
+        return comparison switch
+        {
+            Comparison.Less => Comparison.Greater,
+            Comparison.LessOrEqual => Comparison.GreaterOrEqual,
+            Comparison.Greater => Comparison.Less,
+            Comparison.GreaterOrEqual => Comparison.LessOrEqual,
+            _ => comparison
+        };
+    }
+
+    private static bool SamePolynomials(ImmutableArray<UnivariatePolynomial> left, ImmutableArray<UnivariatePolynomial> right)
     {
-        RationalReal rational => polynomial.Evaluate(rational.Value, budget).Sign,
-        AlgebraicReal algebraic => SturmRootIsolator.SignAtIsolatedRoot(algebraic.Polynomial, polynomial, algebraic.IsolatingInterval, budget),
-        _ => throw new ArgumentOutOfRangeException(nameof(root))
-    };
+        return left.Length == right.Length && left.Zip(right).All(static pair => pair.First.Equals(pair.Second));
+    }
+
+    private static bool NestedEqual(ImmutableArray<ImmutableArray<int>> left, ImmutableArray<ImmutableArray<int>> right)
+    {
+        return left.Length == right.Length && left.Zip(right).All(static pair => pair.First.SequenceEqual(pair.Second));
+    }
+
+    private static int SignAt(UnivariatePolynomial polynomial, ExactReal root, ResourceBudget budget)
+    {
+        return root switch
+        {
+            RationalReal rational => polynomial.Evaluate(rational.Value, budget).Sign,
+            AlgebraicReal algebraic => SturmRootIsolator.SignAtIsolatedRoot(algebraic.Polynomial, polynomial,
+                algebraic.IsolatingInterval, budget),
+            _ => throw new ArgumentOutOfRangeException(nameof(root))
+        };
+    }
+
     private static BigRational RootGapSample(ImmutableArray<ExactReal> roots, int gap)
     {
         if (roots.IsEmpty)
@@ -920,16 +974,23 @@ internal static class SemialgebraicUnaryCertificateReplay
         return (boundaries[gap - 1] + boundaries[gap]) / 2;
     }
 
-    private static BigRational Lower(ExactReal root) => root switch
+    private static BigRational Lower(ExactReal root)
     {
-        RationalReal rational => rational.Value,
-        AlgebraicReal algebraic => algebraic.IsolatingInterval.Lower,
-        _ => throw new ArgumentOutOfRangeException(nameof(root))
-    };
-    private static BigRational Upper(ExactReal root) => root switch
+        return root switch
+        {
+            RationalReal rational => rational.Value,
+            AlgebraicReal algebraic => algebraic.IsolatingInterval.Lower,
+            _ => throw new ArgumentOutOfRangeException(nameof(root))
+        };
+    }
+
+    private static BigRational Upper(ExactReal root)
     {
-        RationalReal rational => rational.Value,
-        AlgebraicReal algebraic => algebraic.IsolatingInterval.Upper,
-        _ => throw new ArgumentOutOfRangeException(nameof(root))
-    };
+        return root switch
+        {
+            RationalReal rational => rational.Value,
+            AlgebraicReal algebraic => algebraic.IsolatingInterval.Upper,
+            _ => throw new ArgumentOutOfRangeException(nameof(root))
+        };
+    }
 }

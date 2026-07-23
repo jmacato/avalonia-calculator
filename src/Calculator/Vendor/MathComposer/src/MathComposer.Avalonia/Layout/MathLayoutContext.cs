@@ -1,6 +1,5 @@
 using System.Buffers;
 using System.Collections.Immutable;
-using System.Globalization;
 using System.Text;
 using Avalonia;
 using MathComposer.Avalonia.OpenType;
@@ -8,15 +7,9 @@ using MathComposer.Core;
 
 namespace MathComposer.Avalonia.Layout;
 
-internal sealed class MathLayoutContext
+internal sealed class MathLayoutContext(OpenTypeMathFont font)
 {
-    private readonly OpenTypeMathFont _font;
     private readonly HashSet<int> _missingScalars = [];
-
-    public MathLayoutContext(OpenTypeMathFont font)
-    {
-        _font = font;
-    }
 
     public List<MathDiagnostic> Diagnostics { get; } = [];
 
@@ -30,10 +23,10 @@ internal sealed class MathLayoutContext
         {
             double ascent = Math.Max(
                 size * 0.5,
-                _font.ScaleDesignUnits(_font.Ascender, size));
+                font.ScaleDesignUnits(font.Ascender, size));
             double descent = Math.Max(
                 size * 0.15,
-                _font.ScaleDesignUnits(-_font.Descender, size));
+                font.ScaleDesignUnits(-font.Descender, size));
             double width = size * 0.55;
             var empty = new MathLayoutBox(width, ascent, descent);
             var placeholderBounds = new Rect(0, -ascent, width, ascent + descent);
@@ -78,7 +71,9 @@ internal sealed class MathLayoutContext
         MathNode node,
         ImmutableArray<int> path,
         double size,
-        int scriptLevel) => node switch
+        int scriptLevel)
+    {
+        return node switch
         {
             MathRow row => LayoutRow(row, path, size, scriptLevel),
             MathText text => LayoutText(text.Text, path, text.AtomClass, size, includeCaretStops: true),
@@ -94,6 +89,7 @@ internal sealed class MathLayoutContext
             MathError error => LayoutError(error, size),
             _ => throw new ArgumentException($"Unsupported node {node.GetType().Name}.", nameof(node))
         };
+    }
 
     private MathLayoutBox LayoutText(
         string text,
@@ -102,8 +98,8 @@ internal sealed class MathLayoutContext
         double size,
         bool includeCaretStops)
     {
-        double ascent = _font.ScaleDesignUnits(_font.Ascender, size);
-        double descent = _font.ScaleDesignUnits(-_font.Descender, size);
+        double ascent = font.ScaleDesignUnits(font.Ascender, size);
+        double descent = font.ScaleDesignUnits(-font.Descender, size);
         var box = new MathLayoutBox(0, Math.Max(size * 0.5, ascent), Math.Max(size * 0.15, descent));
         box.Commands.Add(new MathTextDrawCommand(text, new Point(0, 0), size));
         double x = 0;
@@ -115,7 +111,7 @@ internal sealed class MathLayoutContext
         int utf16Offset = 0;
         foreach (Rune rune in text.EnumerateRunes())
         {
-            ushort glyph = _font.GetGlyphId(rune);
+            ushort glyph = font.GetGlyphId(rune);
             double advance;
             if (glyph == 0)
             {
@@ -124,7 +120,7 @@ internal sealed class MathLayoutContext
             }
             else
             {
-                advance = _font.ScaleDesignUnits(_font.GetGlyphMetrics(glyph).AdvanceWidth, size);
+                advance = font.ScaleDesignUnits(font.GetGlyphMetrics(glyph).AdvanceWidth, size);
             }
 
             x += advance;
@@ -210,7 +206,7 @@ internal sealed class MathLayoutContext
         {
             double degreeSize = ScriptSize(size, scriptLevel + 2);
             MathLayoutBox degree = LayoutRow(radical.Degree, path.Add(1), degreeSize, scriptLevel + 2);
-            double raise = target * _font.RadicalDegreeBottomRaisePercent / 100d;
+            double raise = target * font.RadicalDegreeBottomRaisePercent / 100d;
             double kernBefore = Scale(OpenTypeMathConstant.RadicalKernBeforeDegree, size);
             double kernAfter = Scale(OpenTypeMathConstant.RadicalKernAfterDegree, size);
             double degreeX = Math.Max(0, degreeReserve - degree.Width + kernBefore + kernAfter);
@@ -434,10 +430,10 @@ internal sealed class MathLayoutContext
         MathLayoutBox glyph = StretchGlyph(marker, @base.Width, size, vertical: false);
         double gap = size * 0.06;
         double baseAttachment = TopAccentAttachment(accent.Base, size, @base.Width / 2);
-        ushort accentGlyph = _font.GetGlyphId(marker);
+        ushort accentGlyph = font.GetGlyphId(marker);
         double glyphAttachment = accentGlyph == 0
             ? glyph.Width / 2
-            : _font.ScaleDesignUnits(_font.GetTopAccentAttachment(accentGlyph), size);
+            : font.ScaleDesignUnits(font.GetTopAccentAttachment(accentGlyph), size);
         double glyphX = baseAttachment - glyphAttachment;
         double shift = Math.Max(0, -glyphX);
         glyphX += shift;
@@ -473,7 +469,7 @@ internal sealed class MathLayoutContext
         {
             target = Math.Max(
                 target,
-                _font.ScaleDesignUnits(_font.DelimitedSubFormulaMinimumHeight, size));
+                font.ScaleDesignUnits(font.DelimitedSubFormulaMinimumHeight, size));
         }
         MathLayoutBox? opening = delimiter.Opening is null
             ? null
@@ -634,7 +630,7 @@ internal sealed class MathLayoutContext
 
     private MathLayoutBox StretchGlyph(Rune rune, double target, double size, bool vertical)
     {
-        ushort glyph = _font.GetGlyphId(rune);
+        ushort glyph = font.GetGlyphId(rune);
         if (glyph == 0)
         {
             ReportMissing(rune);
@@ -644,12 +640,12 @@ internal sealed class MathLayoutContext
         OpenTypeMathGlyphDirection direction = vertical
             ? OpenTypeMathGlyphDirection.Vertical
             : OpenTypeMathGlyphDirection.Horizontal;
-        OpenTypeMathGlyphConstruction? construction = _font.GetGlyphConstruction(glyph, direction);
-        double targetDesignUnits = target * _font.UnitsPerEm / size;
+        OpenTypeMathGlyphConstruction? construction = font.GetGlyphConstruction(glyph, direction);
+        double targetDesignUnits = target * font.UnitsPerEm / size;
         ushort selectedGlyph = glyph;
         double selectedMeasurement = vertical
-            ? _font.Ascender - _font.Descender
-            : _font.GetGlyphMetrics(glyph).AdvanceWidth;
+            ? font.Ascender - font.Descender
+            : font.GetGlyphMetrics(glyph).AdvanceWidth;
         bool variantMeetsTarget = selectedMeasurement >= targetDesignUnits;
         if (construction is not null)
         {
@@ -674,10 +670,10 @@ internal sealed class MathLayoutContext
             }
         }
 
-        double advance = _font.ScaleDesignUnits(
-            _font.GetGlyphMetrics(selectedGlyph).AdvanceWidth,
+        double advance = font.ScaleDesignUnits(
+            font.GetGlyphMetrics(selectedGlyph).AdvanceWidth,
             size);
-        double measurement = _font.ScaleDesignUnits(selectedMeasurement, size);
+        double measurement = font.ScaleDesignUnits(selectedMeasurement, size);
         double ascent;
         double descent;
         if (vertical)
@@ -688,8 +684,8 @@ internal sealed class MathLayoutContext
         }
         else
         {
-            ascent = _font.ScaleDesignUnits(_font.Ascender, size);
-            descent = _font.ScaleDesignUnits(-_font.Descender, size);
+            ascent = font.ScaleDesignUnits(font.Ascender, size);
+            descent = font.ScaleDesignUnits(-font.Descender, size);
             advance = measurement;
         }
 
@@ -711,7 +707,7 @@ internal sealed class MathLayoutContext
             return LayoutRow(row, path, size, scriptLevel);
         }
 
-        double target = _font.ScaleDesignUnits(_font.DisplayOperatorMinimumHeight, size);
+        double target = font.ScaleDesignUnits(font.DisplayOperatorMinimumHeight, size);
         MathLayoutBox glyph = StretchGlyph(rune, target, size, vertical: true);
         glyph.CaretStops.Add(Caret(path, 0, 0, glyph.Ascent, glyph.Descent));
         glyph.CaretStops.Add(Caret(path.Add(0), 0, 0, glyph.Ascent, glyph.Descent));
@@ -738,25 +734,25 @@ internal sealed class MathLayoutContext
             return 0;
         }
 
-        ushort glyph = _font.GetGlyphId(rune);
+        ushort glyph = font.GetGlyphId(rune);
         if (glyph == 0)
         {
             return 0;
         }
 
         short superscriptHeight = (short)Math.Clamp(
-            Math.Round(superscriptShift * _font.UnitsPerEm / size),
+            Math.Round(superscriptShift * font.UnitsPerEm / size),
             short.MinValue,
             short.MaxValue);
         short subscriptHeight = (short)Math.Clamp(
-            Math.Round(-subscriptShift * _font.UnitsPerEm / size),
+            Math.Round(-subscriptShift * font.UnitsPerEm / size),
             short.MinValue,
             short.MaxValue);
-        int designUnits = _font.GetItalicsCorrection(glyph);
+        int designUnits = font.GetItalicsCorrection(glyph);
         designUnits += Math.Max(
-            _font.GetMathKern(glyph, OpenTypeMathKernCorner.TopRight, superscriptHeight),
-            _font.GetMathKern(glyph, OpenTypeMathKernCorner.BottomRight, subscriptHeight));
-        return Math.Max(0, _font.ScaleDesignUnits(designUnits, size));
+            font.GetMathKern(glyph, OpenTypeMathKernCorner.TopRight, superscriptHeight),
+            font.GetMathKern(glyph, OpenTypeMathKernCorner.BottomRight, subscriptHeight));
+        return Math.Max(0, font.ScaleDesignUnits(designUnits, size));
     }
 
     private double TopAccentAttachment(MathRow row, double size, double fallback)
@@ -768,10 +764,10 @@ internal sealed class MathLayoutContext
             return fallback;
         }
 
-        ushort glyph = _font.GetGlyphId(rune);
+        ushort glyph = font.GetGlyphId(rune);
         return glyph == 0
             ? fallback
-            : _font.ScaleDesignUnits(_font.GetTopAccentAttachment(glyph), size);
+            : font.ScaleDesignUnits(font.GetTopAccentAttachment(glyph), size);
     }
 
     private MathLayoutBox LayoutGlyphAssembly(
@@ -800,7 +796,7 @@ internal sealed class MathLayoutContext
                     parts[index].EndConnectorLength,
                     parts[index + 1].StartConnectorLength);
                 maximumOverlaps[index] = maximum;
-                minimumOverlaps[index] = Math.Min(_font.MinimumConnectorOverlap, maximum);
+                minimumOverlaps[index] = Math.Min(font.MinimumConnectorOverlap, maximum);
             }
         }
 
@@ -843,7 +839,7 @@ internal sealed class MathLayoutContext
         {
             width = Math.Max(
                 width,
-                _font.ScaleDesignUnits(_font.GetGlyphMetrics(part.GlyphId).AdvanceWidth, size));
+                font.ScaleDesignUnits(font.GetGlyphMetrics(part.GlyphId).AdvanceWidth, size));
         }
 
         var box = new MathLayoutBox(Math.Max(size * 0.08, width), ascent, descent);
@@ -853,12 +849,12 @@ internal sealed class MathLayoutContext
             OpenTypeMathGlyphPart part = parts[index];
             double fullAdvance = ScaleArbitrary(part.FullAdvance, size);
             double partTop = cursor - fullAdvance;
-            OpenTypeGlyphBounds bounds = _font.GetGlyphBounds(part.GlyphId);
+            OpenTypeGlyphBounds bounds = font.GetGlyphBounds(part.GlyphId);
             double glyphHeight = ScaleArbitrary(bounds.YMax - bounds.YMin, size);
             double extra = Math.Max(0, fullAdvance - glyphHeight) / 2;
             double baseline = partTop - ascent + extra + ScaleArbitrary(bounds.YMax, size);
-            double glyphWidth = _font.ScaleDesignUnits(
-                _font.GetGlyphMetrics(part.GlyphId).AdvanceWidth,
+            double glyphWidth = font.ScaleDesignUnits(
+                font.GetGlyphMetrics(part.GlyphId).AdvanceWidth,
                 size);
             box.Commands.Add(new MathGlyphDrawCommand(
                 part.GlyphId,
@@ -879,15 +875,15 @@ internal sealed class MathLayoutContext
         double measurement,
         double size)
     {
-        double ascent = _font.ScaleDesignUnits(_font.Ascender, size);
-        double descent = _font.ScaleDesignUnits(-_font.Descender, size);
+        double ascent = font.ScaleDesignUnits(font.Ascender, size);
+        double descent = font.ScaleDesignUnits(-font.Descender, size);
         var box = new MathLayoutBox(Math.Max(size * 0.08, measurement), ascent, descent);
         double cursor = 0;
         for (int index = 0; index < parts.Length; index++)
         {
             OpenTypeMathGlyphPart part = parts[index];
             double fullAdvance = ScaleArbitrary(part.FullAdvance, size);
-            OpenTypeGlyphBounds bounds = _font.GetGlyphBounds(part.GlyphId);
+            OpenTypeGlyphBounds bounds = font.GetGlyphBounds(part.GlyphId);
             double inkWidth = ScaleArbitrary(bounds.XMax - bounds.XMin, size);
             double extra = Math.Max(0, fullAdvance - inkWidth) / 2;
             double origin = cursor + extra - ScaleArbitrary(bounds.XMin, size);
@@ -921,7 +917,7 @@ internal sealed class MathLayoutContext
         {
             if (part.IsExtender)
             {
-                growth += Math.Max(1, part.FullAdvance - _font.MinimumConnectorOverlap);
+                growth += Math.Max(1, part.FullAdvance - font.MinimumConnectorOverlap);
             }
         }
 
@@ -951,25 +947,29 @@ internal sealed class MathLayoutContext
             double maximum = Math.Min(
                 parts[index].EndConnectorLength,
                 parts[index + 1].StartConnectorLength);
-            result -= Math.Min(_font.MinimumConnectorOverlap, maximum);
+            result -= Math.Min(font.MinimumConnectorOverlap, maximum);
         }
 
         return result;
     }
 
-    private double ScaleArbitrary(double designUnits, double size) =>
-        designUnits * size / _font.UnitsPerEm;
+    private double ScaleArbitrary(double designUnits, double size)
+    {
+        return designUnits * size / font.UnitsPerEm;
+    }
 
     private double ScriptSize(double size, int level)
     {
         int percentage = level <= 1
-            ? _font.ScriptPercentScaleDown
-            : _font.ScriptScriptPercentScaleDown;
+            ? font.ScriptPercentScaleDown
+            : font.ScriptScriptPercentScaleDown;
         return Math.Max(size * 0.45, size * percentage / 100d);
     }
 
-    private double Scale(OpenTypeMathConstant constant, double size) =>
-        _font.ScaleDesignUnits(_font.GetMathConstant(constant), size);
+    private double Scale(OpenTypeMathConstant constant, double size)
+    {
+        return font.ScaleDesignUnits(font.GetMathConstant(constant), size);
+    }
 
     private double PositiveConstant(
         OpenTypeMathConstant constant,
@@ -1002,21 +1002,27 @@ internal sealed class MathLayoutContext
         return 0;
     }
 
-    private static MathAtomClass? AtomClass(MathNode node) => node switch
+    private static MathAtomClass? AtomClass(MathNode node)
     {
-        MathText text => text.AtomClass,
-        MathFunction => MathAtomClass.Identifier,
-        MathSpacing => null,
-        _ => MathAtomClass.OrdinaryText
-    };
+        return node switch
+        {
+            MathText text => text.AtomClass,
+            MathFunction => MathAtomClass.Identifier,
+            MathSpacing => null,
+            _ => MathAtomClass.OrdinaryText
+        };
+    }
 
-    private static double SpacingWidth(MathSpacingWidth width, double size) => width switch
+    private static double SpacingWidth(MathSpacingWidth width, double size)
     {
-        MathSpacingWidth.Thin => size * 3 / 18,
-        MathSpacingWidth.Medium => size * 4 / 18,
-        MathSpacingWidth.Em => size,
-        _ => throw new ArgumentOutOfRangeException(nameof(width))
-    };
+        return width switch
+        {
+            MathSpacingWidth.Thin => size * 3 / 18,
+            MathSpacingWidth.Medium => size * 4 / 18,
+            MathSpacingWidth.Em => size,
+            _ => throw new ArgumentOutOfRangeException(nameof(width))
+        };
+    }
 
     private void ReportMissing(Rune rune)
     {
@@ -1036,29 +1042,34 @@ internal sealed class MathLayoutContext
         return rune;
     }
 
-    private static int AccentScalar(MathAccentKind kind) => kind switch
+    private static int AccentScalar(MathAccentKind kind)
     {
-        MathAccentKind.Acute => 0x0301,
-        MathAccentKind.Grave => 0x0300,
-        MathAccentKind.Hat => 0x0302,
-        MathAccentKind.Check => 0x030C,
-        MathAccentKind.Breve => 0x0306,
-        MathAccentKind.Tilde => 0x0303,
-        MathAccentKind.Bar => 0x0304,
-        MathAccentKind.Dot => 0x0307,
-        MathAccentKind.DoubleDot => 0x0308,
-        MathAccentKind.TripleDot => 0x20DB,
-        MathAccentKind.Vector => 0x20D7,
-        _ => throw new ArgumentOutOfRangeException(nameof(kind))
-    };
+        return kind switch
+        {
+            MathAccentKind.Acute => 0x0301,
+            MathAccentKind.Grave => 0x0300,
+            MathAccentKind.Hat => 0x0302,
+            MathAccentKind.Check => 0x030C,
+            MathAccentKind.Breve => 0x0306,
+            MathAccentKind.Tilde => 0x0303,
+            MathAccentKind.Bar => 0x0304,
+            MathAccentKind.Dot => 0x0307,
+            MathAccentKind.DoubleDot => 0x0308,
+            MathAccentKind.TripleDot => 0x20DB,
+            MathAccentKind.Vector => 0x20D7,
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        };
+    }
 
     private static MathCaretStop Caret(
         ImmutableArray<int> path,
         int offset,
         double x,
         double ascent,
-        double descent) =>
-        new(
+        double descent)
+    {
+        return new MathCaretStop(
             new MathPosition(path, offset),
             new Rect(x - 1.5, -ascent, 3, Math.Max(1, ascent + descent)));
+    }
 }

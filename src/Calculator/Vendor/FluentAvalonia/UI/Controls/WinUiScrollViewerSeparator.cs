@@ -5,7 +5,6 @@ using System.Diagnostics;
 using Avalonia;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
-using Avalonia.VisualTree;
 using FluentAvalonia.Core;
 
 namespace FluentAvalonia.UI.Controls;
@@ -100,7 +99,7 @@ public sealed class WinUiScrollViewerSeparator : Panel
             (elapsed - _animationDelay.TotalMilliseconds) / Duration.TotalMilliseconds,
             0,
             1);
-        return _fromOpacity + ((_targetOpacity - _fromOpacity) * progress);
+        return _fromOpacity + (_targetOpacity - _fromOpacity) * progress;
     }
 
     private void Complete()

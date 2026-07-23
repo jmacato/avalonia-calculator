@@ -28,9 +28,24 @@ internal readonly record struct ExactScalar
     public static ExactScalar Zero { get; } = FromRational(BigRational.Zero);
     public static ExactScalar One { get; } = FromRational(BigRational.One);
 
-    public static ExactScalar FromRational(BigRational value) => new(new RationalReal(value), value.Sign, value);
-    public ExactScalar Negate() => IsZero ? this : new ExactScalar(ExactRealArithmetic.Negate(Value), -Sign, RationalValue is { } rational ? -rational : null);
-    public ExactScalar Abs() => Sign < 0 ? Negate() : this;
+    public static ExactScalar FromRational(BigRational value)
+    {
+        return new ExactScalar(new RationalReal(value), value.Sign, value);
+    }
+
+    public ExactScalar Negate()
+    {
+        return IsZero
+            ? this
+            : new ExactScalar(ExactRealArithmetic.Negate(Value), -Sign,
+                RationalValue is { } rational ? -rational : null);
+    }
+
+    public ExactScalar Abs()
+    {
+        return Sign < 0 ? Negate() : this;
+    }
+
     public ExactScalar Multiply(ExactScalar other, ResourceBudget budget)
     {
         if (IsZero || other.IsZero)
@@ -92,7 +107,11 @@ internal readonly record struct ExactScalar
         return true;
     }
 
-    public bool TryCompareAbsoluteTo(BigRational other, ResourceBudget budget, out int comparison) => ExactScalarOrder.TryCompareAbsolute(this, other.Abs(), budget, out comparison);
+    public bool TryCompareAbsoluteTo(BigRational other, ResourceBudget budget, out int comparison)
+    {
+        return ExactScalarOrder.TryCompareAbsolute(this, other.Abs(), budget, out comparison);
+    }
+
     public static bool TryCreate(ValueTerm term, ResourceBudget budget, out ExactScalar scalar)
     {
         budget.Charge();
@@ -173,14 +192,18 @@ internal readonly record struct ExactScalar
         return TryPower(basis, (int)term.Operands[1].Constant.Numerator, budget, out scalar);
     }
 
-    private static bool TryCreateFunction(ValueTerm term, ResourceBudget budget, out ExactScalar scalar) => term.Name switch
+    private static bool TryCreateFunction(ValueTerm term, ResourceBudget budget, out ExactScalar scalar)
     {
-        "sqrt" => TryCreateSquareRoot(term, budget, out scalar),
-        "abs" => TryCreateAbsolute(term, budget, out scalar),
-        "exp" => TryCreateExponential(term, budget, out scalar),
-        "root" => TryCreateRoot(term, budget, out scalar),
-        _ => Fail(out scalar)
-    };
+        return term.Name switch
+        {
+            "sqrt" => TryCreateSquareRoot(term, budget, out scalar),
+            "abs" => TryCreateAbsolute(term, budget, out scalar),
+            "exp" => TryCreateExponential(term, budget, out scalar),
+            "root" => TryCreateRoot(term, budget, out scalar),
+            _ => Fail(out scalar)
+        };
+    }
+
     private static bool TryCreateSquareRoot(ValueTerm term, ResourceBudget budget, out ExactScalar scalar)
     {
         if (term.Operands.Length != 1 || !TryCreate(term.Operands[0], budget, out ExactScalar radicand) || radicand.Sign < 0)
@@ -331,10 +354,27 @@ internal readonly record struct ExactScalar
         return true;
     }
 
-    private static bool IsPi(ExactReal value) => value is AffinePiReal { PiCoefficient.IsOne: true, Constant.IsZero: true };
-    private static bool IsNegativePi(ExactReal value) => value is AffinePiReal { PiCoefficient: var coefficient, Constant.IsZero: true } && coefficient == BigRational.MinusOne;
-    private static bool IsEuler(ExactReal value) => value is NamedReal { Name: "e" };
-    private static bool IsNegativeEuler(ExactReal value) => value is FunctionReal { Function: "negate", Arguments: [NamedReal { Name: "e" }] };
+    private static bool IsPi(ExactReal value)
+    {
+        return value is AffinePiReal { PiCoefficient.IsOne: true, Constant.IsZero: true };
+    }
+
+    private static bool IsNegativePi(ExactReal value)
+    {
+        return value is AffinePiReal { PiCoefficient: var coefficient, Constant.IsZero: true } &&
+               coefficient == BigRational.MinusOne;
+    }
+
+    private static bool IsEuler(ExactReal value)
+    {
+        return value is NamedReal { Name: "e" };
+    }
+
+    private static bool IsNegativeEuler(ExactReal value)
+    {
+        return value is FunctionReal { Function: "negate", Arguments: [NamedReal { Name: "e" }] };
+    }
+
     private static bool TryPower(ExactScalar basis, int exponent, ResourceBudget budget, out ExactScalar result)
     {
         if (exponent <= 0 && basis.IsZero)

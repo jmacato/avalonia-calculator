@@ -186,7 +186,7 @@ skia_use_piex=false skia_use_expat=true skia_use_libwebp_encode=true
 skia_use_system_expat=false skia_use_system_freetype2=false
 skia_use_system_libjpeg_turbo=false skia_use_system_libpng=false
 skia_use_system_libwebp=false skia_use_system_zlib=false
-skia_use_vulkan=false skia_use_wuffs=true skia_enable_skottie=true
+skia_use_vulkan=false skia_use_wuffs=true skia_enable_skottie=false
 skia_enable_graphite=true skia_use_dawn=true skia_use_webgpu=true
 skia_emsdk_dir=\"$dotnet_emsdk_layout\"
 cc=\"$emcc\" cxx=\"$emxx\" ar=\"$emar\"

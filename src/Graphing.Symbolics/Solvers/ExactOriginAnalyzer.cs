@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace Graphing.Symbolics;
 /// <summary>
 /// Shape-independent y-intercept proof by exact structural substitution at

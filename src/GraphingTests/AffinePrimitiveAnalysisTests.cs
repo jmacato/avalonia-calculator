@@ -306,7 +306,7 @@ public sealed class AffinePrimitiveAnalysisTests
         Assert.Equal(ProofState.Unknown, degree.Range.State);
         Assert.Equal(UnknownReason.BudgetExceeded, degree.Range.UnknownReason);
 
-        ExactInteger factor = ExactInteger.One << ((AnalysisLimits.CoefficientBits / 2) + 1);
+        ExactInteger factor = ExactInteger.One << (AnalysisLimits.CoefficientBits / 2 + 1);
         InputExpression oversizedScale = Multiply(
             Number(new BigRational(factor)),
             Multiply(
@@ -497,33 +497,55 @@ public sealed class AffinePrimitiveAnalysisTests
 
     private static AnalysisRequest Request(
         InputExpression expression,
-        AnalysisFeatures features) =>
-        new(expression, features, AngleUnit.Radians, "x", static () => true);
+        AnalysisFeatures features)
+    {
+        return new AnalysisRequest(expression, features, AngleUnit.Radians, "x", static () => true);
+    }
 
-    private static InputExpression Affine(int slope, int intercept) =>
-        Add(Multiply(Number(slope), Variable()), Number(intercept));
+    private static InputExpression Affine(int slope, int intercept)
+    {
+        return Add(Multiply(Number(slope), Variable()), Number(intercept));
+    }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Number(int value) => Number(new BigRational(value));
+    private static InputExpression Number(int value)
+    {
+        return Number(new BigRational(value));
+    }
 
-    private static InputExpression Number(BigRational value) =>
-        InputExpression.Number(value, Source);
+    private static InputExpression Number(BigRational value)
+    {
+        return InputExpression.Number(value, Source);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Subtract(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
 
     private static InputExpression Function(
         string name,
-        params InputExpression[] arguments) =>
-        InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+        params InputExpression[] arguments)
+    {
+        return InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    }
 }

@@ -12,8 +12,8 @@ namespace CalculatorApp.Controls;
 internal sealed class ThemeTransitionPanelState
 {
     private const double RepositionEpsilon = 0.01;
-    private readonly Dictionary<Control, double> _lastChildPositions = new();
-    private readonly Dictionary<Control, (double Offset, long Started, TimeSpan Delay)> _repositionAnimations = new();
+    private readonly Dictionary<Control, double> _lastChildPositions = [];
+    private readonly Dictionary<Control, (double Offset, long Started, TimeSpan Delay)> _repositionAnimations = [];
     private readonly Panel _panel;
     private IDisposable? _entranceCompletion;
     private EntranceThemeTransition? _entranceTransition;

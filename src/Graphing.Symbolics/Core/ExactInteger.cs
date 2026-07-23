@@ -15,7 +15,7 @@ internal readonly struct ExactInteger :
     private const uint InternalRadix = 0x80000000;
     private const uint DisplayRadix = 10;
     private const int MaximumParsedDecimalDigits =
-        (AnalysisLimits.CoefficientBits * 30103 / 100000) + 2;
+        AnalysisLimits.CoefficientBits * 30103 / 100000 + 2;
 
     [ThreadStatic]
     private static RatPak? s_threadPak;
@@ -62,7 +62,7 @@ internal readonly struct ExactInteger :
         }
 
         ulong magnitude = value < 0
-            ? unchecked((ulong)(-(value + 1))) + 1UL
+            ? unchecked((ulong)-(value + 1)) + 1UL
             : (ulong)value;
         this = FromMagnitude(magnitude, value < 0 ? -1 : 1);
     }
@@ -220,9 +220,15 @@ internal readonly struct ExactInteger :
         return (numerator * scale, One);
     }
 
-    public static ExactInteger Abs(ExactInteger value) => value.Sign < 0 ? -value : value;
+    public static ExactInteger Abs(ExactInteger value)
+    {
+        return value.Sign < 0 ? -value : value;
+    }
 
-    public static ExactInteger Negate(ExactInteger value) => -value;
+    public static ExactInteger Negate(ExactInteger value)
+    {
+        return -value;
+    }
 
     public static ExactInteger Pow(ExactInteger value, int exponent)
     {
@@ -463,7 +469,10 @@ internal readonly struct ExactInteger :
         return true;
     }
 
-    public override bool Equals(object? obj) => obj is ExactInteger other && Equals(other);
+    public override bool Equals(object? obj)
+    {
+        return obj is ExactInteger other && Equals(other);
+    }
 
     public override int GetHashCode()
     {
@@ -487,7 +496,9 @@ internal readonly struct ExactInteger :
     }
 
     public override string ToString()
-        => ToInvariantString();
+    {
+        return ToInvariantString();
+    }
 
     private string ToInvariantString()
     {
@@ -556,7 +567,10 @@ internal readonly struct ExactInteger :
         return CreateCanonical(result);
     }
 
-    public static ExactInteger operator -(ExactInteger left, ExactInteger right) => left + -right;
+    public static ExactInteger operator -(ExactInteger left, ExactInteger right)
+    {
+        return left + -right;
+    }
 
     public static ExactInteger operator *(ExactInteger left, ExactInteger right)
     {
@@ -600,8 +614,10 @@ internal readonly struct ExactInteger :
         return CreateCanonical(result);
     }
 
-    public static ExactInteger operator /(ExactInteger left, ExactInteger right) =>
-        DivRem(left, right, out _);
+    public static ExactInteger operator /(ExactInteger left, ExactInteger right)
+    {
+        return DivRem(left, right, out _);
+    }
 
     public static ExactInteger operator %(ExactInteger left, ExactInteger right)
     {
@@ -624,9 +640,15 @@ internal readonly struct ExactInteger :
             number.Mantissa));
     }
 
-    public static ExactInteger operator ++(ExactInteger value) => value + One;
+    public static ExactInteger operator ++(ExactInteger value)
+    {
+        return value + One;
+    }
 
-    public static ExactInteger operator --(ExactInteger value) => value - One;
+    public static ExactInteger operator --(ExactInteger value)
+    {
+        return value - One;
+    }
 
     public static ExactInteger operator <<(ExactInteger value, int shift)
     {
@@ -672,9 +694,15 @@ internal readonly struct ExactInteger :
         return value.Sign < 0 && !remainder.IsZero ? quotient - One : quotient;
     }
 
-    public static implicit operator ExactInteger(int value) => new(value);
+    public static implicit operator ExactInteger(int value)
+    {
+        return new ExactInteger(value);
+    }
 
-    public static implicit operator ExactInteger(long value) => new(value);
+    public static implicit operator ExactInteger(long value)
+    {
+        return new ExactInteger(value);
+    }
 
     public static explicit operator int(ExactInteger value)
     {
@@ -696,17 +724,35 @@ internal readonly struct ExactInteger :
         return result;
     }
 
-    public static bool operator ==(ExactInteger left, ExactInteger right) => left.Equals(right);
+    public static bool operator ==(ExactInteger left, ExactInteger right)
+    {
+        return left.Equals(right);
+    }
 
-    public static bool operator !=(ExactInteger left, ExactInteger right) => !left.Equals(right);
+    public static bool operator !=(ExactInteger left, ExactInteger right)
+    {
+        return !left.Equals(right);
+    }
 
-    public static bool operator <(ExactInteger left, ExactInteger right) => left.CompareTo(right) < 0;
+    public static bool operator <(ExactInteger left, ExactInteger right)
+    {
+        return left.CompareTo(right) < 0;
+    }
 
-    public static bool operator <=(ExactInteger left, ExactInteger right) => left.CompareTo(right) <= 0;
+    public static bool operator <=(ExactInteger left, ExactInteger right)
+    {
+        return left.CompareTo(right) <= 0;
+    }
 
-    public static bool operator >(ExactInteger left, ExactInteger right) => left.CompareTo(right) > 0;
+    public static bool operator >(ExactInteger left, ExactInteger right)
+    {
+        return left.CompareTo(right) > 0;
+    }
 
-    public static bool operator >=(ExactInteger left, ExactInteger right) => left.CompareTo(right) >= 0;
+    public static bool operator >=(ExactInteger left, ExactInteger right)
+    {
+        return left.CompareTo(right) >= 0;
+    }
 
     internal static bool TrySquareRoot(ExactInteger value, out ExactInteger root)
     {
@@ -788,7 +834,10 @@ internal readonly struct ExactInteger :
         }
     }
 
-    private NUMBER ToNumber() => Number.ToPNUMBER();
+    private NUMBER ToNumber()
+    {
+        return Number.ToPNUMBER();
+    }
 
     private RAT ToRat()
     {
@@ -883,11 +932,13 @@ internal readonly struct ExactInteger :
         return 0;
     }
 
-    private static bool IsOneNumber(NUMBER number) =>
-        number.Sign == 1 &&
-        number.Exp == 0 &&
-        number.Cdigit == 1 &&
-        number.Mant[0] == 1;
+    private static bool IsOneNumber(NUMBER number)
+    {
+        return number.Sign == 1 &&
+               number.Exp == 0 &&
+               number.Cdigit == 1 &&
+               number.Mant[0] == 1;
+    }
 
     private bool TryGetInt64(out long value)
     {
@@ -939,7 +990,7 @@ internal readonly struct ExactInteger :
         magnitude = 0;
         for (int position = totalDigits - 1; position >= 0; position--)
         {
-            if (magnitude > (ulong.MaxValue >> 31))
+            if (magnitude > ulong.MaxValue >> 31)
             {
                 magnitude = default;
                 return false;

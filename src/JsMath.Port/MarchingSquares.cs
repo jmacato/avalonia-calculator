@@ -7,11 +7,20 @@ namespace JsMath.Port;
 /// Deterministic inequality meshing. Ambiguous saddle cells use the bilinear
 /// asymptotic decider before clipping the selected triangles.
 /// </summary>
-[PortedFrom("JSXGraph", "src/math/implicitplot.js (component search and implicit boundary handling)", "d4f153470e249a698a46d6e8078c1d68f0cbe2cd", "MIT", "sha256:cef005ac495f6ddbd67dc27a8dfbe8662484d496487090f34d63b09ce0fb68ad")]
 public static class MarchingSquares
 {
-    public static InequalityMesh Build(ImplicitEvaluator evaluator, InequalityPredicate predicate, SamplingViewport viewport, int columns = 96, int rows = 96, int maximumVertices = 65_536, CancellationToken cancellationToken = default) => BuildCore(evaluator, predicate, viewport, columns, rows, maximumVertices, includeFilledPolygons: true, cancellationToken);
-    public static InequalityMesh BuildContours(ImplicitEvaluator evaluator, InequalityPredicate predicate, SamplingViewport viewport, int columns = 96, int rows = 96, int maximumVertices = 65_536, CancellationToken cancellationToken = default) => BuildCore(evaluator, predicate, viewport, columns, rows, maximumVertices, includeFilledPolygons: false, cancellationToken);
+    public static InequalityMesh Build(ImplicitEvaluator evaluator, InequalityPredicate predicate, SamplingViewport viewport, int columns = 96, int rows = 96, int maximumVertices = 65_536, CancellationToken cancellationToken = default)
+    {
+        return BuildCore(evaluator, predicate, viewport, columns, rows, maximumVertices, includeFilledPolygons: true,
+            cancellationToken);
+    }
+
+    public static InequalityMesh BuildContours(ImplicitEvaluator evaluator, InequalityPredicate predicate, SamplingViewport viewport, int columns = 96, int rows = 96, int maximumVertices = 65_536, CancellationToken cancellationToken = default)
+    {
+        return BuildCore(evaluator, predicate, viewport, columns, rows, maximumVertices, includeFilledPolygons: false,
+            cancellationToken);
+    }
+
     private static InequalityMesh BuildCore(ImplicitEvaluator evaluator, InequalityPredicate predicate, SamplingViewport viewport, int columns, int rows, int maximumVertices, bool includeFilledPolygons, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(evaluator);
@@ -83,7 +92,7 @@ public static class MarchingSquares
                         // For masks 5 and 10, Q determines which corners share the
                         // interior of the bilinear interpolant. The same split is used
                         // for fill clipping and contour construction.
-                        double q = (f00 * f11) - (f10 * f01);
+                        double q = f00 * f11 - f10 * f01;
                         bool diagonal00To11 = mask switch
                         {
                             5 => q >= 0,
@@ -124,12 +133,12 @@ public static class MarchingSquares
         for (int row = 0; row <= rows; row++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            double y = viewport.YRange.Minimum + (viewport.YRange.Length * row / rows);
+            double y = viewport.YRange.Minimum + viewport.YRange.Length * row / rows;
             for (int column = 0; column <= columns; column++)
             {
-                double x = viewport.XRange.Minimum + (viewport.XRange.Length * column / columns);
+                double x = viewport.XRange.Minimum + viewport.XRange.Length * column / columns;
                 double value = evaluator(x, y);
-                values[(row * (columns + 1)) + column] = value;
+                values[row * (columns + 1) + column] = value;
                 evaluations++;
                 missing |= !double.IsFinite(value);
             }
@@ -373,7 +382,12 @@ public static class MarchingSquares
         return bestSegmentIndex >= 0;
     }
 
-    private static MarchingSquaresEndpointKey EndpointKeyFor(GraphPoint point, SamplingViewport viewport, double tolerance) => new((long)Math.Floor((point.X - viewport.XRange.Minimum) / tolerance), (long)Math.Floor((point.Y - viewport.YRange.Minimum) / tolerance));
+    private static MarchingSquaresEndpointKey EndpointKeyFor(GraphPoint point, SamplingViewport viewport, double tolerance)
+    {
+        return new MarchingSquaresEndpointKey((long)Math.Floor((point.X - viewport.XRange.Minimum) / tolerance),
+            (long)Math.Floor((point.Y - viewport.YRange.Minimum) / tolerance));
+    }
+
     private static int EndpointCapacity(int nodeCount)
     {
         int required = checked(nodeCount * 2);
@@ -397,19 +411,28 @@ public static class MarchingSquares
         return slot;
     }
 
-    private static GraphPoint Point(SamplingViewport viewport, int column, int row, int columns, int rows) => new(viewport.XRange.Minimum + (viewport.XRange.Length * column / columns), viewport.YRange.Minimum + (viewport.YRange.Length * row / rows));
-    private static double Value(double[] values, int columns, int column, int row) => values[(row * (columns + 1)) + column];
+    private static GraphPoint Point(SamplingViewport viewport, int column, int row, int columns, int rows)
+    {
+        return new GraphPoint(viewport.XRange.Minimum + viewport.XRange.Length * column / columns,
+            viewport.YRange.Minimum + viewport.YRange.Length * row / rows);
+    }
+
+    private static double Value(double[] values, int columns, int column, int row)
+    {
+        return values[row * (columns + 1) + column];
+    }
+
     private static GraphPoint Interpolate(GraphPoint left, double leftValue, GraphPoint right, double rightValue)
     {
         double denominator = leftValue - rightValue;
         double amount = denominator == 0 ? 0.5 : Math.Clamp(leftValue / denominator, 0, 1);
-        return new GraphPoint(left.X + ((right.X - left.X) * amount), left.Y + ((right.Y - left.Y) * amount));
+        return new GraphPoint(left.X + (right.X - left.X) * amount, left.Y + (right.Y - left.Y) * amount);
     }
 
     private static double DistanceSquared(GraphPoint left, GraphPoint right)
     {
         double x = left.X - right.X;
         double y = left.Y - right.Y;
-        return (x * x) + (y * y);
+        return x * x + y * y;
     }
 }

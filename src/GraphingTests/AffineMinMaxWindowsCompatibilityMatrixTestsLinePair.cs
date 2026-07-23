@@ -1,0 +1,3 @@
+namespace GraphingTests;
+
+internal readonly record struct AffineMinMaxWindowsCompatibilityMatrixTestsLinePair(AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec Left, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec Right);

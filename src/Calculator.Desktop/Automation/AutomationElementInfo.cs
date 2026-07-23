@@ -1,0 +1,3 @@
+namespace CalculatorApp.Automation;
+
+internal sealed record AutomationElementInfo(string Type, string? Name, string? AutomationId, string? AutomationName, string AccessibilityView, int HeadingLevel, string? LandmarkType, double X, double Y, double Width, double Height, double DesiredWidth, double DesiredHeight, bool IsVisible, bool IsEnabled, bool IsFocused, double Opacity, double? FontSize, bool? IsActive, bool? IsDropDownOpen, bool? IsPopupOpen, int? SelectedIndex, double? ScrollOffsetX, double? ScrollOffsetY, double? ScrollExtentWidth, double? ScrollExtentHeight, double? ScrollViewportWidth, double? ScrollViewportHeight, double? PopupOffsetX, double? PopupOffsetY, string? Text, string? Classes);

@@ -24,46 +24,52 @@ internal static class MathTree
         return true;
     }
 
-    public static int GetChildCount(MathNode node) => node switch
+    public static int GetChildCount(MathNode node)
     {
-        MathRow row => row.Children.Length,
-        MathFraction => 2,
-        MathRadical { Degree: not null } => 2,
-        MathRadical => 1,
-        MathFunction function => function.Arguments.Length,
-        MathScript script => 1 + (script.Subscript is null ? 0 : 1) +
-                             (script.Superscript is null ? 0 : 1),
-        MathUnderOver underOver => 1 + (underOver.Below is null ? 0 : 1) +
-                                   (underOver.Above is null ? 0 : 1),
-        MathAccent => 1,
-        MathDelimiter => 1,
-        MathTable table => checked(table.Rows.Length * table.Rows[0].Length),
-        _ => 0
-    };
+        return node switch
+        {
+            MathRow row => row.Children.Length,
+            MathFraction => 2,
+            MathRadical { Degree: not null } => 2,
+            MathRadical => 1,
+            MathFunction function => function.Arguments.Length,
+            MathScript script => 1 + (script.Subscript is null ? 0 : 1) +
+                                 (script.Superscript is null ? 0 : 1),
+            MathUnderOver underOver => 1 + (underOver.Below is null ? 0 : 1) +
+                                       (underOver.Above is null ? 0 : 1),
+            MathAccent => 1,
+            MathDelimiter => 1,
+            MathTable table => checked(table.Rows.Length * table.Rows[0].Length),
+            _ => 0
+        };
+    }
 
-    public static MathNode GetChild(MathNode node, int index) => node switch
+    public static MathNode GetChild(MathNode node, int index)
     {
-        MathRow row => row.Children[index],
-        MathFraction fraction => index switch
+        return node switch
         {
-            0 => fraction.Numerator,
-            1 => fraction.Denominator,
+            MathRow row => row.Children[index],
+            MathFraction fraction => index switch
+            {
+                0 => fraction.Numerator,
+                1 => fraction.Denominator,
+                _ => throw new ArgumentOutOfRangeException(nameof(index))
+            },
+            MathRadical radical => index switch
+            {
+                0 => radical.Radicand,
+                1 when radical.Degree is not null => radical.Degree,
+                _ => throw new ArgumentOutOfRangeException(nameof(index))
+            },
+            MathFunction function => function.Arguments[index],
+            MathScript script => GetScriptChild(script, index),
+            MathUnderOver underOver => GetUnderOverChild(underOver, index),
+            MathAccent accent when index == 0 => accent.Base,
+            MathDelimiter delimiter when index == 0 => delimiter.Body,
+            MathTable table => GetTableChild(table, index),
             _ => throw new ArgumentOutOfRangeException(nameof(index))
-        },
-        MathRadical radical => index switch
-        {
-            0 => radical.Radicand,
-            1 when radical.Degree is not null => radical.Degree,
-            _ => throw new ArgumentOutOfRangeException(nameof(index))
-        },
-        MathFunction function => function.Arguments[index],
-        MathScript script => GetScriptChild(script, index),
-        MathUnderOver underOver => GetUnderOverChild(underOver, index),
-        MathAccent accent when index == 0 => accent.Base,
-        MathDelimiter delimiter when index == 0 => delimiter.Body,
-        MathTable table => GetTableChild(table, index),
-        _ => throw new ArgumentOutOfRangeException(nameof(index))
-    };
+        };
+    }
 
     public static MathDocument ReplaceNode(
         MathDocument document,
@@ -86,38 +92,41 @@ internal static class MathTree
         return new MathDocument((MathRow)replaced);
     }
 
-    public static MathNode ReplaceChild(MathNode node, int index, MathNode replacement) => node switch
+    public static MathNode ReplaceChild(MathNode node, int index, MathNode replacement)
     {
-        MathRow row => new MathRow(row.Children.SetItem(index, replacement)),
-        MathFraction fraction => index switch
+        return node switch
         {
-            0 => new MathFraction(RequireRow(replacement), fraction.Denominator),
-            1 => new MathFraction(fraction.Numerator, RequireRow(replacement)),
+            MathRow row => new MathRow(row.Children.SetItem(index, replacement)),
+            MathFraction fraction => index switch
+            {
+                0 => new MathFraction(RequireRow(replacement), fraction.Denominator),
+                1 => new MathFraction(fraction.Numerator, RequireRow(replacement)),
+                _ => throw new ArgumentOutOfRangeException(nameof(index))
+            },
+            MathRadical radical => index switch
+            {
+                0 => new MathRadical(RequireRow(replacement), radical.Degree),
+                1 when radical.Degree is not null =>
+                    new MathRadical(radical.Radicand, RequireRow(replacement)),
+                _ => throw new ArgumentOutOfRangeException(nameof(index))
+            },
+            MathFunction function => new MathFunction(
+                function.Name,
+                function.Arguments.SetItem(index, RequireRow(replacement))),
+            MathScript script => ReplaceScriptChild(script, index, replacement),
+            MathUnderOver underOver => ReplaceUnderOverChild(underOver, index, replacement),
+            MathAccent accent when index == 0 =>
+                new MathAccent(RequireRow(replacement), accent.Kind, accent.Placement),
+            MathDelimiter delimiter when index == 0 =>
+                new MathDelimiter(
+                    RequireRow(replacement),
+                    delimiter.Opening,
+                    delimiter.Closing,
+                    delimiter.Scalable),
+            MathTable table => ReplaceTableChild(table, index, replacement),
             _ => throw new ArgumentOutOfRangeException(nameof(index))
-        },
-        MathRadical radical => index switch
-        {
-            0 => new MathRadical(RequireRow(replacement), radical.Degree),
-            1 when radical.Degree is not null =>
-                new MathRadical(radical.Radicand, RequireRow(replacement)),
-            _ => throw new ArgumentOutOfRangeException(nameof(index))
-        },
-        MathFunction function => new MathFunction(
-            function.Name,
-            function.Arguments.SetItem(index, RequireRow(replacement))),
-        MathScript script => ReplaceScriptChild(script, index, replacement),
-        MathUnderOver underOver => ReplaceUnderOverChild(underOver, index, replacement),
-        MathAccent accent when index == 0 =>
-            new MathAccent(RequireRow(replacement), accent.Kind, accent.Placement),
-        MathDelimiter delimiter when index == 0 =>
-            new MathDelimiter(
-                RequireRow(replacement),
-                delimiter.Opening,
-                delimiter.Closing,
-                delimiter.Scalable),
-        MathTable table => ReplaceTableChild(table, index, replacement),
-        _ => throw new ArgumentOutOfRangeException(nameof(index))
-    };
+        };
+    }
 
     public static IEnumerable<(ImmutableArray<int> Path, MathNode Node)> EnumerateDepthFirst(
         MathDocument document)
@@ -298,6 +307,8 @@ internal static class MathTree
         return new MathTable(table.Rows.SetItem(rowIndex, row), table.Kind);
     }
 
-    private static MathRow RequireRow(MathNode node) =>
-        node as MathRow ?? throw new ArgumentException("This structural slot requires a row.", nameof(node));
+    private static MathRow RequireRow(MathNode node)
+    {
+        return node as MathRow ?? throw new ArgumentException("This structural slot requires a row.", nameof(node));
+    }
 }

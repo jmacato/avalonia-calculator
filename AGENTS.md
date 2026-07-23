@@ -1,7 +1,8 @@
 # Repository agent instructions
 
 - For quick C# probes or throwaway runners, use single-file .NET with `dotnet run file.cs`.
-- For Avalonia implementation details, inspect the sibling source checkout at `~/RiderProjects/Avalonia` before using reflection or external summaries.
+- For Avalonia implementation details, inspect the backup-local sibling checkout at `../../Avalonia` before using reflection or external summaries.
+- After changing the sibling Avalonia checkout, rebuild and install its complete merged local package set with `./build.sh --target BuildToNuGetCache --configuration Release --skip-tests` from `../../Avalonia`. Do not substitute per-project `dotnet pack` or manually overlay NuGet-cache files; the official target recompiles Avalonia, merges the facade and build-task payloads, and refreshes `9999.0.0-localbuild` in the configured NuGet cache.
 - Changes in the sibling Avalonia checkout are restricted to the browser platform under `src/Browser/Avalonia.Browser`. Do not modify Avalonia core, base, controls, shared infrastructure, or any other platform unless the user gives explicit prior permission.
 - Port the existing WinUI implementation in place. Copy and translate the existing ViewModels, XAML views, controls, styles, and supporting code while preserving their structure and behavior.
 - Do not invent replacement ViewModels, XAML views, controls, or parallel application architecture when a WinUI implementation already exists in this repository.
@@ -13,4 +14,5 @@
 - For cross-thread coordination, use bounded channels plus volatile/interlocked state publication. Locks, mutexes, and semaphores are strictly forbidden for new fixes; do not introduce them in Calc, the local Avalonia browser backend, or BG/UI/composition/JS interop paths.
 - Diagnostic suppressions and policy downgrades are forbidden repository-wide: no warning pragmas, suppression/bypass attributes, `NoWarn`, warning demotion, nested analyzer-config shields, disabled analyzers, rulesets, or command-line bypasses. Fix the violation instead.
 - Runtime reflection, dynamic activation/invocation, runtime code generation, and reflection-backed serializers are forbidden repository-wide. Use closed generic calls, source-generated metadata, explicit factories, and statically linked dispatch so browser builds remain closed-world and fully trimmable.
+- Release browser builds must use managed AOT. Disabling Release AOT or substituting an interpreter-only build is forbidden, including to bypass toolchain or runtime defects; fix the offending application ABI/code shape or the AOT-compatible build path instead.
 - Commit completed work frequently in small, coherent stages. Verify the staged diff before each commit and do not bundle unrelated changes together.

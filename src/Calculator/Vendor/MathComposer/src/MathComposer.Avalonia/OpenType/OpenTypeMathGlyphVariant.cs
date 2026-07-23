@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace MathComposer.Avalonia.OpenType;
 
 /// <summary>A ready-made glyph variant and its extension-axis measurement.</summary>

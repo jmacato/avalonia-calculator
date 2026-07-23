@@ -22,7 +22,11 @@ internal sealed record ExactCoefficientPolynomial
     public string Canonical => $"exact-poly[{string.Join(',', Coefficients.Select(static coefficient => coefficient.Canonical))}]";
 
     public ExactScalar this[int degree] => degree < 0 || degree >= Coefficients.Length ? ExactScalar.Zero : Coefficients[degree];
-    public static ExactCoefficientPolynomial Constant(ExactScalar value) => new([value]);
+    public static ExactCoefficientPolynomial Constant(ExactScalar value)
+    {
+        return new ExactCoefficientPolynomial([value]);
+    }
+
     public static ExactCoefficientPolynomial Variable { get; } = new([ExactScalar.Zero, ExactScalar.One]);
 
     public static bool TryAdd(ExactCoefficientPolynomial left, ExactCoefficientPolynomial right, ResourceBudget budget, out ExactCoefficientPolynomial result)
@@ -45,7 +49,11 @@ internal sealed record ExactCoefficientPolynomial
         return CheckLimits(result, budget);
     }
 
-    public static bool TrySubtract(ExactCoefficientPolynomial left, ExactCoefficientPolynomial right, ResourceBudget budget, out ExactCoefficientPolynomial result) => TryAdd(left, right.Negate(budget), budget, out result);
+    public static bool TrySubtract(ExactCoefficientPolynomial left, ExactCoefficientPolynomial right, ResourceBudget budget, out ExactCoefficientPolynomial result)
+    {
+        return TryAdd(left, right.Negate(budget), budget, out result);
+    }
+
     public static bool TryMultiply(ExactCoefficientPolynomial left, ExactCoefficientPolynomial right, ResourceBudget budget, out ExactCoefficientPolynomial result)
     {
         int degree = checked(left.Degree + right.Degree);

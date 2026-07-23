@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Browser;
-using CalculatorApp;
 
 namespace CalculatorApp.Browser;
 

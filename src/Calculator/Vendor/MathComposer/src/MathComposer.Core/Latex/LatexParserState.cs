@@ -5,7 +5,7 @@ using System.Text;
 
 namespace MathComposer.Core;
 
-internal sealed class LatexParserState
+internal sealed class LatexParserState(string source)
 {
     private static readonly HashSet<string> FunctionNames = new(StringComparer.Ordinal)
         {
@@ -84,16 +84,10 @@ internal sealed class LatexParserState
             ["iiint"] = "∭"
         };
 
-    private readonly string _source;
     private readonly List<MathDiagnostic> _diagnostics = [];
     private int _position;
     private int _depth;
     private int _nodeCount;
-
-    public LatexParserState(string source)
-    {
-        _source = source;
-    }
 
     public MathParseResult Parse()
     {
@@ -113,7 +107,7 @@ internal sealed class LatexParserState
             }
 
             int start = _position;
-            MathNode child = _source[_position] == '%'
+            MathNode child = source[_position] == '%'
                 ? ParseUnsupportedComment()
                 : ParseScripted(stops);
             if (child is MathRow grouping)
@@ -158,13 +152,13 @@ internal sealed class LatexParserState
             }
 
             int scriptPosition = PeekAfterWhitespace();
-            if (scriptPosition >= _source.Length ||
-                (_source[scriptPosition] != '_' && _source[scriptPosition] != '^'))
+            if (scriptPosition >= source.Length ||
+                (source[scriptPosition] != '_' && source[scriptPosition] != '^'))
             {
                 return PromoteNaryLimits(result);
             }
 
-            char scriptKind = _source[scriptPosition];
+            char scriptKind = source[scriptPosition];
             int operandPosition = PeekAfterWhitespace(scriptPosition + 1);
             if (!CanStartOperand(operandPosition, stops))
             {
@@ -226,13 +220,15 @@ internal sealed class LatexParserState
             : CountNode(new MathScript(result, null, operand));
     }
 
-    private void AddDuplicateScriptDiagnostic(int position) =>
+    private void AddDuplicateScriptDiagnostic(int position)
+    {
         AddDiagnostic(
             "MC2103",
             MathDiagnosticSeverity.Warning,
             "A repeated script kind was nested.",
             position,
             1);
+    }
 
     private MathNode PromoteNaryLimits(MathNode node)
     {
@@ -248,12 +244,14 @@ internal sealed class LatexParserState
             MathUnderOverKind.NaryLimits));
     }
 
-    private static bool IsNaryOperator(MathNode node) =>
-        node is MathText { Text: "∑" or "∏" or "∐" or "∫" or "∬" or "∭" };
+    private static bool IsNaryOperator(MathNode node)
+    {
+        return node is MathText { Text: "∑" or "∏" or "∐" or "∫" or "∬" or "∭" };
+    }
 
     private MathRow ParseScriptOperand(LatexParserStopKind stops)
     {
-        if (_source[_position] == '{')
+        if (source[_position] == '{')
         {
             return ParseBracedRow();
         }
@@ -269,7 +267,7 @@ internal sealed class LatexParserState
         }
 
         int start = _position;
-        char current = _source[_position];
+        char current = source[_position];
         if (current == '{')
         {
             return ParseBracedRow();
@@ -308,7 +306,7 @@ internal sealed class LatexParserState
                 start,
                 accentLength);
             return CreateError(
-                _source.Substring(start, accentLength),
+                source.Substring(start, accentLength),
                 "MC2101",
                 "Accent mark without a base.");
         }
@@ -333,7 +331,7 @@ internal sealed class LatexParserState
         }
 
         _position += runeLength;
-        string scalar = _source.Substring(start, runeLength);
+        string scalar = source.Substring(start, runeLength);
         if (scalar is "}" or "]" or ")" or "_" or "^" or "&" or "$")
         {
             AddDiagnostic(
@@ -365,7 +363,7 @@ internal sealed class LatexParserState
                     start,
                     _position - start);
                 return CreateRow([CreateError(
-                        _source[start.._position],
+                        source[start.._position],
                         "MC2102",
                         "Missing closing '}'.")]);
             }
@@ -381,7 +379,7 @@ internal sealed class LatexParserState
     private MathNode ParseVisibleDelimiter()
     {
         int start = _position;
-        char opening = _source[_position++];
+        char opening = source[_position++];
         char closing = opening == '(' ? ')' : ']';
         LatexParserStopKind stop = opening == '(' ? LatexParserStopKind.CloseParenthesis : LatexParserStopKind.CloseBracket;
         EnterDepth(start);
@@ -397,7 +395,7 @@ internal sealed class LatexParserState
                     start,
                     _position - start);
                 return CreateError(
-                    _source[start.._position],
+                    source[start.._position],
                     "MC2102",
                     $"Missing closing '{closing}'.");
             }
@@ -418,19 +416,19 @@ internal sealed class LatexParserState
             return RecoverUnknownCommand(start);
         }
 
-        if (!IsAsciiLetter(_source[_position]))
+        if (!IsAsciiLetter(source[_position]))
         {
             return ParseControlSymbol(start);
         }
 
         int wordStart = _position;
-        while (_position < _source.Length && IsAsciiLetter(_source[_position]))
+        while (_position < source.Length && IsAsciiLetter(source[_position]))
         {
             _position++;
         }
 
         EnsureTokenWithinLimit(start, _position);
-        string word = _source[wordStart.._position];
+        string word = source[wordStart.._position];
         return word switch
         {
             "frac" => ParseFraction(start),
@@ -445,7 +443,7 @@ internal sealed class LatexParserState
 
     private MathNode ParseControlSymbol(int start)
     {
-        char symbol = _source[_position++];
+        char symbol = source[_position++];
         return symbol switch
         {
             ',' => CountNode(new MathSpacing(MathSpacingWidth.Thin)),
@@ -453,7 +451,7 @@ internal sealed class LatexParserState
             '{' or '}' or '_' or '%' or '&' or '#' or '$' =>
                 CreateText(symbol.ToString(), Classify(new Rune(symbol))),
             '\\' => CreateUnexpectedControlSymbol(start, "\\\\"),
-            _ => CreateUnexpectedControlSymbol(start, _source[start.._position])
+            _ => CreateUnexpectedControlSymbol(start, source[start.._position])
         };
     }
 
@@ -574,7 +572,7 @@ internal sealed class LatexParserState
     {
         MathRow? logBase = null;
         int markerPosition = PeekAfterWhitespace();
-        if (name == "log" && markerPosition < _source.Length && _source[markerPosition] == '_')
+        if (name == "log" && markerPosition < source.Length && source[markerPosition] == '_')
         {
             int operandPosition = PeekAfterWhitespace(markerPosition + 1);
             if (!CanStartOperand(operandPosition, LatexParserStopKind.None))
@@ -606,13 +604,13 @@ internal sealed class LatexParserState
             return false;
         }
 
-        if (_source[_position] == '{')
+        if (source[_position] == '{')
         {
             argument = ParseBracedRow();
             return true;
         }
 
-        if (_source[_position] == '(')
+        if (source[_position] == '(')
         {
             MathNode delimiter = ParseVisibleDelimiter();
             if (delimiter is MathDelimiter parsed)
@@ -655,8 +653,8 @@ internal sealed class LatexParserState
     private bool HasDelimitedFunctionArgument()
     {
         int position = PeekAfterWhitespace();
-        return position < _source.Length &&
-               (_source[position] is '{' or '(' || MatchesControlWord(position, "left"));
+        return position < source.Length &&
+               (source[position] is '{' or '(' || MatchesControlWord(position, "left"));
     }
 
     private bool TryReadRawBracedText(out string text)
@@ -670,17 +668,17 @@ internal sealed class LatexParserState
 
         int tokenStart = _position;
         var builder = new StringBuilder();
-        while (!IsAtEnd && _source[_position] != '}')
+        while (!IsAtEnd && source[_position] != '}')
         {
-            char current = _source[_position++];
+            char current = source[_position++];
             if (current == '{')
             {
                 return false;
             }
 
-            if (current == '\\' && !IsAtEnd && !IsAsciiLetter(_source[_position]))
+            if (current == '\\' && !IsAtEnd && !IsAsciiLetter(source[_position]))
             {
-                current = _source[_position++];
+                current = source[_position++];
             }
 
             builder.Append(current);
@@ -760,13 +758,13 @@ internal sealed class LatexParserState
             return false;
         }
 
-        if (_source[_position] == '.')
+        if (source[_position] == '.')
         {
             _position++;
             return true;
         }
 
-        if (_source[_position] == '\\')
+        if (source[_position] == '\\')
         {
             int start = _position++;
             if (IsAtEnd)
@@ -774,19 +772,19 @@ internal sealed class LatexParserState
                 return false;
             }
 
-            if (_source[_position] is '{' or '}')
+            if (source[_position] is '{' or '}')
             {
-                delimiter = _source[_position++].ToString();
+                delimiter = source[_position++].ToString();
                 return true;
             }
 
             int wordStart = _position;
-            while (_position < _source.Length && IsAsciiLetter(_source[_position]))
+            while (_position < source.Length && IsAsciiLetter(source[_position]))
             {
                 _position++;
             }
 
-            string word = _source[wordStart.._position];
+            string word = source[wordStart.._position];
             delimiter = word switch
             {
                 "lvert" or "rvert" => "|",
@@ -810,7 +808,7 @@ internal sealed class LatexParserState
             return false;
         }
 
-        delimiter = _source.Substring(_position, runeLength);
+        delimiter = source.Substring(_position, runeLength);
         _position += runeLength;
         return true;
     }
@@ -917,10 +915,10 @@ internal sealed class LatexParserState
     private MathError RecoverUnknownEnvironment(int start, string name)
     {
         string closing = $"\\end{{{name}}}";
-        int closingPosition = _source.IndexOf(closing, _position, StringComparison.Ordinal);
+        int closingPosition = source.IndexOf(closing, _position, StringComparison.Ordinal);
         _position = closingPosition >= 0
             ? closingPosition + closing.Length
-            : _source.Length;
+            : source.Length;
         int length = _position - start;
         AddDiagnostic(
             "MC2107",
@@ -929,7 +927,7 @@ internal sealed class LatexParserState
             start,
             length);
         return CreateError(
-            _source.Substring(start, length),
+            source.Substring(start, length),
             "MC2107",
             $"Unsupported environment '{name}'.");
     }
@@ -944,7 +942,7 @@ internal sealed class LatexParserState
         }
 
         int start = _position;
-        while (_position < _source.Length && IsAsciiLetter(_source[_position]))
+        while (_position < source.Length && IsAsciiLetter(source[_position]))
         {
             _position++;
         }
@@ -955,7 +953,7 @@ internal sealed class LatexParserState
         }
 
         EnsureTokenWithinLimit(start, _position - 1);
-        name = _source[start..(_position - 1)];
+        name = source[start..(_position - 1)];
         return true;
     }
 
@@ -973,7 +971,7 @@ internal sealed class LatexParserState
     private MathError RecoverUnknownCommand(int start)
     {
         int length = Math.Max(1, _position - start);
-        string raw = _source.Substring(start, length);
+        string raw = source.Substring(start, length);
         AddDiagnostic(
             "MC2106",
             MathDiagnosticSeverity.Error,
@@ -987,14 +985,14 @@ internal sealed class LatexParserState
     {
         int length = Math.Max(1, _position - start);
         AddDiagnostic("MC2102", MathDiagnosticSeverity.Error, message, start, length);
-        return CreateError(_source.Substring(start, length), "MC2102", message);
+        return CreateError(source.Substring(start, length), "MC2102", message);
     }
 
     private bool TryParseRequiredBracedRow(out MathRow row)
     {
         row = MathRow.Empty;
         _position = PeekAfterWhitespace();
-        if (_position >= _source.Length || _source[_position] != '{')
+        if (_position >= source.Length || source[_position] != '{')
         {
             return false;
         }
@@ -1019,7 +1017,7 @@ internal sealed class LatexParserState
         }
 
         EnsureTokenWithinLimit(start, _position);
-        return CreateText(_source[start.._position], MathAtomClass.Identifier);
+        return CreateText(source[start.._position], MathAtomClass.Identifier);
     }
 
     private MathText ParseNumber()
@@ -1030,7 +1028,7 @@ internal sealed class LatexParserState
             _position += runeLength;
         }
 
-        if (_position < _source.Length && _source[_position] == '.' &&
+        if (_position < source.Length && source[_position] == '.' &&
             TryReadRune(_position + 1, out Rune fractionDigit, out _) && IsDecimalDigit(fractionDigit))
         {
             _position++;
@@ -1041,10 +1039,10 @@ internal sealed class LatexParserState
         }
 
         int exponentStart = _position;
-        if (_position < _source.Length && _source[_position] is 'e' or 'E')
+        if (_position < source.Length && source[_position] is 'e' or 'E')
         {
             int scan = _position + 1;
-            if (scan < _source.Length && _source[scan] is '+' or '-')
+            if (scan < source.Length && source[scan] is '+' or '-')
             {
                 scan++;
             }
@@ -1064,18 +1062,18 @@ internal sealed class LatexParserState
         }
 
         EnsureTokenWithinLimit(start, _position);
-        return CreateText(_source[start.._position], MathAtomClass.Number);
+        return CreateText(source[start.._position], MathAtomClass.Number);
     }
 
     private MathError ParseUnsupportedComment()
     {
         int start = _position;
-        while (_position < _source.Length && _source[_position] is not '\r' and not '\n')
+        while (_position < source.Length && source[_position] is not '\r' and not '\n')
         {
             _position++;
         }
 
-        string raw = _source[start.._position];
+        string raw = source[start.._position];
         EnsureTokenWithinLimit(start, _position);
         AddDiagnostic(
             "MC2110",
@@ -1093,7 +1091,7 @@ internal sealed class LatexParserState
             return true;
         }
 
-        char current = _source[_position];
+        char current = source[_position];
         return ((stops & LatexParserStopKind.CloseBrace) != 0 && current == '}') ||
                ((stops & LatexParserStopKind.CloseBracket) != 0 && current == ']') ||
                ((stops & LatexParserStopKind.CloseParenthesis) != 0 && current == ')') ||
@@ -1108,7 +1106,7 @@ internal sealed class LatexParserState
 
     private bool CanStartOperand(int position, LatexParserStopKind stops)
     {
-        if (position >= _source.Length)
+        if (position >= source.Length)
         {
             return false;
         }
@@ -1117,7 +1115,7 @@ internal sealed class LatexParserState
         _position = position;
         bool isStop = IsAtStop(stops);
         _position = savedPosition;
-        return !isStop && _source[position] is not '_' and not '^' and not '&';
+        return !isStop && source[position] is not '_' and not '^' and not '&';
     }
 
     private bool TryConsumeRowSeparator()
@@ -1151,7 +1149,7 @@ internal sealed class LatexParserState
         }
 
         int afterControl = position + control.Length;
-        return afterControl == _source.Length || !IsAsciiLetter(_source[afterControl]);
+        return afterControl == source.Length || !IsAsciiLetter(source[afterControl]);
     }
 
     private static bool TryGetTableKind(string name, out MathTableKind kind)
@@ -1291,11 +1289,14 @@ internal sealed class LatexParserState
         }
     }
 
-    private int PeekAfterWhitespace() => PeekAfterWhitespace(_position);
+    private int PeekAfterWhitespace()
+    {
+        return PeekAfterWhitespace(_position);
+    }
 
     private int PeekAfterWhitespace(int position)
     {
-        while (position < _source.Length && char.IsWhiteSpace(_source[position]))
+        while (position < source.Length && char.IsWhiteSpace(source[position]))
         {
             position++;
         }
@@ -1303,11 +1304,14 @@ internal sealed class LatexParserState
         return position;
     }
 
-    private void SkipWhitespace() => _position = PeekAfterWhitespace();
+    private void SkipWhitespace()
+    {
+        _position = PeekAfterWhitespace();
+    }
 
     private bool TryConsume(char value)
     {
-        if (_position < _source.Length && _source[_position] == value)
+        if (_position < source.Length && source[_position] == value)
         {
             _position++;
             return true;
@@ -1316,9 +1320,11 @@ internal sealed class LatexParserState
         return false;
     }
 
-    private bool MatchesAt(int position, string value) =>
-        position <= _source.Length - value.Length &&
-        _source.AsSpan(position, value.Length).SequenceEqual(value.AsSpan());
+    private bool MatchesAt(int position, string value)
+    {
+        return position <= source.Length - value.Length &&
+               source.AsSpan(position, value.Length).SequenceEqual(value.AsSpan());
+    }
 
     private static bool TryReadRune(int position, string source, out Rune rune, out int runeLength)
     {
@@ -1333,11 +1339,15 @@ internal sealed class LatexParserState
         return status == OperationStatus.Done;
     }
 
-    private bool TryReadRune(int position, out Rune rune, out int runeLength) =>
-        TryReadRune(position, _source, out rune, out runeLength);
+    private bool TryReadRune(int position, out Rune rune, out int runeLength)
+    {
+        return TryReadRune(position, source, out rune, out runeLength);
+    }
 
-    private static bool IsAsciiLetter(char value) =>
-        value is >= 'A' and <= 'Z' or >= 'a' and <= 'z';
+    private static bool IsAsciiLetter(char value)
+    {
+        return value is >= 'A' and <= 'Z' or >= 'a' and <= 'z';
+    }
 
     private static bool IsIdentifierRune(Rune rune)
     {
@@ -1354,8 +1364,10 @@ internal sealed class LatexParserState
             UnicodeCategory.ConnectorPunctuation;
     }
 
-    private static bool IsDecimalDigit(Rune rune) =>
-        Rune.GetUnicodeCategory(rune) == UnicodeCategory.DecimalDigitNumber;
+    private static bool IsDecimalDigit(Rune rune)
+    {
+        return Rune.GetUnicodeCategory(rune) == UnicodeCategory.DecimalDigitNumber;
+    }
 
     private static MathAtomClass Classify(Rune rune)
     {
@@ -1378,23 +1390,30 @@ internal sealed class LatexParserState
         };
     }
 
-    private MathText CreateText(string text, MathAtomClass atomClass) =>
-        CountNode(new MathText(text.Normalize(NormalizationForm.FormC), atomClass));
+    private MathText CreateText(string text, MathAtomClass atomClass)
+    {
+        return CountNode(new MathText(text.Normalize(NormalizationForm.FormC), atomClass));
+    }
 
-    private MathError CreateError(string raw, string code, string message) =>
-        CountNode(new MathError(MathTextFormat.Latex, raw, code, message));
+    private MathError CreateError(string raw, string code, string message)
+    {
+        return CountNode(new MathError(MathTextFormat.Latex, raw, code, message));
+    }
 
     private MathError CreateErrorForCurrentScalar(string code, string message)
     {
         int start = _position;
         int length = TryReadRune(_position, out _, out int runeLength) ? runeLength : 1;
-        _position = Math.Min(_source.Length, _position + length);
-        string raw = _source.Substring(start, _position - start);
+        _position = Math.Min(source.Length, _position + length);
+        string raw = source.Substring(start, _position - start);
         AddDiagnostic(code, MathDiagnosticSeverity.Error, message, start, _position - start);
         return CreateError(raw, code, message);
     }
 
-    private MathRow CreateRow(IEnumerable<MathNode> children) => CountNode(new MathRow(children));
+    private MathRow CreateRow(IEnumerable<MathNode> children)
+    {
+        return CountNode(new MathRow(children));
+    }
 
     private T CountNode<T>(T node)
         where T : MathNode
@@ -1413,7 +1432,7 @@ internal sealed class LatexParserState
 
     private void EnsureTokenWithinLimit(int start, int end)
     {
-        if (Encoding.UTF8.GetByteCount(_source.AsSpan(start, end - start)) >
+        if (Encoding.UTF8.GetByteCount(source.AsSpan(start, end - start)) >
             MathImportLimits.MaximumTokenUtf8Bytes)
         {
             throw new MathImportLimitExceededException(
@@ -1435,20 +1454,25 @@ internal sealed class LatexParserState
         }
     }
 
-    private void ExitDepth() => _depth--;
+    private void ExitDepth()
+    {
+        _depth--;
+    }
 
     private void AddDiagnostic(
         string code,
         MathDiagnosticSeverity severity,
         string message,
         int start,
-        int length) =>
+        int length)
+    {
         _diagnostics.Add(new MathDiagnostic(
             code,
             severity,
             message,
             MathTextFormat.Latex,
             new MathSourceSpan(start, length)));
+    }
 
-    private bool IsAtEnd => _position >= _source.Length;
+    private bool IsAtEnd => _position >= source.Length;
 }

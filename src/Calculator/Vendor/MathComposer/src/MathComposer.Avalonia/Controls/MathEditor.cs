@@ -5,8 +5,6 @@ using Avalonia;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Input.TextInput;
-using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using MathComposer.Avalonia.Layout;
@@ -288,16 +286,28 @@ public sealed class MathEditor : Control
     }
 
     /// <summary>Exports the current document deterministically.</summary>
-    public string Export(MathTextFormat format) => MathInterchange.Serialize(Document, format);
+    public string Export(MathTextFormat format)
+    {
+        return MathInterchange.Serialize(Document, format);
+    }
 
     /// <summary>Copies the current structural selection in all supported flavors.</summary>
-    public Task CopySelectionAsync() => CopyAsync();
+    public Task CopySelectionAsync()
+    {
+        return CopyAsync();
+    }
 
     /// <summary>Copies and deletes the current structural selection when editable.</summary>
-    public Task CutSelectionAsync() => CutAsync();
+    public Task CutSelectionAsync()
+    {
+        return CutAsync();
+    }
 
     /// <summary>Pastes the safest valid available clipboard flavor.</summary>
-    public Task PasteSelectionAsync() => PasteAsync();
+    public Task PasteSelectionAsync()
+    {
+        return PasteAsync();
+    }
 
     /// <summary>Inserts well-formed text as one editor command.</summary>
     public void InsertText(string text)
@@ -309,10 +319,12 @@ public sealed class MathEditor : Control
     }
 
     /// <summary>Deletes the structural selection or the scalar before the caret.</summary>
-    public void DeleteBackward() =>
+    public void DeleteBackward()
+    {
         ApplyEdit(
             MathEditorOperations.Backspace(Document, Selection),
             MathHistoryMergeKind.None);
+    }
 
     /// <summary>Deletes the complete document as one undoable editor command.</summary>
     public void Clear()
@@ -435,7 +447,10 @@ public sealed class MathEditor : Control
     }
 
     /// <inheritdoc />
-    protected override AutomationPeer OnCreateAutomationPeer() => new MathEditorAutomationPeer(this);
+    protected override AutomationPeer OnCreateAutomationPeer()
+    {
+        return new MathEditorAutomationPeer(this);
+    }
 
     /// <inheritdoc />
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

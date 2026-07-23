@@ -4,26 +4,19 @@ using Avalonia.Media.Immutable;
 using Avalonia.Media.TextFormatting;
 using Graphing;
 using Graphing.Renderer;
-using AvaloniaColor = Avalonia.Media.Color;
 
 namespace GraphControl;
 
-internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposable
+internal sealed class AvaloniaGraphDrawingTarget(DrawingContext context, AvaloniaGraphRenderCache cache)
+    : IGraphDrawingTarget, IDisposable
 {
-    private readonly DrawingContext _context;
-    private readonly AvaloniaGraphRenderCache _cache;
     private readonly Stack<DrawingContext.PushedState> _clips = new();
     private GraphCoordinateTransform? _coordinateTransform;
-    public AvaloniaGraphDrawingTarget(DrawingContext context, AvaloniaGraphRenderCache cache)
-    {
-        _context = context;
-        _cache = cache;
-    }
 
     public void BeginFrame(GraphFrame frame)
     {
-        _cache.BeginFrame(frame);
-        _context.DrawRectangle(Brush(frame.Background), null, new Rect(0, 0, frame.Width, frame.Height));
+        cache.BeginFrame(frame);
+        context.DrawRectangle(Brush(frame.Background), null, new Rect(0, 0, frame.Width, frame.Height));
     }
 
     public void Draw(GraphFrameCommand command)
@@ -31,7 +24,7 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
         switch (command)
         {
             case PushClipCommand push:
-                _clips.Push(_context.PushClip(ToRect(Transform(push.Clip))));
+                _clips.Push(context.PushClip(ToRect(Transform(push.Clip))));
                 break;
             case PopClipCommand:
                 if (_clips.Count == 0)
@@ -65,7 +58,7 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
 
                 break;
             case StrokeLineCommand line:
-                _context.DrawLine(Pen(line.Paint), ToPoint(Transform(line.Start)), ToPoint(Transform(line.End)));
+                context.DrawLine(Pen(line.Paint), ToPoint(Transform(line.Start)), ToPoint(Transform(line.End)));
                 break;
             case GridLineSeriesCommand series:
                 DrawGridLineSeries(series);
@@ -77,7 +70,7 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
                 }
                 else if (stroke.Path is { IsClosed: false, Points.Length: 2 })
                 {
-                    _context.DrawLine(Pen(stroke.Paint), ToPoint(Transform(stroke.Path.Points[0])), ToPoint(Transform(stroke.Path.Points[1])));
+                    context.DrawLine(Pen(stroke.Paint), ToPoint(Transform(stroke.Path.Points[0])), ToPoint(Transform(stroke.Path.Points[1])));
                 }
                 else
                 {
@@ -114,13 +107,17 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
         }
     }
 
-    public void Dispose() => EndFrame();
+    public void Dispose()
+    {
+        EndFrame();
+    }
+
     private void DrawGridLineSeries(GridLineSeriesCommand series)
     {
         for (int index = 0; index < series.Count; index++)
         {
             series.GetLine(index, out GraphPoint start, out GraphPoint end, out GraphPaint paint);
-            _context.DrawLine(Pen(paint), ToPoint(Transform(start)), ToPoint(Transform(end)));
+            context.DrawLine(Pen(paint), ToPoint(Transform(start)), ToPoint(Transform(end)));
         }
     }
 
@@ -140,7 +137,7 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
         // Direct2D's captured dash values are 2,2 in stroke-width units. A
         // single cached multi-figure geometry preserves that cadence without
         // allocating a List, GraphPath and StreamGeometry for every dash.
-        _context.DrawGeometry(null, Pen(graphPaint with { LineStyle = LineStyle.Solid }), _cache.DashedGeometry(path, graphPaint));
+        context.DrawGeometry(null, Pen(graphPaint with { LineStyle = LineStyle.Solid }), cache.DashedGeometry(path, graphPaint));
     }
 
     private void DrawMarker(MarkerCommand marker)
@@ -152,21 +149,21 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
         switch (marker.Shape)
         {
             case GraphMarkerShape.Circle:
-                _context.DrawEllipse(fill, stroke, center, radius, radius);
+                context.DrawEllipse(fill, stroke, center, radius, radius);
                 break;
             case GraphMarkerShape.Square:
-                _context.DrawRectangle(fill, stroke, new Rect(center.X - radius, center.Y - radius, radius * 2, radius * 2));
+                context.DrawRectangle(fill, stroke, new Rect(center.X - radius, center.Y - radius, radius * 2, radius * 2));
                 break;
             case GraphMarkerShape.Diamond:
-                _context.DrawGeometry(fill, stroke, CreateGeometry(new GraphPath([new GraphPoint(center.X, center.Y - radius), new GraphPoint(center.X + radius, center.Y), new GraphPoint(center.X, center.Y + radius), new GraphPoint(center.X - radius, center.Y)], true)));
+                context.DrawGeometry(fill, stroke, CreateGeometry(new GraphPath([new GraphPoint(center.X, center.Y - radius), new GraphPoint(center.X + radius, center.Y), new GraphPoint(center.X, center.Y + radius), new GraphPoint(center.X - radius, center.Y)], true)));
                 break;
             case GraphMarkerShape.Cross:
                 {
                     GraphPaint crossPaint = marker.Stroke ?? marker.Fill;
                     IBrush cross = Brush(crossPaint.Color);
                     double halfStroke = crossPaint.StrokeWidth * 0.5;
-                    _context.DrawRectangle(cross, null, new Rect(center.X - radius - halfStroke, center.Y - halfStroke, (radius + halfStroke) * 2, halfStroke * 2));
-                    _context.DrawRectangle(cross, null, new Rect(center.X - halfStroke, center.Y - radius - halfStroke, halfStroke * 2, (radius + halfStroke) * 2));
+                    context.DrawRectangle(cross, null, new Rect(center.X - radius - halfStroke, center.Y - halfStroke, (radius + halfStroke) * 2, halfStroke * 2));
+                    context.DrawRectangle(cross, null, new Rect(center.X - halfStroke, center.Y - radius - halfStroke, halfStroke * 2, (radius + halfStroke) * 2));
                     break;
                 }
 
@@ -188,7 +185,7 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
             // A dense inequality can contain more than 3,000 crosses. Retain
             // them as one filled geometry so Avalonia records one scene draw
             // operation rather than two rectangles per occupied lattice cell.
-            _context.DrawGeometry(brush, null, _cache.HatchGeometry(hatch));
+            context.DrawGeometry(brush, null, cache.HatchGeometry(hatch));
             return;
         }
 
@@ -196,8 +193,8 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
         // of crosses into rectangles on every interaction frame was both the
         // hottest inequality path and a large transient-allocation source.
         GraphCoordinateTransform transform = _coordinateTransform.Value;
-        using DrawingContext.PushedState state = _context.PushTransform(new Matrix(transform.ScaleX, 0, 0, transform.ScaleY, transform.OffsetX, transform.OffsetY));
-        _context.DrawGeometry(brush, null, _cache.HatchGeometry(hatch));
+        using DrawingContext.PushedState state = context.PushTransform(new Matrix(transform.ScaleX, 0, 0, transform.ScaleY, transform.OffsetX, transform.OffsetY));
+        context.DrawGeometry(brush, null, cache.HatchGeometry(hatch));
     }
 
     private void DrawGlyph(GlyphCommand glyph)
@@ -205,7 +202,7 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
         TextLayout text = Format(glyph);
         GraphPoint origin = Transform(glyph.Origin);
         double x = AlignedX(glyph.Alignment, origin.X, text.Width);
-        text.Draw(_context, new Point(x, origin.Y));
+        text.Draw(context, new Point(x, origin.Y));
     }
 
     private void DrawGlyphBackground(GlyphBackgroundCommand background)
@@ -213,34 +210,42 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
         TextLayout text = Format(background.Glyph);
         GraphPoint origin = Transform(background.Glyph.Origin);
         double x = AlignedX(background.Glyph.Alignment, origin.X, text.Width);
-        _context.DrawRectangle(Brush(background.Paint.Color), null, new Rect(x, origin.Y, text.Width, text.Height));
+        context.DrawRectangle(Brush(background.Paint.Color), null, new Rect(x, origin.Y, text.Width, text.Height));
     }
 
     private void DrawGeometry(IBrush? fill, GraphPaint? stroke, GraphPath path)
     {
         if (_coordinateTransform is not { } transform)
         {
-            _context.DrawGeometry(fill, stroke is { } directPaint ? Pen(directPaint) : null, _cache.Geometry(path));
+            context.DrawGeometry(fill, stroke is { } directPaint ? Pen(directPaint) : null, cache.Geometry(path));
             return;
         }
 
-        using DrawingContext.PushedState state = _context.PushTransform(new Matrix(transform.ScaleX, 0, 0, transform.ScaleY, transform.OffsetX, transform.OffsetY));
+        using DrawingContext.PushedState state = context.PushTransform(new Matrix(transform.ScaleX, 0, 0, transform.ScaleY, transform.OffsetX, transform.OffsetY));
         GraphPaint? adjusted = stroke is { } graphPaint ? graphPaint with
         {
             StrokeWidth = (float)(graphPaint.StrokeWidth / TransformStrokeScale(transform))
         }
 
         : null;
-        _context.DrawGeometry(fill, adjusted is { } transformedPaint ? Pen(transformedPaint) : null, _cache.Geometry(path));
+        context.DrawGeometry(fill, adjusted is { } transformedPaint ? Pen(transformedPaint) : null, cache.Geometry(path));
     }
 
-    private TextLayout Format(GlyphCommand glyph) => _cache.Format(glyph);
-    private static double AlignedX(GraphTextAlignment alignment, double originX, double width) => alignment switch
+    private TextLayout Format(GlyphCommand glyph)
     {
-        GraphTextAlignment.Center => originX - width * 0.5,
-        GraphTextAlignment.End => originX - width,
-        _ => originX
-    };
+        return cache.Format(glyph);
+    }
+
+    private static double AlignedX(GraphTextAlignment alignment, double originX, double width)
+    {
+        return alignment switch
+        {
+            GraphTextAlignment.Center => originX - width * 0.5,
+            GraphTextAlignment.End => originX - width,
+            _ => originX
+        };
+    }
+
     internal static StreamGeometry CreateGeometry(GraphPath path)
     {
         var geometry = new StreamGeometry();
@@ -374,7 +379,11 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
         writer.EndFigure(isClosed: true);
     }
 
-    private GraphPoint Transform(GraphPoint point) => _coordinateTransform?.Transform(point) ?? point;
+    private GraphPoint Transform(GraphPoint point)
+    {
+        return _coordinateTransform?.Transform(point) ?? point;
+    }
+
     private GraphRect Transform(GraphRect rectangle)
     {
         if (_coordinateTransform is not { } transform)
@@ -387,9 +396,28 @@ internal sealed class AvaloniaGraphDrawingTarget : IGraphDrawingTarget, IDisposa
         return new GraphRect(Math.Min(topLeft.X, bottomRight.X), Math.Min(topLeft.Y, bottomRight.Y), Math.Abs(bottomRight.X - topLeft.X), Math.Abs(bottomRight.Y - topLeft.Y));
     }
 
-    private static double TransformStrokeScale(GraphCoordinateTransform transform) => Math.Sqrt(Math.Abs(transform.ScaleX * transform.ScaleY));
-    private ImmutablePen Pen(GraphPaint paint) => _cache.Pen(paint);
-    private ImmutableSolidColorBrush Brush(Graphing.Color color) => _cache.Brush(color);
-    private static Point ToPoint(GraphPoint point) => new(point.X, point.Y);
-    private static Rect ToRect(GraphRect rectangle) => new(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
+    private static double TransformStrokeScale(GraphCoordinateTransform transform)
+    {
+        return Math.Sqrt(Math.Abs(transform.ScaleX * transform.ScaleY));
+    }
+
+    private ImmutablePen Pen(GraphPaint paint)
+    {
+        return cache.Pen(paint);
+    }
+
+    private ImmutableSolidColorBrush Brush(Graphing.Color color)
+    {
+        return cache.Brush(color);
+    }
+
+    private static Point ToPoint(GraphPoint point)
+    {
+        return new Point(point.X, point.Y);
+    }
+
+    private static Rect ToRect(GraphRect rectangle)
+    {
+        return new Rect(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
+    }
 }

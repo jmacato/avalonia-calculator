@@ -217,10 +217,30 @@ public sealed class AffineMinMaxWindowsCompatibilityMatrixTests
         return selectFirst ? first : second;
     }
 
-    private static BigRational EnvelopeIntercept(string function, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec first, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec second) => function == "min" ? RationalMin(first.Intercept, second.Intercept) : RationalMax(first.Intercept, second.Intercept);
-    private static BigRational RationalMin(BigRational left, BigRational right) => left <= right ? left : right;
-    private static BigRational RationalMax(BigRational left, BigRational right) => left >= right ? left : right;
-    private static int NonparallelTooComplexBits() => Bits(AnalysisType.Range, AnalysisType.Parity, AnalysisType.Zeros, AnalysisType.Minima, AnalysisType.Maxima, AnalysisType.InflectionPoints, AnalysisType.HorizontalAsymptotes, AnalysisType.ObliqueAsymptotes, AnalysisType.Monotonicity);
+    private static BigRational EnvelopeIntercept(string function, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec first, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec second)
+    {
+        return function == "min"
+            ? RationalMin(first.Intercept, second.Intercept)
+            : RationalMax(first.Intercept, second.Intercept);
+    }
+
+    private static BigRational RationalMin(BigRational left, BigRational right)
+    {
+        return left <= right ? left : right;
+    }
+
+    private static BigRational RationalMax(BigRational left, BigRational right)
+    {
+        return left >= right ? left : right;
+    }
+
+    private static int NonparallelTooComplexBits()
+    {
+        return Bits(AnalysisType.Range, AnalysisType.Parity, AnalysisType.Zeros, AnalysisType.Minima,
+            AnalysisType.Maxima, AnalysisType.InflectionPoints, AnalysisType.HorizontalAsymptotes,
+            AnalysisType.ObliqueAsymptotes, AnalysisType.Monotonicity);
+    }
+
     private static IEnumerable<AffineMinMaxWindowsCompatibilityMatrixTestsLinePair> LinePairs()
     {
         yield return Pair(Spec(-2, 0), Spec(-1, -1, 2));
@@ -246,9 +266,21 @@ public sealed class AffineMinMaxWindowsCompatibilityMatrixTests
         yield return Pair(Spec(1, -1, 2), Spec(-1, 1, 2));
     }
 
-    private static AffineMinMaxWindowsCompatibilityMatrixTestsLinePair Pair(AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec first, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec second) => new(first, second);
-    private static AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec Spec(int slope, int intercept) => new(slope, intercept);
-    private static AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec Spec(int slope, int interceptNumerator, int interceptDenominator) => new(slope, new BigRational(interceptNumerator, interceptDenominator));
+    private static AffineMinMaxWindowsCompatibilityMatrixTestsLinePair Pair(AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec first, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec second)
+    {
+        return new AffineMinMaxWindowsCompatibilityMatrixTestsLinePair(first, second);
+    }
+
+    private static AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec Spec(int slope, int intercept)
+    {
+        return new AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec(slope, intercept);
+    }
+
+    private static AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec Spec(int slope, int interceptNumerator, int interceptDenominator)
+    {
+        return new AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec(slope, new BigRational(interceptNumerator, interceptDenominator));
+    }
+
     private static GraphFunctionAnalysisData AnalyzePublic(string formula, PerformAnalysisType requested = PerformAnalysisType.All)
     {
         IMathSolver solver = MathSolver.CreateMathSolver();
@@ -262,10 +294,26 @@ public sealed class AffineMinMaxWindowsCompatibilityMatrixTests
         return solver.Analyze(analyzer);
     }
 
-    private static AnalysisRequest Request(InputExpression expression) => new(expression, AnalysisFeatures.All, AngleUnit.Radians, "x", static () => true);
-    private static InputExpression Envelope(string function, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec first, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec second) => Function(function, Line(first), Line(second));
-    private static InputExpression Line(AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec line) => Add(Multiply(Number(line.Slope), Variable()), Number(line.Intercept));
-    private static string EnvelopeFormula(string function, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec first, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec second) => $"{function}({LineFormula(first)},{LineFormula(second)})";
+    private static AnalysisRequest Request(InputExpression expression)
+    {
+        return new AnalysisRequest(expression, AnalysisFeatures.All, AngleUnit.Radians, "x", static () => true);
+    }
+
+    private static InputExpression Envelope(string function, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec first, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec second)
+    {
+        return Function(function, Line(first), Line(second));
+    }
+
+    private static InputExpression Line(AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec line)
+    {
+        return Add(Multiply(Number(line.Slope), Variable()), Number(line.Intercept));
+    }
+
+    private static string EnvelopeFormula(string function, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec first, AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec second)
+    {
+        return $"{function}({LineFormula(first)},{LineFormula(second)})";
+    }
+
     private static string LineFormula(AffineMinMaxWindowsCompatibilityMatrixTestsLineSpec line)
     {
         if (line.Slope.IsZero)
@@ -283,33 +331,84 @@ public sealed class AffineMinMaxWindowsCompatibilityMatrixTests
         return $"{variableTerm}{operation}{line.Intercept}";
     }
 
-    private static string DisplayRational(BigRational value) => value.ToString().Replace('-', '−');
-    private static int Bits(params AnalysisType[] features) => features.Aggregate(0, static (bits, feature) => bits | FeatureBit(feature));
-    private static int FeatureBit(AnalysisType type) => type switch
+    private static string DisplayRational(BigRational value)
     {
-        AnalysisType.Domain => 1,
-        AnalysisType.Range => 2,
-        AnalysisType.Parity => 4,
-        AnalysisType.Period => 8,
-        AnalysisType.Zeros => 16,
-        AnalysisType.YIntercept => 32,
-        AnalysisType.Minima => 64,
-        AnalysisType.Maxima => 128,
-        AnalysisType.InflectionPoints => 256,
-        AnalysisType.VerticalAsymptotes => 512,
-        AnalysisType.HorizontalAsymptotes => 1024,
-        AnalysisType.ObliqueAsymptotes => 2048,
-        AnalysisType.Monotonicity => 4096,
-        _ => throw new ArgumentOutOfRangeException(nameof(type))
-    };
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
-    private static InputExpression Named(string name) => InputExpression.Variable(name, Source);
-    private static InputExpression Number(int value) => Number(new BigRational(value));
-    private static InputExpression Number(BigRational value) => InputExpression.Number(value, Source);
-    private static InputExpression Add(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
-    private static InputExpression Subtract(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
-    private static InputExpression Multiply(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
-    private static InputExpression Divide(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
-    private static InputExpression Power(InputExpression basis, InputExpression exponent) => InputExpression.Binary(InputExpressionKind.Power, basis, exponent, Source);
-    private static InputExpression Function(string name, params InputExpression[] arguments) => InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+        return value.ToString().Replace('-', '−');
+    }
+
+    private static int Bits(params AnalysisType[] features)
+    {
+        return features.Aggregate(0, static (bits, feature) => bits | FeatureBit(feature));
+    }
+
+    private static int FeatureBit(AnalysisType type)
+    {
+        return type switch
+        {
+            AnalysisType.Domain => 1,
+            AnalysisType.Range => 2,
+            AnalysisType.Parity => 4,
+            AnalysisType.Period => 8,
+            AnalysisType.Zeros => 16,
+            AnalysisType.YIntercept => 32,
+            AnalysisType.Minima => 64,
+            AnalysisType.Maxima => 128,
+            AnalysisType.InflectionPoints => 256,
+            AnalysisType.VerticalAsymptotes => 512,
+            AnalysisType.HorizontalAsymptotes => 1024,
+            AnalysisType.ObliqueAsymptotes => 2048,
+            AnalysisType.Monotonicity => 4096,
+            _ => throw new ArgumentOutOfRangeException(nameof(type))
+        };
+    }
+
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
+
+    private static InputExpression Named(string name)
+    {
+        return InputExpression.Variable(name, Source);
+    }
+
+    private static InputExpression Number(int value)
+    {
+        return Number(new BigRational(value));
+    }
+
+    private static InputExpression Number(BigRational value)
+    {
+        return InputExpression.Number(value, Source);
+    }
+
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
+
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
+
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
+
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
+
+    private static InputExpression Power(InputExpression basis, InputExpression exponent)
+    {
+        return InputExpression.Binary(InputExpressionKind.Power, basis, exponent, Source);
+    }
+
+    private static InputExpression Function(string name, params InputExpression[] arguments)
+    {
+        return InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    }
 }

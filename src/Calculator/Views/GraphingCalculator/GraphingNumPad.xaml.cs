@@ -56,8 +56,10 @@ public sealed partial class GraphingNumPad : UserControl
         button.ChevronFontSize = chevronFontSize;
     }
 
-    private void ShiftButton_Check(object? sender, RoutedEventArgs e) =>
+    private void ShiftButton_Check(object? sender, RoutedEventArgs e)
+    {
         SetOperatorRowVisibility();
+    }
 
     private void ShiftButton_Uncheck(object? sender, RoutedEventArgs e)
     {
@@ -65,11 +67,15 @@ public sealed partial class GraphingNumPad : UserControl
         SetOperatorRowVisibility();
     }
 
-    private void TrigFlyoutShift_Toggle(object? sender, RoutedEventArgs e) =>
+    private void TrigFlyoutShift_Toggle(object? sender, RoutedEventArgs e)
+    {
         SetTrigRowVisibility();
+    }
 
-    private void TrigFlyoutHyp_Toggle(object? sender, RoutedEventArgs e) =>
+    private void TrigFlyoutHyp_Toggle(object? sender, RoutedEventArgs e)
+    {
         SetTrigRowVisibility();
+    }
 
     private void FlyoutButton_Clicked(object? sender, RoutedEventArgs e)
     {

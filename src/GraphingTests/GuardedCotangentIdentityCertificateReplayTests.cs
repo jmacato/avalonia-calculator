@@ -358,57 +358,88 @@ public sealed class GuardedCotangentIdentityCertificateReplayTests
 
     private static GuardedCotangentIdentityProofCertificate WithDefinedness(
         GuardedCotangentIdentityProofCertificate certificate,
-        Formula definedWhen) =>
-        certificate with { DefinednessCanonical = definedWhen.Canonical };
+        Formula definedWhen)
+    {
+        return certificate with { DefinednessCanonical = definedWhen.Canonical };
+    }
 
     private static AnalysisRequest Request(
         InputExpression expression,
         AnalysisFeatures features,
-        AngleUnit angleUnit) =>
-        new(expression, features, angleUnit, "x", static () => true);
+        AngleUnit angleUnit)
+    {
+        return new AnalysisRequest(expression, features, angleUnit, "x", static () => true);
+    }
 
-    private static SemanticExpression Build(InputExpression input) =>
-        new SemanticGraphBuilder(new ResourceBudget()).Build(input);
+    private static SemanticExpression Build(InputExpression input)
+    {
+        return new SemanticGraphBuilder(new ResourceBudget()).Build(input);
+    }
 
-    private static InputExpression Identity(string alias, InputExpression argument) =>
-        alias switch
+    private static InputExpression Identity(string alias, InputExpression argument)
+    {
+        return alias switch
         {
             "ordered" => Add(Power(Sin(argument), 2), Power(Cos(argument), 2)),
             "reordered" => Add(Power(Cos(argument), 2), Power(Sin(argument), 2)),
             "one" => Number(1),
             _ => throw new ArgumentOutOfRangeException(nameof(alias))
         };
+    }
 
-    private static InputExpression Tangent(string alias, InputExpression argument) =>
-        alias switch
+    private static InputExpression Tangent(string alias, InputExpression argument)
+    {
+        return alias switch
         {
             "tan" => Function("tan", argument),
             "ratio" => Divide(Sin(argument), Cos(argument)),
             "scaled" => Multiply(Number(-3), Function("tan", argument)),
             _ => throw new ArgumentOutOfRangeException(nameof(alias))
         };
+    }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Number(int value) =>
-        InputExpression.Number(new BigRational(value), Source);
+    private static InputExpression Number(int value)
+    {
+        return InputExpression.Number(new BigRational(value), Source);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
 
-    private static InputExpression Power(InputExpression basis, int exponent) =>
-        InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    private static InputExpression Power(InputExpression basis, int exponent)
+    {
+        return InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    }
 
-    private static InputExpression Sin(InputExpression argument) => Function("sin", argument);
+    private static InputExpression Sin(InputExpression argument)
+    {
+        return Function("sin", argument);
+    }
 
-    private static InputExpression Cos(InputExpression argument) => Function("cos", argument);
+    private static InputExpression Cos(InputExpression argument)
+    {
+        return Function("cos", argument);
+    }
 
-    private static InputExpression Function(string name, InputExpression argument) =>
-        InputExpression.Function(name, [argument], Source);
+    private static InputExpression Function(string name, InputExpression argument)
+    {
+        return InputExpression.Function(name, [argument], Source);
+    }
 }

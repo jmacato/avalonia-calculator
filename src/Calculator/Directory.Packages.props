@@ -6,16 +6,8 @@
 
   <ItemGroup>
     <PackageVersion Include="Avalonia" Version="9999.0.0-localbuild" />
-    <PackageVersion Include="Avalonia.Controls.ColorPicker" Version="9999.0.0-localbuild" />
-    <PackageVersion Include="Avalonia.Controls.DataGrid" Version="12.1.0" />
-    <PackageVersion Include="Avalonia.Desktop" Version="9999.0.0-localbuild" />
     <PackageVersion Include="Avalonia.Skia" Version="9999.0.0-localbuild" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageVersion Include="MicroCom.CodeGenerator.MSBuild" Version="0.11.6" />
     <PackageVersion Include="MicroCom.Runtime" Version="0.11.6" />
-    <PackageVersion Include="Serilog" Version="4.4.0" />
-    <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageVersion Include="SkiaSharp" Version="4.150.1" />
-    <PackageVersion Include="SkiaSharp.Skottie" Version="4.150.1" />
   </ItemGroup>
 </Project>

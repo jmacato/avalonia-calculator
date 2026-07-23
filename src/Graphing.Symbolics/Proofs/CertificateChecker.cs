@@ -16,7 +16,11 @@ internal static class CertificateChecker
         }
     }
 
-    internal static bool Check<T>(AnalysisRequest request, SemanticExpression expression, ProofOutcome<T> outcome, ResourceBudget budget) => CheckCore(request, expression, outcome, budget, projectSource: true);
+    internal static bool Check<T>(AnalysisRequest request, SemanticExpression expression, ProofOutcome<T> outcome, ResourceBudget budget)
+    {
+        return CheckCore(request, expression, outcome, budget, projectSource: true);
+    }
+
     private static bool CheckCore<T>(AnalysisRequest request, SemanticExpression expression, ProofOutcome<T> outcome, ResourceBudget budget, bool projectSource)
     {
         if (outcome.State == ProofState.Unknown)
@@ -165,22 +169,34 @@ internal static class CertificateChecker
         return string.Equals(ClaimCanonical.ForObject(expected), claim, StringComparison.Ordinal);
     }
 
-    private static bool HasValidRationalEnvelope(AnalysisRequest request, SemanticExpression expression, RationalFunctionProofCertificate certificate, string claim) => certificate.Feature == certificate.ProvenFeature && request.Features.HasFlag(certificate.Feature) && string.Equals(certificate.Subject, expression.Value.Canonical, StringComparison.Ordinal) && string.Equals(certificate.SubjectCanonical, expression.Value.Canonical, StringComparison.Ordinal) && string.Equals(certificate.Claim, claim, StringComparison.Ordinal) && string.Equals(certificate.ClaimCanonical, claim, StringComparison.Ordinal);
-    private static bool RuleMatchesFeature(AnalysisFeatures feature, string rule) => feature switch
+    private static bool HasValidRationalEnvelope(AnalysisRequest request, SemanticExpression expression, RationalFunctionProofCertificate certificate, string claim)
     {
-        AnalysisFeatures.Zeros => rule == "rational-zero-cell-decomposition",
-        AnalysisFeatures.YIntercept => rule == "rational-origin-substitution",
-        AnalysisFeatures.Parity => rule == "symmetric-domain-rational-identity",
-        AnalysisFeatures.Range => rule == "certified-rational-range-projection",
-        AnalysisFeatures.Minima or AnalysisFeatures.Maxima => rule == "derivative-sign-cell-classification",
-        AnalysisFeatures.InflectionPoints => rule == "two-sided-second-derivative-sign-change",
-        AnalysisFeatures.Monotonicity => rule == "maximal-domain-derivative-sign-cells",
-        AnalysisFeatures.VerticalAsymptotes => rule == "reduced-denominator-poles",
-        AnalysisFeatures.HorizontalAsymptotes => rule == "rational-degree-limit",
-        AnalysisFeatures.ObliqueAsymptotes => rule == "rational-polynomial-division-limit",
-        AnalysisFeatures.Period => rule == "nonconstant-rational-functions-have-no-real-period",
-        _ => false
-    };
+        return certificate.Feature == certificate.ProvenFeature && request.Features.HasFlag(certificate.Feature) &&
+               string.Equals(certificate.Subject, expression.Value.Canonical, StringComparison.Ordinal) &&
+               string.Equals(certificate.SubjectCanonical, expression.Value.Canonical, StringComparison.Ordinal) &&
+               string.Equals(certificate.Claim, claim, StringComparison.Ordinal) &&
+               string.Equals(certificate.ClaimCanonical, claim, StringComparison.Ordinal);
+    }
+
+    private static bool RuleMatchesFeature(AnalysisFeatures feature, string rule)
+    {
+        return feature switch
+        {
+            AnalysisFeatures.Zeros => rule == "rational-zero-cell-decomposition",
+            AnalysisFeatures.YIntercept => rule == "rational-origin-substitution",
+            AnalysisFeatures.Parity => rule == "symmetric-domain-rational-identity",
+            AnalysisFeatures.Range => rule == "certified-rational-range-projection",
+            AnalysisFeatures.Minima or AnalysisFeatures.Maxima => rule == "derivative-sign-cell-classification",
+            AnalysisFeatures.InflectionPoints => rule == "two-sided-second-derivative-sign-change",
+            AnalysisFeatures.Monotonicity => rule == "maximal-domain-derivative-sign-cells",
+            AnalysisFeatures.VerticalAsymptotes => rule == "reduced-denominator-poles",
+            AnalysisFeatures.HorizontalAsymptotes => rule == "rational-degree-limit",
+            AnalysisFeatures.ObliqueAsymptotes => rule == "rational-polynomial-division-limit",
+            AnalysisFeatures.Period => rule == "nonconstant-rational-functions-have-no-real-period",
+            _ => false
+        };
+    }
+
     private static bool SamePolynomials(ImmutableArray<UnivariatePolynomial> left, ImmutableArray<UnivariatePolynomial> right)
     {
         if (left.Length != right.Length)

@@ -1,18 +1,11 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Runtime.InteropServices;
-
 namespace CalcEngine;
 
-public class CBinaryCommand : IBinaryCommand
+public class CBinaryCommand(int command) : IBinaryCommand
 {
-    int m_command;
-
-    public CBinaryCommand(int command)
-    {
-        m_command = command;
-    }
+    int m_command = command;
 
     public void SetCommand(int command)
     {

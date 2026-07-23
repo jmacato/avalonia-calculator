@@ -172,33 +172,39 @@ public sealed class ExactCoefficientCompatibilityFormatterTests
         Assert.Equal(expectedTooComplex, result.TooComplexFeatures);
     }
 
-    private static string Field(GraphFunctionAnalysisData result, string field) => field switch
+    private static string Field(GraphFunctionAnalysisData result, string field)
     {
-        "Domain" => result.Domain,
-        "Range" => result.Range,
-        "Zeros" => result.Zeros,
-        "YIntercept" => result.YIntercept,
-        "Minima" => string.Join("; ", result.Minima),
-        "Maxima" => string.Join("; ", result.Maxima),
-        "InflectionPoints" => string.Join("; ", result.InflectionPoints),
-        "VerticalAsymptotes" => string.Join("; ", result.VerticalAsymptotes),
-        "HorizontalAsymptotes" => string.Join("; ", result.HorizontalAsymptotes),
-        "Oblique" => string.Join("; ", result.ObliqueAsymptotes),
-        "Period" => result.PeriodicityExpression,
-        "Monotonicity" => string.Join(
-            "; ",
-            result.MonotoneIntervals.Select(pair =>
-                    $"{(FunctionMonotonicityType)pair.Value}: {pair.Key}")
-                .Order(StringComparer.Ordinal)),
-        _ => throw new ArgumentOutOfRangeException(nameof(field), field, null)
-    };
+        return field switch
+        {
+            "Domain" => result.Domain,
+            "Range" => result.Range,
+            "Zeros" => result.Zeros,
+            "YIntercept" => result.YIntercept,
+            "Minima" => string.Join("; ", result.Minima),
+            "Maxima" => string.Join("; ", result.Maxima),
+            "InflectionPoints" => string.Join("; ", result.InflectionPoints),
+            "VerticalAsymptotes" => string.Join("; ", result.VerticalAsymptotes),
+            "HorizontalAsymptotes" => string.Join("; ", result.HorizontalAsymptotes),
+            "Oblique" => string.Join("; ", result.ObliqueAsymptotes),
+            "Period" => result.PeriodicityExpression,
+            "Monotonicity" => string.Join(
+                "; ",
+                result.MonotoneIntervals.Select(pair =>
+                        $"{(FunctionMonotonicityType)pair.Value}: {pair.Key}")
+                    .Order(StringComparer.Ordinal)),
+            _ => throw new ArgumentOutOfRangeException(nameof(field), field, null)
+        };
+    }
 
-    private static int FeatureBit(AnalysisType type) => type switch
+    private static int FeatureBit(AnalysisType type)
     {
-        AnalysisType.InflectionPoints => 256,
-        AnalysisType.VerticalAsymptotes => 512,
-        _ => throw new ArgumentOutOfRangeException(nameof(type))
-    };
+        return type switch
+        {
+            AnalysisType.InflectionPoints => 256,
+            AnalysisType.VerticalAsymptotes => 512,
+            _ => throw new ArgumentOutOfRangeException(nameof(type))
+        };
+    }
 
     private static GraphFunctionAnalysisData Analyze(string formula)
     {

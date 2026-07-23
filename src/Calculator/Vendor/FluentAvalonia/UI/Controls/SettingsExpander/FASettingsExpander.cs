@@ -277,8 +277,10 @@ public sealed partial class FASettingsExpander : HeaderedItemsControl, ICommandS
         }
     }
 
-    void ICommandSource.CanExecuteChanged(object? sender, EventArgs e) =>
-       CanExecuteChanged(sender, e);
+    void ICommandSource.CanExecuteChanged(object? sender, EventArgs e)
+    {
+        CanExecuteChanged(sender, e);
+    }
 
     private void SetIcons()
     {

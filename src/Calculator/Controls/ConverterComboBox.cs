@@ -4,20 +4,16 @@ using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
-using Avalonia.Controls.Platform;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Primitives.PopupPositioning;
 using Avalonia.Controls.Presenters;
-using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using FluentAvalonia.Core;
-using Serilog;
 
 namespace CalculatorApp.Controls;
 /// <summary>
@@ -81,7 +77,7 @@ public sealed class ConverterComboBox : ComboBox, IDisposable
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
-        System.ArgumentNullException.ThrowIfNull(e);
+        ArgumentNullException.ThrowIfNull(e);
         DetachPopupHandlers();
         base.OnApplyTemplate(e);
         _popup = e.NameScope.Get<Popup>("PART_Popup");
@@ -101,7 +97,7 @@ public sealed class ConverterComboBox : ComboBox, IDisposable
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
-        System.ArgumentNullException.ThrowIfNull(e);
+        ArgumentNullException.ThrowIfNull(e);
         if (!IsDropDownOpen)
         {
             SetInputMode(e.Pointer.Type == PointerType.Touch);
@@ -122,14 +118,14 @@ public sealed class ConverterComboBox : ComboBox, IDisposable
 
     protected override void PrepareContainerForItemOverride(Control container, object? item, int index)
     {
-        System.ArgumentNullException.ThrowIfNull(container);
+        ArgumentNullException.ThrowIfNull(container);
         base.PrepareContainerForItemOverride(container, item, index);
         container.Classes.Set("touchInput", _isTouchInput);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
-        System.ArgumentNullException.ThrowIfNull(change);
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
         if (change.Property == IsDropDownOpenProperty)
         {
@@ -166,7 +162,7 @@ public sealed class ConverterComboBox : ComboBox, IDisposable
     /// </summary>
     public override bool UpdateSelectionFromEvent(Control container, RoutedEventArgs eventArgs)
     {
-        System.ArgumentNullException.ThrowIfNull(eventArgs);
+        ArgumentNullException.ThrowIfNull(eventArgs);
         if (eventArgs.Handled)
         {
             return false;
@@ -423,7 +419,7 @@ public sealed class ConverterComboBox : ComboBox, IDisposable
         _popup.HorizontalOffset = (desiredPopupX - basePopupScreenX) / availableBounds.Scale;
         _popup.VerticalOffset = (desiredPopupY - basePopupScreenY) / availableBounds.Scale;
 #if DEBUG
-        Log.Information(
+        CalculatorLog.Information(
             "Converter popup layout: selected={SelectedIndex}, items={ItemCount}, touch={IsTouch}, carousel={UsesCarousel}, combo=({ComboX},{ComboY},{ComboWidth},{ComboHeight}), popup=({PopupX},{PopupY},{PopupWidth},{PopupHeight}), first={FirstItemOffset}, itemHeight={ItemHeight}, locked={IsViewportLocked}",
             SelectedIndex,
             ItemCount,
@@ -477,7 +473,12 @@ public sealed class ConverterComboBox : ComboBox, IDisposable
         return result;
     }
 
-    private ConverterCarouselPanel? GetCarouselPanel() => _itemsPresenter?.Panel as ConverterCarouselPanel ?? _scrollViewer?.GetVisualDescendants().OfType<ConverterCarouselPanel>().FirstOrDefault();
+    private ConverterCarouselPanel? GetCarouselPanel()
+    {
+        return _itemsPresenter?.Panel as ConverterCarouselPanel ?? _scrollViewer?.GetVisualDescendants()
+            .OfType<ConverterCarouselPanel>().FirstOrDefault();
+    }
+
     private ConverterComboBoxPopupAvailableBounds GetPopupAvailableBounds(TopLevel ownerTopLevel)
     {
         double scale = ownerTopLevel.RenderScaling;
@@ -855,7 +856,7 @@ public sealed class ConverterComboBox : ComboBox, IDisposable
         var cancellation = BeginAnimation();
         try
         {
-            await Task.WhenAll(RunCancellableAsync(CreateDoubleAnimation(SplitClipScaleYProperty, initialClipScale, finalClipScale, TimeSpan.FromMilliseconds(OpenDurationMilliseconds), new SplineEasing(0, 0, 0, 1)), popupBorder, cancellation.Token), RunCancellableAsync(CreateDoubleAnimation(Visual.OpacityProperty, 1, 0.5, TimeSpan.FromMilliseconds(OpacityChangeDurationMilliseconds), new LinearEasing()), faceplate, cancellation.Token)).ConfigureAwait(true);
+            await Task.WhenAll(RunCancellableAsync(CreateDoubleAnimation(SplitClipScaleYProperty, initialClipScale, finalClipScale, TimeSpan.FromMilliseconds(OpenDurationMilliseconds), new SplineEasing(0, 0, 0, 1)), popupBorder, cancellation.Token), RunCancellableAsync(CreateDoubleAnimation(OpacityProperty, 1, 0.5, TimeSpan.FromMilliseconds(OpacityChangeDurationMilliseconds), new LinearEasing()), faceplate, cancellation.Token)).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
@@ -889,7 +890,7 @@ public sealed class ConverterComboBox : ComboBox, IDisposable
         double opacityChangeCue = OpacityChangeBeginMilliseconds / CloseDurationMilliseconds;
         try
         {
-            await Task.WhenAll(RunCancellableAsync(CreateDoubleAnimation(SplitClipScaleYProperty, initialClipScale, finalClipScale, TimeSpan.FromMilliseconds(CloseDurationMilliseconds), new SplineEasing(0, 0, 0, 1)), popupBorder, cancellation.Token), RunCancellableAsync(CreateThreeKeyFrameAnimation(Visual.OpacityProperty, 1, 1, 0, opacityChangeCue, TimeSpan.FromMilliseconds(CloseDurationMilliseconds)), popupBorder, cancellation.Token), RunCancellableAsync(CreateThreeKeyFrameAnimation(Visual.OpacityProperty, 0, 0, 1, opacityChangeCue, TimeSpan.FromMilliseconds(CloseDurationMilliseconds)), faceplate, cancellation.Token)).ConfigureAwait(true);
+            await Task.WhenAll(RunCancellableAsync(CreateDoubleAnimation(SplitClipScaleYProperty, initialClipScale, finalClipScale, TimeSpan.FromMilliseconds(CloseDurationMilliseconds), new SplineEasing(0, 0, 0, 1)), popupBorder, cancellation.Token), RunCancellableAsync(CreateThreeKeyFrameAnimation(OpacityProperty, 1, 1, 0, opacityChangeCue, TimeSpan.FromMilliseconds(CloseDurationMilliseconds)), popupBorder, cancellation.Token), RunCancellableAsync(CreateThreeKeyFrameAnimation(OpacityProperty, 0, 0, 1, opacityChangeCue, TimeSpan.FromMilliseconds(CloseDurationMilliseconds)), faceplate, cancellation.Token)).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
@@ -925,7 +926,11 @@ public sealed class ConverterComboBox : ComboBox, IDisposable
         }
     }
 
-    private static double GetFullClipScale(double openedLength, double offsetFromCenter) => (0.5 + Math.Abs(offsetFromCenter / openedLength)) * 2;
+    private static double GetFullClipScale(double openedLength, double offsetFromCenter)
+    {
+        return (0.5 + Math.Abs(offsetFromCenter / openedLength)) * 2;
+    }
+
     private static double GetClosedClipScale(double openedLength, double offsetFromCenter, double closedRatio)
     {
         double clipLength = openedLength * closedRatio;
@@ -939,65 +944,42 @@ public sealed class ConverterComboBox : ComboBox, IDisposable
         return pixelsOff / openedLength * 2 + closedRatio;
     }
 
-    private static Animation CreateDoubleAnimation(AvaloniaProperty property, double from, double to, TimeSpan duration, Easing easing) => new()
+    private static Animation CreateDoubleAnimation(AvaloniaProperty property, double from, double to, TimeSpan duration, Easing easing)
     {
-        Duration = duration,
-        Easing = easing,
-        FillMode = FillMode.Forward,
-        Children =
+        return new Animation
         {
-            new KeyFrame
+            Duration = duration,
+            Easing = easing,
+            FillMode = FillMode.Forward,
+            Children =
             {
-                Cue = new Cue(0),
-                Setters =
-                {
-                    new Setter(property, from)
-                }
-            },
-            new KeyFrame
-            {
-                Cue = new Cue(1),
-                Setters =
-                {
-                    new Setter(property, to)
-                }
+                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(property, from) } },
+                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(property, to) } }
             }
-        }
-    };
-    private static Animation CreateThreeKeyFrameAnimation(AvaloniaProperty property, double from, double middle, double to, double middleCue, TimeSpan duration) => new()
+        };
+    }
+
+    private static Animation CreateThreeKeyFrameAnimation(AvaloniaProperty property, double from, double middle, double to, double middleCue, TimeSpan duration)
     {
-        Duration = duration,
-        Easing = new LinearEasing(),
-        FillMode = FillMode.Forward,
-        Children =
+        return new Animation
         {
-            new KeyFrame
+            Duration = duration,
+            Easing = new LinearEasing(),
+            FillMode = FillMode.Forward,
+            Children =
             {
-                Cue = new Cue(0),
-                Setters =
-                {
-                    new Setter(property, from)
-                }
-            },
-            new KeyFrame
-            {
-                Cue = new Cue(middleCue),
-                Setters =
-                {
-                    new Setter(property, middle)
-                }
-            },
-            new KeyFrame
-            {
-                Cue = new Cue(1),
-                Setters =
-                {
-                    new Setter(property, to)
-                }
+                new KeyFrame { Cue = new Cue(0), Setters = { new Setter(property, from) } },
+                new KeyFrame { Cue = new Cue(middleCue), Setters = { new Setter(property, middle) } },
+                new KeyFrame { Cue = new Cue(1), Setters = { new Setter(property, to) } }
             }
-        }
-    };
-    private static Task RunCancellableAsync(Animation animation, Animatable target, CancellationToken cancellationToken) => animation.RunAsync(target, cancellationToken);
+        };
+    }
+
+    private static Task RunCancellableAsync(Animation animation, Animatable target, CancellationToken cancellationToken)
+    {
+        return animation.RunAsync(target, cancellationToken);
+    }
+
     private static PixelPoint GetScreenPosition(Visual visual)
     {
         TopLevel topLevel = TopLevel.GetTopLevel(visual) ?? throw new InvalidOperationException("The animation target is not attached to a TopLevel.");
@@ -1049,7 +1031,11 @@ public sealed class ConverterComboBox : ComboBox, IDisposable
         _animationCancellation = null;
     }
 
-    private bool IsCurrentOpenRequest(int version) => version == _lifecycleVersion && IsDropDownOpen && IsPopupOpen;
+    private bool IsCurrentOpenRequest(int version)
+    {
+        return version == _lifecycleVersion && IsDropDownOpen && IsPopupOpen;
+    }
+
     private void ClosePhysicalPopup(int version)
     {
         if (version == _lifecycleVersion && !IsDropDownOpen)
@@ -1113,7 +1099,11 @@ public sealed class ConverterComboBox : ComboBox, IDisposable
         SetCurrentValue(IsDropDownOpenProperty, false);
     }
 
-    private void OnDismissalWindowDeactivated(object? sender, EventArgs e) => SetCurrentValue(IsDropDownOpenProperty, false);
+    private void OnDismissalWindowDeactivated(object? sender, EventArgs e)
+    {
+        SetCurrentValue(IsDropDownOpenProperty, false);
+    }
+
     private void DetachPopupHandlers()
     {
         if (_popup is not null)

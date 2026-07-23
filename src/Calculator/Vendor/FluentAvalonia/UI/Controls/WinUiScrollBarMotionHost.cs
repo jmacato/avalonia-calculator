@@ -188,7 +188,7 @@ public sealed class WinUiScrollBarMotionHost : Grid
         _motionStarted = Stopwatch.GetTimestamp();
         _fromThickness = Orientation == Orientation.Vertical ? _thumb?.Width ?? 8 : _thumb?.Height ?? 8;
         _fromOffset = GetOffset();
-        _fromOpacity = _track?.Opacity ?? (_buttons.FirstOrDefault()?.Opacity ?? 0);
+        _fromOpacity = _track?.Opacity ?? _buttons.FirstOrDefault()?.Opacity ?? 0;
     }
 
     private void ApplyTerminalState(bool expanded)
@@ -269,8 +269,11 @@ public sealed class WinUiScrollBarMotionHost : Grid
     private static double ScrollBarSpline(double progress)
     {
         double parameter = Math.Cbrt(progress);
-        return (3 * parameter * parameter) - (2 * progress);
+        return 3 * parameter * parameter - 2 * progress;
     }
 
-    private static double Lerp(double from, double to, double progress) => from + ((to - from) * progress);
+    private static double Lerp(double from, double to, double progress)
+    {
+        return from + (to - from) * progress;
+    }
 }

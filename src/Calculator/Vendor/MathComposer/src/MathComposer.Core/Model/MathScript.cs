@@ -1,7 +1,3 @@
-using System.Buffers;
-using System.Collections.Immutable;
-using System.Text;
-
 namespace MathComposer.Core;
 
 /// <summary>A base with an optional subscript and superscript.</summary>

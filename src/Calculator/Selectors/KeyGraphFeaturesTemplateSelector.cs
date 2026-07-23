@@ -33,5 +33,8 @@ public sealed class KeyGraphFeaturesTemplateSelector : IDataTemplate
         return template.Build(parameter);
     }
 
-    public bool Match(object? data) => data is KeyGraphFeaturesItem;
+    public bool Match(object? data)
+    {
+        return data is KeyGraphFeaturesItem;
+    }
 }

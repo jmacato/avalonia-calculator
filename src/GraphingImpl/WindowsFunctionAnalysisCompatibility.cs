@@ -289,7 +289,14 @@ internal static class WindowsFunctionAnalysisCompatibility
         return IsPiMultiple(tangent.NormalizedFrequency, BigRational.One) && (tangent.NormalizedPhase.IsZero || IsPiMultiple(tangent.NormalizedPhase, new BigRational(1, 2)) || IsPiMultiple(tangent.NormalizedPhase, new BigRational(1, 4)));
     }
 
-    private static bool IsStableDirectNegatedDoubleTangentParityOmission(WindowsFunctionAnalysisCompatibilityCapturedAffineTangent tangent) => tangent.SourceForm == WindowsFunctionAnalysisCompatibilityCapturedTangentSourceForm.Direct && IsRational(tangent.OriginalAmplitude, BigRational.MinusOne) && IsRational(tangent.OriginalFrequency, new BigRational(2)) && IsRational(tangent.OriginalPhase, BigRational.MinusOne);
+    private static bool IsStableDirectNegatedDoubleTangentParityOmission(WindowsFunctionAnalysisCompatibilityCapturedAffineTangent tangent)
+    {
+        return tangent.SourceForm == WindowsFunctionAnalysisCompatibilityCapturedTangentSourceForm.Direct &&
+               IsRational(tangent.OriginalAmplitude, BigRational.MinusOne) &&
+               IsRational(tangent.OriginalFrequency, new BigRational(2)) &&
+               IsRational(tangent.OriginalPhase, BigRational.MinusOne);
+    }
+
     private static void ApplyCapturedNonparallelAffineMinMax(ref CompatibilityFeatureFlag suppressed, ref CompatibilityFeatureFlag tooComplex)
     {
         // The settled 84-row matrix covers min/max, both operand orders,
@@ -610,11 +617,36 @@ internal static class WindowsFunctionAnalysisCompatibility
         return !frequency.IsZero;
     }
 
-    private static bool IsCapturedTangentAmplitude(ExactScalar amplitude) => IsRational(amplitude, BigRational.One) || IsRational(amplitude, BigRational.MinusOne) || IsRational(amplitude, new BigRational(2)) || IsPiMultiple(amplitude, BigRational.One);
-    private static bool IsCapturedTangentFrequency(ExactScalar frequency) => IsRational(frequency, BigRational.One) || IsRational(frequency, BigRational.MinusOne) || IsRational(frequency, new BigRational(2)) || IsRational(frequency, new BigRational(-2)) || IsRational(frequency, new BigRational(1, 2)) || IsPiMultiple(frequency, BigRational.One);
-    private static bool IsCapturedTangentPhase(ExactScalar phase) => phase.IsZero || IsRational(phase, BigRational.One) || IsRational(phase, BigRational.MinusOne) || IsPiMultiple(phase, new BigRational(1, 2)) || IsPiMultiple(phase, new BigRational(1, 4));
-    private static bool IsRational(ExactScalar scalar, BigRational value) => scalar.RationalValue is { } rational && rational == value;
-    private static bool IsPiMultiple(ExactScalar scalar, BigRational coefficient) => scalar.Value is AffinePiReal { PiCoefficient: var actualCoefficient, Constant.IsZero: true } && actualCoefficient == coefficient;
+    private static bool IsCapturedTangentAmplitude(ExactScalar amplitude)
+    {
+        return IsRational(amplitude, BigRational.One) || IsRational(amplitude, BigRational.MinusOne) ||
+               IsRational(amplitude, new BigRational(2)) || IsPiMultiple(amplitude, BigRational.One);
+    }
+
+    private static bool IsCapturedTangentFrequency(ExactScalar frequency)
+    {
+        return IsRational(frequency, BigRational.One) || IsRational(frequency, BigRational.MinusOne) ||
+               IsRational(frequency, new BigRational(2)) || IsRational(frequency, new BigRational(-2)) ||
+               IsRational(frequency, new BigRational(1, 2)) || IsPiMultiple(frequency, BigRational.One);
+    }
+
+    private static bool IsCapturedTangentPhase(ExactScalar phase)
+    {
+        return phase.IsZero || IsRational(phase, BigRational.One) || IsRational(phase, BigRational.MinusOne) ||
+               IsPiMultiple(phase, new BigRational(1, 2)) || IsPiMultiple(phase, new BigRational(1, 4));
+    }
+
+    private static bool IsRational(ExactScalar scalar, BigRational value)
+    {
+        return scalar.RationalValue is { } rational && rational == value;
+    }
+
+    private static bool IsPiMultiple(ExactScalar scalar, BigRational coefficient)
+    {
+        return scalar.Value is AffinePiReal { PiCoefficient: var actualCoefficient, Constant.IsZero: true } &&
+               actualCoefficient == coefficient;
+    }
+
     private static bool HasConsistentCapturedTangentCertificates(AnalysisReport report, string expectedPattern, bool usesExactCoefficientCertificate)
     {
         bool found = false;
@@ -972,7 +1004,11 @@ internal static class WindowsFunctionAnalysisCompatibility
         return consistent && merged is not null;
     }
 
-    private static bool IsCapturedNonparallelAffineMinMax(AffineMinMaxProofCertificate certificate) => certificate.FirstSlope != certificate.SecondSlope;
+    private static bool IsCapturedNonparallelAffineMinMax(AffineMinMaxProofCertificate certificate)
+    {
+        return certificate.FirstSlope != certificate.SecondSlope;
+    }
+
     private static bool TryGetElementaryPrimitive(AnalysisReport report, out string function, out bool centered)
     {
         TheoremProofCertificate? merged = null;
@@ -1301,8 +1337,22 @@ internal static class WindowsFunctionAnalysisCompatibility
         consistent &= certificate.Parameters.SequenceEqual(candidate.Parameters);
     }
 
-    private static bool UsesTheorem(AnalysisReport report, TheoremRule theorem) => IsTheorem(report.Domain, theorem) || IsTheorem(report.Range, theorem) || IsTheorem(report.Parity, theorem) || IsTheorem(report.Zeros, theorem) || IsTheorem(report.YIntercept, theorem) || IsTheorem(report.Minima, theorem) || IsTheorem(report.Maxima, theorem) || IsTheorem(report.InflectionPoints, theorem) || IsTheorem(report.VerticalAsymptotes, theorem) || IsTheorem(report.HorizontalAsymptotes, theorem) || IsTheorem(report.ObliqueAsymptotes, theorem) || IsTheorem(report.Monotonicity, theorem) || IsTheorem(report.Period, theorem);
-    private static bool IsTheorem<T>(ProofOutcome<T> outcome, TheoremRule theorem) => outcome.Certificate is TheoremProofCertificate { Theorem: var actual } && actual == theorem;
+    private static bool UsesTheorem(AnalysisReport report, TheoremRule theorem)
+    {
+        return IsTheorem(report.Domain, theorem) || IsTheorem(report.Range, theorem) ||
+               IsTheorem(report.Parity, theorem) || IsTheorem(report.Zeros, theorem) ||
+               IsTheorem(report.YIntercept, theorem) || IsTheorem(report.Minima, theorem) ||
+               IsTheorem(report.Maxima, theorem) || IsTheorem(report.InflectionPoints, theorem) ||
+               IsTheorem(report.VerticalAsymptotes, theorem) || IsTheorem(report.HorizontalAsymptotes, theorem) ||
+               IsTheorem(report.ObliqueAsymptotes, theorem) || IsTheorem(report.Monotonicity, theorem) ||
+               IsTheorem(report.Period, theorem);
+    }
+
+    private static bool IsTheorem<T>(ProofOutcome<T> outcome, TheoremRule theorem)
+    {
+        return outcome.Certificate is TheoremProofCertificate { Theorem: var actual } && actual == theorem;
+    }
+
     private static bool IsProvedZeroValued(AnalysisReport report)
     {
         if (report.Parity.State != ProofState.Proved)

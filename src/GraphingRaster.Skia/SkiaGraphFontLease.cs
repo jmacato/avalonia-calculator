@@ -2,17 +2,14 @@ using SkiaSharp;
 
 namespace GraphingRaster.Skia;
 
-internal readonly struct SkiaGraphFontLease : IDisposable
+internal readonly struct SkiaGraphFontLease(SkiaGraphFontCacheEntry entry, bool owns) : IDisposable
 {
-    private readonly SkiaGraphFontCacheEntry? _owned;
+    private readonly SkiaGraphFontCacheEntry? _owned = owns ? entry : null;
 
-    public SkiaGraphFontLease(SkiaGraphFontCacheEntry entry, bool owns)
+    public SKFont Font { get; } = entry.Font;
+
+    public void Dispose()
     {
-        Font = entry.Font;
-        _owned = owns ? entry : null;
+        _owned?.Dispose();
     }
-
-    public SKFont Font { get; }
-
-    public void Dispose() => _owned?.Dispose();
 }

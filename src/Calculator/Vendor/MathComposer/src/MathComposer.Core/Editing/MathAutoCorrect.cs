@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Globalization;
 using System.Text;
 
@@ -304,8 +303,10 @@ internal static class MathAutoCorrect
         "∣", "∤", "≔", "≕"
     ];
 
-    public static bool TryGetSymbol(string controlWord, out string symbol) =>
-        Symbols.TryGetValue(controlWord, out symbol!);
+    public static bool TryGetSymbol(string controlWord, out string symbol)
+    {
+        return Symbols.TryGetValue(controlWord, out symbol!);
+    }
 
     public static string Substitute(string source, bool completeTrailingWord)
     {
@@ -453,6 +454,8 @@ internal static class MathAutoCorrect
         return true;
     }
 
-    private static bool IsAsciiLetter(char value) =>
-        value is >= 'A' and <= 'Z' or >= 'a' and <= 'z';
+    private static bool IsAsciiLetter(char value)
+    {
+        return value is >= 'A' and <= 'Z' or >= 'a' and <= 'z';
+    }
 }

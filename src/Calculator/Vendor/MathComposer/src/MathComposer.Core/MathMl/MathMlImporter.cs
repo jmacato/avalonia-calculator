@@ -5,7 +5,7 @@ using System.Xml.Linq;
 
 namespace MathComposer.Core;
 
-internal sealed class MathMlImporter
+internal sealed class MathMlImporter(string source)
 {
     private const string MathMlNamespace = MathMlSerializer.NamespaceUri;
 
@@ -54,15 +54,8 @@ internal sealed class MathMlImporter
             ["annotation"] = Set("encoding")
         };
 
-    private readonly string _source;
     private readonly List<MathDiagnostic> _diagnostics = [];
-    private readonly int[] _lineStarts;
-
-    public MathMlImporter(string source)
-    {
-        _source = source;
-        _lineStarts = FindLineStarts(source);
-    }
+    private readonly int[] _lineStarts = FindLineStarts(source);
 
     public MathParseResult Parse()
     {
@@ -80,7 +73,7 @@ internal sealed class MathMlImporter
         };
 
         XDocument xmlDocument;
-        using (var stringReader = new StringReader(_source))
+        using (var stringReader = new StringReader(source))
         using (XmlReader reader = XmlReader.Create(stringReader, settings))
         {
             xmlDocument = XDocument.Load(
@@ -103,7 +96,7 @@ internal sealed class MathMlImporter
         {
             return new MathParseResult(
                 new MathDocument(new MathRow([
-                    CreateError(_source, "MC3101", "The XML document has no root element.", null)
+                    CreateError(source, "MC3101", "The XML document has no root element.", null)
                 ])),
                 _diagnostics.ToImmutableArray());
         }
@@ -834,14 +827,20 @@ internal sealed class MathMlImporter
             : ConvertContentRow(cell);
     }
 
-    private static MathRow AsRow(MathNode node) =>
-        node as MathRow ?? new MathRow([node]);
+    private static MathRow AsRow(MathNode node)
+    {
+        return node as MathRow ?? new MathRow([node]);
+    }
 
-    private MathError CreateArityError(XElement element, string message) =>
-        CreateElementError(element, "MC3105", message);
+    private MathError CreateArityError(XElement element, string message)
+    {
+        return CreateElementError(element, "MC3105", message);
+    }
 
-    private MathError CreateElementError(XElement element, string code, string message) =>
-        CreateError(element.ToString(SaveOptions.DisableFormatting), code, message, element);
+    private MathError CreateElementError(XElement element, string code, string message)
+    {
+        return CreateError(element.ToString(SaveOptions.DisableFormatting), code, message, element);
+    }
 
     private MathError CreateError(
         string raw,
@@ -886,7 +885,7 @@ internal sealed class MathMlImporter
                 throw new MathImportLimitExceededException(
                 "MC3004",
                 "XML element count exceeds the 50,000-node import limit.",
-                GetSpan(element) ?? new MathSourceSpan(0, _source.Length));
+                GetSpan(element) ?? new MathSourceSpan(0, source.Length));
             }
 
             if (depth > MathImportLimits.MaximumStructuralDepth)
@@ -894,7 +893,7 @@ internal sealed class MathMlImporter
                 throw new MathImportLimitExceededException(
                 "MC3003",
                 "XML depth exceeds the 256-level import limit.",
-                GetSpan(element) ?? new MathSourceSpan(0, _source.Length));
+                GetSpan(element) ?? new MathSourceSpan(0, source.Length));
             }
 
             foreach (XAttribute attribute in element.Attributes())
@@ -928,7 +927,7 @@ internal sealed class MathMlImporter
                 throw new MathImportLimitExceededException(
                 "MC3004",
                 "Produced document exceeds the 50,000-node import limit.",
-                new MathSourceSpan(0, _source.Length));
+                new MathSourceSpan(0, source.Length));
             }
 
             if (depth > MathImportLimits.MaximumStructuralDepth)
@@ -936,7 +935,7 @@ internal sealed class MathMlImporter
                 throw new MathImportLimitExceededException(
                 "MC3003",
                 "Produced document depth exceeds the 256-level import limit.",
-                new MathSourceSpan(0, _source.Length));
+                new MathSourceSpan(0, source.Length));
             }
 
             foreach (MathNode child in GetChildren(node))
@@ -946,36 +945,39 @@ internal sealed class MathMlImporter
         }
     }
 
-    private static IEnumerable<MathNode> GetChildren(MathNode node) => node switch
+    private static IEnumerable<MathNode> GetChildren(MathNode node)
     {
-        MathRow row => row.Children,
-        MathFraction fraction => [fraction.Numerator, fraction.Denominator],
-        MathRadical { Degree: not null } radical => [radical.Radicand, radical.Degree],
-        MathRadical radical => [radical.Radicand],
-        MathFunction function => function.Arguments,
-        MathScript { Subscript: not null, Superscript: not null } script =>
-            [script.Base, script.Subscript, script.Superscript],
-        MathScript { Subscript: not null } script => [script.Base, script.Subscript],
-        MathScript script => [script.Base, script.Superscript!],
-        MathUnderOver { Below: not null, Above: not null } underOver =>
-            [underOver.Base, underOver.Below, underOver.Above],
-        MathUnderOver { Below: not null } underOver => [underOver.Base, underOver.Below],
-        MathUnderOver { Above: not null } underOver => [underOver.Base, underOver.Above],
-        MathUnderOver underOver => [underOver.Base],
-        MathAccent accent => [accent.Base],
-        MathDelimiter delimiter => [delimiter.Body],
-        MathTable table => table.Rows.SelectMany(static row => row),
-        _ => []
-    };
+        return node switch
+        {
+            MathRow row => row.Children,
+            MathFraction fraction => [fraction.Numerator, fraction.Denominator],
+            MathRadical { Degree: not null } radical => [radical.Radicand, radical.Degree],
+            MathRadical radical => [radical.Radicand],
+            MathFunction function => function.Arguments,
+            MathScript { Subscript: not null, Superscript: not null } script =>
+                [script.Base, script.Subscript, script.Superscript],
+            MathScript { Subscript: not null } script => [script.Base, script.Subscript],
+            MathScript script => [script.Base, script.Superscript!],
+            MathUnderOver { Below: not null, Above: not null } underOver =>
+                [underOver.Base, underOver.Below, underOver.Above],
+            MathUnderOver { Below: not null } underOver => [underOver.Base, underOver.Below],
+            MathUnderOver { Above: not null } underOver => [underOver.Base, underOver.Above],
+            MathUnderOver underOver => [underOver.Base],
+            MathAccent accent => [accent.Base],
+            MathDelimiter delimiter => [delimiter.Body],
+            MathTable table => table.Rows.SelectMany(static row => row),
+            _ => []
+        };
+    }
 
-    private void EnsureTokenLimit(string value, XObject source)
+    private void EnsureTokenLimit(string value, XObject source1)
     {
         if (Encoding.UTF8.GetByteCount(value) > MathImportLimits.MaximumTokenUtf8Bytes)
         {
             throw new MathImportLimitExceededException(
             "MC3002",
             "A MathML token exceeds the 16 KiB UTF-8 token limit.",
-            GetSpan(source) ?? new MathSourceSpan(0, _source.Length));
+            GetSpan(source1) ?? new MathSourceSpan(0, source.Length));
         }
     }
 
@@ -1037,9 +1039,12 @@ internal sealed class MathMlImporter
         return UnicodeScalarText.CountScalars(value) == 1 ? value : null;
     }
 
-    private static bool IsDelimiterSymbol(string? value) => value is null or
-        "(" or ")" or "[" or "]" or "{" or "}" or "|" or "‖" or "⌊" or "⌋" or
-        "⌈" or "⌉" or "⟨" or "⟩";
+    private static bool IsDelimiterSymbol(string? value)
+    {
+        return value is null or
+            "(" or ")" or "[" or "]" or "{" or "}" or "|" or "‖" or "⌊" or "⌋" or
+            "⌈" or "⌉" or "⟨" or "⟩";
+    }
 
     private static bool IsNaryBase(MathNode node)
     {
@@ -1090,27 +1095,33 @@ internal sealed class MathMlImporter
         return value is not null;
     }
 
-    private static bool ReadBooleanAttribute(XElement element, string name) =>
-        ((string?)element.Attribute(name))?.Trim() is "true" or "1";
-
-    private static bool IsSupportedNamespace(XElement element) =>
-        element.Name.NamespaceName.Length == 0 ||
-        element.Name.NamespaceName == MathMlNamespace;
-
-    private static bool IsMathMlElement(XElement element, string localName) =>
-        IsSupportedNamespace(element) && element.Name.LocalName == localName;
-
-    private MathSourceSpan? GetSpan(XObject? source)
+    private static bool ReadBooleanAttribute(XElement element, string name)
     {
-        if (source is not IXmlLineInfo lineInfo || !lineInfo.HasLineInfo())
+        return ((string?)element.Attribute(name))?.Trim() is "true" or "1";
+    }
+
+    private static bool IsSupportedNamespace(XElement element)
+    {
+        return element.Name.NamespaceName.Length == 0 ||
+               element.Name.NamespaceName == MathMlNamespace;
+    }
+
+    private static bool IsMathMlElement(XElement element, string localName)
+    {
+        return IsSupportedNamespace(element) && element.Name.LocalName == localName;
+    }
+
+    private MathSourceSpan? GetSpan(XObject? source1)
+    {
+        if (source1 is not IXmlLineInfo lineInfo || !lineInfo.HasLineInfo())
         {
             return null;
         }
 
         int lineIndex = Math.Clamp(lineInfo.LineNumber - 1, 0, _lineStarts.Length - 1);
         int start = _lineStarts[lineIndex] + Math.Max(0, lineInfo.LinePosition - 1);
-        start = Math.Clamp(start, 0, _source.Length);
-        return new MathSourceSpan(start, Math.Min(1, _source.Length - start));
+        start = Math.Clamp(start, 0, source.Length);
+        return new MathSourceSpan(start, Math.Min(1, source.Length - start));
     }
 
     private static int[] FindLineStarts(string source)
@@ -1127,6 +1138,8 @@ internal sealed class MathMlImporter
         return starts.ToArray();
     }
 
-    private static HashSet<string> Set(params string[] names) =>
-        new(names, StringComparer.Ordinal);
+    private static HashSet<string> Set(params string[] names)
+    {
+        return new HashSet<string>(names, StringComparer.Ordinal);
+    }
 }

@@ -1,6 +1,4 @@
-using System.Buffers;
 using System.Collections.Immutable;
-using System.Text;
 
 namespace MathComposer.Core;
 
@@ -52,9 +50,11 @@ public sealed record MathFunction : MathNode
     public ImmutableArray<MathRow> Arguments { get; }
 
     /// <inheritdoc />
-    public bool Equals(MathFunction? other) =>
-        ReferenceEquals(this, other) ||
-        (other is not null && Name == other.Name && Arguments.SequenceEqual(other.Arguments));
+    public bool Equals(MathFunction? other)
+    {
+        return ReferenceEquals(this, other) ||
+               (other is not null && Name == other.Name && Arguments.SequenceEqual(other.Arguments));
+    }
 
     /// <inheritdoc />
     public override int GetHashCode()

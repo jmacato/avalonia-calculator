@@ -820,21 +820,24 @@ public sealed class AffineMinMaxAnalysisTests
         return Outcome<T>(request, semantic, feature).Value!;
     }
 
-    private static string Claim(InputExpression input, AnalysisFeatures feature) => feature switch
+    private static string Claim(InputExpression input, AnalysisFeatures feature)
     {
-        AnalysisFeatures.Domain or AnalysisFeatures.Range or AnalysisFeatures.Zeros =>
-            ClaimFor<RealSet>(input, feature),
-        AnalysisFeatures.Parity => ClaimFor<FunctionParity>(input, feature),
-        AnalysisFeatures.YIntercept => ClaimFor<OptionalValue<ExactReal>>(input, feature),
-        AnalysisFeatures.Minima or AnalysisFeatures.Maxima or AnalysisFeatures.InflectionPoints =>
-            ClaimFor<ImmutableArray<FeaturePoint>>(input, feature),
-        AnalysisFeatures.VerticalAsymptotes or
-        AnalysisFeatures.HorizontalAsymptotes or
-        AnalysisFeatures.ObliqueAsymptotes => ClaimFor<ImmutableArray<Asymptote>>(input, feature),
-        AnalysisFeatures.Monotonicity => ClaimFor<ImmutableArray<MonotoneRegion>>(input, feature),
-        AnalysisFeatures.Period => ClaimFor<Periodicity>(input, feature),
-        _ => throw new ArgumentOutOfRangeException(nameof(feature))
-    };
+        return feature switch
+        {
+            AnalysisFeatures.Domain or AnalysisFeatures.Range or AnalysisFeatures.Zeros =>
+                ClaimFor<RealSet>(input, feature),
+            AnalysisFeatures.Parity => ClaimFor<FunctionParity>(input, feature),
+            AnalysisFeatures.YIntercept => ClaimFor<OptionalValue<ExactReal>>(input, feature),
+            AnalysisFeatures.Minima or AnalysisFeatures.Maxima or AnalysisFeatures.InflectionPoints =>
+                ClaimFor<ImmutableArray<FeaturePoint>>(input, feature),
+            AnalysisFeatures.VerticalAsymptotes or
+                AnalysisFeatures.HorizontalAsymptotes or
+                AnalysisFeatures.ObliqueAsymptotes => ClaimFor<ImmutableArray<Asymptote>>(input, feature),
+            AnalysisFeatures.Monotonicity => ClaimFor<ImmutableArray<MonotoneRegion>>(input, feature),
+            AnalysisFeatures.Period => ClaimFor<Periodicity>(input, feature),
+            _ => throw new ArgumentOutOfRangeException(nameof(feature))
+        };
+    }
 
     private static string ClaimFor<T>(InputExpression input, AnalysisFeatures feature)
     {
@@ -847,7 +850,10 @@ public sealed class AffineMinMaxAnalysisTests
     private static T Proved<T>(
         AnalysisRequest request,
         SemanticExpression semantic,
-        AnalysisFeatures feature) => Outcome<T>(request, semantic, feature).Value!;
+        AnalysisFeatures feature)
+    {
+        return Outcome<T>(request, semantic, feature).Value!;
+    }
 
     private static ProofOutcome<T> Outcome<T>(
         AnalysisRequest request,
@@ -868,13 +874,15 @@ public sealed class AffineMinMaxAnalysisTests
     private static bool Check<T>(
         AnalysisRequest request,
         SemanticExpression semantic,
-        ProofOutcome<T> outcome) =>
-        AffineMinMaxCertificateChecker.Check(
+        ProofOutcome<T> outcome)
+    {
+        return AffineMinMaxCertificateChecker.Check(
             request,
             semantic,
             Assert.IsType<AffineMinMaxProofCertificate>(outcome.Certificate),
             ClaimCanonical.ForObject(outcome.Value!),
             new ResourceBudget());
+    }
 
     private static AffineMinMaxContext AssertContext(
         AnalysisRequest request,
@@ -904,7 +912,10 @@ public sealed class AffineMinMaxAnalysisTests
     private static void AssertKink(
         FeaturePoint point,
         int x,
-        int y) => AssertKink(point, new BigRational(x), new BigRational(y));
+        int y)
+    {
+        AssertKink(point, new BigRational(x), new BigRational(y));
+    }
 
     private static void AssertKink(
         FeaturePoint point,
@@ -964,47 +975,81 @@ public sealed class AffineMinMaxAnalysisTests
         return (request, new SemanticGraphBuilder(new ResourceBudget()).Build(input));
     }
 
-    private static BigRational Rational(ExactReal value) =>
-        Assert.IsType<RationalReal>(value).Value;
+    private static BigRational Rational(ExactReal value)
+    {
+        return Assert.IsType<RationalReal>(value).Value;
+    }
 
-    private static InputExpression Line(int slope, int intercept) =>
-        Line(new BigRational(slope), new BigRational(intercept));
+    private static InputExpression Line(int slope, int intercept)
+    {
+        return Line(new BigRational(slope), new BigRational(intercept));
+    }
 
-    private static InputExpression Line(BigRational slope, BigRational intercept) =>
-        Add(Multiply(Number(slope), Variable()), Number(intercept));
+    private static InputExpression Line(BigRational slope, BigRational intercept)
+    {
+        return Add(Multiply(Number(slope), Variable()), Number(intercept));
+    }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Named(string name) => InputExpression.Variable(name, Source);
+    private static InputExpression Named(string name)
+    {
+        return InputExpression.Variable(name, Source);
+    }
 
-    private static InputExpression Number(int value) => Number(new BigRational(value));
+    private static InputExpression Number(int value)
+    {
+        return Number(new BigRational(value));
+    }
 
-    private static InputExpression Number(BigRational value) =>
-        InputExpression.Number(value, Source);
+    private static InputExpression Number(BigRational value)
+    {
+        return InputExpression.Number(value, Source);
+    }
 
-    private static InputExpression Negate(InputExpression value) =>
-        InputExpression.Unary(InputExpressionKind.Negate, value, Source);
+    private static InputExpression Negate(InputExpression value)
+    {
+        return InputExpression.Unary(InputExpressionKind.Negate, value, Source);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Subtract(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
 
-    private static InputExpression Power(InputExpression basis, int exponent) =>
-        InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    private static InputExpression Power(InputExpression basis, int exponent)
+    {
+        return InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    }
 
     private static InputExpression MinMax(
         string function,
         InputExpression first,
-        InputExpression second) => Function(function, first, second);
+        InputExpression second)
+    {
+        return Function(function, first, second);
+    }
 
-    private static InputExpression Function(string name, params InputExpression[] arguments) =>
-        InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    private static InputExpression Function(string name, params InputExpression[] arguments)
+    {
+        return InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    }
 }

@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Globalization;
+using Graphing;
 using MathComposer.Core;
 
 namespace GraphingImpl;
@@ -18,8 +19,9 @@ internal static class FunctionAnalysisMathDocumentFactory
         ImmutableArray<string> vertical,
         ImmutableArray<string> horizontal,
         ImmutableArray<string> oblique,
-        IReadOnlyDictionary<string, int> monotone) =>
-        new(
+        IReadOnlyDictionary<string, int> monotone)
+    {
+        return new GraphFunctionAnalysisMathDocuments(
             Parse(domain),
             Parse(range),
             Parse(period),
@@ -34,15 +36,20 @@ internal static class FunctionAnalysisMathDocumentFactory
             monotone.Select(static pair => new Graphing.GraphMonotoneIntervalMathDocument(
                 Parse(pair.Key),
                 pair.Value)).ToImmutableArray());
+    }
 
-    private static MathDocument Parse(string value) =>
-        string.IsNullOrWhiteSpace(value)
+    private static MathDocument Parse(string value)
+    {
+        return string.IsNullOrWhiteSpace(value)
             ? MathDocument.Empty
             : MathInterchange.Parse(
                 value,
                 MathTextFormat.UnicodeMath,
                 CultureInfo.InvariantCulture).Document;
+    }
 
-    private static ImmutableArray<MathDocument> ParseAll(IEnumerable<string> values) =>
-        values.Select(Parse).ToImmutableArray();
+    private static ImmutableArray<MathDocument> ParseAll(IEnumerable<string> values)
+    {
+        return values.Select(Parse).ToImmutableArray();
+    }
 }

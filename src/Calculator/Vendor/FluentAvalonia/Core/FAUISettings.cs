@@ -1,5 +1,3 @@
-using System.Threading;
-
 namespace FluentAvalonia.Core;
 
 /// <summary>

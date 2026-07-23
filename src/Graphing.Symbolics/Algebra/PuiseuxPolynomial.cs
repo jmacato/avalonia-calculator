@@ -41,7 +41,11 @@ internal sealed class PuiseuxPolynomial
         return true;
     }
 
-    public static bool TryExtract(ValueTerm term, string variable, ResourceBudget budget, out PuiseuxPolynomial polynomial) => TryExtractInCoordinate(term, variable, BigRational.Zero, budget, out polynomial);
+    public static bool TryExtract(ValueTerm term, string variable, ResourceBudget budget, out PuiseuxPolynomial polynomial)
+    {
+        return TryExtractInCoordinate(term, variable, BigRational.Zero, budget, out polynomial);
+    }
+
     /// <summary>
     /// Extracts the term after the exact affine coordinate change
     /// <c>x = u + variableOffset</c>.  This keeps shifted radical rays in the
@@ -221,7 +225,11 @@ internal sealed class PuiseuxPolynomial
         return !polynomial.IsZero;
     }
 
-    public string Format(string variable) => Format(_terms, variable, signedOddRoots: !_requiresNonnegativeVariable);
+    public string Format(string variable)
+    {
+        return Format(_terms, variable, signedOddRoots: !_requiresNonnegativeVariable);
+    }
+
     public static string Format(ImmutableArray<PuiseuxTerm> terms, string variable, bool signedOddRoots = false)
     {
         if (terms.IsEmpty)
@@ -382,9 +390,23 @@ internal sealed class PuiseuxPolynomial
         return checked(rootedNumeratorBits * power) <= AnalysisLimits.CoefficientBits && checked(rootedDenominatorBits * power) <= AnalysisLimits.CoefficientBits;
     }
 
-    private PuiseuxPolynomial Add(PuiseuxPolynomial other, ResourceBudget budget) => Create(_terms.Concat(other._terms), budget, _requiresNonnegativeVariable || other._requiresNonnegativeVariable);
-    private PuiseuxPolynomial Subtract(PuiseuxPolynomial other, ResourceBudget budget) => Add(other.Scale(BigRational.MinusOne, budget), budget);
-    private PuiseuxPolynomial Scale(BigRational scalar, ResourceBudget budget) => Create(_terms.Select(term => term with { Coefficient = term.Coefficient * scalar }), budget, _requiresNonnegativeVariable);
+    private PuiseuxPolynomial Add(PuiseuxPolynomial other, ResourceBudget budget)
+    {
+        return Create(_terms.Concat(other._terms), budget,
+            _requiresNonnegativeVariable || other._requiresNonnegativeVariable);
+    }
+
+    private PuiseuxPolynomial Subtract(PuiseuxPolynomial other, ResourceBudget budget)
+    {
+        return Add(other.Scale(BigRational.MinusOne, budget), budget);
+    }
+
+    private PuiseuxPolynomial Scale(BigRational scalar, ResourceBudget budget)
+    {
+        return Create(_terms.Select(term => term with { Coefficient = term.Coefficient * scalar }), budget,
+            _requiresNonnegativeVariable);
+    }
+
     private PuiseuxPolynomial Multiply(PuiseuxPolynomial other, ResourceBudget budget)
     {
         long productCount = checked((long)_terms.Length * other._terms.Length);
@@ -465,8 +487,16 @@ internal sealed class PuiseuxPolynomial
         return false;
     }
 
-    private static PuiseuxPolynomial Constant(BigRational value, ResourceBudget budget) => value.IsZero ? new PuiseuxPolynomial([]) : Monomial(value, BigRational.Zero, budget);
-    private static PuiseuxPolynomial Monomial(BigRational coefficient, BigRational exponent, ResourceBudget budget) => Create([new PuiseuxTerm(exponent, coefficient)], budget);
+    private static PuiseuxPolynomial Constant(BigRational value, ResourceBudget budget)
+    {
+        return value.IsZero ? new PuiseuxPolynomial([]) : Monomial(value, BigRational.Zero, budget);
+    }
+
+    private static PuiseuxPolynomial Monomial(BigRational coefficient, BigRational exponent, ResourceBudget budget)
+    {
+        return Create([new PuiseuxTerm(exponent, coefficient)], budget);
+    }
+
     private static PuiseuxPolynomial Create(IEnumerable<PuiseuxTerm> terms, ResourceBudget budget, bool requiresNonnegativeVariable = false)
     {
         var combined = new SortedDictionary<BigRational, BigRational>();
@@ -494,7 +524,11 @@ internal sealed class PuiseuxPolynomial
         return new PuiseuxPolynomial(combined.Select(static pair => new PuiseuxTerm(pair.Key, pair.Value)).ToImmutableArray(), requiresNonnegativeVariable);
     }
 
-    private PuiseuxPolynomial WithNonnegativeVariableRequirement() => _requiresNonnegativeVariable ? this : new PuiseuxPolynomial(_terms, requiresNonnegativeVariable: true);
+    private PuiseuxPolynomial WithNonnegativeVariableRequirement()
+    {
+        return _requiresNonnegativeVariable ? this : new PuiseuxPolynomial(_terms, requiresNonnegativeVariable: true);
+    }
+
     private static string FormatPower(string variable, BigRational exponent, bool signedOddRoots)
     {
         if (exponent.IsOne)
@@ -521,5 +555,8 @@ internal sealed class PuiseuxPolynomial
         return $"{variable}^({exponent})";
     }
 
-    private static ExactInteger Lcm(ExactInteger left, ExactInteger right) => ExactInteger.Abs(left / ExactInteger.GreatestCommonDivisor(left, right) * right);
+    private static ExactInteger Lcm(ExactInteger left, ExactInteger right)
+    {
+        return ExactInteger.Abs(left / ExactInteger.GreatestCommonDivisor(left, right) * right);
+    }
 }

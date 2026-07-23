@@ -83,16 +83,21 @@ internal static class SymbolicsAdapter
         return features;
     }
 
-    public static AngleUnit Translate(EvalTrigUnitMode mode) => mode switch
+    public static AngleUnit Translate(EvalTrigUnitMode mode)
     {
-        EvalTrigUnitMode.Degrees => AngleUnit.Degrees,
-        EvalTrigUnitMode.Grads => AngleUnit.Grads,
-        _ => AngleUnit.Radians
-    };
+        return mode switch
+        {
+            EvalTrigUnitMode.Degrees => AngleUnit.Degrees,
+            EvalTrigUnitMode.Grads => AngleUnit.Grads,
+            _ => AngleUnit.Radians
+        };
+    }
 
     private static InputExpression Binary(
         InputExpressionKind kind,
         ImmutableArray<InputExpression> arguments,
-        SourceRange source) =>
-        InputExpression.Binary(kind, arguments[0], arguments[1], source);
+        SourceRange source)
+    {
+        return InputExpression.Binary(kind, arguments[0], arguments[1], source);
+    }
 }

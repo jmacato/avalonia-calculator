@@ -455,7 +455,10 @@ public sealed class GuardedConstantAnalysisTests
     private static T Proved<T>(
         AnalysisRequest request,
         SemanticExpression semantic,
-        AnalysisFeatures feature) => Analyze<T>(request, semantic, feature).Value!;
+        AnalysisFeatures feature)
+    {
+        return Analyze<T>(request, semantic, feature).Value!;
+    }
 
     private static ProofOutcome<T> Analyze<T>(
         AnalysisRequest request,
@@ -497,28 +500,48 @@ public sealed class GuardedConstantAnalysisTests
         return (request, new SemanticGraphBuilder(new ResourceBudget()).Build(expression));
     }
 
-    private static string Coordinate(Asymptote asymptote) =>
-        ExactRealCanonical.Format(Assert.IsType<SingletonReal>(asymptote.Coordinate).Value);
+    private static string Coordinate(Asymptote asymptote)
+    {
+        return ExactRealCanonical.Format(Assert.IsType<SingletonReal>(asymptote.Coordinate).Value);
+    }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Named(string name) => InputExpression.Variable(name, Source);
+    private static InputExpression Named(string name)
+    {
+        return InputExpression.Variable(name, Source);
+    }
 
-    private static InputExpression Number(int value) =>
-        InputExpression.Number(new BigRational(value), Source);
+    private static InputExpression Number(int value)
+    {
+        return InputExpression.Number(new BigRational(value), Source);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Subtract(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
 
-    private static InputExpression Function(string name, InputExpression argument) =>
-        InputExpression.Function(name, ImmutableArray.Create(argument), Source);
+    private static InputExpression Function(string name, InputExpression argument)
+    {
+        return InputExpression.Function(name, ImmutableArray.Create(argument), Source);
+    }
 }

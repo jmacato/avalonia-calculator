@@ -5,7 +5,6 @@ using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
-using Avalonia.VisualTree;
 using FluentAvalonia.Core;
 
 namespace FluentAvalonia.UI.Controls;
@@ -320,15 +319,23 @@ public sealed class WinUiBrushBorder : Border
         BorderBrush = brush;
     }
 
-    private static TimeSpan ClampDuration(TimeSpan duration) =>
-        duration < MinimumDuration
+    private static TimeSpan ClampDuration(TimeSpan duration)
+    {
+        return duration < MinimumDuration
             ? MinimumDuration
             : duration > MaximumDuration
                 ? MaximumDuration
                 : duration;
+    }
 
-    private static byte Interpolate(byte from, byte to, double progress) =>
-        (byte)Math.Clamp(Math.Round(Lerp(from, to, progress), MidpointRounding.AwayFromZero), byte.MinValue, byte.MaxValue);
+    private static byte Interpolate(byte from, byte to, double progress)
+    {
+        return (byte)Math.Clamp(Math.Round(Lerp(from, to, progress), MidpointRounding.AwayFromZero), byte.MinValue,
+            byte.MaxValue);
+    }
 
-    private static double Lerp(double from, double to, double progress) => from + ((to - from) * progress);
+    private static double Lerp(double from, double to, double progress)
+    {
+        return from + (to - from) * progress;
+    }
 }

@@ -51,8 +51,9 @@ public sealed class CompositionMotionTrack
 
     public double Exponent { get; set; } = 5;
 
-    internal Easing CreateEasing() =>
-        Easing switch
+    internal Easing CreateEasing()
+    {
+        return Easing switch
         {
             CompositionMotionEasing.Spline =>
                 new SplineEasing(
@@ -64,18 +65,19 @@ public sealed class CompositionMotionTrack
                 new ExponentialEaseOut(Exponent),
             _ => new LinearEasing()
         };
+    }
 
     internal Vector3 GetVector(Control target, bool from)
     {
         Rect bounds = target.Bounds;
         return from
             ? new Vector3(
-                (float)(FromX + (bounds.Width * FromXFactor)),
-                (float)(FromY + (bounds.Height * FromYFactor)),
+                (float)(FromX + bounds.Width * FromXFactor),
+                (float)(FromY + bounds.Height * FromYFactor),
                 (float)FromZ)
             : new Vector3(
-                (float)(ToX + (bounds.Width * ToXFactor)),
-                (float)(ToY + (bounds.Height * ToYFactor)),
+                (float)(ToX + bounds.Width * ToXFactor),
+                (float)(ToY + bounds.Height * ToYFactor),
                 (float)ToZ);
     }
 }

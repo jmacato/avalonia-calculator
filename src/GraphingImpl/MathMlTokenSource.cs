@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
@@ -28,7 +27,10 @@ internal sealed class MathMlTokenSource : ITokenSource
         _tokens.Add(new Token(TokenKind.End, new SourceSpan(_sourcePosition, 0), string.Empty));
     }
 
-    public Token Next() => _tokens[_readIndex++];
+    public Token Next()
+    {
+        return _tokens[_readIndex++];
+    }
 
     private static XElement LoadRoot(string input, bool hasWrapper)
     {
@@ -425,6 +427,8 @@ internal sealed class MathMlTokenSource : ITokenSource
     private static GraphParseException Invalid(
         int inputLength,
         string message,
-        SyntaxErrorCode code = SyntaxErrorCode.InvalidMathMLFormat) =>
-        new(code, new SourceSpan(0, inputLength), message);
+        SyntaxErrorCode code = SyntaxErrorCode.InvalidMathMLFormat)
+    {
+        return new GraphParseException(code, new SourceSpan(0, inputLength), message);
+    }
 }

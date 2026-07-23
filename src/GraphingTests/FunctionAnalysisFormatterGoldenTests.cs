@@ -778,21 +778,24 @@ public sealed class FunctionAnalysisFormatterGoldenTests
         Assert.Equal(expected.TooComplexFeatures, actual.TooComplexFeatures);
     }
 
-    private static int FeatureBit(AnalysisType type) => type switch
+    private static int FeatureBit(AnalysisType type)
     {
-        AnalysisType.Domain => 1,
-        AnalysisType.Range => 2,
-        AnalysisType.Parity => 4,
-        AnalysisType.Period => 8,
-        AnalysisType.Zeros => 16,
-        AnalysisType.YIntercept => 32,
-        AnalysisType.Minima => 64,
-        AnalysisType.Maxima => 128,
-        AnalysisType.InflectionPoints => 256,
-        AnalysisType.VerticalAsymptotes => 512,
-        AnalysisType.HorizontalAsymptotes => 1024,
-        AnalysisType.ObliqueAsymptotes => 2048,
-        AnalysisType.Monotonicity => 4096,
-        _ => throw new ArgumentOutOfRangeException(nameof(type))
-    };
+        return type switch
+        {
+            AnalysisType.Domain => 1,
+            AnalysisType.Range => 2,
+            AnalysisType.Parity => 4,
+            AnalysisType.Period => 8,
+            AnalysisType.Zeros => 16,
+            AnalysisType.YIntercept => 32,
+            AnalysisType.Minima => 64,
+            AnalysisType.Maxima => 128,
+            AnalysisType.InflectionPoints => 256,
+            AnalysisType.VerticalAsymptotes => 512,
+            AnalysisType.HorizontalAsymptotes => 1024,
+            AnalysisType.ObliqueAsymptotes => 2048,
+            AnalysisType.Monotonicity => 4096,
+            _ => throw new ArgumentOutOfRangeException(nameof(type))
+        };
+    }
 }

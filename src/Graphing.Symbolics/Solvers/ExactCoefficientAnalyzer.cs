@@ -17,12 +17,18 @@ internal static class ExactCoefficientAnalyzer
         return true;
     }
 
-    private static bool TryCompute(ExactCoefficientPattern pattern, AngleUnit angleUnit, AnalysisFeatures feature, ResourceBudget budget, out object value) => pattern switch
+    private static bool TryCompute(ExactCoefficientPattern pattern, AngleUnit angleUnit, AnalysisFeatures feature, ResourceBudget budget, out object value)
     {
-        ExactRationalPattern rational => ExactRationalCoefficientTheorems.TryCompute(rational, feature, budget, out value),
-        ExactTrigPattern trig => ExactTrigCoefficientTheorems.TryCompute(trig, angleUnit, feature, budget, out value),
-        _ => Fail(out value)
-    };
+        return pattern switch
+        {
+            ExactRationalPattern rational => ExactRationalCoefficientTheorems.TryCompute(rational, feature, budget,
+                out value),
+            ExactTrigPattern trig => ExactTrigCoefficientTheorems.TryCompute(trig, angleUnit, feature, budget,
+                out value),
+            _ => Fail(out value)
+        };
+    }
+
     private static bool Fail(out object value)
     {
         value = null!;

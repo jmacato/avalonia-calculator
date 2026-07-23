@@ -6,7 +6,6 @@ using Avalonia;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Media;
-using Avalonia.VisualTree;
 using FluentAvalonia.Core;
 
 namespace FluentAvalonia.UI.Controls;
@@ -151,7 +150,10 @@ public sealed class WinUiAnimatedChevron : FAIconElement
         set => SetValue(StateProperty, value);
     }
 
-    protected override Size MeasureOverride(Size availableSize) => new(16, 16);
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        return new Size(16, 16);
+    }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -197,8 +199,8 @@ public sealed class WinUiAnimatedChevron : FAIconElement
 
         double rotation = EvaluateRotation(_sourceProgress) * Math.PI / 180;
         Point offset = EvaluateOffset(_sourceProgress);
-        double originX = (Bounds.Width - (SourceSize * viewScale)) * 0.5;
-        double originY = (Bounds.Height - (SourceSize * viewScale)) * 0.5;
+        double originX = (Bounds.Width - SourceSize * viewScale) * 0.5;
+        double originY = (Bounds.Height - SourceSize * viewScale) * 0.5;
         Point first = Transform(-3.54299998, -1.79299998, rotation, offset, viewScale, originX, originY);
         Point middle = Transform(0.0199999996, 1.70700002, rotation, offset, viewScale, originX, originY);
         Point last = Transform(3.48900008, -1.71500003, rotation, offset, viewScale, originX, originY);
@@ -371,16 +373,24 @@ public sealed class WinUiAnimatedChevron : FAIconElement
         return false;
     }
 
-    private static double EvaluateRotation(double progress) => Evaluate(
-        RotationFrames,
-        progress,
-        static frame => frame.Progress,
-        static frame => frame.Value,
-        static frame => frame.Easing);
+    private static double EvaluateRotation(double progress)
+    {
+        return Evaluate(
+            RotationFrames,
+            progress,
+            static frame => frame.Progress,
+            static frame => frame.Value,
+            static frame => frame.Easing);
+    }
 
-    private static Point EvaluateOffset(double progress) => new(
-        Evaluate(OffsetFrames, progress, static frame => frame.Progress, static frame => frame.X, static frame => frame.Easing),
-        Evaluate(OffsetFrames, progress, static frame => frame.Progress, static frame => frame.Y, static frame => frame.Easing));
+    private static Point EvaluateOffset(double progress)
+    {
+        return new Point(
+            Evaluate(OffsetFrames, progress, static frame => frame.Progress, static frame => frame.X,
+                static frame => frame.Easing),
+            Evaluate(OffsetFrames, progress, static frame => frame.Progress, static frame => frame.Y,
+                static frame => frame.Easing));
+    }
 
     private static double Evaluate<T>(
         T[] frames,
@@ -441,13 +451,18 @@ public sealed class WinUiAnimatedChevron : FAIconElement
         y *= 4;
         double cosine = Math.Cos(rotation);
         double sine = Math.Sin(rotation);
-        double transformedX = (x * cosine) - (y * sine) + offset.X;
-        double transformedY = (x * sine) + (y * cosine) + offset.Y;
-        return new Point(originX + (transformedX * viewScale), originY + (transformedY * viewScale));
+        double transformedX = x * cosine - y * sine + offset.X;
+        double transformedY = x * sine + y * cosine + offset.Y;
+        return new Point(originX + transformedX * viewScale, originY + transformedY * viewScale);
     }
 
-    private static string NormalizeState(string? state) => string.IsNullOrEmpty(state) ? NormalOff : state;
+    private static string NormalizeState(string? state)
+    {
+        return string.IsNullOrEmpty(state) ? NormalOff : state;
+    }
 
-    private static double Lerp(double from, double to, double progress) => from + ((to - from) * progress);
-
+    private static double Lerp(double from, double to, double progress)
+    {
+        return from + (to - from) * progress;
+    }
 }

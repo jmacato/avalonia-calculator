@@ -1,6 +1,3 @@
-using System.Collections.Immutable;
-using MathComposer.Core;
-
 namespace MathComposer.Avalonia.Controls;
 
 /// <summary>Identifies the parameter accepted by <see cref="MathEditor.InsertStructureCommand"/>.</summary>

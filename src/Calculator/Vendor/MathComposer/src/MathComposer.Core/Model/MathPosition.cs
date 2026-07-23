@@ -19,8 +19,10 @@ public readonly record struct MathPosition
     public int Offset { get; }
 
     /// <inheritdoc />
-    public bool Equals(MathPosition other) =>
-        Offset == other.Offset && Path.AsSpan().SequenceEqual(other.Path.AsSpan());
+    public bool Equals(MathPosition other)
+    {
+        return Offset == other.Offset && Path.AsSpan().SequenceEqual(other.Path.AsSpan());
+    }
 
     /// <inheritdoc />
     public override int GetHashCode()

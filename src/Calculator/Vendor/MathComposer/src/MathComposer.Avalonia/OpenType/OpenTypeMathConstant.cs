@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace MathComposer.Avalonia.OpenType;
 
 /// <summary>Names the design-unit records in an OpenType MathConstants table.</summary>

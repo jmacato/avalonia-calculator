@@ -253,7 +253,7 @@ internal static class TrigonometricAndLatticeAnalyzer
         return atoms.Values.Where(static atom => !atom.Coefficient.IsZero).ToImmutableArray();
     }
 
-    private static void AddPrimitivePending(ValueTerm term, BigRational coefficient, System.Collections.Generic.SortedDictionary<int, (Graphing.Symbolics.ValueTerm Term, Graphing.Symbolics.BigRational Coefficient)> pending, ResourceBudget budget)
+    private static void AddPrimitivePending(ValueTerm term, BigRational coefficient, SortedDictionary<int, (ValueTerm Term, BigRational Coefficient)> pending, ResourceBudget budget)
     {
         budget.CheckCoefficient(coefficient);
         if (pending.TryGetValue(term.Id, out var existing))
@@ -274,7 +274,7 @@ internal static class TrigonometricAndLatticeAnalyzer
         }
     }
 
-    private static void AddPrimitiveAtom(ValueTerm term, BigRational coefficient, System.Collections.Generic.SortedDictionary<string, (Graphing.Symbolics.ValueTerm Term, Graphing.Symbolics.BigRational Coefficient)> atoms, ResourceBudget budget)
+    private static void AddPrimitiveAtom(ValueTerm term, BigRational coefficient, SortedDictionary<string, (ValueTerm Term, BigRational Coefficient)> atoms, ResourceBudget budget)
     {
         budget.CheckCoefficient(coefficient);
         if (atoms.TryGetValue(term.Canonical, out var existing))
@@ -585,17 +585,21 @@ internal static class TrigonometricAndLatticeAnalyzer
         return OptionalValue<ExactReal>.Some(TransformOutput(pattern, primitive, budget));
     }
 
-    private static bool PrimitiveDefinedAt(AffinePrimitivePattern pattern, BigRational argument) => pattern.Function switch
+    private static bool PrimitiveDefinedAt(AffinePrimitivePattern pattern, BigRational argument)
     {
-        "asin" or "acos" => argument >= BigRational.MinusOne && argument <= BigRational.One,
-        "log" or "ln" => argument.Sign > 0,
-        _ => true
-    };
+        return pattern.Function switch
+        {
+            "asin" or "acos" => argument >= BigRational.MinusOne && argument <= BigRational.One,
+            "log" or "ln" => argument.Sign > 0,
+            _ => true
+        };
+    }
+
     private static ImmutableArray<FeaturePoint> PrimitiveExtrema(AffinePrimitivePattern pattern, AngleUnit angleUnit, bool minimum, ResourceBudget budget)
     {
         if (pattern.Function is "asin" or "acos")
         {
-            bool useBaseMinimum = (pattern.OuterScale.Sign > 0) == minimum;
+            bool useBaseMinimum = pattern.OuterScale.Sign > 0 == minimum;
             BigRational innerValue = (pattern.Function, useBaseMinimum) switch
             {
                 ("asin", true) => BigRational.MinusOne,
@@ -608,7 +612,7 @@ internal static class TrigonometricAndLatticeAnalyzer
             return [new ConstantYFeaturePoint(new SingletonReal(x), y)];
         }
 
-        if (pattern.Function == "cosh" && minimum == (pattern.OuterScale.Sign > 0))
+        if (pattern.Function == "cosh" && minimum == pattern.OuterScale.Sign > 0)
         {
             ExactReal x = new RationalReal(SolveInnerRational(pattern, BigRational.Zero, budget));
             ExactReal y = TransformOutput(pattern, new RationalReal(BigRational.One), budget);
@@ -664,7 +668,11 @@ internal static class TrigonometricAndLatticeAnalyzer
         return [HorizontalAsymptote(TransformOutput(pattern, positive, budget)), HorizontalAsymptote(TransformOutput(pattern, negative, budget))];
     }
 
-    private static Asymptote HorizontalAsymptote(ExactReal y) => new(AsymptoteOrientation.Horizontal, new SingletonReal(y), null, y);
+    private static Asymptote HorizontalAsymptote(ExactReal y)
+    {
+        return new Asymptote(AsymptoteOrientation.Horizontal, new SingletonReal(y), null, y);
+    }
+
     private static ImmutableArray<MonotoneRegion> PrimitiveMonotonicity(AffinePrimitivePattern pattern, RealSet domain, ResourceBudget budget)
     {
         if (pattern.Function == "cosh")
@@ -672,12 +680,12 @@ internal static class TrigonometricAndLatticeAnalyzer
             ExactReal center = new RationalReal(SolveInnerRational(pattern, BigRational.Zero, budget));
             RealSet left = new IntervalSet(RealBound.NegativeInfinity, false, RealBound.Finite(center), false);
             RealSet right = new IntervalSet(RealBound.Finite(center), false, RealBound.PositiveInfinity, false);
-            return pattern.OuterScale.Sign > 0 ? [new MonotoneRegion(left, Graphing.Symbolics.Monotonicity.Decreasing), new MonotoneRegion(right, Graphing.Symbolics.Monotonicity.Increasing)] : [new MonotoneRegion(left, Graphing.Symbolics.Monotonicity.Increasing), new MonotoneRegion(right, Graphing.Symbolics.Monotonicity.Decreasing)];
+            return pattern.OuterScale.Sign > 0 ? [new MonotoneRegion(left, Monotonicity.Decreasing), new MonotoneRegion(right, Monotonicity.Increasing)] : [new MonotoneRegion(left, Monotonicity.Increasing), new MonotoneRegion(right, Monotonicity.Decreasing)];
         }
 
         int primitiveDirection = pattern.Function == "acos" ? -1 : 1;
         int direction = primitiveDirection * pattern.InnerSlope.Sign * pattern.OuterScale.Sign;
-        return [new MonotoneRegion(domain, direction > 0 ? Graphing.Symbolics.Monotonicity.Increasing : Graphing.Symbolics.Monotonicity.Decreasing)];
+        return [new MonotoneRegion(domain, direction > 0 ? Monotonicity.Increasing : Monotonicity.Decreasing)];
     }
 
     private static ExactReal PrimitiveAtRational(AffinePrimitivePattern pattern, BigRational argument, AngleUnit angleUnit, ResourceBudget budget)
@@ -706,7 +714,11 @@ internal static class TrigonometricAndLatticeAnalyzer
         };
     }
 
-    private static RealSet PointAtInnerValue(AffinePrimitivePattern pattern, ExactReal innerValue, ResourceBudget budget) => RealSets.Points([SolveInnerExact(pattern, innerValue, budget)]);
+    private static RealSet PointAtInnerValue(AffinePrimitivePattern pattern, ExactReal innerValue, ResourceBudget budget)
+    {
+        return RealSets.Points([SolveInnerExact(pattern, innerValue, budget)]);
+    }
+
     private static ExactReal SolveInnerExact(AffinePrimitivePattern pattern, ExactReal innerValue, ResourceBudget budget)
     {
         budget.CheckCoefficient(pattern.InnerIntercept);
@@ -714,7 +726,11 @@ internal static class TrigonometricAndLatticeAnalyzer
         return Checked(ExactRealArithmetic.Scale(ExactRealArithmetic.AddRational(innerValue, -pattern.InnerIntercept), pattern.InnerSlope.Reciprocal()), budget);
     }
 
-    private static BigRational SolveInnerRational(AffinePrimitivePattern pattern, BigRational innerValue, ResourceBudget budget) => Checked((innerValue - pattern.InnerIntercept) / pattern.InnerSlope, budget);
+    private static BigRational SolveInnerRational(AffinePrimitivePattern pattern, BigRational innerValue, ResourceBudget budget)
+    {
+        return Checked((innerValue - pattern.InnerIntercept) / pattern.InnerSlope, budget);
+    }
+
     private static ExactReal TransformOutput(AffinePrimitivePattern pattern, ExactReal primitiveValue, ResourceBudget budget)
     {
         budget.CheckCoefficient(pattern.OuterScale);
@@ -722,7 +738,13 @@ internal static class TrigonometricAndLatticeAnalyzer
         return Checked(ExactRealArithmetic.AddRational(ExactRealArithmetic.Scale(primitiveValue, pattern.OuterScale), pattern.OuterShift), budget);
     }
 
-    private static ExactReal NaturalLogOfPositiveRational(BigRational value) => value == BigRational.One ? new RationalReal(BigRational.Zero) : new FunctionReal("ln", [new RationalReal(value)]);
+    private static ExactReal NaturalLogOfPositiveRational(BigRational value)
+    {
+        return value == BigRational.One
+            ? new RationalReal(BigRational.Zero)
+            : new FunctionReal("ln", [new RationalReal(value)]);
+    }
+
     private static ExactReal InverseSinh(BigRational value, ResourceBudget budget)
     {
         BigRational radicand = Checked(value * value + BigRational.One, budget);
@@ -771,14 +793,30 @@ internal static class TrigonometricAndLatticeAnalyzer
         return new FunctionReal("power", [new RationalReal(new BigRational(10)), new RationalReal(exponent)]);
     }
 
-    private static ExactReal SquareRoot(BigRational value) => BigRational.TrySquareRoot(value, out BigRational root) ? new RationalReal(root) : new FunctionReal("sqrt", [new RationalReal(value)]);
-    private static ExactReal NaturalLog(ExactReal value) => value is RationalReal { Value.IsOne: true } ? new RationalReal(BigRational.Zero) : new FunctionReal("ln", [value]);
-    private static bool IsExactZero(ExactReal value) => value switch
+    private static ExactReal SquareRoot(BigRational value)
     {
-        RationalReal rational => rational.Value.IsZero,
-        AffinePiReal affine => affine.PiCoefficient.IsZero && affine.Constant.IsZero,
-        _ => false
-    };
+        return BigRational.TrySquareRoot(value, out BigRational root)
+            ? new RationalReal(root)
+            : new FunctionReal("sqrt", [new RationalReal(value)]);
+    }
+
+    private static ExactReal NaturalLog(ExactReal value)
+    {
+        return value is RationalReal { Value.IsOne: true }
+            ? new RationalReal(BigRational.Zero)
+            : new FunctionReal("ln", [value]);
+    }
+
+    private static bool IsExactZero(ExactReal value)
+    {
+        return value switch
+        {
+            RationalReal rational => rational.Value.IsZero,
+            AffinePiReal affine => affine.PiCoefficient.IsZero && affine.Constant.IsZero,
+            _ => false
+        };
+    }
+
     private static BigRational Checked(BigRational value, ResourceBudget budget)
     {
         budget.CheckCoefficient(value);
@@ -921,7 +959,7 @@ internal static class TrigonometricAndLatticeAnalyzer
 
         BigRational offsetFraction = pattern.Function == "cos" ? new BigRational(1, 2) : BigRational.Zero;
         ExactReal offset = SolveAngle(pattern, Angle(angleUnit, offsetFraction));
-        BigRational periodFraction = pattern.Function == "sin" || pattern.Function == "tan" ? BigRational.One : BigRational.One;
+        BigRational periodFraction = pattern.Function is "sin" or "tan" ? BigRational.One : BigRational.One;
         ExactReal period = ScaleAngle(Angle(angleUnit, periodFraction), pattern.Frequency.Reciprocal());
         return new PeriodicPointSet(offset, period, "m", IntegerConstraint.All("m"));
     }
@@ -963,13 +1001,17 @@ internal static class TrigonometricAndLatticeAnalyzer
         return OptionalValue<ExactReal>.Some(shifted);
     }
 
-    private static BigRational? PhaseInPi(BigRational phase, AngleUnit angleUnit) => angleUnit switch
+    private static BigRational? PhaseInPi(BigRational phase, AngleUnit angleUnit)
     {
-        AngleUnit.Radians => phase.IsZero ? BigRational.Zero : null,
-        AngleUnit.Degrees => phase / new BigRational(180),
-        AngleUnit.Grads => phase / new BigRational(200),
-        _ => throw new ArgumentOutOfRangeException(nameof(angleUnit))
-    };
+        return angleUnit switch
+        {
+            AngleUnit.Radians => phase.IsZero ? BigRational.Zero : null,
+            AngleUnit.Degrees => phase / new BigRational(180),
+            AngleUnit.Grads => phase / new BigRational(200),
+            _ => throw new ArgumentOutOfRangeException(nameof(angleUnit))
+        };
+    }
+
     private static bool TryPrimitiveQuarterTurn(string function, BigRational phaseInPi, out bool defined, out BigRational value)
     {
         BigRational quarterTurns = phaseInPi * new BigRational(2);
@@ -1070,13 +1112,13 @@ internal static class TrigonometricAndLatticeAnalyzer
     {
         if (pattern.Amplitude.IsZero)
         {
-            return [new MonotoneRegion(AffineDomain(pattern, angleUnit), Graphing.Symbolics.Monotonicity.Constant)];
+            return [new MonotoneRegion(AffineDomain(pattern, angleUnit), Monotonicity.Constant)];
         }
 
         if (pattern.Function == "tan")
         {
             ExactReal tangentPeriod = ScaleAngle(Angle(angleUnit, BigRational.One), pattern.Frequency.Reciprocal());
-            return [new MonotoneRegion(PeriodicInterval(pattern, angleUnit, tangentPeriod, new BigRational(1, 2), new BigRational(3, 2)), pattern.Amplitude.Sign > 0 ? Graphing.Symbolics.Monotonicity.Increasing : Graphing.Symbolics.Monotonicity.Decreasing)];
+            return [new MonotoneRegion(PeriodicInterval(pattern, angleUnit, tangentPeriod, new BigRational(1, 2), new BigRational(3, 2)), pattern.Amplitude.Sign > 0 ? Monotonicity.Increasing : Monotonicity.Decreasing)];
         }
 
         ExactReal period = ScaleAngle(Angle(angleUnit, new BigRational(2)), pattern.Frequency.Reciprocal());
@@ -1087,7 +1129,7 @@ internal static class TrigonometricAndLatticeAnalyzer
         RealSet increasing = PeriodicInterval(pattern, angleUnit, period, increasingStart, increasingEnd);
         RealSet decreasing = PeriodicInterval(pattern, angleUnit, period, decreasingStart, decreasingEnd);
         bool positiveAmplitude = pattern.Amplitude.Sign > 0;
-        return [new MonotoneRegion(decreasing, positiveAmplitude ? Graphing.Symbolics.Monotonicity.Decreasing : Graphing.Symbolics.Monotonicity.Increasing), new MonotoneRegion(increasing, positiveAmplitude ? Graphing.Symbolics.Monotonicity.Increasing : Graphing.Symbolics.Monotonicity.Decreasing)];
+        return [new MonotoneRegion(decreasing, positiveAmplitude ? Monotonicity.Decreasing : Monotonicity.Increasing), new MonotoneRegion(increasing, positiveAmplitude ? Monotonicity.Increasing : Monotonicity.Decreasing)];
     }
 
     private static Periodicity AffinePeriod(AffineTrigPattern pattern, AngleUnit angleUnit)
@@ -1124,7 +1166,7 @@ internal static class TrigonometricAndLatticeAnalyzer
         };
         ExactReal principal = ExactInverseTrigonometry.PrincipalAngle(inverse, ExactScalar.FromRational(target), angleUnit, normalizeOddNegative: false);
         ExactReal offset = TransformInverseAngle(pattern, principal);
-        ExactReal period = ScaleAngle(Angle(angleUnit, pattern.Function == "sin" || pattern.Function == "cos" ? new BigRational(2) : BigRational.One), pattern.Frequency.Reciprocal());
+        ExactReal period = ScaleAngle(Angle(angleUnit, pattern.Function is "sin" or "cos" ? new BigRational(2) : BigRational.One), pattern.Frequency.Reciprocal());
         RealSet first = new PeriodicPointSet(offset, period, "m", IntegerConstraint.All("m"));
         if (pattern.Function == "tan" || target.Abs().IsOne)
         {
@@ -1137,25 +1179,50 @@ internal static class TrigonometricAndLatticeAnalyzer
         return RealSets.Union(first, second);
     }
 
-    private static Graphing.Symbolics.PeriodicIntervalSet PeriodicInterval(AffineTrigPattern pattern, AngleUnit angleUnit, ExactReal period, BigRational lowerFraction, BigRational upperFraction) => new PeriodicIntervalSet(period, "m", IntegerConstraint.All("m"), [new PeriodicInterval(SolveAngle(pattern, Angle(angleUnit, lowerFraction)), false, SolveAngle(pattern, Angle(angleUnit, upperFraction)), false)]);
-    private static ExactReal SolveAngle(AffineTrigPattern pattern, ExactReal angle) => AddRational(ScaleAngle(angle, pattern.Frequency.Reciprocal()), -pattern.Phase / pattern.Frequency);
-    private static ExactReal TransformInverseAngle(AffineTrigPattern pattern, ExactReal angle) => SolveAngle(pattern, angle);
-    private static ExactReal Angle(AngleUnit unit, BigRational piFraction) => ExactAngleArithmetic.PiFraction(unit, piFraction);
-    private static ExactReal ScaleAngle(ExactReal value, BigRational scale) => value switch
+    private static PeriodicIntervalSet PeriodicInterval(AffineTrigPattern pattern, AngleUnit angleUnit, ExactReal period, BigRational lowerFraction, BigRational upperFraction)
     {
-        RationalReal rational => new RationalReal(rational.Value * scale),
-        AffinePiReal affine => new AffinePiReal(affine.PiCoefficient * scale, affine.Constant * scale),
-        _ => new FunctionReal("scale", [value, new RationalReal(scale)])
-    };
-    private static ExactReal AddRational(ExactReal value, BigRational addend) => value switch
+        return new PeriodicIntervalSet(period, "m", IntegerConstraint.All("m"),
+        [
+            new PeriodicInterval(SolveAngle(pattern, Angle(angleUnit, lowerFraction)), false,
+                SolveAngle(pattern, Angle(angleUnit, upperFraction)), false)
+        ]);
+    }
+
+    private static ExactReal SolveAngle(AffineTrigPattern pattern, ExactReal angle)
     {
-        RationalReal rational => new RationalReal(rational.Value + addend),
-        AffinePiReal affine => affine with
+        return AddRational(ScaleAngle(angle, pattern.Frequency.Reciprocal()), -pattern.Phase / pattern.Frequency);
+    }
+
+    private static ExactReal TransformInverseAngle(AffineTrigPattern pattern, ExactReal angle)
+    {
+        return SolveAngle(pattern, angle);
+    }
+
+    private static ExactReal Angle(AngleUnit unit, BigRational piFraction)
+    {
+        return ExactAngleArithmetic.PiFraction(unit, piFraction);
+    }
+
+    private static ExactReal ScaleAngle(ExactReal value, BigRational scale)
+    {
+        return value switch
         {
-            Constant = affine.Constant + addend
-        },
-        _ => new FunctionReal("add", [value, new RationalReal(addend)])
-    };
+            RationalReal rational => new RationalReal(rational.Value * scale),
+            AffinePiReal affine => new AffinePiReal(affine.PiCoefficient * scale, affine.Constant * scale),
+            _ => new FunctionReal("scale", [value, new RationalReal(scale)])
+        };
+    }
+
+    private static ExactReal AddRational(ExactReal value, BigRational addend)
+    {
+        return value switch
+        {
+            RationalReal rational => new RationalReal(rational.Value + addend),
+            AffinePiReal affine => affine with { Constant = affine.Constant + addend },
+            _ => new FunctionReal("add", [value, new RationalReal(addend)])
+        };
+    }
+
     internal static bool TryGetAffineTrig(ValueTerm term, string variable, ResourceBudget budget, out AffineTrigPattern pattern)
     {
         BigRational shift = BigRational.Zero;

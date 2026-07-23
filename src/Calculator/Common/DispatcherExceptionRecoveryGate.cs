@@ -10,8 +10,10 @@ internal static class DispatcherExceptionRecoveryGate
     private const int MaximumInnerExceptionDepth = 16;
     private static long s_windowState;
 
-    internal static bool TryRecover(Exception exception, out int occurrence) =>
-        TryRecover(exception, Environment.TickCount, out occurrence);
+    internal static bool TryRecover(Exception exception, out int occurrence)
+    {
+        return TryRecover(exception, Environment.TickCount, out occurrence);
+    }
 
     internal static bool TryRecover(
         Exception exception,
@@ -67,8 +69,10 @@ internal static class DispatcherExceptionRecoveryGate
         }
     }
 
-    internal static void ResetForTests() =>
+    internal static void ResetForTests()
+    {
         Interlocked.Exchange(ref s_windowState, 0);
+    }
 
     private static bool ContainsImmediatelyFatalException(
         Exception exception,
@@ -105,6 +109,8 @@ internal static class DispatcherExceptionRecoveryGate
             ContainsImmediatelyFatalException(inner, depth + 1);
     }
 
-    private static long PackState(int windowStartedAt, uint recoveryCount) =>
-        unchecked((long)(((ulong)(uint)windowStartedAt << 32) | recoveryCount));
+    private static long PackState(int windowStartedAt, uint recoveryCount)
+    {
+        return unchecked((long)(((ulong)(uint)windowStartedAt << 32) | recoveryCount));
+    }
 }

@@ -10,7 +10,6 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
-using Avalonia.Styling;
 
 namespace CalculatorApp.Controls;
 /// <summary>
@@ -91,7 +90,7 @@ public sealed class OverflowTextBlock : TemplatedControl
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
-        System.ArgumentNullException.ThrowIfNull(e);
+        ArgumentNullException.ThrowIfNull(e);
         UnregisterEventHandlers();
         base.OnApplyTemplate(e);
         _expressionContainer = e.NameScope.Find<ScrollViewer>("ExpressionContainer");
@@ -125,10 +124,14 @@ public sealed class OverflowTextBlock : TemplatedControl
         ScrollToEnd();
     }
 
-    protected override AutomationPeer OnCreateAutomationPeer() => new OverflowTextBlockAutomationPeer(this);
+    protected override AutomationPeer OnCreateAutomationPeer()
+    {
+        return new OverflowTextBlockAutomationPeer(this);
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
-        System.ArgumentNullException.ThrowIfNull(change);
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
         if (change.Property == TokensUpdatedProperty)
         {
@@ -204,12 +207,36 @@ public sealed class OverflowTextBlock : TemplatedControl
         }
     }
 
-    private void OnScrollLeftClick(object? sender, RoutedEventArgs e) => ScrollLeft();
-    private void OnScrollRightClick(object? sender, RoutedEventArgs e) => ScrollRight();
-    private void OnViewChanged(object? sender, ScrollChangedEventArgs e) => UpdateScrollButtons();
-    private void OnExpressionSizeChanged(object? sender, SizeChangedEventArgs e) => UpdateScrollButtons();
-    private void OnExpressionLayoutUpdated(object? sender, EventArgs e) => UpdateScrollButtons();
-    private void UpdateVisualState() => PseudoClasses.Set(ActivePseudoClass, IsActive);
+    private void OnScrollLeftClick(object? sender, RoutedEventArgs e)
+    {
+        ScrollLeft();
+    }
+
+    private void OnScrollRightClick(object? sender, RoutedEventArgs e)
+    {
+        ScrollRight();
+    }
+
+    private void OnViewChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        UpdateScrollButtons();
+    }
+
+    private void OnExpressionSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        UpdateScrollButtons();
+    }
+
+    private void OnExpressionLayoutUpdated(object? sender, EventArgs e)
+    {
+        UpdateScrollButtons();
+    }
+
+    private void UpdateVisualState()
+    {
+        PseudoClasses.Set(ActivePseudoClass, IsActive);
+    }
+
     private void UpdateAllState()
     {
         UpdateVisualState();

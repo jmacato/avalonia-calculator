@@ -7,7 +7,11 @@ namespace Graphing.Symbolics;
 /// </summary>
 internal static class FixedRationalPowerCertificateReplay
 {
-    public static CellDecompositionCertificate BuildSignChart(FixedRationalPowerContext context, ResourceBudget budget) => CellDecomposer.Decompose(BuildSignChartFormula(context, budget), budget);
+    public static CellDecompositionCertificate BuildSignChart(FixedRationalPowerContext context, ResourceBudget budget)
+    {
+        return CellDecomposer.Decompose(BuildSignChartFormula(context, budget), budget);
+    }
+
     public static bool VerifySignChart(FixedRationalPowerContext context, CellDecompositionCertificate chart, ResourceBudget budget)
     {
         PolynomialFormula expected = BuildSignChartFormula(context, budget);
@@ -86,7 +90,7 @@ internal static class FixedRationalPowerCertificateReplay
 
     public static bool VerifyRangeProof(FixedRationalPowerContext context, CellDecompositionCertificate chart, ImmutableArray<BigRational> boundaries, ImmutableArray<RationalPowerRangeFiberWitness> fibers, ResourceBudget budget, out RealSet range)
     {
-        if (!TryDeriveRangeBoundaries(context, chart, budget, out ImmutableArray<BigRational> expectedBoundaries) || !expectedBoundaries.SequenceEqual(boundaries) || fibers.Length != checked((boundaries.Length * 2) + 1))
+        if (!TryDeriveRangeBoundaries(context, chart, budget, out ImmutableArray<BigRational> expectedBoundaries) || !expectedBoundaries.SequenceEqual(boundaries) || fibers.Length != checked(boundaries.Length * 2 + 1))
         {
             range = null!;
             return false;
@@ -403,7 +407,7 @@ internal static class FixedRationalPowerCertificateReplay
         return true;
     }
 
-    private static bool TryAddTailRangeBoundary(FixedRationalPowerContext context, System.Collections.Generic.SortedSet<Graphing.Symbolics.BigRational> result, ResourceBudget budget)
+    private static bool TryAddTailRangeBoundary(FixedRationalPowerContext context, SortedSet<BigRational> result, ResourceBudget budget)
     {
         int degreeDifference = context.Basis.Numerator.Degree - context.Basis.Denominator.Degree;
         if (degreeDifference < 0)
@@ -429,7 +433,7 @@ internal static class FixedRationalPowerCertificateReplay
 
     private static ImmutableArray<RationalPowerRangeFiberWitness> BuildRangeFibers(FixedRationalPowerContext context, ImmutableArray<BigRational> boundaries, ResourceBudget budget)
     {
-        var result = ImmutableArray.CreateBuilder<RationalPowerRangeFiberWitness>(checked((boundaries.Length * 2) + 1));
+        var result = ImmutableArray.CreateBuilder<RationalPowerRangeFiberWitness>(checked(boundaries.Length * 2 + 1));
         for (int gap = 0; gap <= boundaries.Length; gap++)
         {
             budget.Charge();
@@ -461,7 +465,7 @@ internal static class FixedRationalPowerCertificateReplay
         return string.Equals(expected.Canonical, witness.Fiber.Formula.Canonical, StringComparison.Ordinal) && CellDecomposer.Verify(witness.Fiber, budget) && witness.HasPreimage == !witness.Fiber.Result.IsEmpty;
     }
 
-    private static Graphing.Symbolics.PolynomialJunction RangeFiberFormula(FixedRationalPowerContext context, BigRational y, ResourceBudget budget)
+    private static PolynomialJunction RangeFiberFormula(FixedRationalPowerContext context, BigRational y, ResourceBudget budget)
     {
         if (y.Sign < 0 || y.IsZero && context.Exponent.Sign < 0)
         {
@@ -524,7 +528,7 @@ internal static class FixedRationalPowerCertificateReplay
         return components.All(static component => component is PointSet) ? RealSets.Points(components.Cast<PointSet>().SelectMany(static points => points.Points)) : RealSets.Union(components);
     }
 
-    private static Graphing.Symbolics.PolynomialJunction BuildSignChartFormula(FixedRationalPowerContext context, ResourceBudget budget)
+    private static PolynomialJunction BuildSignChartFormula(FixedRationalPowerContext context, ResourceBudget budget)
     {
         ImmutableArray<UnivariatePolynomial> domainAtoms = PolynomialFormulaConverter.Atoms(context.DomainFormula);
         var known = domainAtoms.Select(static polynomial => polynomial.Canonical).ToHashSet(StringComparer.Ordinal);
@@ -558,10 +562,26 @@ internal static class FixedRationalPowerCertificateReplay
         return new FixedRationalPowerCertificateReplayDifferentialData(first, curvature);
     }
 
-    private static int FirstDerivativeSign(FixedRationalPowerContext context, CellDecompositionCertificate chart, FixedRationalPowerCertificateReplayDifferentialData differential, CellWitness cell) => context.Exponent.Sign * RationalSign(chart, differential.First, cell);
-    private static int CurvatureSign(FixedRationalPowerContext context, CellDecompositionCertificate chart, FixedRationalPowerCertificateReplayDifferentialData differential, CellWitness cell) => context.Exponent.Sign * RationalSign(chart, differential.Curvature, cell);
-    private static int BasisSign(FixedRationalPowerContext context, CellDecompositionCertificate chart, CellWitness cell) => RationalSign(chart, context.Basis, cell);
-    private static int RationalSign(CellDecompositionCertificate chart, RationalFunction function, CellWitness cell) => PolynomialSign(chart, function.Numerator, cell) * PolynomialSign(chart, function.Denominator, cell);
+    private static int FirstDerivativeSign(FixedRationalPowerContext context, CellDecompositionCertificate chart, FixedRationalPowerCertificateReplayDifferentialData differential, CellWitness cell)
+    {
+        return context.Exponent.Sign * RationalSign(chart, differential.First, cell);
+    }
+
+    private static int CurvatureSign(FixedRationalPowerContext context, CellDecompositionCertificate chart, FixedRationalPowerCertificateReplayDifferentialData differential, CellWitness cell)
+    {
+        return context.Exponent.Sign * RationalSign(chart, differential.Curvature, cell);
+    }
+
+    private static int BasisSign(FixedRationalPowerContext context, CellDecompositionCertificate chart, CellWitness cell)
+    {
+        return RationalSign(chart, context.Basis, cell);
+    }
+
+    private static int RationalSign(CellDecompositionCertificate chart, RationalFunction function, CellWitness cell)
+    {
+        return PolynomialSign(chart, function.Numerator, cell) * PolynomialSign(chart, function.Denominator, cell);
+    }
+
     private static int PolynomialSign(CellDecompositionCertificate chart, UnivariatePolynomial polynomial, CellWitness cell)
     {
         if (polynomial.IsZero)
@@ -651,10 +671,14 @@ internal static class FixedRationalPowerCertificateReplay
         BigRational denominatorLeading = function.Denominator[denominatorDegree];
         BigRational numeratorNext = function.Numerator[numeratorDegree - 1];
         BigRational denominatorNext = function.Denominator[denominatorDegree - 1];
-        return ((numeratorNext * denominatorLeading) - (numeratorLeading * denominatorNext)) / (denominatorLeading * denominatorLeading);
+        return (numeratorNext * denominatorLeading - numeratorLeading * denominatorNext) / (denominatorLeading * denominatorLeading);
     }
 
-    private static Asymptote Oblique(ExactReal slope, ExactReal intercept) => new(AsymptoteOrientation.Oblique, new SingletonReal(intercept), slope, intercept);
+    private static Asymptote Oblique(ExactReal slope, ExactReal intercept)
+    {
+        return new Asymptote(AsymptoteOrientation.Oblique, new SingletonReal(intercept), slope, intercept);
+    }
+
     private static bool TryRationalCoordinate(CellDecompositionCertificate chart, int point, ResourceBudget budget, out BigRational value)
     {
         ExactReal root = chart.RootIsolation.Roots[point];
@@ -694,14 +718,19 @@ internal static class FixedRationalPowerCertificateReplay
         return PolynomialFormulaConverter.Evaluate(formula, signs);
     }
 
-    private static PolynomialFormula ReflectFormula(PolynomialFormula formula, ResourceBudget budget) => formula switch
+    private static PolynomialFormula ReflectFormula(PolynomialFormula formula, ResourceBudget budget)
     {
-        PolynomialBoolean boolean => boolean,
-        PolynomialAtom atom => ReflectAtom(atom, budget),
-        PolynomialNot not => new PolynomialNot(ReflectFormula(not.Operand, budget)),
-        PolynomialJunction junction => new PolynomialJunction(junction.IsConjunction, junction.Operands.Select(operand => ReflectFormula(operand, budget)).ToImmutableArray()),
-        _ => throw new ArgumentOutOfRangeException(nameof(formula))
-    };
+        return formula switch
+        {
+            PolynomialBoolean boolean => boolean,
+            PolynomialAtom atom => ReflectAtom(atom, budget),
+            PolynomialNot not => new PolynomialNot(ReflectFormula(not.Operand, budget)),
+            PolynomialJunction junction => new PolynomialJunction(junction.IsConjunction,
+                junction.Operands.Select(operand => ReflectFormula(operand, budget)).ToImmutableArray()),
+            _ => throw new ArgumentOutOfRangeException(nameof(formula))
+        };
+    }
+
     private static PolynomialAtom ReflectAtom(PolynomialAtom atom, ResourceBudget budget)
     {
         UnivariatePolynomial reflected = atom.Polynomial.SubstituteNegativeVariable(budget);
@@ -709,14 +738,18 @@ internal static class FixedRationalPowerCertificateReplay
         return new PolynomialAtom(reflected.PrimitivePositive(budget), comparison);
     }
 
-    private static Comparison Reverse(Comparison comparison) => comparison switch
+    private static Comparison Reverse(Comparison comparison)
     {
-        Comparison.Less => Comparison.Greater,
-        Comparison.LessOrEqual => Comparison.GreaterOrEqual,
-        Comparison.Greater => Comparison.Less,
-        Comparison.GreaterOrEqual => Comparison.LessOrEqual,
-        _ => comparison
-    };
+        return comparison switch
+        {
+            Comparison.Less => Comparison.Greater,
+            Comparison.LessOrEqual => Comparison.GreaterOrEqual,
+            Comparison.Greater => Comparison.Less,
+            Comparison.GreaterOrEqual => Comparison.LessOrEqual,
+            _ => comparison
+        };
+    }
+
     private static RealSet BuildSubset(CellDecompositionCertificate chart, Func<CellWitness, bool> include)
     {
         bool[] included = chart.Cells.Select(include).ToArray();
@@ -764,11 +797,31 @@ internal static class FixedRationalPowerCertificateReplay
         return components.All(static component => component is PointSet) ? RealSets.Points(components.Cast<PointSet>().SelectMany(static points => points.Points)) : RealSets.Union(components);
     }
 
-    private static bool GapIncluded(CellDecompositionCertificate chart, int gap) => GapCell(chart, gap).Included;
-    private static bool PointIncluded(CellDecompositionCertificate chart, int point) => PointCell(chart, point).Included;
-    private static CellWitness GapCell(CellDecompositionCertificate chart, int gap) => chart.Cells[gap * 2];
-    private static CellWitness PointCell(CellDecompositionCertificate chart, int point) => chart.Cells[(point * 2) + 1];
-    private static bool TouchesDomain(CellDecompositionCertificate chart, int point) => PointIncluded(chart, point) || GapIncluded(chart, point) || GapIncluded(chart, point + 1);
+    private static bool GapIncluded(CellDecompositionCertificate chart, int gap)
+    {
+        return GapCell(chart, gap).Included;
+    }
+
+    private static bool PointIncluded(CellDecompositionCertificate chart, int point)
+    {
+        return PointCell(chart, point).Included;
+    }
+
+    private static CellWitness GapCell(CellDecompositionCertificate chart, int gap)
+    {
+        return chart.Cells[gap * 2];
+    }
+
+    private static CellWitness PointCell(CellDecompositionCertificate chart, int point)
+    {
+        return chart.Cells[point * 2 + 1];
+    }
+
+    private static bool TouchesDomain(CellDecompositionCertificate chart, int point)
+    {
+        return PointIncluded(chart, point) || GapIncluded(chart, point) || GapIncluded(chart, point + 1);
+    }
+
     private static bool IsDomainBoundary(CellDecompositionCertificate chart, int point)
     {
         bool left = GapIncluded(chart, point);

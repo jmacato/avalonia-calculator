@@ -4,7 +4,6 @@
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Selection;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
@@ -35,8 +34,10 @@ public sealed partial class HistoryList : UserControl
         set => SetValue(RowHeightProperty, value);
     }
 
-    public static string GetHistoryItemAutomationName(string accExpression, string accResult) =>
-        $"{accExpression} {accResult}";
+    public static string GetHistoryItemAutomationName(string accExpression, string accResult)
+    {
+        return $"{accExpression} {accResult}";
+    }
 
     public void ScrollToBottom()
     {
@@ -76,7 +77,10 @@ public sealed partial class HistoryList : UserControl
         SubscribeToModel();
     }
 
-    private void SubscribeToModel() => SetSubscribedModel(Model);
+    private void SubscribeToModel()
+    {
+        SetSubscribedModel(Model);
+    }
 
     private void SetSubscribedModel(HistoryViewModel? model)
     {
@@ -99,7 +103,10 @@ public sealed partial class HistoryList : UserControl
         UpdateState();
     }
 
-    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e) => UpdateState();
+    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        UpdateState();
+    }
 
     private void UpdateState()
     {
@@ -109,7 +116,10 @@ public sealed partial class HistoryList : UserControl
         ClearHistory.IsVisible = hasItems;
     }
 
-    private void OnVisualItemsChanged(object? sender, EventArgs e) => UpdateState();
+    private void OnVisualItemsChanged(object? sender, EventArgs e)
+    {
+        UpdateState();
+    }
 
     private void OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {

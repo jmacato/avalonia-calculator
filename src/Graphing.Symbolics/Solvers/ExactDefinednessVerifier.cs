@@ -163,8 +163,10 @@ internal static class ExactDefinednessVerifier
 
     private static ExactCoefficientPolynomial Normalize(
         ExactCoefficientPolynomial polynomial,
-        ResourceBudget budget) =>
-        polynomial.IsZero || polynomial[polynomial.Degree].IsOne
+        ResourceBudget budget)
+    {
+        return polynomial.IsZero || polynomial[polynomial.Degree].IsOne
             ? polynomial
             : polynomial.Scale(polynomial[polynomial.Degree].Reciprocal(budget), budget);
+    }
 }

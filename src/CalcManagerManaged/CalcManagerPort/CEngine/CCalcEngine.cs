@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using CalcEngine;
 using CalculationManager;
 using System.Diagnostics;
 using System.Globalization;
@@ -41,7 +40,7 @@ public class CCalcEngine
     // returns the ptr to string representing the operator. Mostly same as the button, but few special cases for x^y etc.
     public wstring_view GetString(int ids)
     {
-        return m_engineStrings[ids.ToString(System.Globalization.CultureInfo.InvariantCulture)];
+        return m_engineStrings[ids.ToString(CultureInfo.InvariantCulture)];
     }
 
     public wstring_view GetString(wstring_view ids)
@@ -61,7 +60,7 @@ public class CCalcEngine
 
     ICalcDisplay m_pCalcDisplay;
 
-    CalculationManager.IResourceProvider m_resourceProvider;
+    IResourceProvider m_resourceProvider;
 
     int m_nOpCode; /* ID value of operation.                       */
 
@@ -129,7 +128,7 @@ public class CCalcEngine
 
     int32_t m_dwWordBitWidth; // # of bits in currently selected word size
 
-    System.Security.Cryptography.RandomNumberGenerator? m_randomGeneratorEngine;
+    RandomNumberGenerator? m_randomGeneratorEngine;
 
     uint64_t m_carryBit;
 
@@ -154,7 +153,7 @@ public class CCalcEngine
 
     static bool IsOpInRange(OpCode op, uint32_t x, uint32_t y)
     {
-        return ((op >= x) && (op <= y));
+        return op >= x && op <= y;
     }
 
     static bool IsBinOpCode(OpCode opCode)
@@ -167,8 +166,8 @@ public class CCalcEngine
     // of it and catch it themselves or not needing this
     static bool IsUnaryOpCode(OpCode opCode)
     {
-        return (IsOpInRange(opCode, CCommand.IdcUnaryfirst, CCommand.IdcUnarylast) ||
-                IsOpInRange(opCode, CCommand.IdcUnaryextendedfirst, CCommand.IdcUnaryextendedlast));
+        return IsOpInRange(opCode, CCommand.IdcUnaryfirst, CCommand.IdcUnarylast) ||
+               IsOpInRange(opCode, CCommand.IdcUnaryextendedfirst, CCommand.IdcUnaryextendedlast);
     }
 
     static bool IsDigitOpCode(OpCode opCode)
@@ -278,39 +277,39 @@ public class CCalcEngine
     {
         m_ratPak = ratPak ?? new RatPak();
 
-        m_fPrecedence = (fPrecedence);
-        m_fIntegerMode = (fIntegerMode);
-        m_pCalcDisplay = (pCalcDisplay);
-        m_resourceProvider = (pResourceProvider);
-        m_nOpCode = (0);
-        m_nPrevOpCode = (0);
-        m_bChangeOp = (false);
-        m_bRecord = (false);
-        m_bSetCalcState = (false);
+        m_fPrecedence = fPrecedence;
+        m_fIntegerMode = fIntegerMode;
+        m_pCalcDisplay = pCalcDisplay;
+        m_resourceProvider = pResourceProvider;
+        m_nOpCode = 0;
+        m_nPrevOpCode = 0;
+        m_bChangeOp = false;
+        m_bRecord = false;
+        m_bSetCalcState = false;
         m_input = new CalcInput(DEFAULT_DEC_SEPARATOR);
-        m_nFE = (NumberFormat.FloatingPoint);
+        m_nFE = NumberFormat.FloatingPoint;
         m_memoryValue = new Rational(m_ratPak); //{ make_unique<Rational>=() };
         m_holdVal = new Rational(m_ratPak, 0);
         m_currentVal = new Rational(m_ratPak, 0);
         m_lastVal = new Rational(m_ratPak, 0);
         // m_parenVals = [];
         // m_precedenceVals = [];
-        m_bError = (false);
-        m_bInv = (false);
-        m_bNoPrevEqu = (true);
-        m_radix = (DEFAULT_RADIX);
-        m_precision = (DEFAULT_PRECISION);
-        m_cIntDigitsSav = (DEFAULT_MAX_DIGITS);
+        m_bError = false;
+        m_bInv = false;
+        m_bNoPrevEqu = true;
+        m_radix = DEFAULT_RADIX;
+        m_precision = DEFAULT_PRECISION;
+        m_cIntDigitsSav = DEFAULT_MAX_DIGITS;
         m_decGrouping = [];
-        m_numberString = (DEFAULT_NUMBER_STR);
-        m_nTempCom = (0);
-        m_openParenCount = (0);
+        m_numberString = DEFAULT_NUMBER_STR;
+        m_nTempCom = 0;
+        m_openParenCount = 0;
         // m_nOp = [];
         // m_nPrecOp = [];
-        m_precedenceOpCount = (0);
-        m_nLastCom = (0);
-        m_angletype = (AngleType.Degrees);
-        m_numwidth = (NumWidth.QwordWidth);
+        m_precedenceOpCount = 0;
+        m_nLastCom = 0;
+        m_angletype = AngleType.Degrees;
+        m_numwidth = NumWidth.QwordWidth;
         m_HistoryCollector = new CHistoryCollector(this, pCalcDisplay, pHistoryDisplay, DEFAULT_DEC_SEPARATOR);
         m_groupSeparator = DEFAULT_GRP_SEPARATOR;
 
@@ -351,12 +350,12 @@ public class CCalcEngine
 
     Rational GetChopNumber()
     {
-        return m_chopNumbers[(int)(m_numwidth)];
+        return m_chopNumbers[(int)m_numwidth];
     }
 
     string GetMaxDecimalValueString()
     {
-        return m_maxDecimalValueStrings[(int)(m_numwidth)];
+        return m_maxDecimalValueStrings[(int)m_numwidth];
     }
 
     // Gets the number in memory for UI to keep it persisted and set it again to a different instance
@@ -422,7 +421,7 @@ public class CCalcEngine
 
     public IList<IExpressionCommand> GetHistoryCollectorCommandsSnapshot()
     {
-        var commands = m_HistoryCollector.Commands ?? new List<IExpressionCommand>();
+        var commands = m_HistoryCollector.Commands ?? [];
         if (!m_HistoryCollector.FOpndAddedToHistory() && m_bRecord)
         {
             commands.Add(m_HistoryCollector.GetOperandCommandsFromString(m_numberString, m_currentVal));
@@ -499,7 +498,7 @@ public class CCalcEngine
     {
         if (null != m_pCalcDisplay)
         {
-            m_pCalcDisplay.SetExpressionDisplay(new List<(string, int)>(), new List<IExpressionCommand>());
+            m_pCalcDisplay.SetExpressionDisplay([], []);
         }
     }
 
@@ -557,7 +556,7 @@ public class CCalcEngine
         }
 
         // UNARY OPERATORS:
-        if (IsUnaryOpCode(wParam) || (wParam == CCommand.IdcDegrees))
+        if (IsUnaryOpCode(wParam) || wParam == CCommand.IdcDegrees)
         {
             HandleUnaryOpCommand(wParam);
             return;
@@ -623,9 +622,9 @@ public class CCalcEngine
                 IsOpInRange(wParam, CCommand.IdmQword, CCommand.IdmByte) ||
                 IsOpInRange(wParam, CCommand.IdmDeg, CCommand.IdmGrad)
                 || IsOpInRange(wParam, CCommand.IdcBineditstart, CCommand.IdcBineditend) ||
-                (CCommand.IdcInv == wParam) || (CCommand.IdcSign == wParam && 10 != m_radix) ||
-                (CCommand.IdcRand == wParam)
-                || (CCommand.IdcEuler == wParam))
+                CCommand.IdcInv == wParam || (CCommand.IdcSign == wParam && 10 != m_radix) ||
+                CCommand.IdcRand == wParam
+                || CCommand.IdcEuler == wParam)
             {
                 m_bRecord = false;
                 m_currentVal = m_input.ToRational(m_ratPak, m_radix, m_precision);
@@ -645,7 +644,7 @@ public class CCalcEngine
         uint iValue = (uint)(wParam - CCommand.Idc0);
 
         // this is redundant, illegal keys are disabled
-        if (iValue >= (uint)(m_radix))
+        if (iValue >= (uint)m_radix)
         {
             HandleErrorCommand(wParam);
             return;
@@ -711,7 +710,7 @@ public class CCalcEngine
             int nx = NPrecedenceOfOp((int)wParam);
             int ni = NPrecedenceOfOp(m_nOpCode);
 
-            if ((nx > ni) && m_fPrecedence)
+            if (nx > ni && m_fPrecedence)
             {
                 if (m_precedenceOpCount < MAXPRECDEPTH)
                 {
@@ -749,7 +748,7 @@ public class CCalcEngine
                     }
                 }
 
-                if ((m_precedenceOpCount != 0) && (m_nPrecOp[m_precedenceOpCount - 1]) != 0)
+                if (m_precedenceOpCount != 0 && m_nPrecOp[m_precedenceOpCount - 1] != 0)
                 {
                     m_precedenceOpCount--;
                     m_nOpCode = m_nPrecOp[m_precedenceOpCount];
@@ -834,10 +833,7 @@ public class CCalcEngine
 
     private static bool IsTrigOpCode(OpCode wParam)
     {
-        return (wParam == CCommand.IdcSin) || (wParam == CCommand.IdcCos) || (wParam == CCommand.IdcTan) ||
-               (wParam == CCommand.IdcSinh) || (wParam == CCommand.IdcCosh) || (wParam == CCommand.IdcTanh)
-               || (wParam == CCommand.IdcSec) || (wParam == CCommand.IdcCsc) || (wParam == CCommand.IdcCot) ||
-               (wParam == CCommand.IdcSech) || (wParam == CCommand.IdcCsch) || (wParam == CCommand.IdcCoth);
+        return wParam is CCommand.IdcSin or CCommand.IdcCos or CCommand.IdcTan or CCommand.IdcSinh or CCommand.IdcCosh or CCommand.IdcTanh or CCommand.IdcSec or CCommand.IdcCsc or CCommand.IdcCot or CCommand.IdcSech or CCommand.IdcCsch or CCommand.IdcCoth;
     }
 
     private void ResetInvStateIfUsed(OpCode wParam)
@@ -846,13 +842,7 @@ public class CCalcEngine
         and have been used */
 
         if (m_bInv
-            && ((wParam == CCommand.IdcChop) || (wParam == CCommand.IdcSin) || (wParam == CCommand.IdcCos) ||
-                (wParam == CCommand.IdcTan) || (wParam == CCommand.IdcLn) || (wParam == CCommand.IdcDms)
-                || (wParam == CCommand.IdcDegrees) || (wParam == CCommand.IdcSinh) ||
-                (wParam == CCommand.IdcCosh) || (wParam == CCommand.IdcTanh) || (wParam == CCommand.IdcSec) ||
-                (wParam == CCommand.IdcCsc)
-                || (wParam == CCommand.IdcCot) || (wParam == CCommand.IdcSech) || (wParam == CCommand.IdcCsch) ||
-                (wParam == CCommand.IdcCoth)))
+            && wParam is CCommand.IdcChop or CCommand.IdcSin or CCommand.IdcCos or CCommand.IdcTan or CCommand.IdcLn or CCommand.IdcDms or CCommand.IdcDegrees or CCommand.IdcSinh or CCommand.IdcCosh or CCommand.IdcTanh or CCommand.IdcSec or CCommand.IdcCsc or CCommand.IdcCot or CCommand.IdcSech or CCommand.IdcCsch or CCommand.IdcCoth)
         {
             m_bInv = false;
         }
@@ -1028,11 +1018,11 @@ public class CCalcEngine
         // -OR- the paren holding array is empty and we try to remove a
         //      paren
         // -OR- the precedence holding array is full
-        if ((m_openParenCount >= MAXPRECDEPTH && (wParam == CCommand.IdcOpenp)) ||
-            (!(m_openParenCount != 0) && (wParam != CCommand.IdcOpenp))
-            || ((m_precedenceOpCount >= MAXPRECDEPTH && m_nPrecOp[m_precedenceOpCount - 1] != 0)))
+        if ((m_openParenCount >= MAXPRECDEPTH && wParam == CCommand.IdcOpenp) ||
+            (!(m_openParenCount != 0) && wParam != CCommand.IdcOpenp)
+            || (m_precedenceOpCount >= MAXPRECDEPTH && m_nPrecOp[m_precedenceOpCount - 1] != 0))
         {
-            if (!(m_openParenCount != 0) && (wParam != CCommand.IdcOpenp))
+            if (!(m_openParenCount != 0) && wParam != CCommand.IdcOpenp)
             {
                 m_pCalcDisplay.OnNoRightParenAdded();
             }
@@ -1053,7 +1043,7 @@ public class CCalcEngine
         // Set the "(=xx" indicator.
         if (null != m_pCalcDisplay)
         {
-            m_pCalcDisplay.SetParenthesisNumber((uint)(m_openParenCount));
+            m_pCalcDisplay.SetParenthesisNumber((uint)m_openParenCount);
         }
 
         if (!m_bError)
@@ -1078,7 +1068,7 @@ public class CCalcEngine
         // Open level of parentheses, save number and operation.
         m_parenVals[m_openParenCount] = m_lastVal;
 
-        m_nOp[m_openParenCount++] = (m_bChangeOp ? m_nOpCode : 0);
+        m_nOp[m_openParenCount++] = m_bChangeOp ? m_nOpCode : 0;
 
         /* save a special marker on the precedence array */
         if (m_precedenceOpCount < (ulong)m_nPrecOp.Length)
@@ -1146,7 +1136,7 @@ public class CCalcEngine
         m_nOpCode = m_nOp[m_openParenCount];
 
         // m_bChangeOp should be true if m_nOpCode is valid
-        m_bChangeOp = (m_nOpCode != 0);
+        m_bChangeOp = m_nOpCode != 0;
     }
 
     private bool ProcessModeCommand(OpCode wParam)
@@ -1224,7 +1214,7 @@ public class CCalcEngine
             m_HistoryCollector.AddOpndToHistory(m_numberString, m_currentVal);
         }
 
-        m_currentVal = -(m_currentVal);
+        m_currentVal = -m_currentVal;
 
         DisplayNum();
         m_HistoryCollector.AddUnaryOpToHistory(CCommand.IdcSign, m_bInv, m_angletype);
@@ -1257,7 +1247,7 @@ public class CCalcEngine
                     /* indicator if the result is zero.                           */
                     Rational result = m_memoryValue + m_currentVal;
                     m_memoryValue =
-                        (TruncateNumForIntMath(result)); // Memory should follow the current int mode
+                        TruncateNumForIntMath(result); // Memory should follow the current int mode
 
                     break;
                 }
@@ -1266,7 +1256,7 @@ public class CCalcEngine
                     /* MMINUS subtracts m_currentVal to immediate memory and kills the "mem"   */
                     /* indicator if the result is zero.                           */
                     Rational result = m_memoryValue - m_currentVal;
-                    m_memoryValue = (TruncateNumForIntMath(result));
+                    m_memoryValue = TruncateNumForIntMath(result);
 
                     break;
                 }
@@ -1332,7 +1322,7 @@ public class CCalcEngine
         if (!m_fIntegerMode)
         {
             CheckAndAddLastBinOpToHistory(); // pi is like entering the number
-            m_currentVal = new Rational(m_ratPak, (m_bInv ? m_ratPak.two_pi : m_ratPak.Pi));
+            m_currentVal = new Rational(m_ratPak, m_bInv ? m_ratPak.two_pi : m_ratPak.Pi);
 
             DisplayNum();
             m_bInv = false;
@@ -1621,7 +1611,7 @@ public class CCalcEngine
         if (m_operatorStringTable.TryGetValue(nOpCode,
                 out var element)) //(var pair = operatorStringTable.find(nOpCode); pair != operatorStringTable.end())
         {
-            if (!element.hasAngleStrings || AngleType.Degrees == angletype)
+            if (!element.HasAngleStrings || AngleType.Degrees == angletype)
             {
                 if (fInv)
                 {
@@ -1703,7 +1693,7 @@ public class CCalcEngine
 
     public wstring GetCurrentResultForRadix(uint32_t radix, int32_t precision, bool groupDigitsPerRadix)
     {
-        Rational rat = (m_bRecord ? m_input.ToRational(m_ratPak, m_radix, m_precision) : m_currentVal);
+        Rational rat = m_bRecord ? m_input.ToRational(m_ratPak, m_radix, m_precision) : m_currentVal;
 
         m_ratPak.ChangeConstants(m_radix, precision);
 
@@ -1747,7 +1737,7 @@ public class CCalcEngine
             {
                 uint64_t w64Bits = tempRat.ToUInt64T();
                 bool fMsb = ((w64Bits >> (m_dwWordBitWidth - 1)) & 1) != 0;
-                if ((radix == 10) && fMsb)
+                if (radix == 10 && fMsb)
                 {
                     // TODO: Check this logic later with the original.
                     // If high bit is set, then get the decimal number in negative 2's complement form.
@@ -1821,7 +1811,7 @@ public class CCalcEngine
         if (result < new Rational(m_ratPak, 0))
         {
             // if negative make positive by doing a twos complement
-            result = -(result) - new Rational(m_ratPak, 1);
+            result = -result - new Rational(m_ratPak, 1);
             result ^= GetChopNumber();
         }
 
@@ -1875,7 +1865,7 @@ public class CCalcEngine
             // Displayed number can go through transformation. So copy it after transformation
             m_lastDisplay.value = m_currentVal;
 
-            if ((m_radix == 10) && IsNumberInvalid(m_numberString, MAX_EXPONENT, m_precision, m_radix) != 0)
+            if (m_radix == 10 && IsNumberInvalid(m_numberString, MAX_EXPONENT, m_precision, m_radix) != 0)
             {
                 DisplayError(CalcErr.Overflow);
             }
@@ -2048,7 +2038,7 @@ public class CCalcEngine
         switch (radix)
         {
             case 10:
-                return GroupDigits(m_groupSeparator.ToString(), m_decGrouping, numberString, ('-' == numberString[0]));
+                return GroupDigits(m_groupSeparator.ToString(), m_decGrouping, numberString, '-' == numberString[0]);
             case 8:
                 return GroupDigits(" ", [3, 0], numberString);
             case 2:
@@ -2098,11 +2088,11 @@ public class CCalcEngine
 
         // Find the position of exponential 'e' in the string
         var exp = displayString.IndexOf('e');
-        var hasExponent = (exp != -1);
+        var hasExponent = exp != -1;
 
         // Find the position of decimal point in the string
         var dec = displayString.IndexOf(m_decimalSeparator);
-        var hasDecimal = (dec != -1);
+        var hasDecimal = dec != -1;
 
         // Determine the end position of the portion subject to grouping
         int integerPartEnd;
@@ -2140,7 +2130,7 @@ public class CCalcEngine
             // Do not add a separator if:
             // - grouping size is 0
             // - we are at the end of the digit string
-            if (currGrouping != 0 && (groupingSize % currGrouping) == 0 && i > startIdx)
+            if (currGrouping != 0 && groupingSize % currGrouping == 0 && i > startIdx)
             {
                 result.Append(delimiter);
                 groupingSize = 0; // reset for a new group
@@ -2272,16 +2262,16 @@ public class CCalcEngine
                     result = RationalMath.Integral(m_ratPak, rat);
 
                     uint64_t w64Bits = result.ToUInt64T();
-                    uint64_t lsb = (uint64_t)(((w64Bits & 0x01) == 1) ? 1 : 0);
+                    uint64_t lsb = (uint64_t)((w64Bits & 0x01) == 1 ? 1 : 0);
                     w64Bits >>= 1; // RShift by 1
 
                     if (op == CCommand.IdcRor)
                     {
-                        w64Bits |= (lsb << (m_dwWordBitWidth - 1));
+                        w64Bits |= lsb << (m_dwWordBitWidth - 1);
                     }
                     else
                     {
-                        w64Bits |= (m_carryBit << (m_dwWordBitWidth - 1));
+                        w64Bits |= m_carryBit << (m_dwWordBitWidth - 1);
                         m_carryBit = lsb;
                     }
 
@@ -2304,7 +2294,7 @@ public class CCalcEngine
                 {
                     // If the operator is multiply/divide, we evaluate this as "X [op] (Y%)"
                     // Otherwise, we evaluate it as "X [op] (X * Y%)"
-                    if (m_nOpCode == CCommand.IdcMul || m_nOpCode == CCommand.IdcDiv)
+                    if (m_nOpCode is CCommand.IdcMul or CCommand.IdcDiv)
                     {
                         result = rat / new Rational(m_ratPak, 100);
                     }
@@ -2523,12 +2513,12 @@ public class CCalcEngine
                     break;
                 }
             case CCommand.IdcCeil:
-                result = (RationalMath.Frac(m_ratPak, rat) > new Rational(m_ratPak, 0))
+                result = RationalMath.Frac(m_ratPak, rat) > new Rational(m_ratPak, 0)
                     ? RationalMath.Integral(m_ratPak, rat + new Rational(m_ratPak, 1)) : RationalMath.Integral(m_ratPak, rat);
                 break;
 
             case CCommand.IdcFloor:
-                result = (RationalMath.Frac(m_ratPak, rat) < new Rational(m_ratPak, 0))
+                result = RationalMath.Frac(m_ratPak, rat) < new Rational(m_ratPak, 0)
                     ? RationalMath.Integral(m_ratPak, rat - new Rational(m_ratPak, 1)) : RationalMath.Integral(m_ratPak, rat);
                 break;
 
@@ -2548,9 +2538,9 @@ public class CCalcEngine
 
     void DisplayError(uint32_t nError)
     {
-        var actualId = (EngineStrings.IdsErrorsFirst + RatPak.ScodeCode(nError));
+        var actualId = EngineStrings.IdsErrorsFirst + RatPak.ScodeCode(nError);
 
-        wstring errorString = GetString(actualId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        wstring errorString = GetString(actualId.ToString(CultureInfo.InvariantCulture));
 
         SetPrimaryDisplay(errorString, true /*isError*/);
 
@@ -2559,13 +2549,16 @@ public class CCalcEngine
         m_HistoryCollector.ClearHistoryLine(errorString);
     }
 
-    public void DisplayError(CalcErr nError) => DisplayError((uint32_t)nError);
+    public void DisplayError(CalcErr nError)
+    {
+        DisplayError((uint32_t)nError);
+    }
 
     // Routines to perform standard operations &|^~<<>>+-/*% and pwr.
     Rational DoOperation(int operation, Rational lhs, Rational rhs)
     {
         // Remove any variance in how 0 could be represented in rat e.g. -0, 0/n, etc.
-        var result = (lhs != new Rational(m_ratPak, 0) ? lhs : new Rational(m_ratPak, 0));
+        var result = lhs != new Rational(m_ratPak, 0) ? lhs : new Rational(m_ratPak, 0);
 
         try
         {
@@ -2647,7 +2640,7 @@ public class CCalcEngine
                     break;
 
                 case CCommand.IdcLogbasey:
-                    result = (RationalMath.Log(m_ratPak, rhs) / RationalMath.Log(m_ratPak, result));
+                    result = RationalMath.Log(m_ratPak, rhs) / RationalMath.Log(m_ratPak, result);
                     break;
             }
         }
@@ -2725,7 +2718,7 @@ public class CCalcEngine
             result /= temp;
             if (m_fIntegerMode && fNegNumerator != fNegDenominator)
             {
-                result = -(RationalMath.Integral(m_ratPak, result));
+                result = -RationalMath.Integral(m_ratPak, result);
             }
         }
         else
@@ -2737,7 +2730,7 @@ public class CCalcEngine
 
                 if (fNegNumerator)
                 {
-                    result = -(RationalMath.Integral(m_ratPak, result));
+                    result = -RationalMath.Integral(m_ratPak, result);
                 }
             }
             else
@@ -2837,10 +2830,10 @@ public class CCalcEngine
         Rational result = RationalMath.Integral(m_ratPak, rat);
 
         // Remove any variance in how 0 could be represented in rat e.g. -0, 0/n, etc.
-        result = (result != new Rational(m_ratPak, 0) ? result : new Rational(m_ratPak, 0));
+        result = result != new Rational(m_ratPak, 0) ? result : new Rational(m_ratPak, 0);
 
         // XOR the result with 2^wbitno power
-        rat = result ^ RationalMath.Pow(m_ratPak, new Rational(m_ratPak, 2), new Rational(m_ratPak, (int32_t)(wbitno)));
+        rat = result ^ RationalMath.Pow(m_ratPak, new Rational(m_ratPak, 2), new Rational(m_ratPak, (int32_t)wbitno));
 
         return true;
     }
@@ -2891,7 +2884,7 @@ public class CCalcEngine
             // if in integer mode you still have to honor the max digits you can enter based on bit width
             if (m_fIntegerMode)
             {
-                m_cIntDigitsSav = (int)(GetMaxDecimalValueString().Length) - 1;
+                m_cIntDigitsSav = (int)GetMaxDecimalValueString().Length - 1;
                 // This is the max digits you can enter a decimal in fixed width mode aka integer mode -1. The last digit
                 // has to be checked separately
             }

@@ -1,6 +1,4 @@
 using Graphing;
-using Graphing.Renderer;
-using SkiaSharp;
 
 namespace GraphingRaster.Skia;
 

@@ -371,10 +371,12 @@ public sealed class ExactCoefficientAnalysisTests
             $"Certificate replay failed for {name}/{typeof(T).Name}.");
     }
 
-    private static void AssertProved<T>(ProofOutcome<T> outcome, string name) =>
+    private static void AssertProved<T>(ProofOutcome<T> outcome, string name)
+    {
         Assert.True(
             outcome.State == ProofState.Proved && outcome.Certificate is not null,
             $"{name} was {outcome.State}/{outcome.UnknownReason} for {typeof(T).Name}.");
+    }
 
     private static T Proved<T>(ProofOutcome<T> outcome)
     {
@@ -382,37 +384,65 @@ public sealed class ExactCoefficientAnalysisTests
         return outcome.Value!;
     }
 
-    private static string Coordinate(Asymptote asymptote) =>
-        ExactRealCanonical.Format(Assert.IsType<SingletonReal>(asymptote.Coordinate).Value);
+    private static string Coordinate(Asymptote asymptote)
+    {
+        return ExactRealCanonical.Format(Assert.IsType<SingletonReal>(asymptote.Coordinate).Value);
+    }
 
     private static AnalysisRequest Request(
         InputExpression expression,
-        AnalysisFeatures features) =>
-        new(expression, features, AngleUnit.Radians, "x", static () => true);
+        AnalysisFeatures features)
+    {
+        return new AnalysisRequest(expression, features, AngleUnit.Radians, "x", static () => true);
+    }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Symbol(string name) => InputExpression.Variable(name, Source);
+    private static InputExpression Symbol(string name)
+    {
+        return InputExpression.Variable(name, Source);
+    }
 
-    private static InputExpression Number(int value) => Number(new BigRational(value));
+    private static InputExpression Number(int value)
+    {
+        return Number(new BigRational(value));
+    }
 
-    private static InputExpression Number(BigRational value) => InputExpression.Number(value, Source);
+    private static InputExpression Number(BigRational value)
+    {
+        return InputExpression.Number(value, Source);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Subtract(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
 
-    private static InputExpression Power(InputExpression basis, int exponent) =>
-        InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    private static InputExpression Power(InputExpression basis, int exponent)
+    {
+        return InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    }
 
-    private static InputExpression Function(string name, params InputExpression[] arguments) =>
-        InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    private static InputExpression Function(string name, params InputExpression[] arguments)
+    {
+        return InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    }
 }

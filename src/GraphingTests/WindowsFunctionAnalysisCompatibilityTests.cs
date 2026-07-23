@@ -2014,64 +2014,109 @@ public sealed class WindowsFunctionAnalysisCompatibilityTests
         return solver.Analyze(analyzer);
     }
 
-    private static AnalysisRequest Request(InputExpression expression) =>
-        new(expression, AnalysisFeatures.All, AngleUnit.Radians, "x", static () => true);
-
-    private static int Bits(params AnalysisType[] features) =>
-        features.Aggregate(0, static (bits, feature) => bits | FeatureBit(feature));
-
-    private static int FeatureBit(AnalysisType type) => type switch
+    private static AnalysisRequest Request(InputExpression expression)
     {
-        AnalysisType.Domain => 1,
-        AnalysisType.Range => 2,
-        AnalysisType.Parity => 4,
-        AnalysisType.Period => 8,
-        AnalysisType.Zeros => 16,
-        AnalysisType.YIntercept => 32,
-        AnalysisType.Minima => 64,
-        AnalysisType.Maxima => 128,
-        AnalysisType.InflectionPoints => 256,
-        AnalysisType.VerticalAsymptotes => 512,
-        AnalysisType.HorizontalAsymptotes => 1024,
-        AnalysisType.ObliqueAsymptotes => 2048,
-        AnalysisType.Monotonicity => 4096,
-        _ => throw new ArgumentOutOfRangeException(nameof(type))
-    };
+        return new AnalysisRequest(expression, AnalysisFeatures.All, AngleUnit.Radians, "x", static () => true);
+    }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static int Bits(params AnalysisType[] features)
+    {
+        return features.Aggregate(0, static (bits, feature) => bits | FeatureBit(feature));
+    }
 
-    private static InputExpression Abs(InputExpression value) => Function("abs", value);
+    private static int FeatureBit(AnalysisType type)
+    {
+        return type switch
+        {
+            AnalysisType.Domain => 1,
+            AnalysisType.Range => 2,
+            AnalysisType.Parity => 4,
+            AnalysisType.Period => 8,
+            AnalysisType.Zeros => 16,
+            AnalysisType.YIntercept => 32,
+            AnalysisType.Minima => 64,
+            AnalysisType.Maxima => 128,
+            AnalysisType.InflectionPoints => 256,
+            AnalysisType.VerticalAsymptotes => 512,
+            AnalysisType.HorizontalAsymptotes => 1024,
+            AnalysisType.ObliqueAsymptotes => 2048,
+            AnalysisType.Monotonicity => 4096,
+            _ => throw new ArgumentOutOfRangeException(nameof(type))
+        };
+    }
 
-    private static InputExpression Sin(InputExpression value) => Function("sin", value);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Cos(InputExpression value) => Function("cos", value);
+    private static InputExpression Abs(InputExpression value)
+    {
+        return Function("abs", value);
+    }
 
-    private static InputExpression Tan(InputExpression value) => Function("tan", value);
+    private static InputExpression Sin(InputExpression value)
+    {
+        return Function("sin", value);
+    }
 
-    private static InputExpression Sqrt(InputExpression value) => Function("sqrt", value);
+    private static InputExpression Cos(InputExpression value)
+    {
+        return Function("cos", value);
+    }
 
-    private static InputExpression Sinh(InputExpression value) => Function("sinh", value);
+    private static InputExpression Tan(InputExpression value)
+    {
+        return Function("tan", value);
+    }
 
-    private static InputExpression Cosh(InputExpression value) => Function("cosh", value);
+    private static InputExpression Sqrt(InputExpression value)
+    {
+        return Function("sqrt", value);
+    }
 
-    private static InputExpression Number(int value) =>
-        InputExpression.Number(new BigRational(value), Source);
+    private static InputExpression Sinh(InputExpression value)
+    {
+        return Function("sinh", value);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Cosh(InputExpression value)
+    {
+        return Function("cosh", value);
+    }
 
-    private static InputExpression Subtract(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    private static InputExpression Number(int value)
+    {
+        return InputExpression.Number(new BigRational(value), Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
 
-    private static InputExpression Power(InputExpression basis, InputExpression exponent) =>
-        InputExpression.Binary(InputExpressionKind.Power, basis, exponent, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Function(string name, params InputExpression[] arguments) =>
-        InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
+
+    private static InputExpression Power(InputExpression basis, InputExpression exponent)
+    {
+        return InputExpression.Binary(InputExpressionKind.Power, basis, exponent, Source);
+    }
+
+    private static InputExpression Function(string name, params InputExpression[] arguments)
+    {
+        return InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    }
 }

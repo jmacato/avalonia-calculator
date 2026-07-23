@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace MathComposer.Core;
 
 /// <summary>A directional selection with anchor and active endpoints.</summary>

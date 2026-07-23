@@ -36,7 +36,7 @@ public sealed partial class TitleBar : UserControl
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
-        System.ArgumentNullException.ThrowIfNull(change);
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
         if (change.Property == IsAlwaysOnTopModeProperty)
         {
@@ -50,6 +50,8 @@ public sealed partial class TitleBar : UserControl
         }
     }
 
-    private void AlwaysOnTopButton_Click(object? sender, RoutedEventArgs e) =>
+    private void AlwaysOnTopButton_Click(object? sender, RoutedEventArgs e)
+    {
         AlwaysOnTopClick?.Invoke(this, e);
+    }
 }

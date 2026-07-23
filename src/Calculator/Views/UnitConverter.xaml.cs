@@ -282,7 +282,11 @@ public sealed partial class UnitConverter : UserControl, IDisposable
         };
     }
 
-    private void OnSizeChanged(object? sender, SizeChangedEventArgs e) => ApplyResponsiveLayout();
+    private void OnSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        ApplyResponsiveLayout();
+    }
+
     /// <summary>
     /// Direct equivalent of UnitConverter.xaml's AspectRatioTrigger and sizing
     /// VisualStates. The aspect trigger observes this control, while WinUI's
@@ -316,7 +320,7 @@ public sealed partial class UnitConverter : UserControl, IDisposable
             Grid.SetColumn(ConverterNumPad, 2);
             Grid.SetColumnSpan(ConverterNumPad, 2);
             Grid.SetColumnSpan(CurrencyLoadingGrid, 2);
-            SupplementaryResults.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
+            SupplementaryResults.VerticalAlignment = VerticalAlignment.Top;
         }
         else
         {
@@ -332,7 +336,7 @@ public sealed partial class UnitConverter : UserControl, IDisposable
             Grid.SetColumn(ConverterNumPad, 1);
             Grid.SetColumnSpan(ConverterNumPad, 1);
             Grid.SetColumnSpan(CurrencyLoadingGrid, 4);
-            SupplementaryResults.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center;
+            SupplementaryResults.VerticalAlignment = VerticalAlignment.Center;
         }
 
         Size adaptiveTriggerSize = TopLevel.GetTopLevel(this)?.ClientSize ?? Bounds.Size;
@@ -394,7 +398,11 @@ public sealed partial class UnitConverter : UserControl, IDisposable
         }
     }
 
-    private void OnResultContextMenuClosed(object? sender, RoutedEventArgs e) => _contextMenuTarget = null;
+    private void OnResultContextMenuClosed(object? sender, RoutedEventArgs e)
+    {
+        _contextMenuTarget = null;
+    }
+
     private void OnCopyMenuItemClicked(object? sender, RoutedEventArgs e)
     {
         if (_contextMenuTarget is { } target)

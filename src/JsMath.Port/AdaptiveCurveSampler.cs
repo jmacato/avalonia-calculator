@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Graphing;
 
 namespace JsMath.Port;
@@ -6,7 +5,6 @@ namespace JsMath.Port;
 /// Deterministic adaptive parametric sampler with finite/non-finite border
 /// probing and screen-space cusp/jump refinement.
 /// </summary>
-[PortedFrom("JSXGraph", "src/math/plot.js (updateParametricCurve_v2, _plotRecursive_v2, _borderCase)", "d4f153470e249a698a46d6e8078c1d68f0cbe2cd", "MIT", "sha256:2c0e84dbcca84ec68b70983d3c1a8f55c45f59132edd9a66ea12f6c18d99a651")]
 public static class AdaptiveCurveSampler
 {
     public static SampledCurve Sample(CurveEvaluator evaluator, double minimumParameter, double maximumParameter, SamplingViewport viewport, SamplingOptions? options = null, CancellationToken cancellationToken = default)
@@ -22,7 +20,7 @@ public static class AdaptiveCurveSampler
         for (int i = 0; i < segmentCount && !context.CannotContinue; i++)
         {
             context.BeginInitialSegment(i, segmentCount);
-            double rightParameter = i == segmentCount - 1 ? maximumParameter : minimumParameter + ((i + 1) * step);
+            double rightParameter = i == segmentCount - 1 ? maximumParameter : minimumParameter + (i + 1) * step;
             CurveSample right = context.Evaluate(rightParameter);
             ProcessInterval(context, left, right, 0);
             left = right;
@@ -56,7 +54,7 @@ public static class AdaptiveCurveSampler
             return;
         }
 
-        double midpointParameter = left.Parameter + ((right.Parameter - left.Parameter) * 0.5);
+        double midpointParameter = left.Parameter + (right.Parameter - left.Parameter) * 0.5;
         CurveSample midpoint = context.Evaluate(midpointParameter);
         if (depth < context.Options.MaximumDepth && ShouldRefine(context, left, midpoint, right, depth))
         {
@@ -160,7 +158,7 @@ public static class AdaptiveCurveSampler
         bool finiteIsLeft = left.IsFinite;
         for (int i = 0; i < context.Options.BorderProbeIterations && !context.ShouldStop; i++)
         {
-            double t = finite.Parameter + ((invalid.Parameter - finite.Parameter) * 0.5);
+            double t = finite.Parameter + (invalid.Parameter - finite.Parameter) * 0.5;
             CurveSample probe = context.Evaluate(t);
             if (probe.IsFinite)
             {
@@ -186,20 +184,32 @@ public static class AdaptiveCurveSampler
         }
     }
 
-    private static bool AreOnSameOutsideSide(GraphPoint a, GraphPoint b, GraphPoint c, SamplingViewport viewport, double margin) => (a.X < -margin && b.X < -margin && c.X < -margin) || (a.X > viewport.Width + margin && b.X > viewport.Width + margin && c.X > viewport.Width + margin) || (a.Y < -margin && b.Y < -margin && c.Y < -margin) || (a.Y > viewport.Height + margin && b.Y > viewport.Height + margin && c.Y > viewport.Height + margin);
-    private static double Distance(GraphPoint a, GraphPoint b) => Hypotenuse(a.X - b.X, a.Y - b.Y);
+    private static bool AreOnSameOutsideSide(GraphPoint a, GraphPoint b, GraphPoint c, SamplingViewport viewport, double margin)
+    {
+        return (a.X < -margin && b.X < -margin && c.X < -margin) ||
+               (a.X > viewport.Width + margin && b.X > viewport.Width + margin && c.X > viewport.Width + margin) ||
+               (a.Y < -margin && b.Y < -margin && c.Y < -margin) || (a.Y > viewport.Height + margin &&
+                                                                     b.Y > viewport.Height + margin &&
+                                                                     c.Y > viewport.Height + margin);
+    }
+
+    private static double Distance(GraphPoint a, GraphPoint b)
+    {
+        return Hypotenuse(a.X - b.X, a.Y - b.Y);
+    }
+
     private static double DistanceToSegment(GraphPoint p, GraphPoint a, GraphPoint b)
     {
         double dx = b.X - a.X;
         double dy = b.Y - a.Y;
-        double denominator = (dx * dx) + (dy * dy);
+        double denominator = dx * dx + dy * dy;
         if (denominator <= double.Epsilon)
         {
             return Distance(p, a);
         }
 
-        double t = Math.Clamp((((p.X - a.X) * dx) + ((p.Y - a.Y) * dy)) / denominator, 0, 1);
-        return Hypotenuse(p.X - (a.X + (t * dx)), p.Y - (a.Y + (t * dy)));
+        double t = Math.Clamp(((p.X - a.X) * dx + (p.Y - a.Y) * dy) / denominator, 0, 1);
+        return Hypotenuse(p.X - (a.X + t * dx), p.Y - (a.Y + t * dy));
     }
 
     private static double Hypotenuse(double x, double y)
@@ -213,6 +223,6 @@ public static class AdaptiveCurveSampler
         }
 
         double minimumRatio = Math.Min(x, y) / maximum;
-        return maximum * Math.Sqrt(1 + (minimumRatio * minimumRatio));
+        return maximum * Math.Sqrt(1 + minimumRatio * minimumRatio);
     }
 }

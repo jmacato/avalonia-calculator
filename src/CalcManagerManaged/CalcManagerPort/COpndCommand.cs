@@ -1,23 +1,22 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Runtime.InteropServices;
-
 namespace CalcEngine;
 
-public class COpndCommand : IOpndCommand
+public class COpndCommand(IList<int> commands, bool fNegative, bool fDecimal, bool fSciFmt)
+    : IOpndCommand
 {
-    bool m_fNegative;
+    bool m_fNegative = fNegative;
 
-    bool m_fSciFmt;
+    bool m_fSciFmt = fSciFmt;
 
-    bool m_fDecimal;
+    bool m_fDecimal = fDecimal;
 
     bool m_fInitialized;
 
     wstring m_token = "";
 
-    IList<int> m_commands;
+    IList<int> m_commands = commands;
 
     Rational? m_value;
 
@@ -34,17 +33,6 @@ public class COpndCommand : IOpndCommand
     private const wchar_t chExp = 'e';
 
     private const wchar_t chPlus = '+';
-
-    public COpndCommand(IList<int> commands, bool fNegative, bool fDecimal, bool fSciFmt)
-
-    {
-        m_commands = commands;
-        m_fNegative = fNegative;
-        m_fSciFmt = fSciFmt;
-        m_fDecimal = fDecimal;
-        m_fInitialized = false;
-        m_value = null;
-    }
 
     public void Initialize(Rational rat)
     {
@@ -66,7 +54,7 @@ public class COpndCommand : IOpndCommand
     {
         if (m_fSciFmt)
         {
-            ClearAllAndAppendCommand((CalculationManager.Command)command);
+            ClearAllAndAppendCommand((Command)command);
         }
         else
         {
@@ -95,7 +83,7 @@ public class COpndCommand : IOpndCommand
     {
         if (m_fSciFmt)
         {
-            ClearAllAndAppendCommand(CalculationManager.Command.Num0);
+            ClearAllAndAppendCommand(Command.Num0);
         }
         else
         {
@@ -103,7 +91,7 @@ public class COpndCommand : IOpndCommand
 
             if (nCommands == 1)
             {
-                ClearAllAndAppendCommand(CalculationManager.Command.Num0);
+                ClearAllAndAppendCommand(Command.Num0);
             }
             else
             {
@@ -139,7 +127,7 @@ public class COpndCommand : IOpndCommand
         return CalculationManager.CommandType.OperandCommand;
     }
 
-    void ClearAllAndAppendCommand(CalculationManager.Command command)
+    void ClearAllAndAppendCommand(Command command)
     {
         m_commands.Clear();
         m_commands.Add((int)command);

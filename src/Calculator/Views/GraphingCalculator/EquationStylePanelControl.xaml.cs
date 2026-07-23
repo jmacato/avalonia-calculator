@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 using Avalonia;
-using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Media;
 using GraphControl;
@@ -70,7 +69,11 @@ public sealed partial class EquationStylePanelControl : UserControl
     public IReadOnlyList<IBrush> AvailableColors { get; }
     public IReadOnlyList<EquationLineStyleChoice> AvailableStyles { get; }
 
-    private void OnColorSelectionChanged(object? sender, SelectionChangedEventArgs e) => SynchronizeColorFromIndex();
+    private void OnColorSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        SynchronizeColorFromIndex();
+    }
+
     private void SynchronizeColorFromIndex()
     {
         if (_synchronizing || AvailableColors.Count == 0)
@@ -108,5 +111,8 @@ public sealed partial class EquationStylePanelControl : UserControl
         _synchronizing = false;
     }
 
-    private static SolidColorBrush Brush(byte red, byte green, byte blue) => new(Color.FromRgb(red, green, blue));
+    private static SolidColorBrush Brush(byte red, byte green, byte blue)
+    {
+        return new SolidColorBrush(Color.FromRgb(red, green, blue));
+    }
 }

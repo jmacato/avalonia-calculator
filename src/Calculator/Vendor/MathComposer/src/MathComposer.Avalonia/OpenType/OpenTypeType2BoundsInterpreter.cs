@@ -1,35 +1,21 @@
-using System.Buffers.Binary;
 using System.Collections.Immutable;
-using System.Text;
 using static MathComposer.Avalonia.OpenType.OpenTypeMathFont;
 
 namespace MathComposer.Avalonia.OpenType;
 
-internal sealed class OpenTypeType2BoundsInterpreter
+internal sealed class OpenTypeType2BoundsInterpreter(
+    OpenTypeMathFont font,
+    OpenTypeTableRecord cff,
+    ImmutableArray<OpenTypeCffSlice> globalSubroutines,
+    ImmutableArray<OpenTypeCffSlice> localSubroutines)
 {
     private const int MaximumSubroutineDepth = 10;
     private const int MaximumOperationsPerGlyph = 100_000;
     private const int MaximumOperandStack = 96;
 
-    private readonly OpenTypeMathFont _font;
-    private readonly OpenTypeTableRecord _cff;
-    private readonly ImmutableArray<OpenTypeCffSlice> _globalSubroutines;
-    private readonly ImmutableArray<OpenTypeCffSlice> _localSubroutines;
     private readonly double[] _transient = new double[32];
     private readonly OpenTypeBoundsBuilder _bounds = new();
     private int _stemCount;
-
-    public OpenTypeType2BoundsInterpreter(
-        OpenTypeMathFont font,
-        OpenTypeTableRecord cff,
-        ImmutableArray<OpenTypeCffSlice> globalSubroutines,
-        ImmutableArray<OpenTypeCffSlice> localSubroutines)
-    {
-        _font = font;
-        _cff = cff;
-        _globalSubroutines = globalSubroutines;
-        _localSubroutines = localSubroutines;
-    }
 
     public OpenTypeGlyphBounds ReadBounds(OpenTypeCffSlice charString)
     {
@@ -53,7 +39,7 @@ internal sealed class OpenTypeType2BoundsInterpreter
             throw Invalid("A Type 2 charstring exceeds the subroutine-depth limit.");
         }
 
-        _font.EnsureTableAbsolute(_cff, slice.Offset, slice.Length);
+        font.EnsureTableAbsolute(cff, slice.Offset, slice.Length);
         int offset = slice.Offset;
         int end = checked(slice.Offset + slice.Length);
         while (offset < end)
@@ -63,8 +49,8 @@ internal sealed class OpenTypeType2BoundsInterpreter
                 throw Invalid("A Type 2 charstring exceeds the operation limit.");
             }
 
-            byte operation = _font.ReadByte(offset++);
-            if (operation >= 32 || operation is 28 or 255)
+            byte operation = font.ReadByte(offset++);
+            if (operation is >= 32 or 28 or 255)
             {
                 Push(stack, ReadNumber(operation, ref offset, end));
                 continue;
@@ -91,8 +77,10 @@ internal sealed class OpenTypeType2BoundsInterpreter
         }
     }
 
-    private static bool IsControlOperator(byte operation) =>
-        operation is 1 or 3 or 10 or 11 or 12 or 14 or 18 or 19 or 20 or 23 or 29;
+    private static bool IsControlOperator(byte operation)
+    {
+        return operation is 1 or 3 or 10 or 11 or 12 or 14 or 18 or 19 or 20 or 23 or 29;
+    }
 
     private bool ExecuteControlOperator(
         byte operation,
@@ -111,7 +99,7 @@ internal sealed class OpenTypeType2BoundsInterpreter
                 ConsumeStems(stack);
                 break;
             case 10:
-                CallSubroutine(stack, _localSubroutines, depth, ref operations);
+                CallSubroutine(stack, localSubroutines, depth, ref operations);
                 break;
             case 11:
                 return true;
@@ -121,7 +109,7 @@ internal sealed class OpenTypeType2BoundsInterpreter
                     throw Invalid("A Type 2 escape operator is truncated.");
                 }
 
-                ExecuteEscaped(_font.ReadByte(offset++), stack);
+                ExecuteEscaped(font.ReadByte(offset++), stack);
                 break;
             case 14:
                 if (stack.Count is not (0 or 1 or 4 or 5))
@@ -143,7 +131,7 @@ internal sealed class OpenTypeType2BoundsInterpreter
                 offset += maskBytes;
                 break;
             case 29:
-                CallSubroutine(stack, _globalSubroutines, depth, ref operations);
+                CallSubroutine(stack, globalSubroutines, depth, ref operations);
                 break;
             default:
                 throw Invalid($"Unsupported Type 2 control operator {operation}.");
@@ -261,19 +249,19 @@ internal sealed class OpenTypeType2BoundsInterpreter
         if (first is >= 247 and <= 250)
         {
             EnsureCffNumberBytes(offset, 1, end);
-            return (first - 247) * 256 + _font.ReadByte(offset++) + 108;
+            return (first - 247) * 256 + font.ReadByte(offset++) + 108;
         }
 
         if (first is >= 251 and <= 254)
         {
             EnsureCffNumberBytes(offset, 1, end);
-            return -(first - 251) * 256 - _font.ReadByte(offset++) - 108;
+            return -(first - 251) * 256 - font.ReadByte(offset++) - 108;
         }
 
         if (first == 28)
         {
             EnsureCffNumberBytes(offset, 2, end);
-            short result = _font.ReadInt16(offset);
+            short result = font.ReadInt16(offset);
             offset += 2;
             return result;
         }
@@ -281,7 +269,7 @@ internal sealed class OpenTypeType2BoundsInterpreter
         if (first == 255)
         {
             EnsureCffNumberBytes(offset, 4, end);
-            int fixedValue = _font.ReadInt32(offset);
+            int fixedValue = font.ReadInt32(offset);
             offset += 4;
             return fixedValue / 65536d;
         }
@@ -665,11 +653,12 @@ internal sealed class OpenTypeType2BoundsInterpreter
         double[] values = stack.GetRange(start, count).ToArray();
         for (int index = 0; index < count; index++)
         {
-            stack[start + ((index + shift) % count)] = values[index];
+            stack[start + (index + shift) % count] = values[index];
         }
     }
 
-    private void Curve(List<double> stack, int index) =>
+    private void Curve(List<double> stack, int index)
+    {
         _bounds.Curve(
             stack[index],
             stack[index + 1],
@@ -677,6 +666,7 @@ internal sealed class OpenTypeType2BoundsInterpreter
             stack[index + 3],
             stack[index + 4],
             stack[index + 5]);
+    }
 
     private static void Binary(
         List<double> stack,

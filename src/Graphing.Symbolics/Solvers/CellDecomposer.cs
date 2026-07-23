@@ -60,7 +60,7 @@ internal static class CellDecomposer
 
     private static ImmutableArray<CellWitness> BuildWitnesses(PolynomialFormula formula, ImmutableArray<UnivariatePolynomial> atoms, ImmutableArray<ExactReal> roots, ResourceBudget budget)
     {
-        var witnesses = ImmutableArray.CreateBuilder<CellWitness>((roots.Length * 2) + 1);
+        var witnesses = ImmutableArray.CreateBuilder<CellWitness>(roots.Length * 2 + 1);
         for (int gap = 0; gap <= roots.Length; gap++)
         {
             BigRational sample = SampleGap(roots, gap);
@@ -93,12 +93,17 @@ internal static class CellDecomposer
         return PolynomialFormulaConverter.Evaluate(formula, map);
     }
 
-    private static int SignAt(UnivariatePolynomial polynomial, ExactReal root, ResourceBudget budget) => root switch
+    private static int SignAt(UnivariatePolynomial polynomial, ExactReal root, ResourceBudget budget)
     {
-        RationalReal rational => polynomial.Evaluate(rational.Value, budget).Sign,
-        AlgebraicReal algebraic => SturmRootIsolator.SignAtIsolatedRoot(algebraic.Polynomial, polynomial, algebraic.IsolatingInterval, budget),
-        _ => throw new ArgumentOutOfRangeException(nameof(root))
-    };
+        return root switch
+        {
+            RationalReal rational => polynomial.Evaluate(rational.Value, budget).Sign,
+            AlgebraicReal algebraic => SturmRootIsolator.SignAtIsolatedRoot(algebraic.Polynomial, polynomial,
+                algebraic.IsolatingInterval, budget),
+            _ => throw new ArgumentOutOfRangeException(nameof(root))
+        };
+    }
+
     private static BigRational SampleGap(ImmutableArray<ExactReal> roots, int gap)
     {
         if (roots.IsEmpty)
@@ -171,32 +176,48 @@ internal static class CellDecomposer
         return RealSets.Union(components);
     }
 
-    private static (RealBound Bound, bool Included) LowerForRun(ImmutableArray<ExactReal> roots, CellWitness cell) => cell.Kind switch
+    private static (RealBound Bound, bool Included) LowerForRun(ImmutableArray<ExactReal> roots, CellWitness cell)
     {
-        CellKind.OpenInterval when cell.Index == 0 => (RealBound.NegativeInfinity, false),
-        CellKind.OpenInterval => (RealBound.Finite(roots[cell.Index - 1]), false),
-        CellKind.Point => (RealBound.Finite(roots[cell.Index]), true),
-        _ => throw new ArgumentOutOfRangeException(nameof(cell))
-    };
-    private static (RealBound Bound, bool Included) UpperForRun(ImmutableArray<ExactReal> roots, CellWitness cell) => cell.Kind switch
+        return cell.Kind switch
+        {
+            CellKind.OpenInterval when cell.Index == 0 => (RealBound.NegativeInfinity, false),
+            CellKind.OpenInterval => (RealBound.Finite(roots[cell.Index - 1]), false),
+            CellKind.Point => (RealBound.Finite(roots[cell.Index]), true),
+            _ => throw new ArgumentOutOfRangeException(nameof(cell))
+        };
+    }
+
+    private static (RealBound Bound, bool Included) UpperForRun(ImmutableArray<ExactReal> roots, CellWitness cell)
     {
-        CellKind.OpenInterval when cell.Index == roots.Length => (RealBound.PositiveInfinity, false),
-        CellKind.OpenInterval => (RealBound.Finite(roots[cell.Index]), false),
-        CellKind.Point => (RealBound.Finite(roots[cell.Index]), true),
-        _ => throw new ArgumentOutOfRangeException(nameof(cell))
-    };
-    private static BigRational LowerBound(ExactReal root) => root switch
+        return cell.Kind switch
+        {
+            CellKind.OpenInterval when cell.Index == roots.Length => (RealBound.PositiveInfinity, false),
+            CellKind.OpenInterval => (RealBound.Finite(roots[cell.Index]), false),
+            CellKind.Point => (RealBound.Finite(roots[cell.Index]), true),
+            _ => throw new ArgumentOutOfRangeException(nameof(cell))
+        };
+    }
+
+    private static BigRational LowerBound(ExactReal root)
     {
-        RationalReal rational => rational.Value,
-        AlgebraicReal algebraic => algebraic.IsolatingInterval.Lower,
-        _ => throw new ArgumentOutOfRangeException(nameof(root))
-    };
-    private static BigRational UpperBound(ExactReal root) => root switch
+        return root switch
+        {
+            RationalReal rational => rational.Value,
+            AlgebraicReal algebraic => algebraic.IsolatingInterval.Lower,
+            _ => throw new ArgumentOutOfRangeException(nameof(root))
+        };
+    }
+
+    private static BigRational UpperBound(ExactReal root)
     {
-        RationalReal rational => rational.Value,
-        AlgebraicReal algebraic => algebraic.IsolatingInterval.Upper,
-        _ => throw new ArgumentOutOfRangeException(nameof(root))
-    };
+        return root switch
+        {
+            RationalReal rational => rational.Value,
+            AlgebraicReal algebraic => algebraic.IsolatingInterval.Upper,
+            _ => throw new ArgumentOutOfRangeException(nameof(root))
+        };
+    }
+
     private static bool SamePolynomials(ImmutableArray<UnivariatePolynomial> left, ImmutableArray<UnivariatePolynomial> right)
     {
         if (left.Length != right.Length)

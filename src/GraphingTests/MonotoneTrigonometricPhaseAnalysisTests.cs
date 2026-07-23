@@ -454,7 +454,20 @@ public sealed class MonotoneTrigonometricPhaseAnalysisTests
         }
     }
 
-    private static string[] Claims(AnalysisReport report) => [Proved(report.Domain).Canonical, Proved(report.Range).Canonical, ClaimCanonical.For(Proved(report.Parity)), Proved(report.Zeros).Canonical, ClaimCanonical.For(Proved(report.YIntercept)), ClaimCanonical.For(Proved(report.Minima)), ClaimCanonical.For(Proved(report.Maxima)), ClaimCanonical.For(Proved(report.VerticalAsymptotes)), ClaimCanonical.For(Proved(report.HorizontalAsymptotes)), ClaimCanonical.For(Proved(report.ObliqueAsymptotes)), ClaimCanonical.For(Proved(report.Monotonicity)), ClaimCanonical.For(Proved(report.Period))];
+    private static string[] Claims(AnalysisReport report)
+    {
+        return
+        [
+            Proved(report.Domain).Canonical, Proved(report.Range).Canonical, ClaimCanonical.For(Proved(report.Parity)),
+            Proved(report.Zeros).Canonical, ClaimCanonical.For(Proved(report.YIntercept)),
+            ClaimCanonical.For(Proved(report.Minima)), ClaimCanonical.For(Proved(report.Maxima)),
+            ClaimCanonical.For(Proved(report.VerticalAsymptotes)),
+            ClaimCanonical.For(Proved(report.HorizontalAsymptotes)),
+            ClaimCanonical.For(Proved(report.ObliqueAsymptotes)), ClaimCanonical.For(Proved(report.Monotonicity)),
+            ClaimCanonical.For(Proved(report.Period))
+        ];
+    }
+
     private static IEnumerable<ProofCertificate?> PublishedCertificates(AnalysisReport report)
     {
         yield return report.Domain.Certificate;
@@ -518,19 +531,78 @@ public sealed class MonotoneTrigonometricPhaseAnalysisTests
         return solver.Analyze(analyzer);
     }
 
-    private static AnalysisRequest Request(InputExpression input, AnalysisFeatures features) => new(input, features, AngleUnit.Radians, "x", static () => true);
-    private static SemanticExpression Build(InputExpression input) => new SemanticGraphBuilder(new ResourceBudget()).Build(input);
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
-    private static InputExpression Number(int value) => Number(new BigRational(value));
-    private static InputExpression Number(BigRational value) => InputExpression.Number(value, Source);
-    private static InputExpression Add(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
-    private static InputExpression Subtract(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
-    private static InputExpression Negate(InputExpression operand) => InputExpression.Unary(InputExpressionKind.Negate, operand, Source);
-    private static InputExpression Multiply(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
-    private static InputExpression Divide(InputExpression left, InputExpression right) => InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
-    private static InputExpression IntegerPower(InputExpression basis, int exponent) => Power(basis, new BigRational(exponent));
-    private static InputExpression Power(InputExpression basis, BigRational exponent) => InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
-    private static InputExpression Sqrt(InputExpression argument) => Function("sqrt", argument);
-    private static InputExpression Sin(InputExpression argument) => Function("sin", argument);
-    private static InputExpression Function(string name, params InputExpression[] arguments) => InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    private static AnalysisRequest Request(InputExpression input, AnalysisFeatures features)
+    {
+        return new AnalysisRequest(input, features, AngleUnit.Radians, "x", static () => true);
+    }
+
+    private static SemanticExpression Build(InputExpression input)
+    {
+        return new SemanticGraphBuilder(new ResourceBudget()).Build(input);
+    }
+
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
+
+    private static InputExpression Number(int value)
+    {
+        return Number(new BigRational(value));
+    }
+
+    private static InputExpression Number(BigRational value)
+    {
+        return InputExpression.Number(value, Source);
+    }
+
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
+
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
+
+    private static InputExpression Negate(InputExpression operand)
+    {
+        return InputExpression.Unary(InputExpressionKind.Negate, operand, Source);
+    }
+
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
+
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
+
+    private static InputExpression IntegerPower(InputExpression basis, int exponent)
+    {
+        return Power(basis, new BigRational(exponent));
+    }
+
+    private static InputExpression Power(InputExpression basis, BigRational exponent)
+    {
+        return InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    }
+
+    private static InputExpression Sqrt(InputExpression argument)
+    {
+        return Function("sqrt", argument);
+    }
+
+    private static InputExpression Sin(InputExpression argument)
+    {
+        return Function("sin", argument);
+    }
+
+    private static InputExpression Function(string name, params InputExpression[] arguments)
+    {
+        return InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    }
 }

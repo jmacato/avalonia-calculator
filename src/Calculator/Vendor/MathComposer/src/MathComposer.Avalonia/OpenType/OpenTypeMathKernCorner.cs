@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace MathComposer.Avalonia.OpenType;
 
 /// <summary>Identifies the four height-dependent MATH kerning corners.</summary>

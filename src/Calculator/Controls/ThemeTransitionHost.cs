@@ -4,7 +4,6 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.VisualTree;
 using FluentAvalonia.Core;
 
 namespace CalculatorApp.Controls;
@@ -32,7 +31,7 @@ public sealed class ThemeTransitionHost : Border
 
     public event EventHandler<RoutedEventArgs>? Opened;
 
-    public ThemeTransitionCollection ThemeTransitions { get; } = new();
+    public ThemeTransitionCollection ThemeTransitions { get; } = [];
 
     public bool IsOpen
     {
@@ -48,8 +47,10 @@ public sealed class ThemeTransitionHost : Border
 
     internal Task<TimeSpan?> OpeningTask => _openingTask;
 
-    internal bool IsCurrentOpen(int version) =>
-        IsOpen && _openVersion == version;
+    internal bool IsCurrentOpen(int version)
+    {
+        return IsOpen && _openVersion == version;
+    }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {

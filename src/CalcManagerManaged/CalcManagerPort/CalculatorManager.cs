@@ -2,10 +2,7 @@
 // Licensed under the MIT License.
 
 using CalcEngine;
-using CalculationManager;
 using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics;
-using System.Text;
 
 namespace CalculationManager;
 
@@ -53,13 +50,13 @@ public class CalculatorManager : ICalcDisplay
 
     {
         m_displayCallback = displayCallback;
-        m_resourceProvider = (resourceProvider);
-        m_inHistoryItemLoadMode = (false);
+        m_resourceProvider = resourceProvider;
+        m_inHistoryItemLoadMode = false;
         m_persistedPrimaryValue = null;
-        m_isExponentialFormat = (false);
-        m_currentDegreeMode = (Command.None);
-        m_pStdHistory = (new CalculatorHistory(MAX_HISTORY_ITEMS));
-        m_pSciHistory = (new CalculatorHistory(MAX_HISTORY_ITEMS));
+        m_isExponentialFormat = false;
+        m_currentDegreeMode = Command.None;
+        m_pStdHistory = new CalculatorHistory(MAX_HISTORY_ITEMS);
+        m_pSciHistory = new CalculatorHistory(MAX_HISTORY_ITEMS);
 
         SetStandardMode();
     }
@@ -178,7 +175,7 @@ public class CalculatorManager : ICalcDisplay
 
         if (clearMemory)
         {
-            this.MemorizedNumberClearAll();
+            MemorizedNumberClearAll();
         }
     }
 
@@ -200,7 +197,7 @@ public class CalculatorManager : ICalcDisplay
         m_currentCalculatorEngine = m_standardCalculatorEngine;
         m_currentCalculatorEngine.ProcessCommand(CCommand.IdcDec);
         m_currentCalculatorEngine.ProcessCommand(CCommand.IdcClear);
-        m_currentCalculatorEngine.ChangePrecision((int)(CalculatorPrecision.StandardModePrecision));
+        m_currentCalculatorEngine.ChangePrecision((int)CalculatorPrecision.StandardModePrecision);
         UpdateMaxIntDigits();
         m_pHistory = m_pStdHistory;
     }
@@ -223,7 +220,7 @@ public class CalculatorManager : ICalcDisplay
         m_currentCalculatorEngine = m_scientificCalculatorEngine;
         m_currentCalculatorEngine.ProcessCommand(CCommand.IdcDec);
         m_currentCalculatorEngine.ProcessCommand(CCommand.IdcClear);
-        m_currentCalculatorEngine.ChangePrecision((int)(CalculatorPrecision.ScientificModePrecision));
+        m_currentCalculatorEngine.ChangePrecision((int)CalculatorPrecision.ScientificModePrecision);
         m_pHistory = m_pSciHistory;
     }
 
@@ -245,7 +242,7 @@ public class CalculatorManager : ICalcDisplay
         m_currentCalculatorEngine = m_programmerCalculatorEngine;
         m_currentCalculatorEngine.ProcessCommand(CCommand.IdcDec);
         m_currentCalculatorEngine.ProcessCommand(CCommand.IdcClear);
-        m_currentCalculatorEngine.ChangePrecision((int)(CalculatorPrecision.ProgrammerModePrecision));
+        m_currentCalculatorEngine.ChangePrecision((int)CalculatorPrecision.ProgrammerModePrecision);
     }
 
     /// <summary>
@@ -258,9 +255,7 @@ public class CalculatorManager : ICalcDisplay
     {
         // When the expression line is cleared, we save the current state, which includes,
         // primary display, memory, and degree mode
-        if (command == Command.Clear || command == Command.Equ || command == Command.ModeBasic ||
-            command == Command.ModeScientific
-            || command == Command.ModeProgrammer)
+        if (command is Command.Clear or Command.Equ or Command.ModeBasic or Command.ModeScientific or Command.ModeProgrammer)
         {
             ProcessModeChangeCommand(command);
 
@@ -268,7 +263,7 @@ public class CalculatorManager : ICalcDisplay
             return;
         }
 
-        if (command == Command.Deg || command == Command.Rad || command == Command.Grad)
+        if (command is Command.Deg or Command.Rad or Command.Grad)
         {
             m_currentDegreeMode = command;
         }
@@ -283,16 +278,16 @@ public class CalculatorManager : ICalcDisplay
         switch (command)
         {
             case Command.ModeBasic:
-                this.SetStandardMode();
+                SetStandardMode();
                 break;
             case Command.ModeScientific:
-                this.SetScientificMode();
+                SetScientificMode();
                 break;
             case Command.ModeProgrammer:
-                this.SetProgrammerMode();
+                SetProgrammerMode();
                 break;
             default:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(command));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)command);
                 break;
         }
     }
@@ -302,62 +297,62 @@ public class CalculatorManager : ICalcDisplay
         switch (command)
         {
             case Command.Asin:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Inv));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Sin));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Inv);
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Sin);
                 break;
             case Command.Acos:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Inv));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Cos));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Inv);
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Cos);
                 break;
             case Command.Atan:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Inv));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Tan));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Inv);
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Tan);
                 break;
             case Command.PowE:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Inv));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.NumLN));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Inv);
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.NumLN);
                 break;
             case Command.Asinh:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Inv));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Sinh));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Inv);
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Sinh);
                 break;
             case Command.Acosh:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Inv));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Cosh));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Inv);
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Cosh);
                 break;
             case Command.Atanh:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Inv));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Tanh));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Inv);
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Tanh);
                 break;
             case Command.Asec:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Inv));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Sec));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Inv);
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Sec);
                 break;
             case Command.Acsc:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Inv));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Csc));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Inv);
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Csc);
                 break;
             case Command.Acot:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Inv));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Cot));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Inv);
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Cot);
                 break;
             case Command.Asech:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Inv));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Sech));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Inv);
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Sech);
                 break;
             case Command.Acsch:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Inv));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Csch));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Inv);
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Csch);
                 break;
             case Command.Acoth:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Inv));
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(Command.Coth));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Inv);
+                m_currentCalculatorEngine.ProcessCommand((OpCode)Command.Coth);
                 break;
             case Command.NumFE:
                 m_isExponentialFormat = !m_isExponentialFormat;
                 goto default;
             default:
-                m_currentCalculatorEngine.ProcessCommand((OpCode)(command));
+                m_currentCalculatorEngine.ProcessCommand((OpCode)command);
                 break;
         }
     }
@@ -402,7 +397,7 @@ public class CalculatorManager : ICalcDisplay
                 (int)(m_memorizedNumbers.Count - m_maximumMemorySize));
         }
 
-        this.SetMemorizedNumbersString();
+        SetMemorizedNumbersString();
     }
 
     /// <summary>
@@ -417,7 +412,7 @@ public class CalculatorManager : ICalcDisplay
             return;
         }
 
-        this.MemorizedNumberSelect(indexOfMemory);
+        MemorizedNumberSelect(indexOfMemory);
         m_currentCalculatorEngine.ProcessCommand(CCommand.IdcRecall);
         InputChanged();
     }
@@ -437,16 +432,16 @@ public class CalculatorManager : ICalcDisplay
 
         if (m_memorizedNumbers.Count == 0)
         {
-            this.MemorizeNumber();
+            MemorizeNumber();
         }
         else
         {
-            this.MemorizedNumberSelect(indexOfMemory);
+            MemorizedNumberSelect(indexOfMemory);
             m_currentCalculatorEngine.ProcessCommand(CCommand.IdcMplus);
 
-            this.MemorizedNumberChanged(indexOfMemory);
+            MemorizedNumberChanged(indexOfMemory);
 
-            this.SetMemorizedNumbersString();
+            SetMemorizedNumbersString();
         }
 
         m_displayCallback.MemoryItemChanged((uint)indexOfMemory);
@@ -476,18 +471,18 @@ public class CalculatorManager : ICalcDisplay
         // To add negative of the number on display to the memory -x = x - 2x
         if (m_memorizedNumbers.Count == 0)
         {
-            this.MemorizeNumber();
-            this.MemorizedNumberSubtract(0);
-            this.MemorizedNumberSubtract(0);
+            MemorizeNumber();
+            MemorizedNumberSubtract(0);
+            MemorizedNumberSubtract(0);
         }
         else
         {
-            this.MemorizedNumberSelect(indexOfMemory);
+            MemorizedNumberSelect(indexOfMemory);
             m_currentCalculatorEngine.ProcessCommand(CCommand.IdcMminus);
 
-            this.MemorizedNumberChanged(indexOfMemory);
+            MemorizedNumberChanged(indexOfMemory);
 
-            this.SetMemorizedNumbersString();
+            SetMemorizedNumbersString();
         }
 
         m_displayCallback.MemoryItemChanged((uint)indexOfMemory);
@@ -502,7 +497,7 @@ public class CalculatorManager : ICalcDisplay
         m_memorizedNumbers.Clear();
 
         m_currentCalculatorEngine.ProcessCommand(CCommand.IdcMclear);
-        this.SetMemorizedNumbersString();
+        SetMemorizedNumbersString();
     }
 
     /// <summary>
@@ -547,7 +542,7 @@ public class CalculatorManager : ICalcDisplay
 
     public IList<HISTORYITEM> GetHistoryItems(CalculatorMode mode)
     {
-        return (mode == CalculatorMode.Standard) ? m_pStdHistory.History : m_pSciHistory.History;
+        return mode == CalculatorMode.Standard ? m_pStdHistory.History : m_pSciHistory.History;
     }
 
     public void SetHistoryItems(IEnumerable<HISTORYITEM> historyItems)
@@ -609,7 +604,7 @@ public class CalculatorManager : ICalcDisplay
 
     public void SetMemorizedNumbersString()
     {
-        List<wstring> resultVector = new List<wstring>();
+        List<wstring> resultVector = [];
         foreach (var memoryItem in m_memorizedNumbers)
         {
             var radix = m_currentCalculatorEngine.CurrentRadix;

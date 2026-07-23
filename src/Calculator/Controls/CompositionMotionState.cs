@@ -16,7 +16,7 @@ internal sealed class CompositionMotionState
     private readonly Control _target;
     private readonly CompositionMotionProfile _profile;
     private readonly HashSet<string> _dataContextPropertyNames;
-    private readonly List<Visual> _visibilityChain = new();
+    private readonly List<Visual> _visibilityChain = [];
     private INotifyPropertyChanged? _dataContext;
     private bool _isAttached;
     private bool _isDisposed;

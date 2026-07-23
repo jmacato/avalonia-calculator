@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace MathComposer.Core;
 
 /// <summary>Produces deterministic canonical UnicodeMath text.</summary>

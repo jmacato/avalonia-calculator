@@ -668,24 +668,27 @@ public sealed class AffinePhaseSineCompositionAnalysisTests
         }
     }
 
-    private static string Claim(InputExpression input, AnalysisFeatures feature) => feature switch
+    private static string Claim(InputExpression input, AnalysisFeatures feature)
     {
-        AnalysisFeatures.Domain or AnalysisFeatures.Range or AnalysisFeatures.Zeros =>
-            ClaimCanonical.For(Analyze<RealSet>(input, feature)),
-        AnalysisFeatures.Parity => ClaimCanonical.For(Analyze<FunctionParity>(input, feature)),
-        AnalysisFeatures.YIntercept =>
-            ClaimCanonical.For(Analyze<OptionalValue<ExactReal>>(input, feature)),
-        AnalysisFeatures.Minima or AnalysisFeatures.Maxima or AnalysisFeatures.InflectionPoints =>
-            ClaimCanonical.For(Analyze<ImmutableArray<FeaturePoint>>(input, feature)),
-        AnalysisFeatures.VerticalAsymptotes or
-        AnalysisFeatures.HorizontalAsymptotes or
-        AnalysisFeatures.ObliqueAsymptotes =>
-            ClaimCanonical.For(Analyze<ImmutableArray<Asymptote>>(input, feature)),
-        AnalysisFeatures.Monotonicity =>
-            ClaimCanonical.For(Analyze<ImmutableArray<MonotoneRegion>>(input, feature)),
-        AnalysisFeatures.Period => ClaimCanonical.For(Analyze<Periodicity>(input, feature)),
-        _ => throw new ArgumentOutOfRangeException(nameof(feature))
-    };
+        return feature switch
+        {
+            AnalysisFeatures.Domain or AnalysisFeatures.Range or AnalysisFeatures.Zeros =>
+                ClaimCanonical.For(Analyze<RealSet>(input, feature)),
+            AnalysisFeatures.Parity => ClaimCanonical.For(Analyze<FunctionParity>(input, feature)),
+            AnalysisFeatures.YIntercept =>
+                ClaimCanonical.For(Analyze<OptionalValue<ExactReal>>(input, feature)),
+            AnalysisFeatures.Minima or AnalysisFeatures.Maxima or AnalysisFeatures.InflectionPoints =>
+                ClaimCanonical.For(Analyze<ImmutableArray<FeaturePoint>>(input, feature)),
+            AnalysisFeatures.VerticalAsymptotes or
+                AnalysisFeatures.HorizontalAsymptotes or
+                AnalysisFeatures.ObliqueAsymptotes =>
+                ClaimCanonical.For(Analyze<ImmutableArray<Asymptote>>(input, feature)),
+            AnalysisFeatures.Monotonicity =>
+                ClaimCanonical.For(Analyze<ImmutableArray<MonotoneRegion>>(input, feature)),
+            AnalysisFeatures.Period => ClaimCanonical.For(Analyze<Periodicity>(input, feature)),
+            _ => throw new ArgumentOutOfRangeException(nameof(feature))
+        };
+    }
 
     private static void AssertPeriod(InputExpression input, string expected)
     {
@@ -752,49 +755,79 @@ public sealed class AffinePhaseSineCompositionAnalysisTests
     private static AnalysisRequest Request(
         InputExpression expression,
         AnalysisFeatures feature,
-        AngleUnit angleUnit = AngleUnit.Radians) =>
-        new(expression, feature, angleUnit, "x", static () => true);
+        AngleUnit angleUnit = AngleUnit.Radians)
+    {
+        return new AnalysisRequest(expression, feature, angleUnit, "x", static () => true);
+    }
 
     private static InputExpression Composition(
         string outer,
         BigRational frequency,
-        BigRational phasePiCoefficient) =>
-        Function(
+        BigRational phasePiCoefficient)
+    {
+        return Function(
             outer,
             Function(
                 "sin",
                 Add(
                     Multiply(Number(frequency), Variable()),
                     PiFraction(phasePiCoefficient))));
+    }
 
-    private static InputExpression PiFraction(BigRational coefficient) =>
-        coefficient.IsOne
+    private static InputExpression PiFraction(BigRational coefficient)
+    {
+        return coefficient.IsOne
             ? Symbol("pi")
             : Multiply(Number(coefficient), Symbol("pi"));
+    }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Symbol(string name) => InputExpression.Variable(name, Source);
+    private static InputExpression Symbol(string name)
+    {
+        return InputExpression.Variable(name, Source);
+    }
 
-    private static InputExpression Number(int value) => Number(new BigRational(value));
+    private static InputExpression Number(int value)
+    {
+        return Number(new BigRational(value));
+    }
 
-    private static InputExpression Number(BigRational value) => InputExpression.Number(value, Source);
+    private static InputExpression Number(BigRational value)
+    {
+        return InputExpression.Number(value, Source);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Subtract(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
 
-    private static InputExpression Power(InputExpression basis, int exponent) =>
-        InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    private static InputExpression Power(InputExpression basis, int exponent)
+    {
+        return InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    }
 
-    private static InputExpression Function(string name, params InputExpression[] arguments) =>
-        InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    private static InputExpression Function(string name, params InputExpression[] arguments)
+    {
+        return InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    }
 }

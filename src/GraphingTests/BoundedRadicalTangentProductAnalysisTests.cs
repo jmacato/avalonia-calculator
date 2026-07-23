@@ -536,7 +536,10 @@ public sealed class BoundedRadicalTangentProductAnalysisTests
     private static T Proved<T>(
         AnalysisRequest request,
         SemanticExpression semantic,
-        AnalysisFeatures feature) => Analyze<T>(request, semantic, feature).Value!;
+        AnalysisFeatures feature)
+    {
+        return Analyze<T>(request, semantic, feature).Value!;
+    }
 
     private static ProofOutcome<T> Analyze<T>(
         AnalysisRequest request,
@@ -556,13 +559,15 @@ public sealed class BoundedRadicalTangentProductAnalysisTests
     private static void AssertUnsupported<T>(
         AnalysisRequest request,
         SemanticExpression semantic,
-        AnalysisFeatures feature) =>
+        AnalysisFeatures feature)
+    {
         Assert.False(BoundedRadicalTangentProductAnalyzer.TryAnalyze(
             request,
             semantic,
             feature,
             new ResourceBudget(),
             out ProofOutcome<T> _));
+    }
 
     private static IEnumerable<InputExpression> AssociatedProducts(BigRational endpoint)
     {
@@ -594,13 +599,17 @@ public sealed class BoundedRadicalTangentProductAnalysisTests
     }
 
     private static InputExpression Product(BigRational endpoint)
-        => Product(Number(endpoint));
+    {
+        return Product(Number(endpoint));
+    }
 
-    private static InputExpression QuotientEndpointProduct() =>
-        Product(
+    private static InputExpression QuotientEndpointProduct()
+    {
+        return Product(
             Divide(
                 Number(BigRational.One),
                 Number(new BigRational(2))));
+    }
 
     private static InputExpression Product(InputExpression endpoint)
     {
@@ -626,70 +635,102 @@ public sealed class BoundedRadicalTangentProductAnalysisTests
         return solver.Analyze(analyzer);
     }
 
-    private static int Bits(params AnalysisType[] features) => features
-        .Aggregate(0, static (bits, feature) => bits | FeatureBit(feature));
-
-    private static int FeatureBit(AnalysisType type) => type switch
+    private static int Bits(params AnalysisType[] features)
     {
-        AnalysisType.Domain => 1,
-        AnalysisType.Range => 2,
-        AnalysisType.Parity => 4,
-        AnalysisType.Period => 8,
-        AnalysisType.Zeros => 16,
-        AnalysisType.YIntercept => 32,
-        AnalysisType.Minima => 64,
-        AnalysisType.Maxima => 128,
-        AnalysisType.InflectionPoints => 256,
-        AnalysisType.VerticalAsymptotes => 512,
-        AnalysisType.HorizontalAsymptotes => 1024,
-        AnalysisType.ObliqueAsymptotes => 2048,
-        AnalysisType.Monotonicity => 4096,
-        _ => throw new ArgumentOutOfRangeException(nameof(type))
-    };
+        return features
+            .Aggregate(0, static (bits, feature) => bits | FeatureBit(feature));
+    }
+
+    private static int FeatureBit(AnalysisType type)
+    {
+        return type switch
+        {
+            AnalysisType.Domain => 1,
+            AnalysisType.Range => 2,
+            AnalysisType.Parity => 4,
+            AnalysisType.Period => 8,
+            AnalysisType.Zeros => 16,
+            AnalysisType.YIntercept => 32,
+            AnalysisType.Minima => 64,
+            AnalysisType.Maxima => 128,
+            AnalysisType.InflectionPoints => 256,
+            AnalysisType.VerticalAsymptotes => 512,
+            AnalysisType.HorizontalAsymptotes => 1024,
+            AnalysisType.ObliqueAsymptotes => 2048,
+            AnalysisType.Monotonicity => 4096,
+            _ => throw new ArgumentOutOfRangeException(nameof(type))
+        };
+    }
 
     private static AnalysisRequest Request(
         InputExpression expression,
         AngleUnit angleUnit = AngleUnit.Radians,
-        string variable = "x") =>
-        new(expression, AnalysisFeatures.All, angleUnit, variable, static () => true);
+        string variable = "x")
+    {
+        return new AnalysisRequest(expression, AnalysisFeatures.All, angleUnit, variable, static () => true);
+    }
 
-    private static SemanticExpression Build(InputExpression input) =>
-        new SemanticGraphBuilder(new ResourceBudget()).Build(input);
+    private static SemanticExpression Build(InputExpression input)
+    {
+        return new SemanticGraphBuilder(new ResourceBudget()).Build(input);
+    }
 
-    private static InputExpression Variable() =>
-        InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Number(BigRational value) =>
-        InputExpression.Number(value, Source);
+    private static InputExpression Number(BigRational value)
+    {
+        return InputExpression.Number(value, Source);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Subtract(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
 
-    private static InputExpression Power(InputExpression basis, BigRational exponent) =>
-        InputExpression.Binary(
+    private static InputExpression Power(InputExpression basis, BigRational exponent)
+    {
+        return InputExpression.Binary(
             InputExpressionKind.Power,
             basis,
             Number(exponent),
             Source);
+    }
 
-    private static InputExpression Sqrt(InputExpression argument) =>
-        InputExpression.Function("sqrt", [argument], Source);
+    private static InputExpression Sqrt(InputExpression argument)
+    {
+        return InputExpression.Function("sqrt", [argument], Source);
+    }
 
-    private static InputExpression Sin(InputExpression argument) =>
-        InputExpression.Function("sin", [argument], Source);
+    private static InputExpression Sin(InputExpression argument)
+    {
+        return InputExpression.Function("sin", [argument], Source);
+    }
 
-    private static InputExpression Cos(InputExpression argument) =>
-        InputExpression.Function("cos", [argument], Source);
+    private static InputExpression Cos(InputExpression argument)
+    {
+        return InputExpression.Function("cos", [argument], Source);
+    }
 
-    private static InputExpression Tan(InputExpression argument) =>
-        InputExpression.Function("tan", [argument], Source);
+    private static InputExpression Tan(InputExpression argument)
+    {
+        return InputExpression.Function("tan", [argument], Source);
+    }
 }

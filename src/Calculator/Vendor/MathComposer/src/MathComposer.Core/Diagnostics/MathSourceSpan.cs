@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace MathComposer.Core;
 
 /// <summary>A UTF-16 source span.</summary>

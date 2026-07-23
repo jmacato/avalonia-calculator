@@ -91,7 +91,11 @@ internal static class GuardedConstantCertificateReplay
         return SameFormula(expression.DefinedWhen, expectedDefined) && SameFormula(expression.ContinuousWhen, expectedContinuous) && SameFormula(expression.DifferentiableWhen, expectedDifferentiable);
     }
 
-    private static bool IsExactZero(ValueTerm term, ResourceBudget budget) => ExactScalar.TryCreate(term, budget, out ExactScalar scalar) && scalar.IsZero;
+    private static bool IsExactZero(ValueTerm term, ResourceBudget budget)
+    {
+        return ExactScalar.TryCreate(term, budget, out ExactScalar scalar) && scalar.IsZero;
+    }
+
     private static bool TryExtractGuard(Formula formula, string variable, ResourceBudget budget, out GuardedConstantCertificateReplayReplayGuard guard)
     {
         if (formula is not ComparisonFormula { Comparison: Comparison.NotEqual, Left: var left, Right: var right })
@@ -292,14 +296,29 @@ internal static class GuardedConstantCertificateReplay
         return false;
     }
 
-    private static bool IsZero(ValueTerm term, ResourceBudget budget) => ExactScalar.TryCreate(term, budget, out ExactScalar scalar) && scalar.IsZero;
+    private static bool IsZero(ValueTerm term, ResourceBudget budget)
+    {
+        return ExactScalar.TryCreate(term, budget, out ExactScalar scalar) && scalar.IsZero;
+    }
+
     private static bool IsSingleFeature(AnalysisFeatures feature)
     {
         uint value = (uint)feature;
         return value != 0 && (value & (value - 1)) == 0 && (feature & AnalysisFeatures.All) == feature;
     }
 
-    private static string BinaryCanonical(ValueKind kind, ValueTerm left, ValueTerm right) => $"{(int)kind}:({left.Canonical},{right.Canonical})";
-    private static ValueTerm Constant(BigRational value) => new(-1, ValueKind.Constant, value, string.Empty, [], $"q:{value}");
-    private static bool SameFormula(Formula actual, Formula expected) => string.Equals(actual.Canonical, expected.Canonical, StringComparison.Ordinal);
+    private static string BinaryCanonical(ValueKind kind, ValueTerm left, ValueTerm right)
+    {
+        return $"{(int)kind}:({left.Canonical},{right.Canonical})";
+    }
+
+    private static ValueTerm Constant(BigRational value)
+    {
+        return new ValueTerm(-1, ValueKind.Constant, value, string.Empty, [], $"q:{value}");
+    }
+
+    private static bool SameFormula(Formula actual, Formula expected)
+    {
+        return string.Equals(actual.Canonical, expected.Canonical, StringComparison.Ordinal);
+    }
 }

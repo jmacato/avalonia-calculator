@@ -145,6 +145,8 @@ internal static class ExpressionParser
         result.Add(equation);
     }
 
-    private static EquationAst FromNode(AstNode node, EquationAst source) =>
-        new(node, RelationKind.None, null, node.Span, source.EquationId);
+    private static EquationAst FromNode(AstNode node, EquationAst source)
+    {
+        return new EquationAst(node, RelationKind.None, null, node.Span, source.EquationId);
+    }
 }

@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace Graphing.Symbolics;
 
 /// <summary>
@@ -280,14 +278,18 @@ internal static class TheoremCertificateReplay
 
     private static ExactReal SolveGenericAngle(
         AffineTrigPattern pattern,
-        ExactReal angle) =>
-        AddGenericRational(
+        ExactReal angle)
+    {
+        return AddGenericRational(
             ScaleGenericAngle(angle, pattern.Frequency.Reciprocal()),
             -pattern.Phase / pattern.Frequency);
+    }
 
     private static ExactReal ScaleGenericAngle(
         ExactReal value,
-        BigRational scale) => value switch
+        BigRational scale)
+    {
+        return value switch
         {
             RationalReal rational => new RationalReal(rational.Value * scale),
             AffinePiReal affine => new AffinePiReal(
@@ -295,18 +297,24 @@ internal static class TheoremCertificateReplay
                 affine.Constant * scale),
             _ => new FunctionReal("scale", [value, new RationalReal(scale)])
         };
+    }
 
     private static ExactReal AddGenericRational(
         ExactReal value,
-        BigRational addend) => value switch
+        BigRational addend)
+    {
+        return value switch
         {
             RationalReal rational => new RationalReal(rational.Value + addend),
             AffinePiReal affine => affine with { Constant = affine.Constant + addend },
             _ => new FunctionReal("add", [value, new RationalReal(addend)])
         };
+    }
 
-    private static ExactReal Angle(AngleUnit unit, BigRational fraction) =>
-        ExactAngleArithmetic.PiFraction(unit, fraction);
+    private static ExactReal Angle(AngleUnit unit, BigRational fraction)
+    {
+        return ExactAngleArithmetic.PiFraction(unit, fraction);
+    }
 
     private static FunctionParity ReplayAffineParity(
         AffineTrigPattern pattern,
@@ -388,13 +396,16 @@ internal static class TheoremCertificateReplay
 
     private static BigRational? PhaseInPi(
         BigRational phase,
-        AngleUnit angleUnit) => angleUnit switch
+        AngleUnit angleUnit)
+    {
+        return angleUnit switch
         {
             AngleUnit.Radians => phase.IsZero ? BigRational.Zero : null,
             AngleUnit.Degrees => phase / new BigRational(180),
             AngleUnit.Grads => phase / new BigRational(200),
             _ => throw new ArgumentOutOfRangeException(nameof(angleUnit))
         };
+    }
 
     private static bool TryPrimitiveHalfTurn(
         string function,
@@ -467,16 +478,20 @@ internal static class TheoremCertificateReplay
             [new PeriodicInterval(lower, false, upper, false)]);
     }
 
-    private static ExactReal Solve(ExactTrigPattern pattern, ExactReal angle) =>
-        ExactRealArithmetic.Divide(
+    private static ExactReal Solve(ExactTrigPattern pattern, ExactReal angle)
+    {
+        return ExactRealArithmetic.Divide(
             ExactRealArithmetic.Subtract(angle, pattern.Phase.Value),
             pattern.Frequency.Value);
+    }
 
-    private static bool MatchesAffineTheorem(string function, TheoremRule theorem) =>
-        (function, theorem) is
+    private static bool MatchesAffineTheorem(string function, TheoremRule theorem)
+    {
+        return (function, theorem) is
             ("sin", TheoremRule.AffineSine) or
             ("cos", TheoremRule.AffineCosine) or
             ("tan", TheoremRule.AffineTangent);
+    }
 
     private static bool IsSingleFeature(AnalysisFeatures feature)
     {

@@ -96,7 +96,10 @@ internal sealed class LatexSerializerWriter
         }
     }
 
-    public override string ToString() => _builder.ToString();
+    public override string ToString()
+    {
+        return _builder.ToString();
+    }
 
     private void WriteNode(MathNode node, bool followingStartsAsciiLetter = false)
     {
@@ -361,11 +364,15 @@ internal sealed class LatexSerializerWriter
         WriteDirectDelimiterSymbol(delimiter.Closing);
     }
 
-    private static bool UsesDelimiterControlWord(string? symbol) =>
-        symbol is "|" or "⌊" or "⌋" or "⌈" or "⌉";
+    private static bool UsesDelimiterControlWord(string? symbol)
+    {
+        return symbol is "|" or "⌊" or "⌋" or "⌈" or "⌉";
+    }
 
-    private static bool RowStartsWithAsciiLetter(MathRow row) =>
-        row.Children.Length > 0 && StartsWithAsciiLetter(row.Children[0]);
+    private static bool RowStartsWithAsciiLetter(MathRow row)
+    {
+        return row.Children.Length > 0 && StartsWithAsciiLetter(row.Children[0]);
+    }
 
     private static bool TryGetDirectDelimiterControls(
         string? opening,
@@ -461,15 +468,18 @@ internal sealed class LatexSerializerWriter
         _builder.Append('}');
     }
 
-    private static bool StartsWithAsciiLetter(MathNode node) => node switch
+    private static bool StartsWithAsciiLetter(MathNode node)
     {
-        MathText { Text.Length: > 0 } text => text.Text[0] is >= 'A' and <= 'Z' or >= 'a' and <= 'z',
-        MathScript script => StartsWithAsciiLetter(script.Base),
-        MathRow { Children.Length: > 0 } row => StartsWithAsciiLetter(row.Children[0]),
-        MathError { RawFragment.Length: > 0 } error =>
-            error.RawFragment[0] is >= 'A' and <= 'Z' or >= 'a' and <= 'z',
-        _ => false
-    };
+        return node switch
+        {
+            MathText { Text.Length: > 0 } text => text.Text[0] is >= 'A' and <= 'Z' or >= 'a' and <= 'z',
+            MathScript script => StartsWithAsciiLetter(script.Base),
+            MathRow { Children.Length: > 0 } row => StartsWithAsciiLetter(row.Children[0]),
+            MathError { RawFragment.Length: > 0 } error =>
+                error.RawFragment[0] is >= 'A' and <= 'Z' or >= 'a' and <= 'z',
+            _ => false
+        };
+    }
 
     private static bool NeedsLexicalSeparator(MathNode current, MathNode next)
     {
@@ -507,35 +517,41 @@ internal sealed class LatexSerializerWriter
         return true;
     }
 
-    private static string GetAccentControl(MathAccentKind kind) => kind switch
+    private static string GetAccentControl(MathAccentKind kind)
     {
-        MathAccentKind.Acute => "\\acute",
-        MathAccentKind.Grave => "\\grave",
-        MathAccentKind.Hat => "\\hat",
-        MathAccentKind.Check => "\\check",
-        MathAccentKind.Breve => "\\breve",
-        MathAccentKind.Tilde => "\\tilde",
-        MathAccentKind.Bar => "\\bar",
-        MathAccentKind.Dot => "\\dot",
-        MathAccentKind.DoubleDot => "\\ddot",
-        MathAccentKind.TripleDot => "\\dddot",
-        MathAccentKind.Vector => "\\vec",
-        _ => throw new ArgumentOutOfRangeException(nameof(kind))
-    };
+        return kind switch
+        {
+            MathAccentKind.Acute => "\\acute",
+            MathAccentKind.Grave => "\\grave",
+            MathAccentKind.Hat => "\\hat",
+            MathAccentKind.Check => "\\check",
+            MathAccentKind.Breve => "\\breve",
+            MathAccentKind.Tilde => "\\tilde",
+            MathAccentKind.Bar => "\\bar",
+            MathAccentKind.Dot => "\\dot",
+            MathAccentKind.DoubleDot => "\\ddot",
+            MathAccentKind.TripleDot => "\\dddot",
+            MathAccentKind.Vector => "\\vec",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        };
+    }
 
-    private static string GetUnderAccentMark(MathAccentKind kind) => kind switch
+    private static string GetUnderAccentMark(MathAccentKind kind)
     {
-        MathAccentKind.Acute => "\u0317",
-        MathAccentKind.Grave => "\u0316",
-        MathAccentKind.Hat => "\u032d",
-        MathAccentKind.Check => "\u032c",
-        MathAccentKind.Breve => "\u032e",
-        MathAccentKind.Tilde => "\u0330",
-        MathAccentKind.Bar => "\u0331",
-        MathAccentKind.Dot => "\u0323",
-        MathAccentKind.DoubleDot => "\u0324",
-        MathAccentKind.TripleDot => "\u20e8",
-        MathAccentKind.Vector => "\u20ef",
-        _ => throw new ArgumentOutOfRangeException(nameof(kind))
-    };
+        return kind switch
+        {
+            MathAccentKind.Acute => "\u0317",
+            MathAccentKind.Grave => "\u0316",
+            MathAccentKind.Hat => "\u032d",
+            MathAccentKind.Check => "\u032c",
+            MathAccentKind.Breve => "\u032e",
+            MathAccentKind.Tilde => "\u0330",
+            MathAccentKind.Bar => "\u0331",
+            MathAccentKind.Dot => "\u0323",
+            MathAccentKind.DoubleDot => "\u0324",
+            MathAccentKind.TripleDot => "\u20e8",
+            MathAccentKind.Vector => "\u20ef",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        };
+    }
 }

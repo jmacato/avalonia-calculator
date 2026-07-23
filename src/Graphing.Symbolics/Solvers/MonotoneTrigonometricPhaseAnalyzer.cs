@@ -345,7 +345,12 @@ internal static class MonotoneTrigonometricPhaseAnalyzer
         return context.Orientation == PhaseOrientation.Increasing ? [new MonotoneRegion(positiveDerivative, Monotonicity.Increasing), new MonotoneRegion(negativeDerivative, Monotonicity.Decreasing)] : [new MonotoneRegion(positiveDerivative, Monotonicity.Decreasing), new MonotoneRegion(negativeDerivative, Monotonicity.Increasing)];
     }
 
-    private static Graphing.Symbolics.IntervalSet UnitRange() => new IntervalSet(RealBound.Finite(new RationalReal(BigRational.MinusOne)), true, RealBound.Finite(new RationalReal(BigRational.One)), true);
+    private static IntervalSet UnitRange()
+    {
+        return new IntervalSet(RealBound.Finite(new RationalReal(BigRational.MinusOne)), true,
+            RealBound.Finite(new RationalReal(BigRational.One)), true);
+    }
+
     private static Periodicity BuildPeriodicity(MonotoneTrigonometricPhaseContext context)
     {
         if (!context.ParameterIsNonnegative && context.Phase.IsAffine)

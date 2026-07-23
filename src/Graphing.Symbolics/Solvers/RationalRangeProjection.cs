@@ -103,7 +103,7 @@ internal static class RationalRangeProjection
             return false;
         }
 
-        int expectedFiberCount = checked((certificate.Boundaries.Length * 2) + 1);
+        int expectedFiberCount = checked(certificate.Boundaries.Length * 2 + 1);
         if (certificate.Fibers.Length != expectedFiberCount)
         {
             return false;
@@ -315,17 +315,19 @@ internal static class RationalRangeProjection
         BigRational denominator = new BigRational(4) * leading;
         budget.CheckCoefficient(square);
         budget.CheckCoefficient(denominator);
-        endpoint = constant - (square / denominator);
+        endpoint = constant - square / denominator;
         budget.CheckCoefficient(endpoint);
         return true;
     }
 
-    private static Graphing.Symbolics.IntervalSet OneSidedRange(ExactReal endpoint, bool minimum) =>
-        new IntervalSet(
+    private static IntervalSet OneSidedRange(ExactReal endpoint, bool minimum)
+    {
+        return new IntervalSet(
             minimum ? RealBound.Finite(endpoint) : RealBound.NegativeInfinity,
             minimum,
             minimum ? RealBound.PositiveInfinity : RealBound.Finite(endpoint),
             !minimum);
+    }
 
     private static bool DomainIsReducedDenominator(
         RationalAnalysisContext context,
@@ -450,7 +452,7 @@ internal static class RationalRangeProjection
         ResourceBudget budget)
     {
         var result = ImmutableArray.CreateBuilder<RationalRangeFiberWitness>(
-            checked((boundaries.Length * 2) + 1));
+            checked(boundaries.Length * 2 + 1));
         for (int gap = 0; gap <= boundaries.Length; gap++)
         {
             result.Add(CreateFiberWitness(
@@ -518,7 +520,7 @@ internal static class RationalRangeProjection
         return witness.HasPreimage == !witness.Fiber.Result.IsEmpty;
     }
 
-    private static Graphing.Symbolics.PolynomialJunction FiberFormula(
+    private static PolynomialJunction FiberFormula(
         RationalAnalysisContext context,
         BigRational value,
         ResourceBudget budget)
@@ -616,10 +618,12 @@ internal static class RationalRangeProjection
         PolynomialFormula domain,
         ImmutableArray<ExactReal> roots,
         int rootIndex,
-        ResourceBudget budget) =>
-        DomainAtRoot(domain, roots[rootIndex], budget) ||
-        DomainInGap(domain, roots, rootIndex, budget) ||
-        DomainInGap(domain, roots, rootIndex + 1, budget);
+        ResourceBudget budget)
+    {
+        return DomainAtRoot(domain, roots[rootIndex], budget) ||
+               DomainInGap(domain, roots, rootIndex, budget) ||
+               DomainInGap(domain, roots, rootIndex + 1, budget);
+    }
 
     private static bool DomainAtRoot(
         PolynomialFormula domain,
@@ -656,7 +660,9 @@ internal static class RationalRangeProjection
     private static int SignAt(
         UnivariatePolynomial polynomial,
         ExactReal root,
-        ResourceBudget budget) => root switch
+        ResourceBudget budget)
+    {
+        return root switch
         {
             RationalReal rational => polynomial.Evaluate(rational.Value, budget).Sign,
             AlgebraicReal algebraic => SturmRootIsolator.SignAtIsolatedRoot(
@@ -666,6 +672,7 @@ internal static class RationalRangeProjection
                 budget),
             _ => throw new ArgumentOutOfRangeException(nameof(root))
         };
+    }
 
     private static BigRational GapSample(ImmutableArray<BigRational> boundaries, int gap)
     {
@@ -707,17 +714,23 @@ internal static class RationalRangeProjection
         return (UpperBound(roots[gap - 1]) + LowerBound(roots[gap])) / 2;
     }
 
-    private static BigRational LowerBound(ExactReal root) => root switch
+    private static BigRational LowerBound(ExactReal root)
     {
-        RationalReal rational => rational.Value,
-        AlgebraicReal algebraic => algebraic.IsolatingInterval.Lower,
-        _ => throw new ArgumentOutOfRangeException(nameof(root))
-    };
+        return root switch
+        {
+            RationalReal rational => rational.Value,
+            AlgebraicReal algebraic => algebraic.IsolatingInterval.Lower,
+            _ => throw new ArgumentOutOfRangeException(nameof(root))
+        };
+    }
 
-    private static BigRational UpperBound(ExactReal root) => root switch
+    private static BigRational UpperBound(ExactReal root)
     {
-        RationalReal rational => rational.Value,
-        AlgebraicReal algebraic => algebraic.IsolatingInterval.Upper,
-        _ => throw new ArgumentOutOfRangeException(nameof(root))
-    };
+        return root switch
+        {
+            RationalReal rational => rational.Value,
+            AlgebraicReal algebraic => algebraic.IsolatingInterval.Upper,
+            _ => throw new ArgumentOutOfRangeException(nameof(root))
+        };
+    }
 }

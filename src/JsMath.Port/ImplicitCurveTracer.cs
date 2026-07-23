@@ -7,12 +7,6 @@ namespace JsMath.Port;
 /// Euler predictor/Newton corrector tracer for regular implicit curves.
 /// Critical points are reported as missing data instead of being bridged.
 /// </summary>
-[PortedFrom(
-    "JSXGraph",
-    "src/math/implicitplot.js (searchLine, traceComponent, tracing)",
-    "d4f153470e249a698a46d6e8078c1d68f0cbe2cd",
-    "MIT",
-    "sha256:cef005ac495f6ddbd67dc27a8dfbe8662484d496487090f34d63b09ce0fb68ad")]
 public static class ImplicitCurveTracer
 {
     public static SampledCurve Trace(
@@ -89,15 +83,18 @@ public static class ImplicitCurveTracer
             budgetExceeded);
     }
 
-    private static ImplicitTraceOptions Normalize(ImplicitTraceOptions options) => new(
-        options.SeedColumns <= 0 ? 48 : options.SeedColumns,
-        options.SeedRows <= 0 ? 48 : options.SeedRows,
-        options.MaximumVertices <= 0 ? 65_536 : options.MaximumVertices,
-        options.MaximumNewtonSteps <= 0 ? 8 : options.MaximumNewtonSteps,
-        options.NewtonTolerance <= 0 ? 1e-7 : options.NewtonTolerance,
-        options.StepInPixels <= 0 ? 2.5 : options.StepInPixels,
-        options.LoopDistanceFactor <= 0 ? 0.09 : options.LoopDistanceFactor,
-        options.LoopDirectionDot is <= 0 or > 1 ? 0.99 : options.LoopDirectionDot);
+    private static ImplicitTraceOptions Normalize(ImplicitTraceOptions options)
+    {
+        return new ImplicitTraceOptions(
+            options.SeedColumns <= 0 ? 48 : options.SeedColumns,
+            options.SeedRows <= 0 ? 48 : options.SeedRows,
+            options.MaximumVertices <= 0 ? 65_536 : options.MaximumVertices,
+            options.MaximumNewtonSteps <= 0 ? 8 : options.MaximumNewtonSteps,
+            options.NewtonTolerance <= 0 ? 1e-7 : options.NewtonTolerance,
+            options.StepInPixels <= 0 ? 2.5 : options.StepInPixels,
+            options.LoopDistanceFactor <= 0 ? 0.09 : options.LoopDistanceFactor,
+            options.LoopDirectionDot is <= 0 or > 1 ? 0.99 : options.LoopDirectionDot);
+    }
 
     private static List<GraphPoint> FindSeeds(
         ImplicitEvaluator function,
@@ -113,12 +110,12 @@ public static class ImplicitCurveTracer
         for (int ix = 0; ix <= options.SeedColumns; ix++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            double x = viewport.XRange.Minimum + (ix * dx);
+            double x = viewport.XRange.Minimum + ix * dx;
             double previousY = viewport.YRange.Minimum;
             double previous = Evaluate(function, x, previousY, ref evaluations);
             for (int iy = 1; iy <= options.SeedRows; iy++)
             {
-                double y = viewport.YRange.Minimum + (iy * dy);
+                double y = viewport.YRange.Minimum + iy * dy;
                 double current = Evaluate(function, x, y, ref evaluations);
                 if (HasRootBracket(previous, current))
                 {
@@ -133,12 +130,12 @@ public static class ImplicitCurveTracer
         for (int iy = 0; iy <= options.SeedRows; iy++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            double y = viewport.YRange.Minimum + (iy * dy);
+            double y = viewport.YRange.Minimum + iy * dy;
             double previousX = viewport.XRange.Minimum;
             double previous = Evaluate(function, previousX, y, ref evaluations);
             for (int ix = 1; ix <= options.SeedColumns; ix++)
             {
-                double x = viewport.XRange.Minimum + (ix * dx);
+                double x = viewport.XRange.Minimum + ix * dx;
                 double current = Evaluate(function, x, y, ref evaluations);
                 if (HasRootBracket(previous, current))
                 {
@@ -192,15 +189,15 @@ public static class ImplicitCurveTracer
                 GraphPoint beforePrevious = points[^2];
                 double vx = previous.X - beforePrevious.X;
                 double vy = previous.Y - beforePrevious.Y;
-                if ((vx * tangent.X) + (vy * tangent.Y) < 0)
+                if (vx * tangent.X + vy * tangent.Y < 0)
                 {
                     tangent = new GraphPoint(-tangent.X, -tangent.Y);
                 }
             }
 
             GraphPoint corrected = new(
-                current.X + (userStep * tangent.X),
-                current.Y + (userStep * tangent.Y));
+                current.X + userStep * tangent.X,
+                current.Y + userStep * tangent.Y);
             bool converged = false;
             for (int iteration = 0; iteration < options.MaximumNewtonSteps; iteration++)
             {
@@ -217,15 +214,15 @@ public static class ImplicitCurveTracer
                 }
 
                 (gx, gy) = Gradient(function, corrected, viewport, ref evaluations);
-                double denominator = (gx * gx) + (gy * gy);
+                double denominator = gx * gx + gy * gy;
                 if (!double.IsFinite(denominator) || denominator < 1e-24)
                 {
                     break;
                 }
 
                 corrected = new GraphPoint(
-                    corrected.X - ((value * gx) / denominator),
-                    corrected.Y - ((value * gy) / denominator));
+                    corrected.X - value * gx / denominator,
+                    corrected.Y - value * gy / denominator);
             }
 
             if (!converged || !Inside(viewport, corrected))
@@ -255,8 +252,8 @@ public static class ImplicitCurveTracer
                         GraphPoint closingTangent = new(
                             direction * (-gy / gradientLength),
                             direction * (gx / gradientLength));
-                        double dot = (closingTangent.X * initialTangent.Value.X) +
-                                     (closingTangent.Y * initialTangent.Value.Y);
+                        double dot = closingTangent.X * initialTangent.Value.X +
+                                     closingTangent.Y * initialTangent.Value.Y;
                         if (dot >= options.LoopDirectionDot)
                         {
                             points.Add(seed);
@@ -296,7 +293,7 @@ public static class ImplicitCurveTracer
     {
         for (int i = 0; i < 48; i++)
         {
-            double midpoint = minimum + ((maximum - minimum) * 0.5);
+            double midpoint = minimum + (maximum - minimum) * 0.5;
             double value = Evaluate(function, x, midpoint, ref evaluations);
             if (Math.Abs(value) < 1e-12)
             {
@@ -316,7 +313,7 @@ public static class ImplicitCurveTracer
         }
 
         _ = atMaximum;
-        return new GraphPoint(x, minimum + ((maximum - minimum) * 0.5));
+        return new GraphPoint(x, minimum + (maximum - minimum) * 0.5);
     }
 
     private static GraphPoint BisectHorizontal(
@@ -330,7 +327,7 @@ public static class ImplicitCurveTracer
     {
         for (int i = 0; i < 48; i++)
         {
-            double midpoint = minimum + ((maximum - minimum) * 0.5);
+            double midpoint = minimum + (maximum - minimum) * 0.5;
             double value = Evaluate(function, midpoint, y, ref evaluations);
             if (Math.Abs(value) < 1e-12)
             {
@@ -350,13 +347,15 @@ public static class ImplicitCurveTracer
         }
 
         _ = atMaximum;
-        return new GraphPoint(minimum + ((maximum - minimum) * 0.5), y);
+        return new GraphPoint(minimum + (maximum - minimum) * 0.5, y);
     }
 
-    private static bool HasRootBracket(double left, double right) =>
-        double.IsFinite(left) &&
-        double.IsFinite(right) &&
-        (left == 0 || right == 0 || Math.Sign(left) != Math.Sign(right));
+    private static bool HasRootBracket(double left, double right)
+    {
+        return double.IsFinite(left) &&
+               double.IsFinite(right) &&
+               (left == 0 || right == 0 || Math.Sign(left) != Math.Sign(right));
+    }
 
     private static double Evaluate(ImplicitEvaluator function, double x, double y, ref int evaluations)
     {
@@ -364,9 +363,11 @@ public static class ImplicitCurveTracer
         return function(x, y);
     }
 
-    private static bool Inside(SamplingViewport viewport, GraphPoint point) =>
-        point.X >= viewport.XRange.Minimum && point.X <= viewport.XRange.Maximum &&
-        point.Y >= viewport.YRange.Minimum && point.Y <= viewport.YRange.Maximum;
+    private static bool Inside(SamplingViewport viewport, GraphPoint point)
+    {
+        return point.X >= viewport.XRange.Minimum && point.X <= viewport.XRange.Maximum &&
+               point.Y >= viewport.YRange.Minimum && point.Y <= viewport.YRange.Maximum;
+    }
 
     private static double Hypotenuse(double x, double y)
     {
@@ -379,6 +380,6 @@ public static class ImplicitCurveTracer
         }
 
         double ratio = Math.Min(x, y) / maximum;
-        return maximum * Math.Sqrt(1 + (ratio * ratio));
+        return maximum * Math.Sqrt(1 + ratio * ratio);
     }
 }

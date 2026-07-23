@@ -39,5 +39,8 @@ internal static class SemialgebraicUnaryAnalyzer
         return true;
     }
 
-    internal static bool IsRule(string rule) => rule == Rule;
+    internal static bool IsRule(string rule)
+    {
+        return rule == Rule;
+    }
 }

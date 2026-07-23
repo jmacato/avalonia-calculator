@@ -1,15 +1,35 @@
-using System.Collections.Immutable;
-
 namespace Graphing.Symbolics;
 
 internal sealed record RationalFunction(UnivariatePolynomial Numerator, UnivariatePolynomial Denominator)
 {
-    public static RationalFunction Constant(BigRational value, ResourceBudget budget) => new(UnivariatePolynomial.Create([value], budget), UnivariatePolynomial.One);
+    public static RationalFunction Constant(BigRational value, ResourceBudget budget)
+    {
+        return new RationalFunction(UnivariatePolynomial.Create([value], budget), UnivariatePolynomial.One);
+    }
+
     public static RationalFunction Variable { get; } = new(UnivariatePolynomial.Variable, UnivariatePolynomial.One);
 
-    public RationalFunction Add(RationalFunction other, ResourceBudget budget) => CreateReduced(Numerator.Multiply(other.Denominator, budget).Add(other.Numerator.Multiply(Denominator, budget), budget), Denominator.Multiply(other.Denominator, budget), budget);
-    public RationalFunction Subtract(RationalFunction other, ResourceBudget budget) => CreateReduced(Numerator.Multiply(other.Denominator, budget).Subtract(other.Numerator.Multiply(Denominator, budget), budget), Denominator.Multiply(other.Denominator, budget), budget);
-    public RationalFunction Multiply(RationalFunction other, ResourceBudget budget) => CreateReduced(Numerator.Multiply(other.Numerator, budget), Denominator.Multiply(other.Denominator, budget), budget);
+    public RationalFunction Add(RationalFunction other, ResourceBudget budget)
+    {
+        return CreateReduced(
+            Numerator.Multiply(other.Denominator, budget).Add(other.Numerator.Multiply(Denominator, budget), budget),
+            Denominator.Multiply(other.Denominator, budget), budget);
+    }
+
+    public RationalFunction Subtract(RationalFunction other, ResourceBudget budget)
+    {
+        return CreateReduced(
+            Numerator.Multiply(other.Denominator, budget)
+                .Subtract(other.Numerator.Multiply(Denominator, budget), budget),
+            Denominator.Multiply(other.Denominator, budget), budget);
+    }
+
+    public RationalFunction Multiply(RationalFunction other, ResourceBudget budget)
+    {
+        return CreateReduced(Numerator.Multiply(other.Numerator, budget),
+            Denominator.Multiply(other.Denominator, budget), budget);
+    }
+
     public RationalFunction Divide(RationalFunction other, ResourceBudget budget)
     {
         if (other.Numerator.IsZero)
@@ -20,7 +40,11 @@ internal sealed record RationalFunction(UnivariatePolynomial Numerator, Univaria
         return CreateReduced(Numerator.Multiply(other.Denominator, budget), Denominator.Multiply(other.Numerator, budget), budget);
     }
 
-    public RationalFunction Negate(ResourceBudget budget) => new(Numerator.Negate(budget), Denominator);
+    public RationalFunction Negate(ResourceBudget budget)
+    {
+        return new RationalFunction(Numerator.Negate(budget), Denominator);
+    }
+
     public RationalFunction Pow(int exponent, ResourceBudget budget)
     {
         if (exponent >= 0)

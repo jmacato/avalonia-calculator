@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace MathComposer.Avalonia.OpenType;
 
 /// <summary>Identifies a horizontal or vertical stretchy-glyph construction.</summary>

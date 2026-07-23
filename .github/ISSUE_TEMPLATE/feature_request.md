@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 <!--
-Just want to submit an idea quickly? Try Feedback Hub instead: https://insider.windows.com/en-us/fb/?contextid=130
+Describe the user problem, the expected behavior, and why it belongs in CalcNeo.
 -->
 
 **Problem Statement**
@@ -18,7 +18,7 @@ What problem are we trying to solve? Who’s the target audience? Is there a cus
 
 **Evidence or User Insights**
 <!--
-Why should we do this? Potential sources of data: Feedback Hub, other GitHub issues, other anecdotes from listening to customers in person or online, request from another team, telemetry data, user research, market or competitive research
+Why should we do this? Potential sources include other GitHub issues, user reports, research, or comparisons with other calculator applications.
 -->
 
 **Proposal**

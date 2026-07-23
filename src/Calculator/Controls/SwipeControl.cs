@@ -10,17 +10,14 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Animation.Easings;
-using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Metadata;
 using Avalonia.Controls.Primitives;
-using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
 using FluentAvalonia.Core;
 using FluentAvalonia.UI.Controls;
@@ -171,7 +168,7 @@ public sealed class SwipeControl : ContentControl
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
-        System.ArgumentNullException.ThrowIfNull(e);
+        ArgumentNullException.ThrowIfNull(e);
         if (_inputEater is not null)
         {
             _inputEater.Tapped -= InputEaterGridTapped;
@@ -203,7 +200,7 @@ public sealed class SwipeControl : ContentControl
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
-        System.ArgumentNullException.ThrowIfNull(change);
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
         if (change.Property == LeftItemsProperty)
         {
@@ -338,10 +335,26 @@ public sealed class SwipeControl : ContentControl
         }
     }
 
-    private void OnLeftItemsChanged(object? sender, NotifyCollectionChangedEventArgs e) => OnItemsChanged(SwipeControlCreatedContent.Left, LeftItems);
-    private void OnRightItemsChanged(object? sender, NotifyCollectionChangedEventArgs e) => OnItemsChanged(SwipeControlCreatedContent.Right, RightItems);
-    private void OnTopItemsChanged(object? sender, NotifyCollectionChangedEventArgs e) => OnItemsChanged(SwipeControlCreatedContent.Top, TopItems);
-    private void OnBottomItemsChanged(object? sender, NotifyCollectionChangedEventArgs e) => OnItemsChanged(SwipeControlCreatedContent.Bottom, BottomItems);
+    private void OnLeftItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnItemsChanged(SwipeControlCreatedContent.Left, LeftItems);
+    }
+
+    private void OnRightItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnItemsChanged(SwipeControlCreatedContent.Right, RightItems);
+    }
+
+    private void OnTopItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnItemsChanged(SwipeControlCreatedContent.Top, TopItems);
+    }
+
+    private void OnBottomItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnItemsChanged(SwipeControlCreatedContent.Bottom, BottomItems);
+    }
+
     private void OnItemsChanged(SwipeControlCreatedContent content, SwipeItems? items)
     {
         ThrowIfHasVerticalAndHorizontalContent();
@@ -472,7 +485,7 @@ public sealed class SwipeControl : ContentControl
             _trackerVelocity = 0;
         }
 
-        double naturalRestingPosition = _trackerPosition + (_trackerVelocity * InertiaProjectionSeconds);
+        double naturalRestingPosition = _trackerPosition + _trackerVelocity * InertiaProjectionSeconds;
         double modifiedRestingPosition = GetModifiedRestingPosition(naturalRestingPosition);
         if (_trackerPosition * modifiedRestingPosition < 0)
         {
@@ -592,7 +605,11 @@ public sealed class SwipeControl : ContentControl
         }
     }
 
-    private void DismissSwipeOnKeyDown(object? sender, KeyEventArgs args) => CloseIfNotRemainOpenExecuteItem();
+    private void DismissSwipeOnKeyDown(object? sender, KeyEventArgs args)
+    {
+        CloseIfNotRemainOpenExecuteItem();
+    }
+
     private void CloseWithoutAnimation()
     {
         StopRestingAnimation();
@@ -616,7 +633,12 @@ public sealed class SwipeControl : ContentControl
         Close();
     }
 
-    private bool IsOpenRemainOpenExecuteItem() => _currentItems is { Mode: SwipeMode.Execute, Count: > 0 } && _currentItems[0].BehaviorOnInvoked == SwipeBehaviorOnInvoked.RemainOpen && _isOpen;
+    private bool IsOpenRemainOpenExecuteItem()
+    {
+        return _currentItems is { Mode: SwipeMode.Execute, Count: > 0 } &&
+               _currentItems[0].BehaviorOnInvoked == SwipeBehaviorOnInvoked.RemainOpen && _isOpen;
+    }
+
     private void CreateLeftContent()
     {
         if (LeftItems is not null)
@@ -834,7 +856,11 @@ public sealed class SwipeControl : ContentControl
         _swipeContentStackPanel.Background = null;
     }
 
-    private IBrush? FindBrush(string resourceName) => this.TryFindResource(resourceName, out object? resource) ? resource as IBrush : null;
+    private IBrush? FindBrush(string resourceName)
+    {
+        return this.TryFindResource(resourceName, out object? resource) ? resource as IBrush : null;
+    }
+
     private void ApplyTrackerPosition(double value, bool createContent)
     {
         if (_contentRoot is null || _swipeContentRoot is null || _swipeContentStackPanel is null)
@@ -916,8 +942,8 @@ public sealed class SwipeControl : ContentControl
         }
 
         bool near = IsNearContent(_createdContent);
-        double executeTranslation = (foregroundTranslation * 0.5) +
-                                    ((near ? -0.5 : 0.5) * swipeContentSize);
+        double executeTranslation = foregroundTranslation * 0.5 +
+                                    (near ? -0.5 : 0.5) * swipeContentSize;
         SetDirectionalTranslation(_swipeContentTranslation, executeTranslation);
     }
 
@@ -1000,7 +1026,7 @@ public sealed class SwipeControl : ContentControl
 
         double progress = Math.Clamp((timestamp - _restingAnimationStartedAt).TotalMilliseconds / RestingAnimationDuration.TotalMilliseconds, 0, 1);
         double eased = RestingAnimationEasing.Ease(progress);
-        ApplyTrackerPosition(_restingAnimationStart + ((_restingAnimationTarget - _restingAnimationStart) * eased), createContent: false);
+        ApplyTrackerPosition(_restingAnimationStart + (_restingAnimationTarget - _restingAnimationStart) * eased, createContent: false);
         if (progress < 1)
         {
             return;
@@ -1103,9 +1129,21 @@ public sealed class SwipeControl : ContentControl
         }
     }
 
-    private static bool HasItems(SwipeItems? items) => items is { Count: > 0 };
-    private static bool IsNearContent(SwipeControlCreatedContent content) => content is SwipeControlCreatedContent.Left or SwipeControlCreatedContent.Top;
-    private static bool IsFarContent(SwipeControlCreatedContent content) => content is SwipeControlCreatedContent.Right or SwipeControlCreatedContent.Bottom;
+    private static bool HasItems(SwipeItems? items)
+    {
+        return items is { Count: > 0 };
+    }
+
+    private static bool IsNearContent(SwipeControlCreatedContent content)
+    {
+        return content is SwipeControlCreatedContent.Left or SwipeControlCreatedContent.Top;
+    }
+
+    private static bool IsFarContent(SwipeControlCreatedContent content)
+    {
+        return content is SwipeControlCreatedContent.Right or SwipeControlCreatedContent.Bottom;
+    }
+
     private static bool IsSwipeItemButtonSource(object? source)
     {
         if (source is FACommandBarButton)

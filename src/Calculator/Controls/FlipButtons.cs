@@ -7,7 +7,6 @@ using Avalonia.Animation.Easings;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Media;
-using Avalonia.VisualTree;
 using CalculatorApp.ViewModel.Common;
 using FluentAvalonia.Core;
 using GraphControl;
@@ -71,7 +70,7 @@ public sealed class FlipButtons : ToggleButton
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
-        System.ArgumentNullException.ThrowIfNull(change);
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
         if (change.Property == ButtonIdProperty)
         {
@@ -200,8 +199,8 @@ public sealed class FlipButtons : ToggleButton
 
         // PointerAnimationUsingKeyFrames distributes the angular magnitude
         // between the two axes before sampling the two pointer keyframes.
-        double xPointerValue = 0.5 + ((normalizedX - 0.5) / 2);
-        double yPointerValue = 0.5 + ((normalizedY - 0.5) / 2);
+        double xPointerValue = 0.5 + (normalizedX - 0.5) / 2;
+        double yPointerValue = 0.5 + (normalizedY - 0.5) / 2;
         double maximumAngleX = GetMaximumAngle(Bounds.Width);
         double maximumAngleY = GetMaximumAngle(Bounds.Height);
         _targetAngleY = Lerp(maximumAngleX, -maximumAngleX, xPointerValue);
@@ -262,15 +261,18 @@ public sealed class FlipButtons : ToggleButton
         _hasSavedTransform = false;
     }
 
-    private static double GetMaximumAngle(double controlSize) => controlSize > ControlSizeThreshold
-        ? 0
-        : (-0.00000007 * Math.Pow(controlSize, 3))
-          + (0.00015904 * Math.Pow(controlSize, 2))
-          - (0.12506463 * controlSize)
-          + 35.27311191;
+    private static double GetMaximumAngle(double controlSize)
+    {
+        return controlSize > ControlSizeThreshold
+            ? 0
+            : -0.00000007 * Math.Pow(controlSize, 3)
+              + 0.00015904 * Math.Pow(controlSize, 2)
+              - 0.12506463 * controlSize
+              + 35.27311191;
+    }
 
     private static double Lerp(double start, double end, double progress)
     {
-        return start + ((end - start) * progress);
+        return start + (end - start) * progress;
     }
 }

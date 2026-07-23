@@ -91,7 +91,7 @@ public sealed class CalculatorButton : Button
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
-        System.ArgumentNullException.ThrowIfNull(change);
+        ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
         if (change.Property == ButtonIdProperty || change.Property == AuditoryFeedbackProperty)
         {
@@ -128,7 +128,7 @@ public sealed class CalculatorButton : Button
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
-        System.ArgumentNullException.ThrowIfNull(e);
+        ArgumentNullException.ThrowIfNull(e);
         if (e.Key != Key.Enter)
         {
             base.OnKeyDown(e);
@@ -137,7 +137,7 @@ public sealed class CalculatorButton : Button
 
     protected override void OnKeyUp(KeyEventArgs e)
     {
-        System.ArgumentNullException.ThrowIfNull(e);
+        ArgumentNullException.ThrowIfNull(e);
         if (e.Key != Key.Enter)
         {
             base.OnKeyUp(e);

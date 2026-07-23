@@ -271,8 +271,10 @@ public sealed class MathRenderer
         return null;
     }
 
-    private static Rect Translate(Rect rectangle, Point origin) =>
-        new(rectangle.X + origin.X, rectangle.Y + origin.Y, rectangle.Width, rectangle.Height);
+    private static Rect Translate(Rect rectangle, Point origin)
+    {
+        return new Rect(rectangle.X + origin.X, rectangle.Y + origin.Y, rectangle.Width, rectangle.Height);
+    }
 
     private static Rect Snap(Rect rectangle, double scaling)
     {
@@ -283,5 +285,8 @@ public sealed class MathRenderer
         return new Rect(left, top, Math.Max(1 / scaling, right - left), Math.Max(1 / scaling, bottom - top));
     }
 
-    private static double Snap(double value, double scaling) => Math.Round(value * scaling) / scaling;
+    private static double Snap(double value, double scaling)
+    {
+        return Math.Round(value * scaling) / scaling;
+    }
 }

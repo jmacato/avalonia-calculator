@@ -8,19 +8,27 @@ internal static class ExactCoefficientMath
         ExactScalar left,
         ExactScalar right,
         ResourceBudget budget,
-        out ExactScalar result) => ExactScalar.TryAdd(left, right, budget, out result);
+        out ExactScalar result)
+    {
+        return ExactScalar.TryAdd(left, right, budget, out result);
+    }
 
     public static bool TrySubtract(
         ExactScalar left,
         ExactScalar right,
         ResourceBudget budget,
-        out ExactScalar result) => ExactScalar.TryAdd(left, right.Negate(), budget, out result);
+        out ExactScalar result)
+    {
+        return ExactScalar.TryAdd(left, right.Negate(), budget, out result);
+    }
 
     public static ExactScalar Divide(
         ExactScalar numerator,
         ExactScalar denominator,
-        ResourceBudget budget) =>
-        numerator.Multiply(denominator.Reciprocal(budget), budget);
+        ResourceBudget budget)
+    {
+        return numerator.Multiply(denominator.Reciprocal(budget), budget);
+    }
 
     public static bool TryDiscriminant(
         ExactCoefficientPolynomial polynomial,
@@ -150,8 +158,10 @@ internal static class ExactCoefficientMath
         return polynomial.TryEvaluate(x, budget, out y);
     }
 
-    public static bool SameValue(ExactScalar left, ExactScalar right) =>
-        string.Equals(left.Canonical, right.Canonical, StringComparison.Ordinal);
+    public static bool SameValue(ExactScalar left, ExactScalar right)
+    {
+        return string.Equals(left.Canonical, right.Canonical, StringComparison.Ordinal);
+    }
 
     public static ExactReal AddValues(
         ExactScalar left,

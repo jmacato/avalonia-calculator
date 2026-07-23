@@ -87,8 +87,23 @@ internal static class ElementaryCompositionCertificateReplay
         return recognized && RegularityMatches(expression, Formula.True, Formula.True, Formula.True);
     }
 
-    private static bool IsBareVariable(SemanticExpression expression, string variable) => expression.Value.Kind == ValueKind.Variable && string.Equals(expression.Value.Name, variable, StringComparison.Ordinal) && expression.SourceOperands.Length == 0 && expression.RewriteHistory.Length == 0 && RegularityMatches(expression, Formula.True, Formula.True, Formula.True);
-    private static bool IsBareExponential(SemanticExpression expression, string variable) => expression.RewriteHistory.Length == 0 && expression.SourceOperands is [var argumentExpression] && expression.Value is { Kind: ValueKind.Function, Name: "exp", Operands: [var argumentValue] } && string.Equals(argumentValue.Canonical, argumentExpression.Value.Canonical, StringComparison.Ordinal) && IsBareVariable(argumentExpression, variable) && RegularityMatches(expression, Formula.True, Formula.True, Formula.True);
+    private static bool IsBareVariable(SemanticExpression expression, string variable)
+    {
+        return expression.Value.Kind == ValueKind.Variable &&
+               string.Equals(expression.Value.Name, variable, StringComparison.Ordinal) &&
+               expression.SourceOperands.Length == 0 && expression.RewriteHistory.Length == 0 &&
+               RegularityMatches(expression, Formula.True, Formula.True, Formula.True);
+    }
+
+    private static bool IsBareExponential(SemanticExpression expression, string variable)
+    {
+        return expression.RewriteHistory.Length == 0 && expression.SourceOperands is [var argumentExpression] &&
+               expression.Value is { Kind: ValueKind.Function, Name: "exp", Operands: [var argumentValue] } &&
+               string.Equals(argumentValue.Canonical, argumentExpression.Value.Canonical, StringComparison.Ordinal) &&
+               IsBareVariable(argumentExpression, variable) &&
+               RegularityMatches(expression, Formula.True, Formula.True, Formula.True);
+    }
+
     private static bool TryBuildNestedRegularity(string innerFunction, ValueTerm variable, out Formula defined, out Formula continuous, out Formula differentiable)
     {
         ValueTerm zero = ConstantTerm(BigRational.Zero, -1);
@@ -123,9 +138,23 @@ internal static class ElementaryCompositionCertificateReplay
         }
     }
 
-    private static bool RegularityMatches(SemanticExpression expression, Formula defined, Formula continuous, Formula differentiable) => CanonicalEquals(expression.DefinedWhen, defined) && CanonicalEquals(expression.ContinuousWhen, continuous) && CanonicalEquals(expression.DifferentiableWhen, differentiable);
-    private static bool CanonicalEquals(Formula left, Formula right) => string.Equals(left.Canonical, right.Canonical, StringComparison.Ordinal);
-    private static ElementaryCompositionCertificateReplayReplayPattern CreatePattern(ElementaryCompositionKind kind, ValueTerm value) => new(kind, $"elementary-composition:{(int)kind}:{value.Canonical}");
+    private static bool RegularityMatches(SemanticExpression expression, Formula defined, Formula continuous, Formula differentiable)
+    {
+        return CanonicalEquals(expression.DefinedWhen, defined) &&
+               CanonicalEquals(expression.ContinuousWhen, continuous) &&
+               CanonicalEquals(expression.DifferentiableWhen, differentiable);
+    }
+
+    private static bool CanonicalEquals(Formula left, Formula right)
+    {
+        return string.Equals(left.Canonical, right.Canonical, StringComparison.Ordinal);
+    }
+
+    private static ElementaryCompositionCertificateReplayReplayPattern CreatePattern(ElementaryCompositionKind kind, ValueTerm value)
+    {
+        return new ElementaryCompositionCertificateReplayReplayPattern(kind, $"elementary-composition:{(int)kind}:{value.Canonical}");
+    }
+
     private static bool TryReconstructClaim(ElementaryCompositionKind kind, AnalysisFeatures feature, ResourceBudget budget, out object value)
     {
         budget.Charge(8);
@@ -272,23 +301,102 @@ internal static class ElementaryCompositionCertificateReplay
         return value is not null;
     }
 
-    private static ImmutableArray<MonotoneRegion> SinePullbackMonotonicity(string increasingPredicate, string decreasingPredicate) => [new MonotoneRegion(new ComprehensionSet("x", increasingPredicate), Monotonicity.Increasing), new MonotoneRegion(new ComprehensionSet("x", decreasingPredicate), Monotonicity.Decreasing)];
-    private static Graphing.Symbolics.IntervalSet NonnegativeReals() => new IntervalSet(RealBound.Finite(Rational(BigRational.Zero)), true, RealBound.PositiveInfinity, false);
-    private static Graphing.Symbolics.IntervalSet PositiveReals() => new IntervalSet(RealBound.Finite(Rational(BigRational.Zero)), false, RealBound.PositiveInfinity, false);
-    private static Graphing.Symbolics.IntervalSet UnitRange() => new IntervalSet(RealBound.Finite(Rational(BigRational.MinusOne)), true, RealBound.Finite(Rational(BigRational.One)), true);
-    private static Graphing.Symbolics.PeriodicIntervalSet TangentDomain() => new PeriodicIntervalSet(new AffinePiReal(BigRational.One, BigRational.Zero), "m", IntegerConstraint.All("m"), [new PeriodicInterval(new AffinePiReal(new BigRational(-1, 2), BigRational.Zero), false, new AffinePiReal(new BigRational(1, 2), BigRational.Zero), false)]);
-    private static IntegerLatticeSet LatticeSet(string expression, ImmutableArray<string> parameters, ImmutableArray<string> predicates) => new(expression, parameters, predicates);
-    private static ConstantYFeaturePoint SingletonPoint(BigRational x, BigRational y) => new(new SingletonReal(Rational(x)), Rational(y));
-    private static ConstantYFeaturePoint LatticePoint(string expression, BigRational y, ImmutableArray<string> parameters, ImmutableArray<string> predicates) => LatticePoint(expression, Rational(y), parameters, predicates);
-    private static ConstantYFeaturePoint LatticePoint(string expression, ExactReal y, ImmutableArray<string> parameters, ImmutableArray<string> predicates) => new(new LatticeReal(expression, parameters, predicates), y);
-    private static string Integer(string parameter) => $"{parameter} ∈ ℤ";
-    private static string LowerBound(string parameter, int bound) => $"{parameter} ≥ {bound}";
-    private static Asymptote Horizontal(BigRational value) => new(AsymptoteOrientation.Horizontal, new SingletonReal(Rational(value)), null, Rational(value));
-    private static Periodicity NotPeriodic() => new(PeriodicityKind.NotPeriodic, null);
-    private static Periodicity PeriodPi() => new(PeriodicityKind.PeriodicWithFundamentalPeriod, new AffinePiReal(BigRational.One, BigRational.Zero));
-    private static RationalReal Rational(BigRational value) => new(value);
-    private static ValueTerm ConstantTerm(BigRational value, int id) => new(id, ValueKind.Constant, value, string.Empty, [], "q:" + value);
-    private static ValueTerm FunctionTerm(string function, ValueTerm argument, int id) => new(id, ValueKind.Function, default, function, [argument], $"{(int)ValueKind.Function}:{function}({argument.Canonical})");
+    private static ImmutableArray<MonotoneRegion> SinePullbackMonotonicity(string increasingPredicate, string decreasingPredicate)
+    {
+        return
+        [
+            new MonotoneRegion(new ComprehensionSet("x", increasingPredicate), Monotonicity.Increasing),
+            new MonotoneRegion(new ComprehensionSet("x", decreasingPredicate), Monotonicity.Decreasing)
+        ];
+    }
+
+    private static IntervalSet NonnegativeReals()
+    {
+        return new IntervalSet(RealBound.Finite(Rational(BigRational.Zero)), true, RealBound.PositiveInfinity, false);
+    }
+
+    private static IntervalSet PositiveReals()
+    {
+        return new IntervalSet(RealBound.Finite(Rational(BigRational.Zero)), false, RealBound.PositiveInfinity, false);
+    }
+
+    private static IntervalSet UnitRange()
+    {
+        return new IntervalSet(RealBound.Finite(Rational(BigRational.MinusOne)), true,
+            RealBound.Finite(Rational(BigRational.One)), true);
+    }
+
+    private static PeriodicIntervalSet TangentDomain()
+    {
+        return new PeriodicIntervalSet(new AffinePiReal(BigRational.One, BigRational.Zero), "m",
+            IntegerConstraint.All("m"),
+            [
+                new PeriodicInterval(new AffinePiReal(new BigRational(-1, 2), BigRational.Zero), false,
+                    new AffinePiReal(new BigRational(1, 2), BigRational.Zero), false)
+            ]);
+    }
+
+    private static IntegerLatticeSet LatticeSet(string expression, ImmutableArray<string> parameters, ImmutableArray<string> predicates)
+    {
+        return new IntegerLatticeSet(expression, parameters, predicates);
+    }
+
+    private static ConstantYFeaturePoint SingletonPoint(BigRational x, BigRational y)
+    {
+        return new ConstantYFeaturePoint(new SingletonReal(Rational(x)), Rational(y));
+    }
+
+    private static ConstantYFeaturePoint LatticePoint(string expression, BigRational y, ImmutableArray<string> parameters, ImmutableArray<string> predicates)
+    {
+        return LatticePoint(expression, Rational(y), parameters, predicates);
+    }
+
+    private static ConstantYFeaturePoint LatticePoint(string expression, ExactReal y, ImmutableArray<string> parameters, ImmutableArray<string> predicates)
+    {
+        return new ConstantYFeaturePoint(new LatticeReal(expression, parameters, predicates), y);
+    }
+
+    private static string Integer(string parameter)
+    {
+        return $"{parameter} ∈ ℤ";
+    }
+
+    private static string LowerBound(string parameter, int bound)
+    {
+        return $"{parameter} ≥ {bound}";
+    }
+
+    private static Asymptote Horizontal(BigRational value)
+    {
+        return new Asymptote(AsymptoteOrientation.Horizontal, new SingletonReal(Rational(value)), null, Rational(value));
+    }
+
+    private static Periodicity NotPeriodic()
+    {
+        return new Periodicity(PeriodicityKind.NotPeriodic, null);
+    }
+
+    private static Periodicity PeriodPi()
+    {
+        return new Periodicity(PeriodicityKind.PeriodicWithFundamentalPeriod, new AffinePiReal(BigRational.One, BigRational.Zero));
+    }
+
+    private static RationalReal Rational(BigRational value)
+    {
+        return new RationalReal(value);
+    }
+
+    private static ValueTerm ConstantTerm(BigRational value, int id)
+    {
+        return new ValueTerm(id, ValueKind.Constant, value, string.Empty, [], "q:" + value);
+    }
+
+    private static ValueTerm FunctionTerm(string function, ValueTerm argument, int id)
+    {
+        return new ValueTerm(id, ValueKind.Function, default, function, [argument],
+            $"{(int)ValueKind.Function}:{function}({argument.Canonical})");
+    }
+
     private static bool Fail(out object value)
     {
         value = null!;

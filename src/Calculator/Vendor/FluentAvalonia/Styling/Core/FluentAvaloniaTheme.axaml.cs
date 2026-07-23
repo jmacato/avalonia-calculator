@@ -22,7 +22,7 @@ public sealed partial class FluentAvaloniaTheme : Styles, IResourceProvider
     /// </summary>
     public FluentAvaloniaTheme()
     {
-        MergedDictionaries = new AvaloniaList<IResourceDictionary>();
+        MergedDictionaries = [];
         MergedDictionaries.CollectionChanged += MergedDictionariesCollectionChanged;
         Init();
     }
@@ -156,8 +156,10 @@ public sealed partial class FluentAvaloniaTheme : Styles, IResourceProvider
         return false;
     }
 
-    bool IResourceNode.TryGetResource(object key, ThemeVariant? theme, out object? value) =>
-        this.TryGetResource(key, theme, out value);
+    bool IResourceNode.TryGetResource(object key, ThemeVariant? theme, out object? value)
+    {
+        return TryGetResource(key, theme, out value);
+    }
 
     private void Init()
     {

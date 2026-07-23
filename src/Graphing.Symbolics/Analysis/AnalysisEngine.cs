@@ -243,9 +243,11 @@ internal static class AnalysisEngine
 
     private static bool CanPreserveOnlyOrigin(
         AnalysisRequest request,
-        ProofOutcome<OptionalValue<ExactReal>> earlyOrigin) =>
-        request.Features == AnalysisFeatures.YIntercept &&
-        earlyOrigin.State == ProofState.Proved;
+        ProofOutcome<OptionalValue<ExactReal>> earlyOrigin)
+    {
+        return request.Features == AnalysisFeatures.YIntercept &&
+               earlyOrigin.State == ProofState.Proved;
+    }
 
     private static ProofOutcome<RealSet> SolveDomain(
         AnalysisRequest request,
@@ -702,24 +704,30 @@ internal static class AnalysisEngine
         SemanticExpression expression,
         AnalysisFeatures expectedFeature,
         ProofOutcome<T> outcome,
-        ResourceBudget budget) =>
-        outcome.State == ProofState.Unknown ||
-        CertificateChecker.CheckProjected(
-            request,
-            expression,
-            expectedFeature,
-            outcome,
-            budget)
+        ResourceBudget budget)
+    {
+        return outcome.State == ProofState.Unknown ||
+               CertificateChecker.CheckProjected(
+                   request,
+                   expression,
+                   expectedFeature,
+                   outcome,
+                   budget)
             ? outcome
             : ProofOutcome<T>.Unknown(UnknownReason.CertificateRejected);
+    }
 
     private static ProofOutcome<RealSet> CheckDomain(
         AnalysisRequest request,
         SemanticExpression expression,
         ProofOutcome<RealSet> outcome,
-        ResourceBudget budget) =>
-        Check(request, expression, AnalysisFeatures.Domain, outcome, budget);
+        ResourceBudget budget)
+    {
+        return Check(request, expression, AnalysisFeatures.Domain, outcome, budget);
+    }
 
-    private static bool Requested(AnalysisRequest request, AnalysisFeatures feature) =>
-        request.Features.HasFlag(feature);
+    private static bool Requested(AnalysisRequest request, AnalysisFeatures feature)
+    {
+        return request.Features.HasFlag(feature);
+    }
 }

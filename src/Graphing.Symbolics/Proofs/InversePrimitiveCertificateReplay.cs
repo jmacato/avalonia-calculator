@@ -156,16 +156,18 @@ internal static class InversePrimitiveCertificateReplay
             budget);
     }
 
-    private static ValueTerm Constant(BigRational value) =>
-        new(
-            int.MinValue + (value.Sign + 1),
+    private static ValueTerm Constant(BigRational value)
+    {
+        return new ValueTerm(
+            int.MinValue + value.Sign + 1,
             ValueKind.Constant,
             value,
             string.Empty,
             [],
             $"q:{value}");
+    }
 
-    private static Graphing.Symbolics.IntervalSet BuildRange(
+    private static IntervalSet BuildRange(
         AffinePrimitivePattern pattern,
         AngleUnit angleUnit,
         ResourceBudget budget)
@@ -311,7 +313,7 @@ internal static class InversePrimitiveCertificateReplay
             return [];
         }
 
-        bool useBaseMinimum = (pattern.OuterScale.Sign > 0) == minimum;
+        bool useBaseMinimum = pattern.OuterScale.Sign > 0 == minimum;
         BigRational inner = (pattern.Function, useBaseMinimum) switch
         {
             ("asin", true) => BigRational.MinusOne,
@@ -362,11 +364,14 @@ internal static class InversePrimitiveCertificateReplay
         return [Horizontal(positive), Horizontal(negative)];
     }
 
-    private static Asymptote Horizontal(ExactReal y) => new(
-        AsymptoteOrientation.Horizontal,
-        new SingletonReal(y),
-        null,
-        y);
+    private static Asymptote Horizontal(ExactReal y)
+    {
+        return new Asymptote(
+            AsymptoteOrientation.Horizontal,
+            new SingletonReal(y),
+            null,
+            y);
+    }
 
     private static ImmutableArray<MonotoneRegion> BuildMonotonicity(
         AffinePrimitivePattern pattern,
@@ -387,18 +392,22 @@ internal static class InversePrimitiveCertificateReplay
     private static ExactReal PrimitiveAt(
         AffinePrimitivePattern pattern,
         BigRational argument,
-        AngleUnit angleUnit) =>
-        ExactInverseTrigonometry.PrincipalAngle(
+        AngleUnit angleUnit)
+    {
+        return ExactInverseTrigonometry.PrincipalAngle(
             pattern.Function,
             ExactScalar.FromRational(argument),
             angleUnit,
             normalizeOddNegative: false);
+    }
 
     private static RealSet PointAtInnerValue(
         AffinePrimitivePattern pattern,
         ExactReal innerValue,
-        ResourceBudget budget) =>
-        RealSets.Points([SolveInnerExact(pattern, innerValue, budget)]);
+        ResourceBudget budget)
+    {
+        return RealSets.Points([SolveInnerExact(pattern, innerValue, budget)]);
+    }
 
     private static ExactReal SolveInnerExact(
         AffinePrimitivePattern pattern,
@@ -417,27 +426,34 @@ internal static class InversePrimitiveCertificateReplay
     private static BigRational SolveInnerRational(
         AffinePrimitivePattern pattern,
         BigRational innerValue,
-        ResourceBudget budget) =>
-        Checked(
+        ResourceBudget budget)
+    {
+        return Checked(
             (innerValue - pattern.InnerIntercept) / pattern.InnerSlope,
             budget);
+    }
 
     private static ExactReal TransformOutput(
         AffinePrimitivePattern pattern,
         ExactReal primitive,
-        ResourceBudget budget) =>
-        Checked(
+        ResourceBudget budget)
+    {
+        return Checked(
             ExactRealArithmetic.AddRational(
                 ExactRealArithmetic.Scale(primitive, pattern.OuterScale),
                 pattern.OuterShift),
             budget);
+    }
 
-    private static bool IsZero(ExactReal value) => value switch
+    private static bool IsZero(ExactReal value)
     {
-        RationalReal rational => rational.Value.IsZero,
-        AffinePiReal affine => affine.PiCoefficient.IsZero && affine.Constant.IsZero,
-        _ => false
-    };
+        return value switch
+        {
+            RationalReal rational => rational.Value.IsZero,
+            AffinePiReal affine => affine.PiCoefficient.IsZero && affine.Constant.IsZero,
+            _ => false
+        };
+    }
 
     private static BigRational Checked(
         BigRational value,

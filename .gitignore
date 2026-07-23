@@ -305,12 +305,4 @@ __pycache__/
 *.odx.cs
 *.xsd.cs
 
-# Calculator specific
-Generated Files/
-src/GraphControl/GraphingImplOverrides.props
-src/CalcViewModel/DataLoaders/DataLoaderConstants.h
-!src/x64
-!src/x86
-!src/out
-!src/ARM
 .DS_Store

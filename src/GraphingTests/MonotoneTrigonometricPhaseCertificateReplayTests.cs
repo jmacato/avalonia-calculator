@@ -405,33 +405,49 @@ public sealed class MonotoneTrigonometricPhaseCertificateReplayTests
     private static AnalysisRequest Request(
         InputExpression input,
         AnalysisFeatures feature,
-        AngleUnit angleUnit) =>
-        new(input, feature, angleUnit, "x", static () => true);
+        AngleUnit angleUnit)
+    {
+        return new AnalysisRequest(input, feature, angleUnit, "x", static () => true);
+    }
 
-    private static SemanticExpression Build(InputExpression input) =>
-        new SemanticGraphBuilder(new ResourceBudget()).Build(input);
+    private static SemanticExpression Build(InputExpression input)
+    {
+        return new SemanticGraphBuilder(new ResourceBudget()).Build(input);
+    }
 
-    private static InputExpression Variable() =>
-        InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Number(int value) =>
-        InputExpression.Number(new BigRational(value), Source);
+    private static InputExpression Number(int value)
+    {
+        return InputExpression.Number(new BigRational(value), Source);
+    }
 
     private static InputExpression Add(
         InputExpression left,
-        InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+        InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Power(InputExpression basis, int exponent) =>
-        InputExpression.Binary(
+    private static InputExpression Power(InputExpression basis, int exponent)
+    {
+        return InputExpression.Binary(
             InputExpressionKind.Power,
             basis,
             Number(exponent),
             Source);
+    }
 
-    private static InputExpression Sin(InputExpression argument) =>
-        InputExpression.Function("sin", [argument], Source);
+    private static InputExpression Sin(InputExpression argument)
+    {
+        return InputExpression.Function("sin", [argument], Source);
+    }
 
-    private static InputExpression Sqrt(InputExpression argument) =>
-        InputExpression.Function("sqrt", [argument], Source);
+    private static InputExpression Sqrt(InputExpression argument)
+    {
+        return InputExpression.Function("sqrt", [argument], Source);
+    }
 }

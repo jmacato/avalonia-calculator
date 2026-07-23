@@ -602,7 +602,10 @@ public sealed class WinUiCalendarMotion
         topLevel.RequestAnimationFrame(OnAnimationFrame);
     }
 
-    private bool HasActiveMotion() => _pressedTarget is not null || _headerAnimating || _incomingView is not null;
+    private bool HasActiveMotion()
+    {
+        return _pressedTarget is not null || _headerAnimating || _incomingView is not null;
+    }
 
     private void CompleteAllMotion()
     {
@@ -624,5 +627,8 @@ public sealed class WinUiCalendarMotion
         return transforms;
     }
 
-    private static double Lerp(double from, double to, double progress) => from + ((to - from) * progress);
+    private static double Lerp(double from, double to, double progress)
+    {
+        return from + (to - from) * progress;
+    }
 }

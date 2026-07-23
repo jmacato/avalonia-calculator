@@ -1,10 +1,12 @@
-using System.Collections.Immutable;
-
 namespace Graphing.Symbolics;
 
 internal static class MixedTrigonometricSolver
 {
-    public static bool TryDomain(SemanticExpression expression, string variable, AngleUnit angleUnit, ResourceBudget budget, out RealSet domain) => TrySolveDefinedness(expression.DefinedWhen, variable, angleUnit, budget, out domain);
+    public static bool TryDomain(SemanticExpression expression, string variable, AngleUnit angleUnit, ResourceBudget budget, out RealSet domain)
+    {
+        return TrySolveDefinedness(expression.DefinedWhen, variable, angleUnit, budget, out domain);
+    }
+
     public static bool TryZeros(SemanticExpression expression, string variable, AngleUnit angleUnit, ResourceBudget budget, out RealSet zeros)
     {
         if (!TrySolveAlgebraicRestrictions(expression.DefinedWhen, variable, angleUnit, budget, out RealSet domain))

@@ -11,7 +11,6 @@ using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Styling;
-using CalculatorApp.Controls;
 using CalculatorApp.ViewModel;
 using CalculatorApp.ViewModel.Common;
 using GraphControl;
@@ -41,7 +40,10 @@ public sealed partial class GraphingCalculator : UserControl, IDisposable
         UpdateGraphTheme();
     }
 
-    private void OnActualThemeVariantChanged(object? sender, EventArgs e) => UpdateGraphTheme();
+    private void OnActualThemeVariantChanged(object? sender, EventArgs e)
+    {
+        UpdateGraphTheme();
+    }
 
     public void SetDefaultFocus()
     {
@@ -88,10 +90,15 @@ public sealed partial class GraphingCalculator : UserControl, IDisposable
         SetDefaultFocus();
     }
 
-    private void OnUnloaded(object? sender, RoutedEventArgs e) =>
+    private void OnUnloaded(object? sender, RoutedEventArgs e)
+    {
         DisposeKeyGraphFeaturesPanel();
+    }
 
-    private void OnSizeChanged(object? sender, SizeChangedEventArgs e) => ApplyResponsiveLayout();
+    private void OnSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        ApplyResponsiveLayout();
+    }
 
     private void OnSwitchModeChanged(object? sender, RoutedEventArgs e)
     {
@@ -107,8 +114,10 @@ public sealed partial class GraphingCalculator : UserControl, IDisposable
         }
     }
 
-    private void OnEquationsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+    private void OnEquationsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
         SynchronizeGraphEquations();
+    }
 
     private void SynchronizeGraphEquations()
     {
@@ -118,18 +127,35 @@ public sealed partial class GraphingCalculator : UserControl, IDisposable
         }
     }
 
-    private void OnVariablesUpdated(object? sender, EventArgs e) => SynchronizeVariables();
+    private void OnVariablesUpdated(object? sender, EventArgs e)
+    {
+        SynchronizeVariables();
+    }
 
-    private void SynchronizeVariables() => _model?.UpdateVariables(GraphingControl.Variables);
+    private void SynchronizeVariables()
+    {
+        _model?.UpdateVariables(GraphingControl.Variables);
+    }
 
-    private void OnVariableUpdated(object? sender, VariableChangedEventArgs e) =>
+    private void OnVariableUpdated(object? sender, VariableChangedEventArgs e)
+    {
         GraphingControl.SetVariable(e.VariableName, e.NewValue);
+    }
 
-    private void OnZoomInClicked(object? sender, RoutedEventArgs e) => GraphingControl.ZoomFromCenter(0.9);
+    private void OnZoomInClicked(object? sender, RoutedEventArgs e)
+    {
+        GraphingControl.ZoomFromCenter(0.9);
+    }
 
-    private void OnZoomOutClicked(object? sender, RoutedEventArgs e) => GraphingControl.ZoomFromCenter(1.1);
+    private void OnZoomOutClicked(object? sender, RoutedEventArgs e)
+    {
+        GraphingControl.ZoomFromCenter(1.1);
+    }
 
-    private void OnResetClicked(object? sender, RoutedEventArgs e) => GraphingControl.ResetGrid();
+    private void OnResetClicked(object? sender, RoutedEventArgs e)
+    {
+        GraphingControl.ResetGrid();
+    }
 
     private void OnActiveTracingChanged(object? sender, RoutedEventArgs e)
     {
@@ -158,7 +184,10 @@ public sealed partial class GraphingCalculator : UserControl, IDisposable
         UpdateGraphAutomationName();
     }
 
-    private void OnGraphPlotted(object? sender, EventArgs e) => UpdateGraphAutomationName();
+    private void OnGraphPlotted(object? sender, EventArgs e)
+    {
+        UpdateGraphAutomationName();
+    }
 
     private void OnGraphSettingsClicked(object? sender, RoutedEventArgs e)
     {

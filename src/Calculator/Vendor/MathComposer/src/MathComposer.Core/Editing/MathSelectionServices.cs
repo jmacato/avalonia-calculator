@@ -82,29 +82,37 @@ public static class MathSelectionServices
     public static MathSelection MoveLeft(
         MathDocument document,
         MathSelection selection,
-        bool extendSelection = false) =>
-        Move(document, selection, moveRight: false, extendSelection);
+        bool extendSelection = false)
+    {
+        return Move(document, selection, moveRight: false, extendSelection);
+    }
 
     /// <summary>Moves the active endpoint one Unicode scalar or structural stop right.</summary>
     public static MathSelection MoveRight(
         MathDocument document,
         MathSelection selection,
-        bool extendSelection = false) =>
-        Move(document, selection, moveRight: true, extendSelection);
+        bool extendSelection = false)
+    {
+        return Move(document, selection, moveRight: true, extendSelection);
+    }
 
     /// <summary>Moves to the start of the nearest containing row.</summary>
     public static MathSelection MoveHome(
         MathDocument document,
         MathSelection selection,
-        bool extendSelection = false) =>
-        MoveToRowEdge(document, selection, toEnd: false, extendSelection);
+        bool extendSelection = false)
+    {
+        return MoveToRowEdge(document, selection, toEnd: false, extendSelection);
+    }
 
     /// <summary>Moves to the end of the nearest containing row.</summary>
     public static MathSelection MoveEnd(
         MathDocument document,
         MathSelection selection,
-        bool extendSelection = false) =>
-        MoveToRowEdge(document, selection, toEnd: true, extendSelection);
+        bool extendSelection = false)
+    {
+        return MoveToRowEdge(document, selection, toEnd: true, extendSelection);
+    }
 
     /// <summary>Returns inferred required-empty-row placeholders in document order.</summary>
     public static ImmutableArray<MathPosition> GetPlaceholders(MathDocument document)
@@ -126,15 +134,19 @@ public static class MathSelectionServices
     public static MathSelection MoveToNextPlaceholder(
         MathDocument document,
         MathSelection selection,
-        bool extendSelection = false) =>
-        MoveToPlaceholder(document, selection, forward: true, extendSelection);
+        bool extendSelection = false)
+    {
+        return MoveToPlaceholder(document, selection, forward: true, extendSelection);
+    }
 
     /// <summary>Moves to the previous inferred placeholder, or before its containing structure.</summary>
     public static MathSelection MoveToPreviousPlaceholder(
         MathDocument document,
         MathSelection selection,
-        bool extendSelection = false) =>
-        MoveToPlaceholder(document, selection, forward: false, extendSelection);
+        bool extendSelection = false)
+    {
+        return MoveToPlaceholder(document, selection, forward: false, extendSelection);
+    }
 
     internal static MathPosition NormalizePosition(
         MathDocument document,

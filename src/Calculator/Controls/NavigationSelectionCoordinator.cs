@@ -138,10 +138,12 @@ internal sealed class NavigationSelectionCoordinator
         }
     }
 
-    private static Border? FindIndicator(Button button, string indicatorName) =>
-        button.GetVisualDescendants()
+    private static Border? FindIndicator(Button button, string indicatorName)
+    {
+        return button.GetVisualDescendants()
             .OfType<Border>()
             .FirstOrDefault(border => border.Name == indicatorName);
+    }
 
     private static bool AnimateSameDepth(
         Border outgoing,
@@ -309,20 +311,24 @@ internal sealed class NavigationSelectionCoordinator
     }
 
     private static SplineEasing CreateStretchEasing(
-        NavigationSelectionTransitionSettings settings) =>
-        new(
+        NavigationSelectionTransitionSettings settings)
+    {
+        return new SplineEasing(
             settings.StretchControlPoint1.X,
             settings.StretchControlPoint1.Y,
             settings.StretchControlPoint2.X,
             settings.StretchControlPoint2.Y);
+    }
 
     private static SplineEasing CreateContractEasing(
-        NavigationSelectionTransitionSettings settings) =>
-        new(
+        NavigationSelectionTransitionSettings settings)
+    {
+        return new SplineEasing(
             settings.ContractControlPoint1.X,
             settings.ContractControlPoint1.Y,
             settings.ContractControlPoint2.X,
             settings.ContractControlPoint2.Y);
+    }
 
     private void ResetPendingIndicators()
     {

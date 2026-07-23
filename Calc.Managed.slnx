@@ -4,23 +4,11 @@
     <Project Path="Tools/Calculator.BrowserHost/Calculator.BrowserHost.csproj" />
   </Folder>
   <Folder Name="/Managed/">
-    <Project Path="src/CalcManagerManaged/CalcManagerManaged/CalcManagerManaged.csproj" />
-    <Project Path="src/CalcManagerManaged/CalcManagerManagedTests/CalcManagerManagedTests.csproj" />
     <Project Path="src/CalcManagerManaged/CalcManagerPort/CalcManagerPort.csproj" />
-    <Project Path="src/CalcManagerManaged/CalcManagerPortProg/CalcManagerPortProg.csproj" />
-    <Project Path="src/CalcManagerManaged/CalcManagerPortTests/CalcManagerPortTests.csproj" />
     <Project Path="src/Calculator.Browser/Calculator.Browser.csproj" />
     <Project Path="src/Calculator.Desktop/Calculator.Desktop.csproj" />
-    <Project Path="src/Calculator.LegacyCalcManager/Calculator.LegacyCalcManager.csproj" />
-    <Project Path="src/Calculator.LegacyUI/Calculator.LegacyUI.csproj" />
-    <Project Path="src/Calculator.LegacyUwpSupport/Calculator.LegacyUwpSupport.csproj" />
     <Project Path="src/Calculator/Calculator.csproj" />
-    <Project Path="src/CalculatorApp.ViewModel.Tests/CalculatorApp.ViewModel.Tests.csproj" />
-    <Project Path="src/CalculatorApp.ViewModel/CalculatorApp.ViewModel.csproj" />
-    <Project Path="src/CalculatorUITestFramework/CalculatorUITestFramework.csproj" />
-    <Project Path="src/CalculatorUITests/CalculatorUITests.csproj" />
     <Project Path="src/GraphControl/GraphControl.csproj" />
-    <Project Path="src/Graphing.Symbolics.Smoke/Graphing.Symbolics.Smoke.csproj" />
     <Project Path="src/Graphing.Symbolics/Graphing.Symbolics.csproj" />
     <Project Path="src/GraphingImpl/GraphingImpl.csproj" />
     <Project Path="src/GraphingInterfaces/GraphingInterfaces.csproj" />
@@ -29,7 +17,6 @@
     <Project Path="src/JsMath.Port/JsMath.Port.csproj" />
   </Folder>
   <Folder Name="/Vendor/">
-    <Project Path="src/Calculator/Vendor/Avalonia.Labs.Lottie/Avalonia.Labs.Lottie.csproj" />
     <Project Path="src/Calculator/Vendor/MathComposer/src/MathComposer.Avalonia/MathComposer.Avalonia.csproj" />
     <Project Path="src/Calculator/Vendor/MathComposer/src/MathComposer.Core/MathComposer.Core.csproj" />
     <Project Path="src/Calculator/Vendor/FluentAvalonia/FluentAvalonia.csproj" />

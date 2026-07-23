@@ -1,6 +1,3 @@
-using System.Buffers.Binary;
-using System.Collections.Immutable;
-using System.Text;
 using static MathComposer.Avalonia.OpenType.OpenTypeMathFont;
 
 namespace MathComposer.Avalonia.OpenType;
@@ -132,7 +129,7 @@ internal sealed class OpenTypeBoundsBuilder
         double q3,
         bool forX)
     {
-        if (t <= 0 || t >= 1)
+        if (t is <= 0 or >= 1)
         {
             return;
         }

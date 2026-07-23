@@ -12,7 +12,10 @@ internal sealed class LatexConverter
         _source = source;
     }
 
-    public static string ToLinear(string source) => new LatexConverter(source).ConvertUntil('\0');
+    public static string ToLinear(string source)
+    {
+        return new LatexConverter(source).ConvertUntil('\0');
+    }
 
     private string ConvertUntil(char terminator)
     {
@@ -152,6 +155,8 @@ internal sealed class LatexConverter
         }
     }
 
-    private GraphParseException Error(SyntaxErrorCode code, string message) =>
-        new(code, new SourceSpan(Math.Max(0, _position - 1), 1), message);
+    private GraphParseException Error(SyntaxErrorCode code, string message)
+    {
+        return new GraphParseException(code, new SourceSpan(Math.Max(0, _position - 1), 1), message);
+    }
 }

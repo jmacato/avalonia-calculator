@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using CalculatorApp.ViewModel;
@@ -24,7 +23,10 @@ public sealed partial class DateCalculator : UserControl, IDisposable
         AddSubtract_FromDate.IsDropDownOpen = false;
     }
 
-    public void SetDefaultFocus() => DateCalculationOption.Focus();
+    public void SetDefaultFocus()
+    {
+        DateCalculationOption.Focus();
+    }
 
     private void OnSizeChanged(object? sender, SizeChangedEventArgs e)
     {

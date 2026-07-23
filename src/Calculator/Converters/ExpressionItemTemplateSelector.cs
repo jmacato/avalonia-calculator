@@ -33,5 +33,8 @@ public sealed class ExpressionItemTemplateSelector : IDataTemplate
         return template.Build(parameter);
     }
 
-    public bool Match(object? data) => data is DisplayExpressionToken;
+    public bool Match(object? data)
+    {
+        return data is DisplayExpressionToken;
+    }
 }

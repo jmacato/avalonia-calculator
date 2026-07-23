@@ -1,6 +1,4 @@
-using System.Buffers.Binary;
 using System.Collections.Immutable;
-using System.Text;
 
 namespace MathComposer.Avalonia.OpenType;
 
@@ -12,7 +10,7 @@ internal sealed record OpenTypeCmap12(ImmutableArray<OpenTypeCmapGroup> Groups) 
         int high = Groups.Length - 1;
         while (low <= high)
         {
-            int middle = low + ((high - low) / 2);
+            int middle = low + (high - low) / 2;
             OpenTypeCmapGroup group = Groups[middle];
             if (scalar < group.Start)
             {

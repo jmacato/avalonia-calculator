@@ -4,7 +4,6 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Data;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -212,7 +211,10 @@ public sealed class MathRichEditBox : ContentControl
 
     public event EventHandler? ErrorStateChanged;
 
-    public void FocusEditor() => _editor.Focus();
+    public void FocusEditor()
+    {
+        _editor.Focus();
+    }
 
     public void SetAutomationName(string name)
     {
@@ -232,17 +234,25 @@ public sealed class MathRichEditBox : ContentControl
         _editor.Focus();
     }
 
-    public void InsertFraction() =>
+    public void InsertFraction()
+    {
         _editor.InsertStructureCommand.Execute(MathStructuralTemplate.Fraction);
+    }
 
-    public void InsertPower() =>
+    public void InsertPower()
+    {
         _editor.InsertStructureCommand.Execute(MathStructuralTemplate.Superscript);
+    }
 
-    public void InsertSquareRoot() =>
+    public void InsertSquareRoot()
+    {
         _editor.InsertStructureCommand.Execute(MathStructuralTemplate.Radical);
+    }
 
-    public void InsertRoot() =>
+    public void InsertRoot()
+    {
         _editor.InsertStructureCommand.Execute(MathStructuralTemplate.IndexedRadical);
+    }
 
     public void BackSpace()
     {
@@ -411,8 +421,10 @@ public sealed class MathRichEditBox : ContentControl
         }
     }
 
-    private string ExportMathMl() =>
-        HasContent ? _editor.Export(MathTextFormat.MathMl) : string.Empty;
+    private string ExportMathMl()
+    {
+        return HasContent ? _editor.Export(MathTextFormat.MathMl) : string.Empty;
+    }
 
     private void SetMathText(string mathMl)
     {

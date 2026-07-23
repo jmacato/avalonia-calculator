@@ -2,17 +2,14 @@
 // Licensed under the MIT License.
 
 using CalcEngine;
-using CalculationManager;
 using System.Diagnostics;
 using System.Text;
 
 namespace CalculationManager;
 
-public class CalculatorHistory : IHistoryDisplay
+public class CalculatorHistory(ulong maxSize) : IHistoryDisplay
 {
     List<HISTORYITEM> m_historyItems = [];
-
-    ulong m_maxHistorySize;
 
     static wstring GetGeneratedExpression(IList<(wstring, int)> tokens)
     {
@@ -36,11 +33,6 @@ public class CalculatorHistory : IHistoryDisplay
         return expression.ToString();
     }
 
-    public CalculatorHistory(ulong maxSize)
-    {
-        m_maxHistorySize = (maxSize);
-    }
-
     public uint AddToHistory(IList<(string, int)> tokens, IList<IExpressionCommand> commands, string result)
     {
         if (tokens is null)
@@ -57,7 +49,7 @@ public class CalculatorHistory : IHistoryDisplay
 
     public uint AddItem(HISTORYITEM spHistoryItem)
     {
-        if (m_historyItems.Count >= (int)m_maxHistorySize)
+        if (m_historyItems.Count >= (int)maxSize)
         {
             m_historyItems.Clear();
         }

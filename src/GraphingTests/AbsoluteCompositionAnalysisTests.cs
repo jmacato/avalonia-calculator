@@ -391,8 +391,10 @@ public sealed class AbsoluteCompositionAnalysisTests
         AssertProved(report.Period, label);
     }
 
-    private static void AssertProved<T>(ProofOutcome<T> outcome, string label) =>
+    private static void AssertProved<T>(ProofOutcome<T> outcome, string label)
+    {
         Assert.True(outcome.State == ProofState.Proved, $"{label}: {outcome.UnknownReason}");
+    }
 
     private static void AssertDedicatedCertificates(AnalysisReport report, string label)
     {
@@ -441,8 +443,10 @@ public sealed class AbsoluteCompositionAnalysisTests
         AnalysisRequest request,
         AnalysisReport report,
         ProofOutcome<T> outcome,
-        string label) =>
+        string label)
+    {
         Assert.True(CertificateChecker.Check(request, report.Expression!, outcome), label);
+    }
 
     private static void AssertSameClaims(AnalysisReport expected, AnalysisReport actual)
     {
@@ -478,8 +482,10 @@ public sealed class AbsoluteCompositionAnalysisTests
         Assert.Equal(expectedCanonical, ExactRealCanonical.Format(period.FundamentalPeriod!));
     }
 
-    private static void AssertNotPeriodic(AnalysisReport report) =>
+    private static void AssertNotPeriodic(AnalysisReport report)
+    {
         Assert.Equal(PeriodicityKind.NotPeriodic, Proved(report.Period).Kind);
+    }
 
     private static void AssertSingletonPoint(FeaturePoint value, string x, string y)
     {
@@ -499,14 +505,18 @@ public sealed class AbsoluteCompositionAnalysisTests
 
     private static AnalysisReport Analyze(
         InputExpression expression,
-        AngleUnit angleUnit = AngleUnit.Radians) =>
-        AnalysisEngine.Analyze(Request(expression, AnalysisFeatures.All, angleUnit));
+        AngleUnit angleUnit = AngleUnit.Radians)
+    {
+        return AnalysisEngine.Analyze(Request(expression, AnalysisFeatures.All, angleUnit));
+    }
 
     private static AnalysisRequest Request(
         InputExpression expression,
         AnalysisFeatures features,
-        AngleUnit angleUnit = AngleUnit.Radians) =>
-        new(expression, features, angleUnit, "x", static () => true);
+        AngleUnit angleUnit = AngleUnit.Radians)
+    {
+        return new AnalysisRequest(expression, features, angleUnit, "x", static () => true);
+    }
 
     private static GraphFunctionAnalysisData AnalyzePublic(string formula)
     {
@@ -522,40 +532,78 @@ public sealed class AbsoluteCompositionAnalysisTests
         return solver.Analyze(analyzer);
     }
 
-    private static InputExpression Variable() => InputExpression.Variable("x", Source);
+    private static InputExpression Variable()
+    {
+        return InputExpression.Variable("x", Source);
+    }
 
-    private static InputExpression Number(int value) =>
-        InputExpression.Number(new BigRational(value), Source);
+    private static InputExpression Number(int value)
+    {
+        return InputExpression.Number(new BigRational(value), Source);
+    }
 
-    private static InputExpression Add(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    private static InputExpression Add(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Add, left, right, Source);
+    }
 
-    private static InputExpression Subtract(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    private static InputExpression Subtract(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Subtract, left, right, Source);
+    }
 
-    private static InputExpression Multiply(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    private static InputExpression Multiply(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Multiply, left, right, Source);
+    }
 
-    private static InputExpression Divide(InputExpression left, InputExpression right) =>
-        InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    private static InputExpression Divide(InputExpression left, InputExpression right)
+    {
+        return InputExpression.Binary(InputExpressionKind.Divide, left, right, Source);
+    }
 
-    private static InputExpression Power(InputExpression basis, int exponent) =>
-        InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    private static InputExpression Power(InputExpression basis, int exponent)
+    {
+        return InputExpression.Binary(InputExpressionKind.Power, basis, Number(exponent), Source);
+    }
 
-    private static InputExpression Abs(InputExpression value) => Function("abs", value);
+    private static InputExpression Abs(InputExpression value)
+    {
+        return Function("abs", value);
+    }
 
-    private static InputExpression Sqrt(InputExpression value) => Function("sqrt", value);
+    private static InputExpression Sqrt(InputExpression value)
+    {
+        return Function("sqrt", value);
+    }
 
-    private static InputExpression Sin(InputExpression value) => Function("sin", value);
+    private static InputExpression Sin(InputExpression value)
+    {
+        return Function("sin", value);
+    }
 
-    private static InputExpression Cos(InputExpression value) => Function("cos", value);
+    private static InputExpression Cos(InputExpression value)
+    {
+        return Function("cos", value);
+    }
 
-    private static InputExpression Sinh(InputExpression value) => Function("sinh", value);
+    private static InputExpression Sinh(InputExpression value)
+    {
+        return Function("sinh", value);
+    }
 
-    private static InputExpression Cosh(InputExpression value) => Function("cosh", value);
+    private static InputExpression Cosh(InputExpression value)
+    {
+        return Function("cosh", value);
+    }
 
-    private static InputExpression Tanh(InputExpression value) => Function("tanh", value);
+    private static InputExpression Tanh(InputExpression value)
+    {
+        return Function("tanh", value);
+    }
 
-    private static InputExpression Function(string name, params InputExpression[] arguments) =>
-        InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    private static InputExpression Function(string name, params InputExpression[] arguments)
+    {
+        return InputExpression.Function(name, arguments.ToImmutableArray(), Source);
+    }
 }

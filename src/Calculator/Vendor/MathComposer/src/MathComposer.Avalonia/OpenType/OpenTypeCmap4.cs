@@ -1,6 +1,3 @@
-using System.Buffers.Binary;
-using System.Collections.Immutable;
-using System.Text;
 using static MathComposer.Avalonia.OpenType.OpenTypeMathFont;
 
 namespace MathComposer.Avalonia.OpenType;

@@ -1,7 +1,4 @@
-using System.Buffers;
 using System.Collections.Immutable;
-using System.Globalization;
-using System.Text;
 using Avalonia;
 using MathComposer.Avalonia.OpenType;
 using MathComposer.Core;
@@ -53,25 +50,18 @@ public sealed class MathLayoutEngine
             context.Diagnostics.ToImmutableArray());
     }
 
-    internal static MathDrawCommand TranslateCommand(MathDrawCommand command, double x, double y) =>
-        command switch
+    internal static MathDrawCommand TranslateCommand(MathDrawCommand command, double x, double y)
+    {
+        return command switch
         {
-            MathTextDrawCommand text => text with
-            {
-                BaselineOrigin = text.BaselineOrigin + new Vector(x, y)
-            },
-            MathGlyphDrawCommand glyph => glyph with
-            {
-                BaselineOrigin = glyph.BaselineOrigin + new Vector(x, y)
-            },
-            MathRuleDrawCommand rule => rule with
-            {
-                Bounds = rule.Bounds.Translate(new Vector(x, y))
-            },
+            MathTextDrawCommand text => text with { BaselineOrigin = text.BaselineOrigin + new Vector(x, y) },
+            MathGlyphDrawCommand glyph => glyph with { BaselineOrigin = glyph.BaselineOrigin + new Vector(x, y) },
+            MathRuleDrawCommand rule => rule with { Bounds = rule.Bounds.Translate(new Vector(x, y)) },
             MathPlaceholderDrawCommand placeholder => placeholder with
             {
                 Bounds = placeholder.Bounds.Translate(new Vector(x, y))
             },
             _ => throw new ArgumentException("Unknown draw command.", nameof(command))
         };
+    }
 }

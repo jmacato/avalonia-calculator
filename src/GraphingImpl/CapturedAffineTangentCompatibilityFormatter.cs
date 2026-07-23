@@ -331,28 +331,46 @@ internal static class CapturedAffineTangentCompatibilityFormatter
         return offset.StartsWith('−') ? $"{multiplier} − {offset[1..]}" : $"{multiplier} + {offset}";
     }
 
-    private static bool DefinitelyNegative(ExactReal value) => value switch
+    private static bool DefinitelyNegative(ExactReal value)
     {
-        RationalReal rational => rational.Value.Sign < 0,
-        AffinePiReal affine => affine.PiCoefficient.Sign <= 0 && affine.Constant.Sign <= 0 && (!affine.PiCoefficient.IsZero || !affine.Constant.IsZero),
-        FunctionReal { Function: "divide", Arguments: [var numerator, var denominator] } => DefinitelyNegative(numerator) && DefinitelyPositive(denominator),
-        FunctionReal { Function: "negate", Arguments: [var operand] } => DefinitelyPositive(operand),
-        _ => false
-    };
-    private static bool DefinitelyPositive(ExactReal value) => value switch
+        return value switch
+        {
+            RationalReal rational => rational.Value.Sign < 0,
+            AffinePiReal affine => affine.PiCoefficient.Sign <= 0 && affine.Constant.Sign <= 0 &&
+                                   (!affine.PiCoefficient.IsZero || !affine.Constant.IsZero),
+            FunctionReal { Function: "divide", Arguments: [var numerator, var denominator] } =>
+                DefinitelyNegative(numerator) && DefinitelyPositive(denominator),
+            FunctionReal { Function: "negate", Arguments: [var operand] } => DefinitelyPositive(operand),
+            _ => false
+        };
+    }
+
+    private static bool DefinitelyPositive(ExactReal value)
     {
-        RationalReal rational => rational.Value.Sign > 0,
-        AffinePiReal affine => affine.PiCoefficient.Sign >= 0 && affine.Constant.Sign >= 0 && (!affine.PiCoefficient.IsZero || !affine.Constant.IsZero),
-        NamedReal { Name: "e" or "pi" } => true,
-        FunctionReal { Function: "negate", Arguments: [var operand] } => DefinitelyNegative(operand),
-        _ => false
-    };
+        return value switch
+        {
+            RationalReal rational => rational.Value.Sign > 0,
+            AffinePiReal affine => affine.PiCoefficient.Sign >= 0 && affine.Constant.Sign >= 0 &&
+                                   (!affine.PiCoefficient.IsZero || !affine.Constant.IsZero),
+            NamedReal { Name: "e" or "pi" } => true,
+            FunctionReal { Function: "negate", Arguments: [var operand] } => DefinitelyNegative(operand),
+            _ => false
+        };
+    }
+
     private static BigRational Mod(BigRational value, BigRational modulus)
     {
         ExactInteger quotient = (value / modulus).Floor();
         return value - new BigRational(quotient) * modulus;
     }
 
-    private static ExactInteger Lcm(ExactInteger left, ExactInteger right) => ExactInteger.Abs(left / ExactInteger.GreatestCommonDivisor(left, right) * right);
-    private static string Rational(BigRational value) => value.ToString().Replace("-", "−", StringComparison.Ordinal);
+    private static ExactInteger Lcm(ExactInteger left, ExactInteger right)
+    {
+        return ExactInteger.Abs(left / ExactInteger.GreatestCommonDivisor(left, right) * right);
+    }
+
+    private static string Rational(BigRational value)
+    {
+        return value.ToString().Replace("-", "−", StringComparison.Ordinal);
+    }
 }

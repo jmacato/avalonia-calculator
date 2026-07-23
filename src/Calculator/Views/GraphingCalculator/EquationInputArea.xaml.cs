@@ -179,8 +179,10 @@ public sealed partial class EquationInputArea : UserControl, IDisposable
         }
     }
 
-    private void OnVariableAreaButtonTapped(object? sender, TappedEventArgs e) =>
+    private void OnVariableAreaButtonTapped(object? sender, TappedEventArgs e)
+    {
         e.Handled = true;
+    }
 
     private void OnVariableAreaTapped(object? sender, TappedEventArgs e)
     {
@@ -215,10 +217,12 @@ public sealed partial class EquationInputArea : UserControl, IDisposable
         }
     }
 
-    private EquationTextBox? FindEquationRow(EquationViewModel equation) =>
-        EquationInputList.GetVisualDescendants()
+    private EquationTextBox? FindEquationRow(EquationViewModel equation)
+    {
+        return EquationInputList.GetVisualDescendants()
             .OfType<EquationTextBox>()
             .FirstOrDefault(row => ReferenceEquals(row.DataContext, equation));
+    }
 
     public void Dispose()
     {

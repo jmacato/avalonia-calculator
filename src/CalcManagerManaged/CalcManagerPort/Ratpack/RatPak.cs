@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace CalcEngine;
@@ -1362,29 +1361,53 @@ public class RatPak
 
     // LOG*RADIX calculates the integral portion of the log of a number in
     // the base currently being used, only accurate to within g_ratio
-    int LOGNUMRADIX(NUMBER pnum) => (pnum._cdigit + pnum._exp) * g_ratio;
+    int LOGNUMRADIX(NUMBER pnum)
+    {
+        return (pnum._cdigit + pnum._exp) * g_ratio;
+    }
 
-    int LOGRATRADIX(PRAT prat) => LOGNUMRADIX(prat._pp) - LOGNUMRADIX(prat._pq);
+    int LOGRATRADIX(PRAT prat)
+    {
+        return LOGNUMRADIX(prat._pp) - LOGNUMRADIX(prat._pq);
+    }
 
     // LOG*2 calculates the integral portion of the log of a number in
     // the internal base being used, only accurate to within g_ratio
-    static int LOGNUM2(NUMBER pnum) => pnum._cdigit + pnum._exp;
+    static int LOGNUM2(NUMBER pnum)
+    {
+        return pnum._cdigit + pnum._exp;
+    }
 
-    static int LOGRAT2(PRAT prat) => LOGNUM2(prat._pp) - LOGNUM2(prat._pq);
+    static int LOGRAT2(PRAT prat)
+    {
+        return LOGNUM2(prat._pp) - LOGNUM2(prat._pq);
+    }
 
     // SIGN returns the sign of the rational
-    static int32_t SIGN(PRAT prat) => prat._pp._sign * prat._pq._sign;
+    static int32_t SIGN(PRAT prat)
+    {
+        return prat._pp._sign * prat._pq._sign;
+    }
 
-    static void createrat([NotNull] ref PRAT? y) => y = _createrat();
+    static void createrat([NotNull] ref PRAT? y)
+    {
+        y = _createrat();
+    }
 
-    public static RAT createrat() => _createrat();
+    public static RAT createrat()
+    {
+        return _createrat();
+    }
 
     public static void destroyrat(ref PRAT? x)
     {
         _destroyrat(ref x);
     }
 
-    public static void createnum([NotNull] ref NUMBER? y, uint32_t size) => y = _createnum(size);
+    public static void createnum([NotNull] ref NUMBER? y, uint32_t size)
+    {
+        y = _createnum(size);
+    }
 
     static void destroynum(ref NUMBER? x)
     {
@@ -1504,17 +1527,26 @@ public class RatPak
         }
     }
 
-    static uint32_t MSD(NUMBER x) => x._mant[x._cdigit - 1];
+    static uint32_t MSD(NUMBER x)
+    {
+        return x._mant[x._cdigit - 1];
+    }
 
     // MULNUM(b) is the rational equivalent of thisterm *= b where thisterm is
     // a rational and b is a number, NOTE this is a mixed type operation for
     // efficiency reasons.
-    private static void MULNUM(ref NUMBER b, PRAT thisterm) => mulnumx(ref thisterm._pp, b);
+    private static void MULNUM(ref NUMBER b, PRAT thisterm)
+    {
+        mulnumx(ref thisterm._pp, b);
+    }
 
     // DIVNUM(b) is the rational equivalent of thisterm /= b where thisterm is
     // a rational and b is a number, NOTE this is a mixed type operation for
     // efficiency reasons.
-    private static void DIVNUM(ref NUMBER b, PRAT thisterm) => mulnumx(ref thisterm._pq, b);
+    private static void DIVNUM(ref NUMBER b, PRAT thisterm)
+    {
+        mulnumx(ref thisterm._pq, b);
+    }
 
     // Macros Suck.
 
@@ -1554,11 +1586,20 @@ public class RatPak
 
     private const uint32_t S_OK = 0x0;
 
-    private static bool SUCCEEDED(ResultCode hr) => hr >= 0;
+    private static bool SUCCEEDED(ResultCode hr)
+    {
+        return hr >= 0;
+    }
 
-    private static bool FAILED(ResultCode hr) => hr < 0;
+    private static bool FAILED(ResultCode hr)
+    {
+        return hr < 0;
+    }
 
-    public static uint32_t ScodeCode(uint32_t sc) => sc & 0xFFFF;
+    public static uint32_t ScodeCode(uint32_t sc)
+    {
+        return sc & 0xFFFF;
+    }
 
     //----------------------------------------------------------------------------
     //
@@ -1939,7 +1980,10 @@ public class RatPak
     // Default decimal separator
     private wchar_t g_decimalSeparator = '.';
 
-    private static uint64_t Calc_UInt32x32To64(UInt32 a, UInt32 b) => a * (uint64_t)b;
+    private static uint64_t Calc_UInt32x32To64(UInt32 a, UInt32 b)
+    {
+        return a * (uint64_t)b;
+    }
 
     public const int32_t
         IntsafeArithmeticOverflow = unchecked((int32_t)0x80070216U); // 0x216 = 534 = ERROR_ARITHMETIC_OVERFLOW
@@ -6037,7 +6081,10 @@ public class RatPak
         dupnum(ref v._pq, initq);
     }
 
-    static void READRAWNUM([NotNull] ref NUMBER? v, NUMBER init) => dupnum(ref v, init);
+    static void READRAWNUM([NotNull] ref NUMBER? v, NUMBER init)
+    {
+        dupnum(ref v, init);
+    }
 
     static void INIT_AND_DUMP_RAW_NUM_IF_NULL([NotNull] ref NUMBER? r, int32_t v)
     {

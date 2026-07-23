@@ -30,7 +30,10 @@ public sealed partial class GraphingSettings : UserControl, IDisposable
         remove => Model.GraphThemeSettingChanged -= value;
     }
 
-    public void SetGrapher(Grapher grapher) => Model.SetGrapher(grapher);
+    public void SetGrapher(Grapher grapher)
+    {
+        Model.SetGrapher(grapher);
+    }
 
     private void OnRangeKeyDown(object? sender, KeyEventArgs e)
     {
@@ -47,7 +50,10 @@ public sealed partial class GraphingSettings : UserControl, IDisposable
         e.Handled = true;
     }
 
-    private void OnResetViewClicked(object? sender, RoutedEventArgs e) => Model.ResetView();
+    private void OnResetViewClicked(object? sender, RoutedEventArgs e)
+    {
+        Model.ResetView();
+    }
 
     public void Dispose()
     {

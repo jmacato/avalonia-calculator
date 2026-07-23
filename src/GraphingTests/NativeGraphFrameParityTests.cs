@@ -225,7 +225,7 @@ public sealed class NativeGraphFrameParityTests
         // deterministic ordering rather than depend on hash-bucket traversal.
         double[] c = [2.3310765802539306, 3.322560388279409, -1.68154023107213, 1.3519500816948478, 1.7044826698044702, 1.7484990906661837, -2.197549860085151, -2.9083885768933166, 1.405922478719578, -1.1320270733591293];
         var viewport = new SamplingViewport(new AxisRange(-3, 3), new AxisRange(-2, 2), 320, 240);
-        InequalityMesh mesh = MarchingSquares.BuildContours((x, y) => c[0] + (c[1] * x) + (c[2] * y) + (c[3] * x * y) + (c[4] * x * x) + (c[5] * y * y) + (c[6] * Math.Sin(c[7] * x)) + (c[8] * Math.Cos(c[9] * y)), value => value > 0, viewport, columns: 3, rows: 15, cancellationToken: TestContext.Current.CancellationToken);
+        InequalityMesh mesh = MarchingSquares.BuildContours((x, y) => c[0] + c[1] * x + c[2] * y + c[3] * x * y + c[4] * x * x + c[5] * y * y + c[6] * Math.Sin(c[7] * x) + c[8] * Math.Cos(c[9] * y), value => value > 0, viewport, columns: 3, rows: 15, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal([21, 3], mesh.Contours.Select(contour => contour.Length));
         ImmutableArray<GraphPoint> shortContour = mesh.Contours[1];
         AssertPoint(shortContour[0], -0.9966470121371801, 0.6666666666666665);
@@ -254,7 +254,11 @@ public sealed class NativeGraphFrameParityTests
         return new NativeGraphFrameParityTestsRenderedGraph(graph, equation, renderer, frame);
     }
 
-    private static StrokePathCommand[] BlueStrokes(GraphFrame frame) => frame.Commands.OfType<StrokePathCommand>().Where(IsBlueStroke).ToArray();
+    private static StrokePathCommand[] BlueStrokes(GraphFrame frame)
+    {
+        return frame.Commands.OfType<StrokePathCommand>().Where(IsBlueStroke).ToArray();
+    }
+
     private static void AssertInequalityReusesBoundary(GraphFrame standalone, GraphFrame inequality)
     {
         StrokePathCommand[] standaloneBoundary = BlueStrokes(standalone);
@@ -265,7 +269,7 @@ public sealed class NativeGraphFrameParityTests
         {
             GraphPath expected = standaloneBoundary[index].Path;
             GraphPath first = inequalityBoundary[index * 2].Path;
-            GraphPath second = inequalityBoundary[(index * 2) + 1].Path;
+            GraphPath second = inequalityBoundary[index * 2 + 1].Path;
             Assert.Equal(expected.IsClosed, first.IsClosed);
             Assert.Equal(expected.IsClosed, second.IsClosed);
             Assert.Equal(expected.Points, first.Points);
@@ -273,12 +277,36 @@ public sealed class NativeGraphFrameParityTests
         }
     }
 
-    private static bool IsBlueStroke(GraphFrameCommand command) => command is StrokePathCommand stroke && IsBlueStroke(stroke);
-    private static bool IsBlueStroke(StrokePathCommand command) => command.Paint.Color == NativeBlue;
-    private static bool SameRgb(Color left, Color right) => left.R == right.R && left.G == right.G && left.B == right.B;
-    private static bool IsVertical(StrokePathCommand command) => command.Path.Points.Length == 2 && Math.Abs(command.Path.Points[0].X - command.Path.Points[1].X) < 1e-10;
-    private static bool IsHorizontal(StrokePathCommand command) => command.Path.Points.Length == 2 && Math.Abs(command.Path.Points[0].Y - command.Path.Points[1].Y) < 1e-10;
-    private static double LineCoordinate(StrokePathCommand command) => IsVertical(command) ? command.Path.Points[0].X : command.Path.Points[0].Y;
+    private static bool IsBlueStroke(GraphFrameCommand command)
+    {
+        return command is StrokePathCommand stroke && IsBlueStroke(stroke);
+    }
+
+    private static bool IsBlueStroke(StrokePathCommand command)
+    {
+        return command.Paint.Color == NativeBlue;
+    }
+
+    private static bool SameRgb(Color left, Color right)
+    {
+        return left.R == right.R && left.G == right.G && left.B == right.B;
+    }
+
+    private static bool IsVertical(StrokePathCommand command)
+    {
+        return command.Path.Points.Length == 2 && Math.Abs(command.Path.Points[0].X - command.Path.Points[1].X) < 1e-10;
+    }
+
+    private static bool IsHorizontal(StrokePathCommand command)
+    {
+        return command.Path.Points.Length == 2 && Math.Abs(command.Path.Points[0].Y - command.Path.Points[1].Y) < 1e-10;
+    }
+
+    private static double LineCoordinate(StrokePathCommand command)
+    {
+        return IsVertical(command) ? command.Path.Points[0].X : command.Path.Points[0].Y;
+    }
+
     private static void AssertFiveSubdivisions(StrokePathCommand[] lines)
     {
         StrokePathCommand[] majors = lines.Where(line => line.Paint.Color.A == byte.MaxValue).ToArray();
@@ -316,13 +344,13 @@ public sealed class NativeGraphFrameParityTests
     {
         double dx = endX - startX;
         double dy = endY - startY;
-        double length = Math.Sqrt((dx * dx) + (dy * dy));
+        double length = Math.Sqrt(dx * dx + dy * dy);
         var samples = new bool[(int)Math.Floor(length) + 1];
         for (int distance = 0; distance < samples.Length; distance++)
         {
             double amount = distance / length;
-            int x = (int)Math.Round(startX + (dx * amount));
-            int y = (int)Math.Round(startY + (dy * amount));
+            int x = (int)Math.Round(startX + dx * amount);
+            int y = (int)Math.Round(startY + dy * amount);
             SKColor color = bitmap.GetPixel(x, y);
             samples[distance] = color.Red < 30 && color.Green is > 75 and < 125 && color.Blue > 145;
         }

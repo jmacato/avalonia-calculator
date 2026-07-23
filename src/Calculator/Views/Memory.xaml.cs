@@ -4,7 +4,6 @@
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Selection;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
@@ -79,7 +78,10 @@ public sealed partial class Memory : UserControl
         SubscribeToModel();
     }
 
-    private void SubscribeToModel() => SetSubscribedModel(Model);
+    private void SubscribeToModel()
+    {
+        SetSubscribedModel(Model);
+    }
 
     private void SetSubscribedModel(StandardCalculatorViewModel? model)
     {
@@ -102,7 +104,10 @@ public sealed partial class Memory : UserControl
         UpdateState();
     }
 
-    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e) => UpdateState();
+    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        UpdateState();
+    }
 
     private void UpdateState()
     {
@@ -112,7 +117,10 @@ public sealed partial class Memory : UserControl
         ClearMemory.IsVisible = hasItems;
     }
 
-    private void OnVisualItemsChanged(object? sender, EventArgs e) => UpdateState();
+    private void OnVisualItemsChanged(object? sender, EventArgs e)
+    {
+        UpdateState();
+    }
 
     private void MemoryListSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
@@ -142,15 +150,23 @@ public sealed partial class Memory : UserControl
         return container?.DataContext;
     }
 
-    private void OnClearMenuItemClicked(object? sender, RoutedEventArgs e) =>
+    private void OnClearMenuItemClicked(object? sender, RoutedEventArgs e)
+    {
         GetMemoryItem(sender)?.Clear();
+    }
 
-    private void OnMemoryAddMenuItemClicked(object? sender, RoutedEventArgs e) =>
+    private void OnMemoryAddMenuItemClicked(object? sender, RoutedEventArgs e)
+    {
         GetMemoryItem(sender)?.MemoryAdd();
+    }
 
-    private void OnMemorySubtractMenuItemClicked(object? sender, RoutedEventArgs e) =>
+    private void OnMemorySubtractMenuItemClicked(object? sender, RoutedEventArgs e)
+    {
         GetMemoryItem(sender)?.MemorySubtract();
+    }
 
-    private static MemoryItemViewModel? GetMemoryItem(object? sender) =>
-        (sender as MenuItem)?.DataContext as MemoryItemViewModel;
+    private static MemoryItemViewModel? GetMemoryItem(object? sender)
+    {
+        return (sender as MenuItem)?.DataContext as MemoryItemViewModel;
+    }
 }

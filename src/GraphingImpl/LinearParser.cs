@@ -310,55 +310,71 @@ internal sealed class LinearParser
         }
     }
 
-    private void Advance() => _current = _tokens.Next();
-
-    private GraphParseException Error(SyntaxErrorCode code, string message) =>
-        new(code, _current.Span, message);
-
-    private static RelationKind RelationFromToken(TokenKind kind) => kind switch
+    private void Advance()
     {
-        TokenKind.Equal => RelationKind.Equal,
-        TokenKind.Less => RelationKind.Less,
-        TokenKind.LessOrEqual => RelationKind.LessOrEqual,
-        TokenKind.Greater => RelationKind.Greater,
-        TokenKind.GreaterOrEqual => RelationKind.GreaterOrEqual,
-        _ => RelationKind.None
-    };
+        _current = _tokens.Next();
+    }
 
-    private static bool CanStartPrimary(TokenKind kind) => kind is
-        TokenKind.Number or
-        TokenKind.Identifier or
-        TokenKind.OpenParenthesis or
-        TokenKind.OpenBrace or
-        TokenKind.Radical;
-
-    private static SourceSpan Cover(SourceSpan left, SourceSpan right) =>
-        new(left.Start, Math.Max(left.End, right.End) - left.Start);
-
-    private static string NormalizeFunctionName(string name) => IdentifierNormalizer.ToCanonicalLowerInvariant(name) switch
+    private GraphParseException Error(SyntaxErrorCode code, string message)
     {
-        // Keep aliases out of the syntax tree so evaluation and every
-        // symbolic analyzer operate on the same canonical function names.
-        "arcsin" => "asin",
-        "arccos" => "acos",
-        "arctan" => "atan",
-        "sgn" => "sign",
-        "ceiling" => "ceil",
-        "sum" or "plus" => "sum",
-        "subtract" or "minus" => "subtract",
-        "product" or "times" => "product",
-        "divide" => "divide",
-        "power" => "power",
-        "root" => "root",
-        "equal" => "equal",
-        "less" => "less",
-        "lessorequal" => "lessorequal",
-        "greater" => "greater",
-        "greaterorequal" => "greaterorequal",
-        "plot2d" => "plot2d",
-        "ploteq2d" => "ploteq2d",
-        "plotineq2d" => "plotineq2d",
-        "list" => "list",
-        var normalized => normalized
-    };
+        return new GraphParseException(code, _current.Span, message);
+    }
+
+    private static RelationKind RelationFromToken(TokenKind kind)
+    {
+        return kind switch
+        {
+            TokenKind.Equal => RelationKind.Equal,
+            TokenKind.Less => RelationKind.Less,
+            TokenKind.LessOrEqual => RelationKind.LessOrEqual,
+            TokenKind.Greater => RelationKind.Greater,
+            TokenKind.GreaterOrEqual => RelationKind.GreaterOrEqual,
+            _ => RelationKind.None
+        };
+    }
+
+    private static bool CanStartPrimary(TokenKind kind)
+    {
+        return kind is
+            TokenKind.Number or
+            TokenKind.Identifier or
+            TokenKind.OpenParenthesis or
+            TokenKind.OpenBrace or
+            TokenKind.Radical;
+    }
+
+    private static SourceSpan Cover(SourceSpan left, SourceSpan right)
+    {
+        return new SourceSpan(left.Start, Math.Max(left.End, right.End) - left.Start);
+    }
+
+    private static string NormalizeFunctionName(string name)
+    {
+        return IdentifierNormalizer.ToCanonicalLowerInvariant(name) switch
+        {
+            // Keep aliases out of the syntax tree so evaluation and every
+            // symbolic analyzer operate on the same canonical function names.
+            "arcsin" => "asin",
+            "arccos" => "acos",
+            "arctan" => "atan",
+            "sgn" => "sign",
+            "ceiling" => "ceil",
+            "sum" or "plus" => "sum",
+            "subtract" or "minus" => "subtract",
+            "product" or "times" => "product",
+            "divide" => "divide",
+            "power" => "power",
+            "root" => "root",
+            "equal" => "equal",
+            "less" => "less",
+            "lessorequal" => "lessorequal",
+            "greater" => "greater",
+            "greaterorequal" => "greaterorequal",
+            "plot2d" => "plot2d",
+            "ploteq2d" => "ploteq2d",
+            "plotineq2d" => "plotineq2d",
+            "list" => "list",
+            var normalized => normalized
+        };
+    }
 }

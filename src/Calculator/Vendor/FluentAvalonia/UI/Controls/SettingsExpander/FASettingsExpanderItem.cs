@@ -206,7 +206,7 @@ public sealed partial class FASettingsExpanderItem : ContentControl, ICommandSou
     protected override bool RegisterContentPresenter(ContentPresenter presenter)
     {
         ArgumentNullException.ThrowIfNull(presenter);
-        if (presenter.Name == "ContentPresenter" || presenter.Name == "FooterPresenter")
+        if (presenter.Name is "ContentPresenter" or "FooterPresenter")
             return true;
 
         return base.RegisterContentPresenter(presenter);
@@ -311,8 +311,10 @@ public sealed partial class FASettingsExpanderItem : ContentControl, ICommandSou
         InvalidateMeasure();
     }
 
-    void ICommandSource.CanExecuteChanged(object? sender, EventArgs e) =>
+    void ICommandSource.CanExecuteChanged(object? sender, EventArgs e)
+    {
         CanExecuteChanged(sender, e);
+    }
 
     private bool _commandCanExecute = true;
     private bool _allowInteraction;

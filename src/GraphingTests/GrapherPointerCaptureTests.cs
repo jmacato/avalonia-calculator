@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
-using Avalonia.Input.Raw;
 using Avalonia.Media;
 using GraphControl;
 
@@ -85,7 +84,8 @@ public sealed class GrapherPointerCaptureTests
         Assert.False(grapher.IsPanInertiaSuppressedForGesture);
     }
 
-    private static void RaisePressed(Grapher grapher, Pointer pointer, Point point, ulong timestamp) =>
+    private static void RaisePressed(Grapher grapher, Pointer pointer, Point point, ulong timestamp)
+    {
         grapher.RaiseEvent(new PointerPressedEventArgs(
             grapher,
             pointer,
@@ -96,8 +96,10 @@ public sealed class GrapherPointerCaptureTests
                 RawInputModifiers.LeftMouseButton,
                 PointerUpdateKind.LeftButtonPressed),
             KeyModifiers.None));
+    }
 
-    private static void RaiseMoved(Grapher grapher, Pointer pointer, Point point, ulong timestamp) =>
+    private static void RaiseMoved(Grapher grapher, Pointer pointer, Point point, ulong timestamp)
+    {
         grapher.RaiseEvent(new PointerEventArgs(
             InputElement.PointerMovedEvent,
             grapher,
@@ -109,8 +111,10 @@ public sealed class GrapherPointerCaptureTests
                 RawInputModifiers.LeftMouseButton,
                 PointerUpdateKind.Other),
             KeyModifiers.None));
+    }
 
-    private static void RaiseReleased(Grapher grapher, Pointer pointer, Point point, ulong timestamp) =>
+    private static void RaiseReleased(Grapher grapher, Pointer pointer, Point point, ulong timestamp)
+    {
         grapher.RaiseEvent(new PointerReleasedEventArgs(
             grapher,
             pointer,
@@ -122,4 +126,5 @@ public sealed class GrapherPointerCaptureTests
                 PointerUpdateKind.LeftButtonReleased),
             KeyModifiers.None,
             MouseButton.Left));
+    }
 }

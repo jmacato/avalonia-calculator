@@ -1,6 +1,3 @@
-using System.Collections.Immutable;
-using System.Text;
-
 namespace Graphing.Symbolics;
 
 internal abstract record RealSet

@@ -237,7 +237,7 @@ public sealed class RatPakExactRationalTests
         Assert.Equal(expectedGcd, gcd);
         Assert.Equal(expectedGcd.GetHashCode(), gcd.GetHashCode());
         Assert.Equal(expectedGcd.IsOne, gcd.IsOne);
-        Assert.Equal(left, (left / right) * right + left % right);
+        Assert.Equal(left, left / right * right + left % right);
     }
 
     [Fact]

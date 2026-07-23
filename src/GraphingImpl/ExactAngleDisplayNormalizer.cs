@@ -12,7 +12,10 @@ internal static class ExactAngleDisplayNormalizer
 {
     private const int MaximumDepth = 64;
 
-    public static ExactReal Normalize(ExactReal value) => Normalize(value, 0);
+    public static ExactReal Normalize(ExactReal value)
+    {
+        return Normalize(value, 0);
+    }
 
     private static ExactReal Normalize(ExactReal value, int depth)
     {
