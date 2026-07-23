@@ -4,6 +4,7 @@ using System.Diagnostics;
 using Avalonia;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Controls.Metadata;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -45,8 +46,19 @@ public sealed class CalculationResult : TemplatedControl
     public static readonly StyledProperty<bool> IsOperatorCommandProperty = AvaloniaProperty.Register<CalculationResult, bool>(nameof(IsOperatorCommand));
     public static readonly StyledProperty<HorizontalAlignment> HorizontalContentAlignmentProperty = AvaloniaProperty.Register<CalculationResult, HorizontalAlignment>(nameof(HorizontalContentAlignment), HorizontalAlignment.Right);
     public static readonly StyledProperty<VerticalAlignment> VerticalContentAlignmentProperty = AvaloniaProperty.Register<CalculationResult, VerticalAlignment>(nameof(VerticalContentAlignment), VerticalAlignment.Top);
+    public static readonly StyledProperty<string> AdornmentTextProperty = AvaloniaProperty.Register<CalculationResult, string>(nameof(AdornmentText), string.Empty);
+    public static readonly StyledProperty<bool> IsAdornmentOnRightProperty = AvaloniaProperty.Register<CalculationResult, bool>(nameof(IsAdornmentOnRight));
+    public static readonly StyledProperty<int> AdornmentSpacingEmProperty = AvaloniaProperty.Register<CalculationResult, int>(nameof(AdornmentSpacingEm), validate: value => value >= 0);
+    public static readonly StyledProperty<FontFamily> AdornmentFontFamilyProperty = AvaloniaProperty.Register<CalculationResult, FontFamily>(nameof(AdornmentFontFamily), FontFamily.Default);
+    public static readonly StyledProperty<double> AdornmentFontSizeProperty = AvaloniaProperty.Register<CalculationResult, double>(nameof(AdornmentFontSize));
+    public static readonly StyledProperty<FontWeight> AdornmentFontWeightProperty = AvaloniaProperty.Register<CalculationResult, FontWeight>(nameof(AdornmentFontWeight), FontWeight.Light);
     private ScrollViewer? _textContainer;
     private SelectableTextBlock? _textBlock;
+    private Span? _valueSpan;
+    private Run? _valueRun;
+    private Span? _adornmentSpan;
+    private Run? _adornmentRun;
+    private bool? _adornmentIsFirst;
     private Button? _scrollLeft;
     private Button? _scrollRight;
     private bool _isScalingText;
@@ -65,6 +77,12 @@ public sealed class CalculationResult : TemplatedControl
     public bool IsOperatorCommand { get => GetValue(IsOperatorCommandProperty); set => SetValue(IsOperatorCommandProperty, value); }
     public HorizontalAlignment HorizontalContentAlignment { get => GetValue(HorizontalContentAlignmentProperty); set => SetValue(HorizontalContentAlignmentProperty, value); }
     public VerticalAlignment VerticalContentAlignment { get => GetValue(VerticalContentAlignmentProperty); set => SetValue(VerticalContentAlignmentProperty, value); }
+    public string AdornmentText { get => GetValue(AdornmentTextProperty); set => SetValue(AdornmentTextProperty, value); }
+    public bool IsAdornmentOnRight { get => GetValue(IsAdornmentOnRightProperty); set => SetValue(IsAdornmentOnRightProperty, value); }
+    public int AdornmentSpacingEm { get => GetValue(AdornmentSpacingEmProperty); set => SetValue(AdornmentSpacingEmProperty, value); }
+    public FontFamily AdornmentFontFamily { get => GetValue(AdornmentFontFamilyProperty); set => SetValue(AdornmentFontFamilyProperty, value); }
+    public double AdornmentFontSize { get => GetValue(AdornmentFontSizeProperty); set => SetValue(AdornmentFontSizeProperty, value); }
+    public FontWeight AdornmentFontWeight { get => GetValue(AdornmentFontWeightProperty); set => SetValue(AdornmentFontWeightProperty, value); }
 
     public event EventHandler? Selected;
     public void ProgrammaticSelect()
@@ -88,7 +106,7 @@ public sealed class CalculationResult : TemplatedControl
         // advances it, after Avalonia has measured the requested font. This
         // prevents focus, font-weight, and viewport changes from consuming a
         // pass with stale bounds.
-        _textBlock.Text = DisplayValue;
+        UpdateDisplaySpans();
         _textBlock.FontSize = MaxFontSize;
         _textContainer.Padding = default;
         _isScalingText = true;
@@ -165,6 +183,7 @@ public sealed class CalculationResult : TemplatedControl
 
         if (_textBlock is not null)
         {
+            InitializeDisplaySpans();
             _textBlock.SizeChanged += OnTextBlockSizeChanged;
         }
 
@@ -232,7 +251,17 @@ public sealed class CalculationResult : TemplatedControl
     {
         ArgumentNullException.ThrowIfNull(change);
         base.OnPropertyChanged(change);
-        if (change.Property == DisplayValueProperty || change.Property == MinFontSizeProperty || change.Property == MaxFontSizeProperty || change.Property == FontSizeProperty)
+        if (change.Property == DisplayValueProperty ||
+            change.Property == MinFontSizeProperty ||
+            change.Property == MaxFontSizeProperty ||
+            change.Property == FontSizeProperty ||
+            change.Property == FlowDirectionProperty ||
+            change.Property == AdornmentTextProperty ||
+            change.Property == IsAdornmentOnRightProperty ||
+            change.Property == AdornmentSpacingEmProperty ||
+            change.Property == AdornmentFontFamilyProperty ||
+            change.Property == AdornmentFontSizeProperty ||
+            change.Property == AdornmentFontWeightProperty)
         {
             UpdateTextState();
         }
@@ -313,8 +342,83 @@ public sealed class CalculationResult : TemplatedControl
         if (_textBlock is not null)
         {
             _textBlock.IsHitTestVisible = IsActive;
-            _textBlock.FontWeight = IsActive ? FontWeight.SemiBold : FontWeight.Light;
+            _textBlock.FontWeight = FontWeight.Light;
         }
+
+        if (_valueSpan is not null)
+        {
+            _valueSpan.FontWeight = IsActive ? FontWeight.SemiBold : FontWeight.Light;
+        }
+    }
+
+    private void InitializeDisplaySpans()
+    {
+        if (_textBlock is null)
+        {
+            return;
+        }
+
+        _valueRun = new Run();
+        _valueSpan = new Span();
+        _valueSpan.Inlines.Add(_valueRun);
+        _adornmentRun = new Run();
+        _adornmentSpan = new Span();
+        _adornmentSpan.Inlines.Add(_adornmentRun);
+        _adornmentIsFirst = null;
+        UpdateDisplaySpans();
+    }
+
+    private void UpdateDisplaySpans()
+    {
+        if (_textBlock is null || _valueSpan is null || _valueRun is null || _adornmentSpan is null || _adornmentRun is null)
+        {
+            return;
+        }
+
+        bool adornmentIsFirst = IsAdornmentFirst(_textBlock.FlowDirection, IsAdornmentOnRight);
+        if (_adornmentIsFirst != adornmentIsFirst)
+        {
+            InlineCollection inlines = _textBlock.Inlines ?? new InlineCollection();
+            inlines.Clear();
+            if (adornmentIsFirst)
+            {
+                inlines.Add(_adornmentSpan);
+                inlines.Add(_valueSpan);
+            }
+            else
+            {
+                inlines.Add(_valueSpan);
+                inlines.Add(_adornmentSpan);
+            }
+
+            if (_textBlock.Inlines is null)
+            {
+                _textBlock.Inlines = inlines;
+            }
+
+            _adornmentIsFirst = adornmentIsFirst;
+        }
+
+        string space = !string.IsNullOrEmpty(AdornmentText)
+            ? new string('\u2003', AdornmentSpacingEm)
+            : string.Empty;
+        _valueRun.Text = DisplayValue;
+        _adornmentRun.Text = adornmentIsFirst ? AdornmentText + space : space + AdornmentText;
+        _adornmentSpan.FontFamily = AdornmentFontFamily;
+        _adornmentSpan.FontWeight = AdornmentFontWeight;
+        if (AdornmentFontSize > 0)
+        {
+            _adornmentSpan.FontSize = AdornmentFontSize;
+        }
+        else
+        {
+            _adornmentSpan.ClearValue(TextElement.FontSizeProperty);
+        }
+    }
+
+    internal static bool IsAdornmentFirst(FlowDirection flowDirection, bool isAdornmentOnRight)
+    {
+        return isAdornmentOnRight == (flowDirection == FlowDirection.RightToLeft);
     }
 
     private void ModifyFontAndMargin(double fontChange)

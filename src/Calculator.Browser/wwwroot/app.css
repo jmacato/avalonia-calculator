@@ -50,7 +50,7 @@ body {
     inset: 0;
     background: var(--page-background);
     color: var(--text-primary);
-    font-family: "Hind2", "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", sans-serif;
+    font-family: "Hind2", sans-serif;
     font-size: 14px;
     font-synthesis: none;
     line-height: 20px;

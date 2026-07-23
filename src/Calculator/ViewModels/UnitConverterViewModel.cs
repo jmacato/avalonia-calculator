@@ -59,8 +59,6 @@ public sealed partial class UnitConverterViewModel : ViewModelBase, IDisposable
     private string _displayUnit2 = string.Empty;
     private bool _displayUnit1OnRight = true;
     private bool _displayUnit2OnRight = true;
-    private bool _displayUnit1UseSpace = true;
-    private bool _displayUnit2UseSpace = true;
     private string _currencyRatioEquality = string.Empty;
     private string _currencyRatioEqualityAutomationName = string.Empty;
     private string _currencyTimestamp = string.Empty;
@@ -97,34 +95,11 @@ public sealed partial class UnitConverterViewModel : ViewModelBase, IDisposable
     public string CurrencySymbol1 { get => _currencySymbol1; private set => SetProperty(ref _currencySymbol1, value); }
     public string CurrencySymbol2 { get => _currencySymbol2; private set => SetProperty(ref _currencySymbol2, value); }
 
-    public string DisplayUnit1
-    {
-        get => _displayUnit1;
-        private set
-        {
-            if (SetProperty(ref _displayUnit1, value))
-            {
-                OnPropertyChanged(nameof(HasDisplayUnit1));
-            }
-        }
-    }
-
-    public string DisplayUnit2
-    {
-        get => _displayUnit2;
-        private set
-        {
-            if (SetProperty(ref _displayUnit2, value))
-            {
-                OnPropertyChanged(nameof(HasDisplayUnit2));
-            }
-        }
-    }
+    public string DisplayUnit1 { get => _displayUnit1; private set => SetProperty(ref _displayUnit1, value); }
+    public string DisplayUnit2 { get => _displayUnit2; private set => SetProperty(ref _displayUnit2, value); }
 
     public bool DisplayUnit1OnRight { get => _displayUnit1OnRight; private set => SetProperty(ref _displayUnit1OnRight, value); }
     public bool DisplayUnit2OnRight { get => _displayUnit2OnRight; private set => SetProperty(ref _displayUnit2OnRight, value); }
-    public bool DisplayUnit1UseSpace { get => _displayUnit1UseSpace; private set => SetProperty(ref _displayUnit1UseSpace, value); }
-    public bool DisplayUnit2UseSpace { get => _displayUnit2UseSpace; private set => SetProperty(ref _displayUnit2UseSpace, value); }
     public string CurrencyRatioEquality { get => _currencyRatioEquality; private set => SetProperty(ref _currencyRatioEquality, value); }
     public string CurrencyRatioEqualityAutomationName { get => _currencyRatioEqualityAutomationName; private set => SetProperty(ref _currencyRatioEqualityAutomationName, value); }
     public string CurrencyTimestamp { get => _currencyTimestamp; private set => SetProperty(ref _currencyTimestamp, value); }
@@ -136,8 +111,6 @@ public sealed partial class UnitConverterViewModel : ViewModelBase, IDisposable
     public Common.Automation.NarratorAnnouncement? Announcement { get => _announcement; private set => SetProperty(ref _announcement, value); }
     public bool HasSupplementaryResults => SupplementaryResults.Count > 0;
     public bool HasCurrencySymbols => !string.IsNullOrEmpty(CurrencySymbol1) || !string.IsNullOrEmpty(CurrencySymbol2);
-    public bool HasDisplayUnit1 => !string.IsNullOrEmpty(DisplayUnit1);
-    public bool HasDisplayUnit2 => !string.IsNullOrEmpty(DisplayUnit2);
     public bool CanNegate => CurrentCategory?.SupportsNegative == true;
     public ICommand CategoryChanged { get; }
     public ICommand UnitChanged { get; }

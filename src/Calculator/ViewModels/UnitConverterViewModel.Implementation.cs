@@ -817,64 +817,55 @@ public sealed partial class UnitConverterViewModel
         {
             DisplayUnit1 = string.Empty;
             DisplayUnit2 = string.Empty;
-            ApplyDisplayUnitLayouts((false, false), (false, false));
+            ApplyDisplayUnitPositions(false, false);
             return;
         }
 
         DisplayUnit1 = GetDisplayedUnit(Unit1, CurrencySymbol1, isCurrency);
         DisplayUnit2 = GetDisplayedUnit(Unit2, CurrencySymbol2, isCurrency);
 
-        ApplyDisplayUnitLayouts(
-            GetDisplayUnitLayout(mode, Unit1, isCurrency),
-            GetDisplayUnitLayout(mode, Unit2, isCurrency));
+        ApplyDisplayUnitPositions(
+            GetDisplayUnitOnRight(mode, Unit1, isCurrency),
+            GetDisplayUnitOnRight(mode, Unit2, isCurrency));
     }
 
-    private (bool OnRight, bool UseSpace) GetDisplayUnitLayout(
+    private bool GetDisplayUnitOnRight(
         ConverterUnitDisplayMode mode,
         UCM.Unit? unit,
         bool isCurrency)
     {
         if (mode == ConverterUnitDisplayMode.Left)
         {
-            return (false, true);
+            return false;
         }
 
         if (mode == ConverterUnitDisplayMode.Right)
         {
-            return (true, true);
+            return true;
         }
 
         if (isCurrency)
         {
             int pattern = _numberFormat.CurrencyPositivePattern;
-            bool onRight = pattern is 1 or 3;
-            // The WinUI currency-symbol states only choose a physical side;
-            // they do not reproduce the culture pattern's optional spacing.
-            bool useSpace = mode != ConverterUnitDisplayMode.WindowsNative &&
-                            pattern is 2 or 3;
-            return (onRight, useSpace);
+            return pattern is 1 or 3;
         }
 
         if (unit is null || unit == UCM.Unit.EmptyUnit)
         {
-            return (true, true);
+            return true;
         }
 
         CldrUnitDisplayData display = CldrCurrencyData.GetUnitDisplay(
             CultureInfo.CurrentUICulture.Name,
             unit.Id);
         bool isRightToLeft = CultureInfo.CurrentUICulture.TextInfo.IsRightToLeft;
-        return (display.UnitAfterValue != isRightToLeft, display.UseSpace);
+        return display.UnitAfterValue != isRightToLeft;
     }
 
-    private void ApplyDisplayUnitLayouts(
-        (bool OnRight, bool UseSpace) unit1,
-        (bool OnRight, bool UseSpace) unit2)
+    private void ApplyDisplayUnitPositions(bool unit1OnRight, bool unit2OnRight)
     {
-        DisplayUnit1OnRight = unit1.OnRight;
-        DisplayUnit1UseSpace = unit1.UseSpace;
-        DisplayUnit2OnRight = unit2.OnRight;
-        DisplayUnit2UseSpace = unit2.UseSpace;
+        DisplayUnit1OnRight = unit1OnRight;
+        DisplayUnit2OnRight = unit2OnRight;
     }
 
     private static string GetDisplayedUnit(UCM.Unit? unit, string currencySymbol, bool isCurrency)

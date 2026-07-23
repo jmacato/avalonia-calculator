@@ -236,15 +236,27 @@
                          Text="{CompiledBinding Model.CategoryName}"
                          VerticalAlignment="Center" />
 
-              <Button x:Name="NormalAlwaysOnTopButton"
+              <Button x:Name="MiniModeButton"
                       Grid.Column="2"
                       Theme="{StaticResource SquareIconButtonStyle}"
                       AutomationProperties.AutomationId="NormalAlwaysOnTopButton"
                       AutomationProperties.Name="{utils:ResourceString Name='EnterAlwaysOnTopButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
-                      Click="AlwaysOnTopButtonClick"
+                      Command="{CompiledBinding Model.EnterMiniModeCommand}"
                       Content="&#xEE49;"
+                      HotKey="Alt+Up"
                       IsVisible="{CompiledBinding Model.DisplayNormalAlwaysOnTopOption}"
                       ToolTip.Tip="{utils:ResourceString Name='EnterAlwaysOnTopButton.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip'}" />
+
+              <Button x:Name="ExitMiniModeButton"
+                      Grid.Column="0"
+                      Theme="{StaticResource SquareIconButtonStyle}"
+                      AutomationProperties.AutomationId="ExitAlwaysOnTopButton"
+                      AutomationProperties.Name="{utils:ResourceString Name='ExitAlwaysOnTopButton.[using:Windows.UI.Xaml.Automation]AutomationProperties.Name'}"
+                      Command="{CompiledBinding Model.ExitMiniModeCommand}"
+                      Content="&#xEE47;"
+                      HotKey="Alt+Down"
+                      IsVisible="{CompiledBinding Model.IsAlwaysOnTop}"
+                      ToolTip.Tip="{utils:ResourceString Name='ExitAlwaysOnTopButton.[using:Windows.UI.Xaml.Controls]ToolTipService.ToolTip'}" />
             </Grid>
           </Grid>
         </controls:WinUiSplitView.Content>
@@ -258,6 +270,7 @@
               VerticalAlignment="Top"
               AutomationProperties.Name="Open Navigation"
               Command="{CompiledBinding Model.ToggleNavigationPaneCommand}"
+              IsVisible="{CompiledBinding !Model.IsAlwaysOnTop}"
               Theme="{StaticResource PaneToggleButtonStyle}"
               ToolTip.Tip="Open Navigation" />
     </Grid>

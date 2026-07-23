@@ -71,12 +71,10 @@
       <Setter Property="MinFontSize" Value="14" />
       <Setter Property="MaxFontSize" Value="40" />
       <Setter Property="DisplayMargin" Value="0,0,0,4" />
-    </Style>
-    <Style Selector="TextBlock.currencySymbol">
-      <Setter Property="FontFamily" Value="{DynamicResource CurrencySymbolFontFamily}" />
-      <Setter Property="FontSize" Value="20" />
-      <Setter Property="FontWeight" Value="Light" />
-      <Setter Property="VerticalAlignment" Value="Bottom" />
+      <Setter Property="AdornmentSpacingEm" Value="2" />
+      <Setter Property="AdornmentFontFamily" Value="{DynamicResource CurrencySymbolFontFamily}" />
+      <Setter Property="AdornmentFontSize" Value="20" />
+      <Setter Property="AdornmentFontWeight" Value="Light" />
     </Style>
     <Style Selector="TextBlock.caption">
       <Setter Property="FontSize" Value="13" />
@@ -150,19 +148,11 @@
           Grid.Column="1"
           HorizontalAlignment="Left"
           controls:CompositionMotionBehavior.Profile="{StaticResource CurrencyLoadedAnimation}"
-          AutomationProperties.AccessibilityView="Raw"
-          ColumnDefinitions="Auto,*,Auto">
-      <TextBlock x:Name="CurrencySymbol1Block"
-                 Grid.Column="0"
-                 Classes="currencySymbol"
-                 Padding="16,0,8,0"
-                 Margin="0,0,0,8"
-                 AutomationProperties.AccessibilityView="Raw"
-                 IsVisible="{CompiledBinding HasDisplayUnit1}"
-                 Text="{CompiledBinding DisplayUnit1}" />
+          AutomationProperties.AccessibilityView="Raw">
       <controls:CalculationResult x:Name="Value1"
-                                  Grid.Column="1"
                                   Classes="converterValue"
+                                  AdornmentText="{CompiledBinding DisplayUnit1}"
+                                  IsAdornmentOnRight="{CompiledBinding DisplayUnit1OnRight}"
                                   AutomationProperties.AutomationId="Value1"
                                   AutomationProperties.Name="{CompiledBinding Value1AutomationName}"
                                   ContextRequested="OnResultContextRequested"
@@ -204,19 +194,11 @@
           Grid.Column="1"
           HorizontalAlignment="Left"
           controls:CompositionMotionBehavior.Profile="{StaticResource CurrencyLoadedAnimation}"
-          AutomationProperties.AccessibilityView="Raw"
-          ColumnDefinitions="Auto,*,Auto">
-      <TextBlock x:Name="CurrencySymbol2Block"
-                 Grid.Column="0"
-                 Classes="currencySymbol"
-                 Padding="16,0,8,0"
-                 Margin="0,0,0,8"
-                 AutomationProperties.AccessibilityView="Raw"
-                 IsVisible="{CompiledBinding HasDisplayUnit2}"
-                 Text="{CompiledBinding DisplayUnit2}" />
+          AutomationProperties.AccessibilityView="Raw">
       <controls:CalculationResult x:Name="Value2"
-                                  Grid.Column="1"
                                   Classes="converterValue"
+                                  AdornmentText="{CompiledBinding DisplayUnit2}"
+                                  IsAdornmentOnRight="{CompiledBinding DisplayUnit2OnRight}"
                                   AutomationProperties.AutomationId="Value2"
                                   AutomationProperties.LiveSetting="Polite"
                                   AutomationProperties.Name="{CompiledBinding Value2AutomationName}"

@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using Avalonia.Threading;
 using CalculatorApp.Services.Settings;
+using CalculatorApp.Services.Windowing;
 using CalculatorApp.ViewModel.Common;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -19,6 +20,7 @@ namespace CalculatorApp.ViewModel;
 public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
 {
     private readonly ISettingsStore _settingsStore;
+    private readonly IMiniModeService _miniModeService;
     private UnitConverterPreparationWorker? _converterPreparationWorker;
     private readonly int _diagnosticPageId;
     private int _converterPreparationStarted;
@@ -61,9 +63,13 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
     {
     }
 
-    public ApplicationViewModel(ISettingsStore settingsStore, int diagnosticPageId = 0)
+    public ApplicationViewModel(
+        ISettingsStore settingsStore,
+        int diagnosticPageId = 0,
+        IMiniModeService? miniModeService = null)
     {
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
+        _miniModeService = miniModeService ?? App.MiniModeService;
         _diagnosticPageId = diagnosticPageId;
         ConverterPipelineDiagnostics.RecordUiThread(Environment.CurrentManagedThreadId);
         Categories = NavCategoryStates.CreateMenuOptions();
@@ -196,25 +202,45 @@ public sealed partial class ApplicationViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public void ToggleAlwaysOnTop(float width, float height)
+    [RelayCommand]
+    private void EnterMiniMode()
     {
-        _ = width;
-        _ = height;
-
-        IsAlwaysOnTop = !IsAlwaysOnTop;
-#if !CALCULATOR_BROWSER
-        if (App.RootView is Avalonia.Controls.Window window)
+        if (m_mode == ViewMode.Standard &&
+            !IsAlwaysOnTop &&
+            _miniModeService.TryEnter())
         {
-            window.Topmost = IsAlwaysOnTop;
+            ApplyMiniModeState(_miniModeService.IsActive);
         }
-#endif
+    }
+
+    [RelayCommand]
+    private void ExitMiniMode()
+    {
+        if (IsAlwaysOnTop && _miniModeService.TryExit())
+        {
+            ApplyMiniModeState(_miniModeService.IsActive);
+        }
+    }
+
+    private void ApplyMiniModeState(bool isActive)
+    {
+        IsAlwaysOnTop = isActive;
+        IsNavigationPaneOpen = false;
+        if (CalculatorViewModel is { } calculator)
+        {
+            calculator.IsAlwaysOnTop = isActive;
+            calculator.HistoryVM.AreHistoryShortcutsEnabled = !isActive;
+        }
 
         SetDisplayNormalAlwaysOnTopOption();
     }
 
     private void SetDisplayNormalAlwaysOnTopOption()
     {
-        DisplayNormalAlwaysOnTopOption = m_mode == ViewMode.Standard && !IsAlwaysOnTop;
+        DisplayNormalAlwaysOnTopOption =
+            _miniModeService.IsSupported &&
+            m_mode == ViewMode.Standard &&
+            !IsAlwaysOnTop;
     }
 
     private void StartConverterPreparation()

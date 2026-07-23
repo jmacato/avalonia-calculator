@@ -5,11 +5,12 @@
 - License: SIL Open Font License 1.1 (`LICENSE.txt`)
 - Tooling: fontTools 4.63.0
 
-`NotoSans-Currency.ttf` is embedded only in the browser-flavored Calculator
-assembly. It combines small subsets from six Noto families into one font. The
-subsets contain only currency-symbol characters needed by the live Frankfurter
-catalog and localized variants in CalcNeo's shipped CLDR tables. OpenType
-layout closure retains contextual glyphs and shaping tables; unrelated Unicode
+`NotoSans-Currency.ttf` is embedded in every Calculator target so currency
+symbols use the same fallback face on browser, desktop, Android, and iOS. It
+combines small subsets from six Noto families into one font. The subsets
+contain only currency-symbol characters needed by the live Frankfurter catalog
+and localized variants in CalcNeo's shipped CLDR tables. OpenType layout
+closure retains contextual glyphs and shaping tables; unrelated Unicode
 mappings and outlines are removed.
 
 | Source family | Upstream source | Upstream SHA-256 | Included Unicode mappings | Intermediate subset SHA-256 |
@@ -39,7 +40,7 @@ pyftmerge --output-file=NotoSans-Currency.ttf <subset-files-in-table-order>
 
 After merging, the composite's `hhea` and corresponding `OS/2` vertical
 metrics are aligned with bundled `Hind2-Regular.ttf`, the next face in the
-browser currency fallback chain:
+shared currency fallback chain:
 
 ```text
 python Tools/Fonts/align_currency_to_hind2.py

@@ -16,8 +16,8 @@
       </ResourceDictionary.MergedDictionaries>
 
       <FontFamily x:Key="CalculatorFontFamily">avares://Calculator/Assets/CalculatorIcons.ttf#Calculator Fluent Icons</FontFamily>
-      <FontFamily x:Key="ContentControlThemeFontFamily">Segoe UI Variable,Segoe UI,avares://Calculator/Assets/Fonts/Hind2#Hind2,sans-serif</FontFamily>
-      <FontFamily x:Key="CurrencySymbolFontFamily">Segoe UI Variable,Segoe UI,avares://Calculator/Assets/Fonts/Hind2#Hind2,sans-serif</FontFamily>
+      <FontFamily x:Key="ContentControlThemeFontFamily">avares://Calculator/Assets/Fonts/Hind2#Hind2,sans-serif</FontFamily>
+      <FontFamily x:Key="CurrencySymbolFontFamily">avares://Calculator/Assets/Fonts/NotoSans#Noto Sans,avares://Calculator/Assets/Fonts/Hind2#Hind2,sans-serif</FontFamily>
 
       <!-- Original Calculator overrides for WinUI's NavigationView resources.
            Keep the content transparent so the application/Mica fallback shows

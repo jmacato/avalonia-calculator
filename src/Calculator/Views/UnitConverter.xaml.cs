@@ -81,7 +81,6 @@ public sealed partial class UnitConverter : UserControl, IDisposable
         {
             model.PropertyChanged += OnModelPropertyChanged;
             UpdateActiveValueState();
-            UpdateDisplayUnitLayout();
         }
 
         UpdateCurrencyLoadingState();
@@ -93,11 +92,6 @@ public sealed partial class UnitConverter : UserControl, IDisposable
         if (e.PropertyName is nameof(UnitConverterViewModel.Value1Active) or nameof(UnitConverterViewModel.Value2Active))
         {
             UpdateActiveValueState();
-        }
-
-        if (e.PropertyName is nameof(UnitConverterViewModel.DisplayUnit1OnRight) or nameof(UnitConverterViewModel.DisplayUnit2OnRight) or nameof(UnitConverterViewModel.DisplayUnit1UseSpace) or nameof(UnitConverterViewModel.DisplayUnit2UseSpace))
-        {
-            UpdateDisplayUnitLayout();
         }
 
         if (e.PropertyName is nameof(UnitConverterViewModel.IsCurrencyLoadingVisible) or nameof(UnitConverterViewModel.IsCurrencyCurrentCategory))
@@ -151,24 +145,6 @@ public sealed partial class UnitConverter : UserControl, IDisposable
         Units1.HorizontalAlignment = _flowDirectionHorizontalAlignment;
         Units2.HorizontalAlignment = _flowDirectionHorizontalAlignment;
         SupplementaryResultsPanelInGrid.HorizontalAlignment = _flowDirectionHorizontalAlignment;
-    }
-
-    private void UpdateDisplayUnitLayout()
-    {
-        if (Model is not { } model)
-        {
-            return;
-        }
-
-        ApplyDisplayUnitLayout(CurrencySymbol1Block, model.DisplayUnit1OnRight, model.DisplayUnit1UseSpace);
-        ApplyDisplayUnitLayout(CurrencySymbol2Block, model.DisplayUnit2OnRight, model.DisplayUnit2UseSpace);
-    }
-
-    private static void ApplyDisplayUnitLayout(TextBlock displayUnit, bool onRight, bool useSpace)
-    {
-        Grid.SetColumn(displayUnit, onRight ? 2 : 0);
-        double innerSpace = useSpace ? 8 : 0;
-        displayUnit.Padding = onRight ? new Thickness(innerSpace, 0, 12, 0) : new Thickness(16, 0, innerSpace, 0);
     }
 
     private void UpdateCurrencyLoadingState()
@@ -350,10 +326,8 @@ public sealed partial class UnitConverter : UserControl, IDisposable
         Value2.MaxFontSize = wide ? 46 : 40;
         Value1.DisplayMargin = wide ? new Thickness(0, 0, 0, 12) : new Thickness(0, 0, 0, 4);
         Value2.DisplayMargin = wide ? new Thickness(0, 0, 0, 12) : new Thickness(0, 0, 0, 4);
-        CurrencySymbol1Block.FontSize = currencyFontSize;
-        CurrencySymbol2Block.FontSize = currencyFontSize;
-        CurrencySymbol1Block.Margin = wide ? new Thickness(0, 0, 0, 17) : new Thickness(0, 0, 0, 8);
-        CurrencySymbol2Block.Margin = wide ? new Thickness(0, 0, 0, 17) : new Thickness(0, 0, 0, 8);
+        Value1.AdornmentFontSize = currencyFontSize;
+        Value2.AdornmentFontSize = currencyFontSize;
         Units1.Height = unitHeight;
         Units2.Height = unitHeight;
         ClearEntryButtonPos0.FontSize = commandFontSize;

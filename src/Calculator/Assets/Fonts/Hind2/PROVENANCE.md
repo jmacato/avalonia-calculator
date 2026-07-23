@@ -6,8 +6,9 @@
 - Family: `Hind2`
 - Included faces: Light, Regular, Medium, SemiBold, and Bold
 
-The production font fallback is installed Segoe UI Variable, installed Segoe UI,
-bundled Hind2, then the platform sans-serif fallback. Segoe files used by visual
+The production font fallback is bundled Hind2 followed by the platform
+sans-serif fallback. This is the same stack used by the browser shell and is
+forced across browser, desktop, Android, and iOS. Segoe files used by visual
 tests are local-only and must never be placed in this directory or a release
 archive.
 

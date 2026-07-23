@@ -1,6 +1,7 @@
 using System.Globalization;
 using Avalonia;
 using CalculatorApp.Automation;
+using CalculatorApp.Desktop.Services;
 using CalculatorApp.Services.Settings;
 using Serilog;
 using Serilog.Events;
@@ -16,8 +17,14 @@ internal static class Program
     {
         InitializeDiagnostics();
         App.SettingsStore = JsonSettingsStore.CreateDefault();
+        using var miniModeService =
+            new DesktopMiniModeService(App.SettingsStore);
+        App.MiniModeService = miniModeService;
         App.DesktopWindowCreated = window =>
+        {
+            miniModeService.Attach(window);
             s_automationServer = AutomationServer.StartFromEnvironment(window);
+        };
 
         try
         {

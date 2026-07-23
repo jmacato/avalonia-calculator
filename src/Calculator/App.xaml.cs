@@ -2,9 +2,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Avalonia.Media;
 using Avalonia.Threading;
 using CalculatorApp.Services.Settings;
+using CalculatorApp.Services.Windowing;
 using CalculatorApp.ViewModel;
 using MathComposer.Avalonia;
 
@@ -19,6 +19,9 @@ public sealed partial class App : Application
 
     public static ISettingsStore SettingsStore { get; set; } = new InMemorySettingsStore();
 
+    public static IMiniModeService MiniModeService { get; set; } =
+        UnsupportedMiniModeService.Instance;
+
     public static Control? RootView { get; private set; }
 #if !CALCULATOR_BROWSER
     public static MainWindow? Window { get; private set; }
@@ -29,11 +32,6 @@ public sealed partial class App : Application
     {
         AvaloniaXamlLoader.Load(this);
         MathFontResources.Initialize();
-#if CALCULATOR_BROWSER
-        Resources["CurrencySymbolFontFamily"] = new FontFamily(
-            "avares://Calculator/Assets/Fonts/NotoSans#Noto Sans," +
-            "avares://Calculator/Assets/Fonts/Hind2#Hind2");
-#endif
     }
 
     public override void OnFrameworkInitializationCompleted()

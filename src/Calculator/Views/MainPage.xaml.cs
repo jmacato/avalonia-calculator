@@ -50,13 +50,6 @@ public sealed partial class MainPage : UserControl, IDisposable
 #endif
     }
 
-    private void AlwaysOnTopButtonClick(object? sender, RoutedEventArgs e)
-    {
-        _ = sender;
-        _ = e;
-        Model.ToggleAlwaysOnTop(0, 0);
-    }
-
     private void OnAppPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         Dispatcher.UIThread.VerifyAccess();
@@ -78,6 +71,10 @@ public sealed partial class MainPage : UserControl, IDisposable
         else if (e.PropertyName == nameof(ApplicationViewModel.IsNavigationPaneOpen))
         {
             UpdatePaneToggleAutomation();
+        }
+        else if (e.PropertyName == nameof(ApplicationViewModel.IsAlwaysOnTop))
+        {
+            UpdatePaneToggleVisibility();
         }
         else if (e.PropertyName == nameof(ApplicationViewModel.CategoryName))
         {
@@ -178,7 +175,7 @@ public sealed partial class MainPage : UserControl, IDisposable
         SetHolderVisibility("ConverterHolder", !_isSettingsVisible && NavCategory.IsConverterViewMode(Model.Mode));
         SetHolderVisibility("CalcHolder", !_isSettingsVisible && NavCategory.IsCalculatorViewMode(Model.Mode));
         NavSplitView.IsVisible = !_isSettingsVisible;
-        PaneToggleButton.IsVisible = !_isSettingsVisible;
+        UpdatePaneToggleVisibility();
         SettingsHolder.IsOpen = _isSettingsVisible;
 
 #if CALCULATOR_BROWSER
@@ -297,6 +294,11 @@ public sealed partial class MainPage : UserControl, IDisposable
         string name = Model.IsNavigationPaneOpen ? "Close Navigation" : "Open Navigation";
         AutomationProperties.SetName(PaneToggleButton, name);
         ToolTip.SetTip(PaneToggleButton, name);
+    }
+
+    private void UpdatePaneToggleVisibility()
+    {
+        PaneToggleButton.IsVisible = !_isSettingsVisible && !Model.IsAlwaysOnTop;
     }
 
     private void SetDefaultFocus()
