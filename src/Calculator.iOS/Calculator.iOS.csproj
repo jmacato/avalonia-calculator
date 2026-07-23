@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-ios</TargetFramework>
+    <SupportedOSPlatformVersion>13.0</SupportedOSPlatformVersion>
+    <RootNamespace>CalculatorApp.iOS</RootNamespace>
+    <AssemblyName>Calculator.iOS</AssemblyName>
+    <ApplicationTitle>Calculator</ApplicationTitle>
+    <Product>Calculator</Product>
+    <Authors>jmacato</Authors>
+    <Company>jmacato</Company>
+    <ApplicationId>io.github.jmacato.calculator</ApplicationId>
+    <ApplicationVersion>1.0</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.iOS" Version="12.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Calculator\Calculator.csproj" />
+  </ItemGroup>
+
+  <Target
+    Name="RemoveAvaloniaDesignerSupportFromIosPublish"
+    AfterTargets="_ComputeAssembliesToPostprocessOnPublish">
+    <!-- The merged local Avalonia facade contains this design-time assembly.
+         It is not part of the application runtime and is not linker-safe. -->
+    <ItemGroup>
+      <ResolvedFileToPublish
+        Remove="@(ResolvedFileToPublish)"
+        Condition="'%(ResolvedFileToPublish.Filename)' == 'Avalonia.DesignerSupport'" />
+    </ItemGroup>
+  </Target>
+</Project>

@@ -5,8 +5,14 @@
   </Folder>
   <Folder Name="/Managed/">
     <Project Path="src/CalcManagerManaged/CalcManagerPort/CalcManagerPort.csproj" />
+    <Project Path="src/Calculator.Android/Calculator.Android.csproj">
+      <Deploy />
+    </Project>
     <Project Path="src/Calculator.Browser/Calculator.Browser.csproj" />
     <Project Path="src/Calculator.Desktop/Calculator.Desktop.csproj" />
+    <Project Path="src/Calculator.iOS/Calculator.iOS.csproj">
+      <Deploy />
+    </Project>
     <Project Path="src/Calculator/Calculator.csproj" />
     <Project Path="src/GraphControl/GraphControl.csproj" />
     <Project Path="src/Graphing.Symbolics/Graphing.Symbolics.csproj" />

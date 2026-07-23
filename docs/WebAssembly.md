@@ -5,6 +5,7 @@ The Avalonia application follows the default cross-platform template layout:
 - `src/Calculator` is the shared application project. It owns the original ported XAML, controls, ViewModels, engine integration, resources, and `App`.
 - `src/Calculator.Desktop` is the thin macOS/Windows desktop entry point and owns the local HTTP automation startup.
 - `src/Calculator.Browser` is the thin WebAssembly entry point and web host.
+- `src/Calculator.Android` and `src/Calculator.iOS` are the thin mobile entry points.
 
 No browser-specific copy of the application UI or ViewModels exists. The browser lifetime displays the same original `MainPage` used by `MainWindow`.
 
