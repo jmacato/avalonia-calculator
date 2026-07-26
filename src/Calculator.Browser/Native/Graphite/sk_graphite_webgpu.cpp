@@ -16,15 +16,59 @@
 #include "include/gpu/graphite/BackendTexture.h"
 #include "include/gpu/graphite/Context.h"
 #include "include/gpu/graphite/ContextOptions.h"
+#include "include/gpu/graphite/Image.h"
+#include "include/gpu/graphite/ImageProvider.h"
 #include "include/gpu/graphite/Recorder.h"
 #include "include/gpu/graphite/Surface.h"
 #include "include/gpu/graphite/dawn/DawnBackendContext.h"
 #include "include/gpu/graphite/dawn/DawnGraphiteTypes.h"
 #include "src/c/sk_types_priv.h"
+#include "src/core/SkLRUCache.h"
 
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+
+namespace {
+
+class BrowserImageProvider final : public skgpu::graphite::ImageProvider {
+public:
+    sk_sp<SkImage> findOrCreate(
+            skgpu::graphite::Recorder* recorder,
+            const SkImage* image,
+            SkImage::RequiredProperties requiredProperties) override {
+        const uint64_t imageKey = static_cast<uint64_t>(image->uniqueID()) << 1;
+
+        // A mipmapped texture also satisfies a non-mipmapped request. Prefer it
+        // when available so a later request for mipmaps does not leave two GPU
+        // copies of the same immutable SkImage in the bounded cache.
+        if (!requiredProperties.fMipmapped) {
+            if (sk_sp<SkImage>* cached = fCache.find(imageKey | 1u)) {
+                return *cached;
+            }
+        }
+
+        const uint64_t key =
+                imageKey | static_cast<uint64_t>(requiredProperties.fMipmapped);
+        if (sk_sp<SkImage>* cached = fCache.find(key)) {
+            return *cached;
+        }
+
+        sk_sp<SkImage> uploaded =
+                SkImages::TextureFromImage(recorder, image, requiredProperties);
+        if (!uploaded) {
+            return nullptr;
+        }
+        return *fCache.insert(key, std::move(uploaded));
+    }
+
+private:
+    // Avalonia recreates an SkImage whenever a WriteableBitmap is unlocked.
+    // Bound old texture snapshots while retaining ordinary immutable UI assets.
+    SkLRUCache<uint64_t, sk_sp<SkImage>> fCache{128};
+};
+
+} // namespace
 
 struct sk_graphite_webgpu_context_t {
     std::unique_ptr<skgpu::graphite::Context> fContext;
@@ -64,6 +108,7 @@ sk_graphite_webgpu_context_t* sk_graphite_webgpu_context_create(size_t maxResour
 
     skgpu::graphite::RecorderOptions recorderOptions;
     recorderOptions.fGpuBudgetInBytes = recorderBudget;
+    recorderOptions.fImageProvider = sk_make_sp<BrowserImageProvider>();
     auto recorder = graphiteContext->makeRecorder(recorderOptions);
     if (!recorder) {
         return nullptr;
