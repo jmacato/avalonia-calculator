@@ -13,7 +13,7 @@ public sealed record AppSettings
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
     public ConverterUnitDisplayMode ConverterUnitDisplayMode { get; init; } = ConverterUnitDisplayMode.Automatic;
     public bool AutomaticCurrencyRefresh { get; init; } = true;
-    public bool GraphThemeMatchApp { get; init; }
+    public bool GraphThemeMatchApp { get; init; } = true;
     public double MiniModeWidth { get; init; } = DefaultMiniModeWidth;
     public double MiniModeHeight { get; init; } = DefaultMiniModeHeight;
     public string UnitConverterPreferences { get; init; } = string.Empty;
